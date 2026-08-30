@@ -9,8 +9,8 @@
 | | |
 |---|---|
 | 원본 레포 | `https://github.com/junnv93/FCC_mobile_test_automation.git` |
-| 원본 커밋 (SHA) | `2d6c319e70eff6645bc05dc5c8be42fab87cfd93` |
-| 추출 시각 (UTC) | `2026-08-30T14:40:53Z` |
+| 원본 커밋 (SHA) | `d866c9533b9e2103ac381663003effdaae43b01d` |
+| 추출 시각 (UTC) | `2026-08-30T14:47:33Z` |
 | 추출 매니페스트 판번호 | `manifest_version = 2` |
 | 레인 키 | `fcc-test-platform` |
 | 레인 소유자 (매니페스트 선언) | Shared web/platform maintainers |
