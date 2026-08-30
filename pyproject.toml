@@ -1,0 +1,110 @@
+# 설치 선언 — fcc-test-platform 레인
+#
+# 이 파일은 모노레포에서 리뷰되고, 추출 패키저가 납품 상자의 **루트**로 옮겨 싣는다
+# (매니페스트 entry `kind: packaging_manifest`, future_path = "pyproject.toml").
+#
+# ⚠️ 이 파일의 모든 값은 파생이다. 발명한 값이 없다는 것이 봉인 대상이고
+#    tests/test_repo_split_packaging_axis.py 가 각 줄의 출처를 대조한다.
+
+[build-system]
+# setuptools 62.5.0 릴리스 노트: "The [project] configuration interface in
+# pyproject.toml is now fully supported." (공식 history)
+requires = ["setuptools>=62.5"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# name = 매니페스트 `repositories` 의 레인 키.
+name = "fcc-test-platform"
+# version = 이 레인이 이미 소유한 npm 배포물 apps/web/package.json 과 상등.
+version = "0.1.0"
+description = "Central DB, backend API, auth/RBAC, frontend shell, provider registry, deployment composition, and report/artifact browsing workflows."
+# requires-python = infra/central/Dockerfile.api 의 `FROM python:3.11-slim`.
+requires-python = ">=3.11"
+dependencies = [
+    # 형제 레인. 방향은 매니페스트 `depends_on` 에 **이미** 선언돼 있고
+    # (fcc-test-platform → fcc-test-contracts) 이 줄은 그 선언을 설치 축으로
+    # 옮긴 것이지 넓힌 것이 아니다 — depends_on 은 한 글자도 바뀌지 않았다.
+    # 버전 하한을 적지 않는 이유: 두 배포물을 담을 인덱스가 아직 없어
+    # 해석기가 비교할 대상이 없다(§lockfile 이연 사유와 같다). 이름의 정합은
+    # `depends_on ∩ extraction_target` 파생 상등으로 봉인한다.
+    "fcc-test-contracts",
+    # 상자의 런타임이 실제로 도달하는 서드파티. 실측 기준은 *도달*이지
+    # 모듈 레벨 여부가 아니다 — platform 의 런타임 import 는 합성 경계에서
+    # 지연되지만(fastapi 4건 · psycopg 2건이 함수 안) 그 지연은 합성 패턴이지
+    # 선택성이 아니다. 이 둘 없이는 두 웹 표면이 뜨지 않는다.
+    # 하한은 requirements-central.txt SSOT(중앙 허브 컨테이너 의존성 SSOT,
+    # tests/test_central_docker_compose.py 봉인).
+    "fastapi>=0.136.1",
+    "psycopg[binary]>=3.1",
+]
+
+[project.optional-dependencies]
+# 상자가 자기 suite 를 싣는다(매니페스트 `lane_test_suite`). 실측: 테스트가
+# 모듈 레벨로 도달하는 서드파티는 pytest 와 openpyxl 둘.
+# 하한은 각각 requirements.txt:33 · requirements-central.txt SSOT.
+test = ["pytest>=7.0.0", "openpyxl>=3.1.0"]
+
+# ⚠️ selenium(scripts/platform_frontend_browser_qa.py) 과 psycopg2 폴백
+#    (scripts/platform_db_migrate.py 외 2)은 **선언하지 않는다**. 둘 다 운영자
+#    CLI 안의 함수 레벨 import 이고, requirements-central.txt 는 selenium 을
+#    *의도적으로 제외*한다고 스스로 적는다("web automation; device-automation
+#    only"). 하한 SSOT 가 없는 이름에 버전을 붙이는 것은 발명이다 — 장부에
+#    이름과 사유로 남긴다.
+
+[tool.setuptools.packages.find]
+# 상자의 최상위 import 패키지 셋. domain/ 과 application/central_contract/ 는
+# shared-kernel 소비 폐포로 실린 트리이고(소유는 shared-kernel, 납품은 이 상자)
+# 실제 import 이름이 `domain.*` / `application.central_contract.*` 이므로 배포에
+# 포함해야 한다. apps/ · config/ · docs/ · infra/ · migrations/ · web/ 은 파이썬
+# 패키지가 아니고, scripts/ 는 상자에 `__init__.py` 가 의도적으로 없다(contracts
+# 선언의 같은 사유).
+#
+# ⚠️ `application*` 이 아니라 `application.central_contract*` 다. 상자에는
+# `application/` 아래 이 폐포뿐이지만, 넓은 패턴은 «이 상자가 application 계층을
+# 받는다» 라고 선언하는 것이고 그것은 ADR-0018 D-5 가 닫아 둔 방향이다 —
+# 다음에 다른 `application/` 하위가 실리면 조용히 딸려 나간다.
+include = ["fcc_test_platform*", "domain*", "application.central_contract*"]
+# 실측: 상자의 fcc_test_platform/ 에 `__init__.py` 가 없다(PEP 420). domain/ 은
+# 있다. 두 모양이 한 배포에 섞이므로 명시한다.
+namespaces = true
+
+[tool.setuptools.package-data]
+# ⚠️ **패키지 데이터는 import 가 아니다** — 이 저장소가 이미 한 번 값을 치른 계급이다.
+# `domain/models/reference_catalog.py` 는 **모듈 레벨**에서 `decision_catalogue.json` 을
+# 읽으므로, 그것이 빠진 배포물은 설치도 되고 휠도 만들어지지만 **import 하는 순간 죽는다**
+# (실측: `ReferenceCatalogError: decision catalogue resource is unavailable`).
+# 같은 파일이 shared-kernel 소비 폐포 웨이브에서 **13건을 죽였고**, 그때의 교훈이
+# *"폐포는 모듈이 착지한 디렉터리의 governed 비-.py 를 함께 싣는다"* 였다. 상자에는
+# 실려 있고 **휠에만 없었다** — 스테이징을 재는 축은 그것을 볼 수 없다.
+# 실측 대상 집합은 오늘 이 한 파일뿐이므로 있는 것만 선언하고, *전량성*은
+# `tests/test_repo_split_packaging_axis.py` 가 **실제로 휠을 빌드해서** 단언한다
+# (새 확장자가 생기는 날 그 봉인이 red 로 이름을 댄다 — 선언을 넓게 적어두는 쪽은
+# 아무것도 검사하지 않으면서 검사한 것처럼 읽힌다).
+"*" = ["*.json"]
+
+# ⚠️ 사본이다 — TOML 에는 include 가 없다. 그래서 루트 pyproject.toml 의
+#    testpaths/markers/addopts 와 **상등 파리티 게이트**를 함께 세운다
+#    (tests/test_repo_split_packaging_axis.py). 이 저장소의 표준 답:
+#    강제된 사본에는 파리티 게이트를 단다.
+#
+#    세 키를 부분집합으로 옮기지 않는 이유: 이 축이 묻는 것은 "상자를 받은 팀이
+#    **우리와 같은** 게이트를 돌 수 있는가"이고, 다른 pytest 설정으로 도는 상자는
+#    우리 게이트를 도는 것이 아니다. addopts 의 `-p no:faulthandler` 가 provider
+#    쪽 사유(Windows/Python 3.13 OOXML)에서 왔더라도 같이 간다.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "unit: 순수 단위 테스트 (하드웨어/네트워크/실제 파일 불필요)",
+    "integration: 통합 테스트 (tempfile, 실제 Excel I/O 사용)",
+    "hardware: 하드웨어 필수 (스펙트럼 분석기, Appium, Android)",
+    "database: DB 통합 테스트 (SQLite, 실제 파일 I/O)",
+    "bench: 정량 latency budget 측정 (GC-sensitive, 권장 단독 실행 — pytest -m bench)",
+    "gui: 실제 QApplication/위젯을 만들고 Qt 이벤트 루프를 펌프하는 PySide6 테스트 (전체 회귀의 누적 네이티브 압박 하에서 access violation 크래시 → 단독 실행 -m gui)",
+    "invariant: architecture/hygiene/SSOT/contract-drift 가드 (dataclass/AST/파일시스템/frontmatter 검사 — 장비 불필요). ubuntu CI 경량 게이트 대상 (conftest _INVARIANT_FILENAME_TOKENS SSOT 자동 부착).",
+]
+# Disable pytest's faulthandler plugin on Windows/Python 3.13 because it emits
+# handled first-chance "Windows fatal exception: access violation" diagnostics
+# during Office Open XML ZIP/XML tests even when the process exits successfully.
+# Real failures still surface through non-zero exits and assertions.
+addopts = "--strict-markers -p no:faulthandler"

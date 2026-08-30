@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://fcc.local/platform/chamber_measurement_staging.schema.json",
+  "title": "Chamber real-measurement staging evidence",
+  "description": "Offline, no-fake evidence for the M1 real measurement-path staging gate (closure plan P2): a real measurement run (start -> in_use -> progress -> completion) across >= 2 PCs with a real SCPI analyzer + Appium device. Vocabulary SSOT: src/application/platform/chamber_measurement_staging_evidence.py (parity-sealed by tests/test_chamber_measurement_staging_evidence.py). mode=template is a blank skeleton that can never pass the M1 criteria; mode=recorded forbids the unfilled <FILL-ME> placeholder anywhere (a placeholder in ANY field, even a non-pass-criterion field such as central_stack_version, is a placeholder_in_recorded structural error) so a half-filled template cannot be relabelled to fake a pass. The full --require-pass gate requires all three: structural validity (no errors), mode=recorded, and every M1 pass criterion met. So a fully filled-in bundle left in mode=template, or a recorded bundle still carrying a placeholder in a non-criterion field, is rejected and never clears the gate even when all 8 pass criteria are met. Structural validity does NOT assert hardware ran — the gate checks shape and self-consistency only; truth comes from operator-pasted, cross-referenced API/WS/log identifiers.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "evidence_id",
+    "collected_at",
+    "mode",
+    "central_stack_version",
+    "machines",
+    "chamber",
+    "equipment",
+    "published_plan_id",
+    "measurement",
+    "timeline",
+    "correlation",
+    "restart_partition",
+    "fleet_partition"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {"const": 2},
+    "evidence_id": {"type": "string", "minLength": 1},
+    "collected_at": {"type": "string", "minLength": 1},
+    "mode": {"type": "string", "enum": ["template", "recorded"]},
+    "central_stack_version": {"type": "string", "minLength": 1},
+    "published_plan_id": {"type": "string", "minLength": 1},
+    "machines": {
+      "type": "array",
+      "minItems": 2,
+      "description": "Physical PCs in the staging fleet. M1 require-pass needs at least 2 DISTINCT physical machines, counted as connected components of the identity<->address graph: a machine only counts when its identity and address are both real (non-placeholder), and rows that share an identity OR an address — including cross-linked rows such as pc-a/10.0.0.1, pc-a/10.0.0.2, pc-b/10.0.0.1 — collapse into one machine rather than inflating the count. Structural minItems is 2; distinctness is enforced by the two_physical_machines pass criterion.",
+      "items": {
+        "type": "object",
+        "required": ["role", "identity", "address", "os"],
+        "additionalProperties": true,
+        "properties": {
+          "role": {"type": "string", "minLength": 1},
+          "identity": {"type": "string", "minLength": 1},
+          "address": {"type": "string", "minLength": 1},
+          "os": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "chamber": {
+      "type": "object",
+      "required": ["chamber_id", "token_binding_state", "node_pc_identity"],
+      "additionalProperties": true,
+      "properties": {
+        "chamber_id": {"type": "string", "minLength": 1},
+        "token_binding_state": {"type": "string", "enum": ["bound", "claimless", "unknown"]},
+        "node_pc_identity": {"type": "string", "minLength": 1}
+      }
+    },
+    "equipment": {
+      "type": "object",
+      "description": "The instruments plus SCPI/Appium proof-of-life. analyzer_resource/appium_device_id identify the instruments; analyzer_idn (the pasted *IDN? response), appium_session_id, dut_model and dut_driven attest the measurement path actually drove them. The measurement_path_proof pass criterion needs all three strings non-placeholder AND dut_driven true — it checks shape only and never asserts a sweep produced a value.",
+      "required": ["analyzer_resource", "appium_device_id", "analyzer_idn", "appium_session_id", "dut_model", "dut_driven"],
+      "additionalProperties": true,
+      "properties": {
+        "analyzer_resource": {"type": "string", "minLength": 1},
+        "appium_device_id": {"type": "string", "minLength": 1},
+        "analyzer_idn": {"type": "string", "minLength": 1},
+        "appium_session_id": {"type": "string", "minLength": 1},
+        "dut_model": {"type": "string", "minLength": 1},
+        "dut_driven": {"type": "boolean"}
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "required": ["job_id", "session_id", "start", "chamber_in_use_observed", "progress", "outcome"],
+      "additionalProperties": true,
+      "properties": {
+        "job_id": {"type": "string", "minLength": 1},
+        "session_id": {"type": "string", "minLength": 1},
+        "start": {
+          "type": "object",
+          "required": ["endpoint", "http_status"],
+          "additionalProperties": true,
+          "properties": {
+            "endpoint": {"type": "string", "minLength": 1},
+            "http_status": {"type": "integer"}
+          }
+        },
+        "chamber_in_use_observed": {"type": "boolean"},
+        "progress": {
+          "type": "object",
+          "description": "Progress observation transports. M1 require-pass needs via_api AND via_ws to both be true, OR a non-empty documented fallback string explaining why one transport was unavailable. API-only or WS-only without a fallback fails the progress_api_ws_or_fallback pass criterion.",
+          "required": ["via_api", "via_ws", "fallback"],
+          "additionalProperties": true,
+          "properties": {
+            "via_api": {"type": "boolean"},
+            "via_ws": {"type": "boolean"},
+            "fallback": {"type": "string"}
+          }
+        },
+        "outcome": {"type": "string", "enum": ["completed", "controlled_failure", ""]}
+      }
+    },
+    "timeline": {
+      "type": "array",
+      "minItems": 3,
+      "description": "Measurement lifecycle timeline. M1 require-pass needs entries for ALL of start, progress, and completion, each with a real (non-placeholder) timestamp; a phase whose timestamp is unfilled does not count. Enforced by the timeline_phases_complete pass criterion.",
+      "items": {
+        "type": "object",
+        "required": ["phase", "at"],
+        "additionalProperties": true,
+        "properties": {
+          "phase": {"type": "string", "enum": ["start", "progress", "completion"]},
+          "at": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "correlation": {
+      "type": "object",
+      "required": ["api", "ws", "log"],
+      "additionalProperties": true,
+      "properties": {
+        "api": {"type": "string", "minLength": 1},
+        "ws": {"type": "string", "minLength": 1},
+        "log": {"type": "string", "minLength": 1}
+      }
+    },
+    "restart_partition": {
+      "type": "object",
+      "required": ["node_restart", "network_partition", "notes"],
+      "additionalProperties": true,
+      "properties": {
+        "node_restart": {"type": "string", "enum": ["observed", "not_run"]},
+        "network_partition": {"type": "string", "enum": ["observed", "not_run"]},
+        "notes": {"type": "string"}
+      }
+    },
+    "fleet_partition": {
+      "type": "object",
+      "description": "A 3+ node fleet split (split-brain) scenario. state is observed (actually exercised) or not_run (honestly declared blocked-by-equipment — never faked into observed, so a partition that could not be run on the available fleet remains a passing-with-honesty state). expected_fleet_size is the operator-declared target (>= 2; the 3+ intent is carried in the value + notes; the honest 2-PC minimum is NOT raised). The fleet_partition_captured_or_not_run pass criterion needs a valid state; notes must be non-empty (silent omission is rejected).",
+      "required": ["state", "expected_fleet_size", "notes"],
+      "additionalProperties": true,
+      "properties": {
+        "state": {"type": "string", "enum": ["observed", "not_run"]},
+        "expected_fleet_size": {"type": "integer", "minimum": 2},
+        "notes": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

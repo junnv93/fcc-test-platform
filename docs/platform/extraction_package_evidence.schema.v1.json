@@ -1,0 +1,59 @@
+{
+  "$id": "extraction_package_evidence.schema.v1.json",
+  "schema_version": 1,
+  "status": "planning_contract",
+  "owner_repository": "fcc-test-platform",
+  "description": "Evidence manifest for proving contract/platform extraction packages were copied into their target repositories without provider-private leakage.",
+  "required_top_level": [
+    "schema_version",
+    "evidence_id",
+    "collected_at",
+    "manifest_path",
+    "compatible",
+    "issues",
+    "repositories"
+  ],
+  "required_repositories": [
+    "fcc-test-contracts",
+    "fcc-test-platform"
+  ],
+  "repository_required_fields": [
+    "target_repository",
+    "target_ref",
+    "extracted_at",
+    "package_compatible",
+    "extracted",
+    "entries",
+    "import_boundary"
+  ],
+  "entry_required_fields": [
+    "current_path",
+    "future_path",
+    "kind",
+    "byte_size",
+    "source_sha256",
+    "destination_sha256",
+    "copied"
+  ],
+  "rules": [
+    "compatible and each repository package_compatible must be true",
+    "each repository extracted value must be true",
+    "issues must be an empty list",
+    "source_sha256 and destination_sha256 must match for every copied entry unless a supported transform is declared",
+    "supported transforms are explicitly declared per entry; current supported transform type is python_import_rewrite",
+    "source_sha256 and destination_sha256 values must be 64 lowercase hex characters",
+    "future_path must be safe relative path",
+    "when the extraction manifest is supplied, every required manifest entry must have matching evidence",
+    "each repository must carry an import_boundary block recording what the staged tree was checked against; a run that reports validity without one validated only its own shape",
+    "violation_count must not exceed the manifest governance staged_import_violation_baseline for that lane; the baseline ratchets down only",
+    "violations are recorded even when within baseline, so \"checked and found none\" and \"never looked\" stay distinguishable in the record"
+  ],
+  "notes": "This validator checks captured extraction metadata only. It does not create repositories, push commits, copy files, hash file bytes, or inspect remote Git hosts.",
+  "import_boundary_required_fields": [
+    "lane",
+    "python_files",
+    "violation_count",
+    "baseline",
+    "violations"
+  ]
+}

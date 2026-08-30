@@ -1,0 +1,47 @@
+{
+  "$id": "artifact_sync_evidence.schema.v1.json",
+  "schema_version": 1,
+  "status": "planning_contract",
+  "owner_repository": "fcc-test-platform",
+  "description": "Evidence manifest proving artifact and report output files were synchronized to the platform file-server or object storage.",
+  "required_top_level": [
+    "schema_version",
+    "provider_id",
+    "session_id",
+    "sync_job_id",
+    "source_root_id",
+    "destination_root_id",
+    "synced_at",
+    "artifact_count",
+    "report_output_count",
+    "files"
+  ],
+  "file_record_required_fields": [
+    "record_type",
+    "relative_path",
+    "storage_backend",
+    "sha256",
+    "byte_size",
+    "sync_status",
+    "source_exists",
+    "destination_exists"
+  ],
+  "path_rules": [
+    "relative_path values must follow docs/platform/artifact_storage_policy.v1.json",
+    "absolute paths, UNC paths, drive-qualified paths, and parent traversal are invalid",
+    "durable metadata must store relative_path, not source or destination absolute paths"
+  ],
+  "status_rules": [
+    "sync_status must be synced for production-ready evidence",
+    "source_exists and destination_exists must both be true",
+    "artifact_count and report_output_count must match the file records",
+    "sha256 must be a 64-character lowercase hex digest"
+  ],
+  "forbidden_operations": [
+    "file_copy",
+    "hash_calculation",
+    "network_call",
+    "database_write"
+  ],
+  "notes": "This validator checks captured evidence only. The future platform sync worker should perform copying/hash calculation and then emit this manifest."
+}

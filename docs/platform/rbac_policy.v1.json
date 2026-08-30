@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "status": "planning_contract",
+  "owner_repository": "fcc-test-platform",
+  "description": "Platform RBAC seed policy derived from the headless API operation permission contract.",
+  "permission_source": "src/application/headless/api_contracts.py::HEADLESS_API_OPERATIONS",
+  "database_tables": [
+    "users",
+    "roles",
+    "permissions",
+    "user_roles",
+    "role_permissions"
+  ],
+  "standard_roles": {
+    "viewer": "Read-only access to provider status, results, artifacts, reports, and outputs.",
+    "operator": "Can monitor provider state and submit or stop measurement jobs.",
+    "report_manager": "Can read provider state and control report automation.",
+    "admin": "Platform administrator; provider adapter treats admin as a super-permission."
+  },
+  "rules": [
+    "Operation permissions are generated from the API contract and must not be duplicated by hand.",
+    "Non-admin roles grant only operation permissions.",
+    "The admin role grants the admin super-permission.",
+    "Token validation, user login, sessions, and IdP integration belong to the future platform backend."
+  ]
+}

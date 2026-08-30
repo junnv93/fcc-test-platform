@@ -1,0 +1,84 @@
+// FCC Central Hub — SPA runtime-config TEMPLATE for the docker-compose stack
+// (B1/P13).
+//
+// This is NOT served directly. The web container's entrypoint
+// (infra/central/docker-entrypoint.d/30-runtime-config.sh) runs `envsubst` over
+// this template at start, substituting the ${...} placeholders from the SAME env
+// vars compose publishes the ports with (central.env.example). The result is
+// written to /usr/share/nginx/html/runtime-config.js.
+//
+// SAME-ORIGIN GATEWAY (browser integration closure): the browser talks to ONE
+// origin — the web container at ${PUBLIC_HOST}:${WEB_PORT}. nginx (nginx.conf)
+// reverse-proxies /headless/* -> headless-api and /platform/* -> platform-api,
+// so apiBaseUrl/wsBaseUrl point at the gateway, NOT at the API host ports. That
+// makes every API/WS call same-origin → no CORS is needed on the FastAPI apps
+// (which carry none), and it mirrors the dev topology (apps/web vite proxy +
+// dev-stack.config.json). platformApiBaseUrl is null → reuse apiBaseUrl (the
+// single-gateway, path-routed /platform/* topology). The ONLY cross-origin call
+// is the OIDC token endpoint at the Keycloak origin (${KEYCLOAK_PORT}), allowed
+// by the realm webOrigins — exactly like dev.
+//
+// Consequence: every browser-facing endpoint DERIVES from the single port SSOT.
+// Change WEB_PORT / KEYCLOAK_PORT (etc.) in the env file and the SPA endpoints
+// change with them — no hardcoded port can drift. The only placeholders are the
+// env names below; no host/port literal lives in this file.
+//
+// Deployment artifact form of apps/web/public/runtime-config.template.json:
+// frontend code is identical across environments — only these values change.
+window.__FCC_RUNTIME_CONFIG__ = {
+  apiBaseUrl: 'http://${PUBLIC_HOST}:${WEB_PORT}',
+  platformApiBaseUrl: null,
+  wsBaseUrl: 'ws://${PUBLIC_HOST}:${WEB_PORT}',
+  // The central hub serves ONLY /headless + /platform through the gateway
+  // (nginx.conf) — NOT /session. Live measurement runs on native chamber nodes
+  // (distributed via the Platform chamber API), so there is no single Session
+  // API to proxy here. sessionApiEnabled=false tells the SPA to skip the
+  // session panel on the landing and hide the Control route, so the browser
+  // never issues a /session/* call that would 404 through the gateway. Sealed by
+  // tests/test_central_docker_compose.py::TestCentralSessionSurfaceBoundary.
+  sessionApiEnabled: false,
+  oidcIssuer: 'http://${PUBLIC_HOST}:${KEYCLOAK_PORT}/realms/${OIDC_REALM}',
+  oidcClientId: '${OIDC_CLIENT_ID}',
+  oidcRedirectUri: 'http://${PUBLIC_HOST}:${WEB_PORT}/auth/callback',
+  oidcAudience: '',
+  oidcScopes: ['openid', 'profile', 'email'],
+  oidcPostLogoutRedirectUri: 'http://${PUBLIC_HOST}:${WEB_PORT}/',
+  // Transport policy — the central stack serves the SPA, gateway and IdP over
+  // plain HTTP on a LAN host (no TLS certificate available on-prem), so the
+  // frontend's https-only rule must be explicitly relaxed for THIS deployment.
+  // Driven by ALLOW_INSECURE_TRANSPORT in central.env; leaving it unset keeps
+  // the secure default and the SPA refuses to boot on http, which is the
+  // intended behaviour once TLS is available.
+  //
+  // ⚠ Deliberate deviation from RFC 6749 §3.1/§3.2 ("MUST require the use of
+  // TLS") and RFC 9700 (authorization responses "MUST NOT be transmitted over
+  // unencrypted network connections"). Bearer tokens travel in clear text on
+  // the LAN. See docs/operations/fcc-central-pc-port-topology.md.
+  insecureTransportAllowed: ${ALLOW_INSECURE_TRANSPORT},
+  // Login strategy (identity axis, 2026-08-21). 'oidc' redirects to Keycloak;
+  // 'local' posts email+password to /platform/auth/login and the SERVER mints the
+  // token.
+  //
+  // ⚠ On a plaintext-HTTP host 'local' is not a preference, it is the only option
+  // that CAN work: PKCE needs crypto.subtle, which browsers withhold outside a
+  // secure context. The frontend REFUSES TO BOOT on 'oidc' + insecureTransport,
+  // so a mismatch is loud rather than a TypeError deep inside the redirect.
+  //
+  // ⚠ Must match FCC_PLATFORM_AUTH_MODE on platform-api.
+  authMode: '${WEB_AUTH_MODE}',
+  // environmentName MUST be one of the frontend runtimeConfigSchema enum
+  // (apps/web/src/config/runtime.ts: development|staging|production|test) or the
+  // SPA fails Zod parse at boot. The central stack is the production deployment
+  // artifact (see header), so it uses 'production' like runtime-config.template.json.
+  environmentName: 'production',
+  buildVersion: '0.1.0-central',
+  buildSha256: '0000000000000000000000000000000000000000000000000000000000000000',
+  sentryDsn: null,
+  otelCollectorUrl: null,
+  traceSampleRatio: 1.0,
+  featureFlags: {
+    providerDiagnosticMode: false,
+    sessionReplay: false,
+    betaResultBrowser: false,
+  },
+};

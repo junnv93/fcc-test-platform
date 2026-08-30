@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "status": "planning_contract",
+  "owner_repository": "fcc-test-platform",
+  "description": "Policy for issuing bounded signed URLs for object-store backed artifact and report-output downloads.",
+  "source_policy": "docs/platform/download_retention_policy.v1.json",
+  "supported_storage_backends": [
+    "object_store",
+    "s3",
+    "azure_blob"
+  ],
+  "rules": [
+    "Signed URLs are built from an already authorized DownloadGrant.",
+    "base_url must use HTTPS and must not use localhost.",
+    "relative_path values must pass artifact storage path normalization.",
+    "expired download grants must not be signed.",
+    "signing_secret must be at least 32 characters and must never be included in the output URL.",
+    "signature covers path, backend, expires, disposition, and sha256.",
+    "Signed URL verification must reject missing signatures, duplicate query parameters, expired URLs, and tampered payloads.",
+    "filesystem grants continue to use platform_download_proxy rather than signed URLs."
+  ],
+  "headers": {
+    "Cache-Control": "private, max-age=0, no-store",
+    "X-Content-Type-Options": "nosniff"
+  },
+  "forbidden_operations": [
+    "object_store_network_call",
+    "file_read",
+    "database_write",
+    "permission_bypass"
+  ]
+}

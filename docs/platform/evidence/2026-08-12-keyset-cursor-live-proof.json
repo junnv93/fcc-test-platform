@@ -1,0 +1,91 @@
+{
+  "conditional_heartbeat_insert": {
+    "registered_chamber_rows_written": 1,
+    "sql": "INSERT INTO \"chamber_heartbeat_events\" (\"id\", \"chamber_id\", \"reported_status\", \"session_id\", \"occurred_at\", \"expires_at\", \"detail_json\", \"progress_json\", \"last_error_json\", \"created_at\") SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s, %s WHERE EXISTS (SELECT 1 FROM \"chamber_nodes\" WHERE \"chamber_id\" = %s)",
+    "unregistered_chamber_rows_written": 0,
+    "unregistered_raises_not_found": true
+  },
+  "equipment_config_row_lock": {
+    "counterfactual_keys_kept": [
+      "switchbox"
+    ],
+    "counterfactual_lost_an_edit": true,
+    "locked_keys_kept": [
+      "analyzer",
+      "switchbox"
+    ],
+    "shim_can_reproduce_this": false,
+    "sql": "SELECT \"equipment_config_json\" FROM \"chamber_nodes\" WHERE \"chamber_id\" = %s FOR UPDATE"
+  },
+  "ok": true,
+  "out_of_domain_cursor": {
+    "boundary": {
+      "not-a-timestamp": {
+        "error": "CursorError",
+        "rejected_at_boundary": true
+      },
+      "not-a-uuid": {
+        "error": "CursorError",
+        "rejected_at_boundary": true
+      }
+    },
+    "database_counterfactual": {
+      "not-a-timestamp": {
+        "exception": "InvalidDatetimeFormat",
+        "sqlstate": "22007"
+      },
+      "not-a-uuid": {
+        "exception": "InvalidTextRepresentation",
+        "sqlstate": "22P02"
+      }
+    }
+  },
+  "page_boundaries": {
+    "claims_duplicates": 0,
+    "claims_rows_walked": 7,
+    "coverage_duplicates": 0,
+    "coverage_rows_walked": 7,
+    "page_size": 2,
+    "paged_matches_unbounded_order": true,
+    "rows_seeded": 7,
+    "tie_breaker_order_stable": true,
+    "tied_occurred_at_rows": 3
+  },
+  "parameter_types": {
+    "active_claims": {
+      "cursor_parameter_types": [
+        "timestamp with time zone",
+        "uuid"
+      ],
+      "keyset": [
+        "occurred_at",
+        "claim_id"
+      ],
+      "parameter_types": [
+        "uuid",
+        "timestamp with time zone",
+        "uuid",
+        "smallint"
+      ],
+      "prepared_statement": "SELECT \"project_id\", \"claim_id\", \"technology\", \"condition_hash\", \"operator\", \"occurred_at\", \"expires_at\", \"session_id\" FROM \"active_claims\" WHERE \"project_id\" = $1 AND (\"occurred_at\", \"claim_id\") < ($2, $3) ORDER BY \"occurred_at\" DESC, \"claim_id\" DESC LIMIT $4"
+    },
+    "coverage": {
+      "cursor_parameter_types": [
+        "text",
+        "text"
+      ],
+      "keyset": [
+        "technology",
+        "condition_hash"
+      ],
+      "parameter_types": [
+        "uuid",
+        "text",
+        "text",
+        "smallint"
+      ],
+      "prepared_statement": "SELECT \"project_id\", \"technology\", \"condition_hash\", \"latest_session_id\", \"latest_operator\", \"latest_measured_at\", \"latest_verdict\", \"latest_attempt_number\", \"attempt_count\", \"distinct_session_count\", \"distinct_operator_count\" FROM \"coverage_by_condition_hash\" WHERE \"project_id\" = $1 AND (\"technology\", \"condition_hash\") > ($2, $3) ORDER BY \"technology\", \"condition_hash\" LIMIT $4"
+    }
+  },
+  "proof_seed": "default"
+}

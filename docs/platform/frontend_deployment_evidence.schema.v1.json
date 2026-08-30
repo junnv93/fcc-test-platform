@@ -1,0 +1,46 @@
+{
+  "$id": "frontend_deployment_evidence.schema.v1.json",
+  "schema_version": 1,
+  "status": "planning_contract",
+  "owner_repository": "fcc-test-platform",
+  "description": "Evidence manifest for proving the production platform frontend is deployed with the expected backend configuration, TLS, build identity, cache policy, and secret hygiene.",
+  "required_top_level": [
+    "schema_version",
+    "evidence_id",
+    "collected_at",
+    "app_url",
+    "backend_base_url",
+    "hosting_provider",
+    "build_version",
+    "build_sha256",
+    "deployed",
+    "tls_valid",
+    "asset_cache_policy",
+    "environment",
+    "secret_scan"
+  ],
+  "asset_cache_policy_required_fields": [
+    "immutable_assets",
+    "html_cache_control"
+  ],
+  "environment_required_fields": [
+    "name",
+    "backend_base_url",
+    "variables"
+  ],
+  "secret_scan_required_fields": [
+    "status",
+    "findings"
+  ],
+  "rules": [
+    "app_url and backend_base_url must be https URLs and must not point at localhost",
+    "deployed and tls_valid must be true",
+    "build_sha256 must be 64 lowercase hex characters",
+    "immutable_assets must be true",
+    "html_cache_control must include no-store",
+    "environment backend_base_url must match the manifest backend_base_url",
+    "secret-like environment values must be redacted",
+    "secret_scan.status must be pass and findings must be empty"
+  ],
+  "notes": "This validator checks captured frontend deployment metadata only. It does not deploy the frontend, call networks, validate TLS handshakes, or run secret scanners."
+}

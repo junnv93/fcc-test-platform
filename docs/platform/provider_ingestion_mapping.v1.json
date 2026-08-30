@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "status": "planning_contract",
+  "owner_repository": "fcc-test-platform",
+  "description": "Mapping contract from provider API envelopes into central DB records.",
+  "source_contract": "docs/api/headless_api_contract.v1.json",
+  "target_schema": "docs/platform/central_db_schema.v1.json",
+  "mappings": {
+    "MeasurementResultEnvelope": {
+      "target_table": "measurement_results",
+      "field_map": {
+        "result_id": "provider_result_id",
+        "test_name": "test_name",
+        "technology": "technology",
+        "condition": "condition_json",
+        "result": "result_json",
+        "verdict": "verdict",
+        "measured_at": "measured_at"
+      },
+      "injected_fields": {
+        "provider_id": "platform provider record id",
+        "session_id": "platform test_sessions record id"
+      }
+    },
+    "ArtifactMetadata": {
+      "target_table": "artifacts",
+      "field_map": {
+        "artifact_type": "artifact_type",
+        "relative_path": "relative_path",
+        "original_filename": "original_filename",
+        "sha256": "sha256",
+        "byte_size": "byte_size",
+        "storage_backend": "storage_backend"
+      },
+      "optional_lookup": {
+        "result_id": "measurement_result_id"
+      }
+    },
+    "ReportRunEvidence": {
+      "target_table": "report_runs",
+      "source": "terminal provider/report evidence",
+      "field_map": {
+        "status": "status",
+        "provider_report_request_id": "provider_report_request_id",
+        "report_types": "report_types_json",
+        "warnings": "warnings_json"
+      },
+      "injected_fields": {
+        "report_run_id": "report_runs primary key",
+        "provider_id": "platform providers record id",
+        "session_id": "platform test_sessions record id"
+      },
+      "db_owned_fields": ["created_at"],
+      "emission": "exactly one when report output metadata is non-empty"
+    },
+    "ReportOutputMetadata": {
+      "target_table": "report_outputs",
+      "field_map": {
+        "file_name": "file_name",
+        "relative_path": "relative_path",
+        "sha256": "sha256",
+        "byte_size": "byte_size",
+        "storage_backend": "storage_backend"
+      },
+      "injected_fields": {
+        "report_run_id": "platform report_runs record id"
+      }
+    }
+  },
+  "rules": [
+    "Provider-specific measurement condition and result payloads remain JSON.",
+    "Artifact and report output file bytes are never part of ingestion records.",
+    "Platform ingestion must be idempotent by provider identity plus provider record ids or relative paths.",
+    "A non-empty report-output collection emits one report_runs parent from provider/session/terminal-status evidence before its report_outputs children; an empty collection emits neither parent nor children.",
+    "report_runs.created_at is omitted from mapper payloads and owned by the database default now()."
+  ]
+}

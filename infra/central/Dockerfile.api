@@ -1,0 +1,72 @@
+# FCC Central Hub — Python web-surface image (B1/P13).
+#
+# Single image, two entrypoints. The `command` in docker-compose.central.yml
+# selects which ASGI factory uvicorn serves:
+#   * headless-api : uvicorn --factory headless_api_app:create_app  --port 8001
+#   * platform-api : uvicorn --factory platform_api_app:create_app  --port 8002
+#
+# Dependencies come from the lean central SSOT (requirements-central.txt) — a
+# strict subset of requirements-web.txt with the desktop/chamber-node packages
+# (PySide6 / pyvisa / appium / selenium) removed. The central import closure is
+# proven win32-free by tests/test_central_docker_compose.py.
+FROM python:3.11-slim AS runtime
+
+# Slim images omit curl; the compose healthcheck uses Python stdlib instead.
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app/src \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+# Dependency layer first for build-cache friendliness.
+COPY requirements-central.txt ./
+RUN pip install --upgrade pip \
+    && pip install -r requirements-central.txt
+
+# Application source + central DB schema/migration artifacts.
+COPY src/ ./src/
+COPY docs/platform/ ./docs/platform/
+# Incremental migration runner (self-contained single file) — run by the
+# `central-migrate` init job in docker-compose.central.yml before the API serves.
+COPY scripts/platform_db_migrate.py ./scripts/platform_db_migrate.py
+
+# Non-root runtime user (least privilege).
+#
+# The headless API writes a SQLite DB under /data/headless (FCC_HEADLESS_DB_PATH),
+# which compose backs with the `central-headless-data` named volume. A fresh
+# named volume's mountpoint is root-owned, so a non-root process (appuser, uid
+# 10001) cannot create the DB file there → "sqlite3.OperationalError: unable to
+# open database file". Pre-create /data/headless owned by appuser HERE, before
+# the volume mount: Docker initializes an EMPTY named volume from the image
+# directory at that path, copying its content AND ownership — so the volume comes
+# up writable by appuser without ever running the container as root.
+RUN useradd --create-home --uid 10001 appuser \
+    && mkdir -p /data/headless \
+    && chown -R appuser:appuser /app /data/headless
+USER appuser
+
+# Documentation only; the published host port is set in compose.
+EXPOSE 8001 8002
+
+# No default CMD — compose supplies the per-service uvicorn command so the one
+# image serves both surfaces without a hardcoded port/factory here.
+
+# ── Deployment revision (배포 드리프트 게이트, 2026-08-23) ────────────────────
+# The image tag is FIXED (`fcc-central-api:latest`), so nothing about a running
+# container said WHICH COMMIT built it — and the most common deploy defect is a
+# rebuild that never happened (`up -d` without `--build` reuses the cached image
+# of the same tag and the stack boots "normally" on old code). Recording the
+# revision is what makes that observable at all: `scripts/check_deployment_drift.py`
+# reads this label back and compares it with `git rev-parse HEAD`.
+#
+# ⚠️ Placement is load-bearing: this stanza is LAST so the dependency and source
+# layers above keep their build cache. An ARG consumed earlier would invalidate
+# everything after it on every commit.
+#
+# ⚠️ The empty default is deliberate. A build that did not pass GIT_REVISION
+# yields an EMPTY label, and the gate reports that as UNKNOWN — never as a pass.
+# Defaulting to something like "unknown" would be the same silence with a nicer
+# spelling; defaulting to a plausible value would be a lie.
+ARG GIT_REVISION=""
+LABEL org.opencontainers.image.revision="${GIT_REVISION}"

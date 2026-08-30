@@ -1,0 +1,538 @@
+# FCC Central Hub — single-stack containerization (B1/P13).
+#
+# Bundles the CENTRAL hub only:
+#   * postgres      — central PostgreSQL DB (schema from docs/platform/migrations)
+#   * keycloak      — OIDC IdP (realm import, extends docker-compose.idp.yml)
+#   * headless-api  — uvicorn headless_api_app:create_app   (:8001)
+#   * platform-api  — uvicorn platform_api_app:create_app   (:8002)
+#   * web           — nginx: Vite SPA static + same-origin API gateway (:8080)
+#                     (reverse-proxies /headless,/platform so the browser uses
+#                      one origin and no CORS is needed on the FastAPI surfaces)
+#
+# Chamber nodes are deliberately NOT containerized: they need GPIB/USB device
+# access and the Nuitka Windows .exe, so they stay native and connect to this
+# central hub over the network. The central image is proven win32-free by
+# tests/test_central_docker_compose.py (no winsound / thread_sampler
+# GetThreadTimes / appium subprocess in the central import closure).
+#
+# Operational hardening (central-ops-hardening, 2026-06-25) — this stack runs as
+# the ALWAYS-ON central hub on the 중앙 PC (WSL), so it carries the on-premises
+# hardening EMS (equipment_management_system) proved out, with its INTENT ported
+# (not its Node/Next compose structure):
+#   * restart: unless-stopped + stop_grace_period — survive 중앙 PC reboot/crash.
+#   * security_opt no-new-privileges — block in-container privilege escalation.
+#   * postgres cap_drop ALL + minimal cap_add — least privilege for the one
+#     official image whose entrypoint needs chown/setuid (api/web/keycloak keep
+#     no-new-privileges only; full cap_drop/read_only need runtime boot proof —
+#     tracked as tech-debt, see infra/central/ONPREM_DEPLOYMENT.md).
+#   * Two-tier network — data-network (internal: true, no internet egress) holds
+#     postgres; app-network holds the browser/node-facing services. platform-api
+#     bridges BOTH (it must reach postgres AND keycloak/web). The internal DNS
+#     resolution the seals depend on (platform-api→postgres, API→keycloak JWKS,
+#     web→API) is preserved by that membership.
+#
+# Usage:
+#   cp infra/central/central.env.example infra/central/central.env
+#   docker compose -f infra/docker-compose.central.yml \
+#       --env-file infra/central/central.env up -d --build
+#   (operational deploy guide: infra/central/ONPREM_DEPLOYMENT.md)
+#
+# All ports / credentials / endpoints come from the env file (central.env.example
+# is the SSOT). The YAML hardcodes nothing — every value is ${VAR:-default}.
+
+name: fcc-central
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fcc-central-postgres
+    restart: unless-stopped
+    stop_grace_period: 30s
+    # Least privilege: drop all caps, restore only what the postgres entrypoint
+    # needs (chown/chmod of PGDATA + gosu user switch). Mirrors EMS base.yml.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fcc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fcc-dev-password}
+      POSTGRES_DB: ${POSTGRES_DB:-fcc_central}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - central-pgdata:/var/lib/postgresql/data
+      # Schema is applied by the `central-migrate` init job (ALL migrations in
+      # order, schema_migrations-tracked), NOT docker-entrypoint-initdb.d — the
+      # latter only runs on a fresh volume and never applies the incremental
+      # 002+ migrations, which is what broke `column management_number` on deploy.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fcc} -d ${POSTGRES_DB:-fcc_central}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      # DB tier — isolated, no internet egress (only platform-api reaches it).
+      - data-network
+
+  keycloak:
+    # Pinned to Keycloak 25 — kept in lockstep with docker-compose.idp.yml.
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: fcc-central-keycloak
+    restart: unless-stopped
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - start-dev
+      - --import-realm
+      - --http-port=8080
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      # Realm-import ${ENV} substitution: the fcc-dev-realm.json carries
+      # ${FCC_CHAMBER_CLIENT_SECRET} / ${FCC_STAGING_CLI_SECRET} placeholders so
+      # client secrets are NEVER stored raw in the committed realm file (mirrors
+      # the POSTGRES_PASSWORD / KEYCLOAK_ADMIN_PASSWORD 12-factor posture). Real
+      # deployments override these; the dev defaults match central.env.example.
+      FCC_CHAMBER_CLIENT_SECRET: ${FCC_CHAMBER_CLIENT_SECRET:-fcc-chamber-dev-secret}
+      FCC_STAGING_CLI_SECRET: ${FCC_STAGING_CLI_SECRET:-fcc-staging-cli-dev-secret}
+      # OIDC issuer 결정성 (2026-06-20). 기존 KC_HOSTNAME_STRICT=false 는 토큰 `iss` 를
+      # *요청 host* 에서 파생 → split-horizon 취약: PC A(127.0.0.1)·PC B(LAN IP)·내부
+      # (keycloak:8080)가 서로 다른 iss 를 받아, API 의 고정 기대 issuer
+      # (FCC_*_OIDC_ISSUER = http://${PUBLIC_HOST}:${KEYCLOAK_PORT}/realms/...)와
+      # 불일치 시 403. issuer(frontend URL)를 PUBLIC_HOST SSOT 로 고정하고(= API 기대값과
+      # 동일 출처), backchannel(token/jwks)은 dynamic 으로 둬 내부(keycloak:8080)·127
+      # 접근을 호환 — 어느 host 로 토큰을 받아도 iss 는 단일 값(결정성 + 프로덕션 정합).
+      KC_HOSTNAME: http://${PUBLIC_HOST:-localhost}:${KEYCLOAK_PORT:-8081}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    ports:
+      - "${KEYCLOAK_PORT:-8081}:8080"
+    volumes:
+      # Reuse the realm provisioned for the IdP-only compose (single SSOT).
+      - ./keycloak:/opt/keycloak/data/import:ro
+    healthcheck:
+      # Keycloak 25 serves the health endpoints on the MANAGEMENT port (9000),
+      # NOT the http port (8080) — `KC_HEALTH_ENABLED=true` exposes /health/ready
+      # on :9000. Probing :8080/health/ready returns 404 so the container never
+      # goes healthy. Use the management port (in-container, not published).
+      test:
+        - CMD-SHELL
+        - "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      # App tier — browser obtains tokens here (PUBLIC_HOST:KEYCLOAK_PORT) and the
+      # APIs fetch JWKS over the internal keycloak:8080 name on this network.
+      - app-network
+
+  headless-api:
+    build:
+      context: ..
+      dockerfile: infra/central/Dockerfile.api
+      args:
+        # 배포 드리프트 게이트 (2026-08-23) — 빌드한 커밋을 이미지 라벨로 남긴다.
+        # 빈 값은 지원되는 상태이고 게이트가 UNKNOWN 으로 답한다(통과가 아니다).
+        GIT_REVISION: ${GIT_REVISION:-}
+    image: fcc-central-api:latest
+    container_name: fcc-central-headless-api
+    restart: unless-stopped
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - uvicorn
+      - --factory
+      - headless_api_app:create_app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8001"
+    environment:
+      FCC_HEADLESS_AUTH_MODE: ${FCC_HEADLESS_AUTH_MODE:-oidc_jwt}
+      # OIDC split-horizon: the token's `iss` claim is the BROWSER-FACING issuer
+      # (the SPA obtains tokens at ${PUBLIC_HOST}:${KEYCLOAK_PORT}), so issuer
+      # validation must match that — NOT the internal keycloak:8080 name. Keys
+      # are fetched over the compose network at the internal keycloak:8080 JWKS
+      # URL. Flat interpolation (no nested ${:-${}}) keeps it unambiguous.
+      FCC_HEADLESS_OIDC_ISSUER: http://${PUBLIC_HOST:-localhost}:${KEYCLOAK_PORT:-8081}/realms/${OIDC_REALM:-fcc-dev}
+      FCC_HEADLESS_OIDC_JWKS_URI: http://keycloak:8080/realms/${OIDC_REALM:-fcc-dev}/protocol/openid-connect/certs
+      # oidc_jwt validation needs an audience (the access token `aud` claim) in
+      # addition to issuer + JWKS — without it create_app() fails fast with
+      # "oidc_jwt auth requires issuer, audience, and jwks_uri". The audience IS
+      # the OIDC client id: derive it from the SAME OIDC_CLIENT_ID SSOT the
+      # browser runtime uses (the web service passes it too) so there is no
+      # duplicate audience value to drift.
+      FCC_HEADLESS_OIDC_AUDIENCE: ${OIDC_CLIENT_ID:-fcc-platform-frontend}
+      FCC_HEADLESS_DB_PATH: ${FCC_HEADLESS_DB_PATH:-/data/headless/headless.fcc.db}
+      # Project RBAC is resolved by the existing platform/central composition
+      # through the app-tier gateway. Headless stays off data-network and must
+      # never call platform-api:8002 or PostgreSQL directly.
+      FCC_HEADLESS_PLATFORM_API_BASE_URL: ${FCC_HEADLESS_PLATFORM_API_BASE_URL:-http://web:8080}
+      # ── local_jwt (다섯 번째 모드, 2026-08-22) ────────────────────────────
+      # ⚠️ **이 블록이 없으면 `FCC_HEADLESS_AUTH_MODE=local_jwt` 는 부팅 거부다.**
+      # 운영자가 central.env 에 다섯 값을 다 적어도 compose 가 컨테이너로 넘기지
+      # 않으면 서비스가 보는 것은 빈 문자열이고, 기동은
+      # `ValueError: local_jwt auth requires local_jwt_issuer` 로 끝난다(실측
+      # 2026-08-22 적대 평가). 그리고 `--env-file` 은 **compose 보간**을 먹이지
+      # 컨테이너 환경이 아니다 — 바로 위 ALLOW_INSECURE_TRANSPORT 주석이 적은 그
+      # 구분이고, 그때 "diagnosing that cost real time on a live deployment" 였다.
+      #
+      # 빈 기본값이 의도다: `oidc_jwt` 모드에서는 읽히지 않으며, `local_jwt` 모드에서
+      # 비어 있으면 **부팅에서 시끄럽게 거부**된다(조용히 도는 것보다 낫다).
+      FCC_HEADLESS_LOCAL_JWT_SECRET: ${FCC_HEADLESS_LOCAL_JWT_SECRET:-}
+      FCC_HEADLESS_LOCAL_JWT_ISSUER: ${FCC_HEADLESS_LOCAL_JWT_ISSUER:-}
+      FCC_HEADLESS_LOCAL_JWT_AUDIENCE: ${FCC_HEADLESS_LOCAL_JWT_AUDIENCE:-}
+      FCC_HEADLESS_LOCAL_JWT_TTL_SECONDS: ${FCC_HEADLESS_LOCAL_JWT_TTL_SECONDS:-}
+      FCC_HEADLESS_LOCAL_JWT_REFRESH_TTL_SECONDS: ${FCC_HEADLESS_LOCAL_JWT_REFRESH_TTL_SECONDS:-}
+      # ── 나머지 auth 필드 (2026-08-22) ─────────────────────────────────
+      # ⚠️ **동작하는 기본값이 있다고 배선을 생략하면 안 된다.** 예: Azure Entra 는
+      # `oidc_subject_claim='oid'` 를 **요구**하고(기본값 `'sub'` 로는 부팅이 거부된다)
+      # CLAUDE.md 가 Entra 를 이 축의 목적지로 적고 있는데, 그 값을 env 로 넣을
+      # 방법이 없었다. 봉인이 `HttpAuthConfig.env_keys` 전량을 요구하는 이유다 —
+      # "어떤 값이 필수인가" 는 모드마다 다르고 그 판정을 여기서 반복하지 않는다.
+      # 빈 기본값은 "설정 안 함" 이고, 그러면 데이터클래스 기본값이 그대로 쓰인다.
+      FCC_HEADLESS_AUTH_SUBJECT_HEADER: ${FCC_HEADLESS_AUTH_SUBJECT_HEADER:-}
+      FCC_HEADLESS_AUTH_PERMISSIONS_HEADER: ${FCC_HEADLESS_AUTH_PERMISSIONS_HEADER:-}
+      FCC_HEADLESS_OIDC_SUBJECT_CLAIM: ${FCC_HEADLESS_OIDC_SUBJECT_CLAIM:-}
+      FCC_HEADLESS_OIDC_NAME_CLAIM: ${FCC_HEADLESS_OIDC_NAME_CLAIM:-}
+      FCC_HEADLESS_OIDC_EMAIL_CLAIM: ${FCC_HEADLESS_OIDC_EMAIL_CLAIM:-}
+      FCC_HEADLESS_OIDC_PERMISSIONS_CLAIM: ${FCC_HEADLESS_OIDC_PERMISSIONS_CLAIM:-}
+      FCC_HEADLESS_OIDC_SCOPE_CLAIM: ${FCC_HEADLESS_OIDC_SCOPE_CLAIM:-}
+      FCC_HEADLESS_OIDC_ROLE_CLAIM: ${FCC_HEADLESS_OIDC_ROLE_CLAIM:-}
+      # ⚠️ **headless 도 같은 토큰을 받는다.** SPA 는 `/headless/*` 와 `/platform/*` 에
+      # 같은 bearer 를 붙이므로(apps/web/src/api/auth-middleware.ts), platform 만
+      # local_jwt 로 바꾸면 headless 는 Keycloak 으로 검증하려 들고 **모든 headless
+      # 화면이 401** 이 된다. 두 모드는 함께 바뀌어야 한다 — 그 짝은
+      # `auth_config.deployment_auth_defects` 가 판정하고 사전점검이 그것을 부른다.
+      # ── peer 축 신뢰 hop (2026-08-22) ────────────────────────────────────
+      # uvicorn's OWN variable — deliberately not aliased. With two names an
+      # operator can set ours, see it approved at boot, and have uvicorn keep its
+      # 127.0.0.1 default: approval of a value nothing reads.
+      #
+      # Value is the `web` service's STATIC app-network address, i.e. exactly the
+      # hop that sets X-Forwarded-For (nginx.conf uses $proxy_add_x_forwarded_for,
+      # which APPENDS, so the chain is `<attacker value>, <real client>` and
+      # uvicorn's reverse walk returns the real client). Nothing wider: see the
+      # networks: block at the foot of this file for why the range is not trusted.
+      #
+      # Unset is a supported state, not a broken one — the surface boots and says
+      # out loud that the peer tier is charged per deployment. It is refused only
+      # when it names something unsafe (`*`, a default route, a public range, or
+      # a range overlapping FCC_CENTRAL_CLIENT_RANGES).
+      FORWARDED_ALLOW_IPS: ${CENTRAL_PROXY_IP:-172.31.240.10}
+      # Optional: where real clients live (comma-separated CIDRs, e.g.
+      # 10.206.0.0/16). Declaring it lets boot refuse a trusted set that would
+      # swallow a real client — the failure mode that is otherwise silent.
+      FCC_CENTRAL_CLIENT_RANGES: ${FCC_CENTRAL_CLIENT_RANGES:-}
+    ports:
+      - "${HEADLESS_API_PORT:-8001}:8001"
+    volumes:
+      - central-headless-data:/data/headless
+    healthcheck:
+      # /headless/metrics is auth-exempt by design (scraper-friendly) — ideal
+      # liveness probe. Uses stdlib urllib so no extra image deps.
+      test:
+        - CMD-SHELL
+        - "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8001/headless/metrics', timeout=3).status==200 else 1)\""
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    depends_on:
+      keycloak:
+        condition: service_started
+    networks:
+      # App tier only — headless uses SQLite (no postgres), reaches keycloak JWKS.
+      - app-network
+
+  # One-shot schema migration job — applies ALL central migrations in order under
+  # an advisory lock, recording each in schema_migrations (idempotent + checksum).
+  # Separates schema mutation from API process boot (Codex review §1): platform-api
+  # waits for this to COMPLETE before serving. Reuses the API image (same Dockerfile)
+  # since scripts/platform_db_migrate.py is a single self-contained file shipped in it.
+  central-migrate:
+    build:
+      context: ..
+      dockerfile: infra/central/Dockerfile.api
+      args:
+        # 배포 드리프트 게이트 (2026-08-23) — 빌드한 커밋을 이미지 라벨로 남긴다.
+        # 빈 값은 지원되는 상태이고 게이트가 UNKNOWN 으로 답한다(통과가 아니다).
+        GIT_REVISION: ${GIT_REVISION:-}
+    image: fcc-central-api:latest
+    container_name: fcc-central-migrate
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - python
+      - scripts/platform_db_migrate.py
+      - migrate
+      - --applied-by
+      - central-migrate
+    environment:
+      # Same DSN assembly as platform-api (POSTGRES_* credential SSOT).
+      FCC_CENTRAL_DB_URL: postgresql://${POSTGRES_USER:-fcc}:${POSTGRES_PASSWORD:-fcc-dev-password}@postgres:5432/${POSTGRES_DB:-fcc_central}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      # DB tier only — it just applies SQL to postgres.
+      - data-network
+
+  platform-api:
+    build:
+      context: ..
+      dockerfile: infra/central/Dockerfile.api
+      args:
+        # 배포 드리프트 게이트 (2026-08-23) — 빌드한 커밋을 이미지 라벨로 남긴다.
+        # 빈 값은 지원되는 상태이고 게이트가 UNKNOWN 으로 답한다(통과가 아니다).
+        GIT_REVISION: ${GIT_REVISION:-}
+    image: fcc-central-api:latest
+    container_name: fcc-central-platform-api
+    restart: unless-stopped
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - uvicorn
+      - --factory
+      - platform_api_app:create_app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8002"
+    environment:
+      FCC_PLATFORM_AUTH_MODE: ${FCC_PLATFORM_AUTH_MODE:-oidc_jwt}
+      # OIDC split-horizon (see headless-api): browser-facing issuer for `iss`
+      # validation, internal JWKS URL for key fetch.
+      FCC_PLATFORM_OIDC_ISSUER: http://${PUBLIC_HOST:-localhost}:${KEYCLOAK_PORT:-8081}/realms/${OIDC_REALM:-fcc-dev}
+      FCC_PLATFORM_OIDC_JWKS_URI: http://keycloak:8080/realms/${OIDC_REALM:-fcc-dev}/protocol/openid-connect/certs
+      # oidc_jwt audience (see headless-api): the access-token `aud`, which is the
+      # OIDC client id. Derived from the OIDC_CLIENT_ID SSOT (no duplicate value).
+      FCC_PLATFORM_OIDC_AUDIENCE: ${OIDC_CLIENT_ID:-fcc-platform-frontend}
+      # Central DSN is ASSEMBLED from the POSTGRES_* credential SSOT (flat
+      # interpolation — no nested ${..:-${..}} so it is unambiguous on every
+      # compose version) so a rotated credential can never leave a stale DSN.
+      # Host is the `postgres` service name on the compose network at its fixed
+      # internal port 5432. For an EXTERNAL managed Postgres, set FCC_CENTRAL_DB_URL
+      # directly in this mapping (or a compose override file).
+      FCC_CENTRAL_DB_URL: postgresql://${POSTGRES_USER:-fcc}:${POSTGRES_PASSWORD:-fcc-dev-password}@postgres:5432/${POSTGRES_DB:-fcc_central}
+      FCC_CENTRAL_PROVIDER_ID: ${FCC_CENTRAL_PROVIDER_ID:-unlicensed}
+      # ── local_jwt (다섯 번째 모드, 2026-08-22) ────────────────────────────
+      # ⚠️ **이 블록이 없으면 `FCC_PLATFORM_AUTH_MODE=local_jwt` 는 부팅 거부다.**
+      # 운영자가 central.env 에 다섯 값을 다 적어도 compose 가 컨테이너로 넘기지
+      # 않으면 서비스가 보는 것은 빈 문자열이고, 기동은
+      # `ValueError: local_jwt auth requires local_jwt_issuer` 로 끝난다(실측
+      # 2026-08-22 적대 평가). 그리고 `--env-file` 은 **compose 보간**을 먹이지
+      # 컨테이너 환경이 아니다 — 바로 위 ALLOW_INSECURE_TRANSPORT 주석이 적은 그
+      # 구분이고, 그때 "diagnosing that cost real time on a live deployment" 였다.
+      #
+      # 빈 기본값이 의도다: `oidc_jwt` 모드에서는 읽히지 않으며, `local_jwt` 모드에서
+      # 비어 있으면 **부팅에서 시끄럽게 거부**된다(조용히 도는 것보다 낫다).
+      FCC_PLATFORM_LOCAL_JWT_SECRET: ${FCC_PLATFORM_LOCAL_JWT_SECRET:-}
+      FCC_PLATFORM_LOCAL_JWT_ISSUER: ${FCC_PLATFORM_LOCAL_JWT_ISSUER:-}
+      FCC_PLATFORM_LOCAL_JWT_AUDIENCE: ${FCC_PLATFORM_LOCAL_JWT_AUDIENCE:-}
+      FCC_PLATFORM_LOCAL_JWT_TTL_SECONDS: ${FCC_PLATFORM_LOCAL_JWT_TTL_SECONDS:-}
+      FCC_PLATFORM_LOCAL_JWT_REFRESH_TTL_SECONDS: ${FCC_PLATFORM_LOCAL_JWT_REFRESH_TTL_SECONDS:-}
+      # ⚠️ 최초 관리자. 없으면 users 테이블이 비어 **아무도 로그인할 수 없다**.
+      # 로컬 사용자가 하나도 없을 때만 발효하므로 백도어가 아니다.
+      FCC_PLATFORM_BOOTSTRAP_ADMIN_EMAIL: ${FCC_PLATFORM_BOOTSTRAP_ADMIN_EMAIL:-}
+      FCC_PLATFORM_BOOTSTRAP_ADMIN_PASSWORD: ${FCC_PLATFORM_BOOTSTRAP_ADMIN_PASSWORD:-}
+      # ── 나머지 auth 필드 (2026-08-22) ─────────────────────────────────
+      # ⚠️ **동작하는 기본값이 있다고 배선을 생략하면 안 된다.** 예: Azure Entra 는
+      # `oidc_subject_claim='oid'` 를 **요구**하고(기본값 `'sub'` 로는 부팅이 거부된다)
+      # CLAUDE.md 가 Entra 를 이 축의 목적지로 적고 있는데, 그 값을 env 로 넣을
+      # 방법이 없었다. 봉인이 `HttpAuthConfig.env_keys` 전량을 요구하는 이유다 —
+      # "어떤 값이 필수인가" 는 모드마다 다르고 그 판정을 여기서 반복하지 않는다.
+      # 빈 기본값은 "설정 안 함" 이고, 그러면 데이터클래스 기본값이 그대로 쓰인다.
+      FCC_PLATFORM_AUTH_SUBJECT_HEADER: ${FCC_PLATFORM_AUTH_SUBJECT_HEADER:-}
+      FCC_PLATFORM_AUTH_PERMISSIONS_HEADER: ${FCC_PLATFORM_AUTH_PERMISSIONS_HEADER:-}
+      FCC_PLATFORM_OIDC_SUBJECT_CLAIM: ${FCC_PLATFORM_OIDC_SUBJECT_CLAIM:-}
+      FCC_PLATFORM_OIDC_NAME_CLAIM: ${FCC_PLATFORM_OIDC_NAME_CLAIM:-}
+      FCC_PLATFORM_OIDC_EMAIL_CLAIM: ${FCC_PLATFORM_OIDC_EMAIL_CLAIM:-}
+      FCC_PLATFORM_OIDC_PERMISSIONS_CLAIM: ${FCC_PLATFORM_OIDC_PERMISSIONS_CLAIM:-}
+      FCC_PLATFORM_OIDC_SCOPE_CLAIM: ${FCC_PLATFORM_OIDC_SCOPE_CLAIM:-}
+      FCC_PLATFORM_OIDC_ROLE_CLAIM: ${FCC_PLATFORM_OIDC_ROLE_CLAIM:-}
+      # ── peer 축 신뢰 hop (2026-08-22) ────────────────────────────────────
+      # uvicorn's OWN variable — deliberately not aliased. With two names an
+      # operator can set ours, see it approved at boot, and have uvicorn keep its
+      # 127.0.0.1 default: approval of a value nothing reads.
+      #
+      # Value is the `web` service's STATIC app-network address, i.e. exactly the
+      # hop that sets X-Forwarded-For (nginx.conf uses $proxy_add_x_forwarded_for,
+      # which APPENDS, so the chain is `<attacker value>, <real client>` and
+      # uvicorn's reverse walk returns the real client). Nothing wider: see the
+      # networks: block at the foot of this file for why the range is not trusted.
+      #
+      # Unset is a supported state, not a broken one — the surface boots and says
+      # out loud that the peer tier is charged per deployment. It is refused only
+      # when it names something unsafe (`*`, a default route, a public range, or
+      # a range overlapping FCC_CENTRAL_CLIENT_RANGES).
+      FORWARDED_ALLOW_IPS: ${CENTRAL_PROXY_IP:-172.31.240.10}
+      # Optional: where real clients live (comma-separated CIDRs, e.g.
+      # 10.206.0.0/16). Declaring it lets boot refuse a trusted set that would
+      # swallow a real client — the failure mode that is otherwise silent.
+      FCC_CENTRAL_CLIENT_RANGES: ${FCC_CENTRAL_CLIENT_RANGES:-}
+    ports:
+      - "${PLATFORM_API_PORT:-8002}:8002"
+    healthcheck:
+      # Probes the dedicated READINESS endpoint (2026-07-20), not liveness and no
+      # longer /platform/metrics. Rationale:
+      #   * /platform/metrics only proved the process answers HTTP — a container
+      #     that could not reach postgres still reported healthy, so `web` could
+      #     start routing to an API that 503s every request. Borrowing the scrape
+      #     endpoint as a health probe was a workaround for having no probe.
+      #   * /platform/health (liveness) is dependency-free ON PURPOSE, so it has
+      #     the same blind spot by design.
+      #   * /platform/ready returns 503 while the central DB is unreachable, which
+      #     is exactly the signal an orchestrator needs. Compose does NOT restart
+      #     on unhealthy (restart: unless-stopped reacts to exit, not health), so
+      #     a DB blip degrades this container's status without restart-storming it.
+      # The readiness verdict is TTL-cached in-process, so this 15 s poll cannot
+      # turn into per-request load on postgres. Auth-exempt like the metrics
+      # endpoint; stdlib urllib so the image needs no extra deps. urlopen raises
+      # HTTPError on 503 → non-zero exit → unhealthy.
+      test:
+        - CMD-SHELL
+        - "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8002/platform/ready', timeout=3).status==200 else 1)\""
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      central-migrate:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_started
+    networks:
+      # BRIDGES both tiers: data-network to reach postgres (DSN), app-network to
+      # reach keycloak JWKS and be reverse-proxied by web.
+      - data-network
+      - app-network
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/central/Dockerfile.web
+      args:
+        # 배포 드리프트 게이트 (2026-08-23) — Dockerfile.api 와 같은 계약.
+        GIT_REVISION: ${GIT_REVISION:-}
+    image: fcc-central-web:latest
+    container_name: fcc-central-web
+    restart: unless-stopped
+    stop_grace_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    environment:
+      # The SPA runtime-config is generated from these at container start
+      # (30-runtime-config.sh) so the browser-facing endpoints derive from the
+      # SAME port SSOT this compose publishes with — no hardcoded port drifts.
+      # Same-origin gateway: the SPA's API/WS endpoints point at this web origin
+      # (PUBLIC_HOST:WEB_PORT); nginx path-routes /headless,/platform to the API
+      # containers — so the API host ports are NOT runtime-config vars here.
+      PUBLIC_HOST: ${PUBLIC_HOST:-localhost}
+      WEB_PORT: ${WEB_PORT:-8080}
+      KEYCLOAK_PORT: ${KEYCLOAK_PORT:-8081}
+      OIDC_REALM: ${OIDC_REALM:-fcc-dev}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-fcc-platform-frontend}
+      # ⚠️ This value was missing until 2026-08-21: the template referenced
+      # ${ALLOW_INSECURE_TRANSPORT} but compose never passed it into the web
+      # container, so the entrypoint fell back to its own default and an operator
+      # who set it in central.env saw no effect. (`--env-file` feeds compose-file
+      # interpolation, not the container environment.) Diagnosing that cost real
+      # time on a live deployment.
+      ALLOW_INSECURE_TRANSPORT: ${ALLOW_INSECURE_TRANSPORT:-false}
+      # Which login strategy the SPA runs. MUST agree with FCC_PLATFORM_AUTH_MODE
+      # on platform-api: set only one and the browser and the API disagree about
+      # what a login even is.
+      WEB_AUTH_MODE: ${WEB_AUTH_MODE:-oidc}
+    depends_on:
+      headless-api:
+        condition: service_started
+      platform-api:
+        condition: service_started
+    networks:
+      # App tier — reverse-proxies headless-api/platform-api by service name.
+      #
+      # STATIC address (peer 축 신뢰 hop, 2026-08-22): this is the one source the
+      # API surfaces trust to have set X-Forwarded-For. It must be stable across
+      # restarts, because a trusted hop identified by a value Docker re-assigns
+      # is a trusted hop that silently stops being trusted — and the symptom of
+      # that is not an error, it is every caller sharing one rate-limit bucket
+      # again. Map form (not the list form the other services use) because only
+      # this service pins an address.
+      app-network:
+        ipv4_address: ${CENTRAL_PROXY_IP:-172.31.240.10}
+
+volumes:
+  central-pgdata:
+  central-headless-data:
+
+networks:
+  # DB tier — internal:true blocks internet egress; only postgres + the
+  # platform-api bridge live here, so the central DB is not reachable from the
+  # LAN except through the platform API.
+  data-network:
+    driver: bridge
+    internal: true
+  # App tier — browser/chamber-node facing services + inter-service DNS.
+  #
+  # ── Why this network DECLARES its subnet (peer 축 신뢰 hop, 2026-08-22) ──────
+  # Until now it did not, and Docker assigned one from its own pool: measured on
+  # this host, three sibling stacks got 172.21/172.22/172.23 purely by creation
+  # order. A dynamic address cannot be named as a trusted hop, and the API
+  # surfaces must name one — otherwise uvicorn keeps its 127.0.0.1 default,
+  # never reads X-Forwarded-For, and every caller behind `web` collapses into a
+  # single rate-limit bucket (the defect this declaration exists to close).
+  #
+  # ⚠️ The subnet is declared so `web` can be given a STATIC address, and it is
+  # that single address — not this range — that the API surfaces trust. Trusting
+  # the range would also trust the bridge GATEWAY address (.1), which is what a
+  # published-port connection can look like; uvicorn's reverse walk then finds
+  # the whole chain trusted and falls back to the LEFTMOST, attacker-written
+  # entry. Least privilege here is one address, and it is checked by arithmetic
+  # (containment, and not the network/gateway/broadcast address) in
+  # tests/test_central_docker_compose.py — never by two literals read side by side.
+  #
+  # Both values are overridable: a host whose pool already uses this range sets
+  # CENTRAL_APP_SUBNET / CENTRAL_PROXY_IP together in central.env.
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${CENTRAL_APP_SUBNET:-172.31.240.0/24}
+          # ⚠️ **동적 할당이 이 주소를 먼저 가져갈 수 있다.** 실측: /24 에 컨테이너를
+          # 아홉 개 붙이자 아홉 번째가 `.10` 을 받았고, 그 뒤 `web` 의 정적 요청이
+          # `Address already in use` 로 실패했다. 그래서 동적 풀을 정적 주소가 **없는
+          # 하위 범위**로 좁힌다.
+          #
+          # ⚠️ **`aux_addresses` 로 하면 안 된다 — 그 처방이 정확히 같은 오류를
+          # 영구화한다.** aux 예약은 «동적 할당만 피해라» 가 아니라 «그 주소는 사용
+          # 중이다» 라서, 같은 주소를 **명시적으로 요청하는** 컨테이너도 거부된다.
+          # 즉 `web` 이 **한 번도 뜨지 못한다**(적대 평가 3R: 실 스택에서
+          # `Address already in use` 로 Created 상태에 머물렀고, 두 줄을 지우자 즉시
+          # 떴다. 독립 재현: aux 예약 네트워크에서 `--ip` 로 같은 주소를 요청하면
+          # 실패, 예약 없는 동일 네트워크에서는 성공). 옛 봉인은 소스 텍스트만 보고
+          # `aux_addresses` 의 **존재를 요구**했다 — 컨테이너를 한 번도 띄우지 않은
+          # 봉인이 결함을 요구한 셈이다.
+          #
+          # `ip_range` 는 동적 할당 풀만 좁히므로 정적 요청과 충돌하지 않는다.
+          # 불변식은 산술이다: CENTRAL_PROXY_IP 는 이 범위 **밖**이어야 한다.
+          ip_range: ${CENTRAL_APP_DYNAMIC_RANGE:-172.31.240.128/25}

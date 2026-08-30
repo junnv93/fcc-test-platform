@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://fcc.local/platform/chamber_token_lifecycle.schema.json",
+  "title": "Chamber token lifecycle evidence",
+  "description": "Secret-free, machine-readable evidence for per-chamber Keycloak machine-token provisioning / rotation / revocation / binding-check. Vocabulary SSOT: src/application/platform/chamber_token_evidence.py (parity-sealed by tests/test_chamber_token_provisioning.py).",
+  "type": "object",
+  "required": ["schema_version", "evidence_id", "collected_at", "mode", "keycloak_realm", "events"],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {"const": 1},
+    "evidence_id": {"type": "string", "minLength": 1},
+    "collected_at": {"type": "string", "minLength": 1},
+    "mode": {"type": "string", "enum": ["dry-run", "live"]},
+    "keycloak_realm": {"type": "string", "minLength": 1},
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["client_id", "chamber_id", "action", "timestamp", "actor", "result", "secret", "verification_probe"],
+        "additionalProperties": true,
+        "properties": {
+          "client_id": {"type": "string", "minLength": 1},
+          "chamber_id": {"type": "string", "minLength": 1},
+          "action": {"type": "string", "enum": ["provision", "rotate", "revoke", "binding_check"]},
+          "timestamp": {"type": "string", "minLength": 1},
+          "actor": {"type": "string", "minLength": 1},
+          "result": {"type": "string", "enum": ["ok", "planned", "failed", "skipped"]},
+          "secret": {"const": "***REDACTED***"},
+          "verification_probe": {"type": "object"}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "server_version": "16.14",
+  "registered_providers": [
+    "fcc-unlicensed-conducted"
+  ],
+  "offered_by_picker": [
+    "fcc-unlicensed-conducted",
+    "fcc-mmwave-conducted"
+  ],
+  "coherent_listing_rows": 13,
+  "coherent_families": 6,
+  "offered_but_unregistered__list": "ReferenceProviderNotRegisteredError -> 404 REFERENCE_PROVIDER_NOT_REGISTERED",
+  "offered_but_unregistered__families": "ReferenceProviderNotRegisteredError -> 404 REFERENCE_PROVIDER_NOT_REGISTERED",
+  "offered_but_unregistered__bundle": "ReferenceProviderNotRegisteredError -> 404 REFERENCE_PROVIDER_NOT_REGISTERED",
+  "neither_side_knows_it": "ReferenceProviderNotFoundError -> 404 NOT_FOUND",
+  "counterfactual_old_read_path": "0 rows == HTTP 200 [] (indistinguishable from \"registered, nothing published\")",
+  "outage_is_not_absence": "CentralReferenceError (loud, not False)",
+  "ok": true
+}

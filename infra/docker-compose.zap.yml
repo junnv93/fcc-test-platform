@@ -1,0 +1,37 @@
+# Sprint S2-EXT-4 — OWASP ZAP baseline scan compose.
+#
+# ZAP runs as a docker container against the dev SPA. Local invocation:
+#
+#   # 1. Build + preview the SPA
+#   cd apps/web && npm run build && npm run preview &
+#
+#   # 2. Run ZAP baseline against the preview server
+#   docker compose -f infra/docker-compose.zap.yml run --rm zap-baseline
+#
+# Output: `infra/zap-report.html` (gitignored). Ratchet policy:
+#   - zero High-severity findings — blocking
+#   - Medium findings tracked in report, accepted Medium documented
+#     in docs/architecture/frontend/external-audit-roadmap.md
+#
+# CI (Sprint S9): `.github/workflows/zap-baseline.yml` chains build →
+# preview-on-port → zap-baseline → upload SARIF.
+
+services:
+  zap-baseline:
+    image: zaproxy/zap-stable:latest
+    container_name: fcc-zap-baseline
+    network_mode: "host"  # Reach 127.0.0.1:4173 (vite preview) from container
+    volumes:
+      - ./:/zap/wrk:rw
+    command: >
+      zap-baseline.py
+        -t http://127.0.0.1:4173
+        -r zap-report.html
+        -J zap-report.json
+        -I
+        -c /zap/wrk/zap-baseline-rules.tsv
+
+# `zap-baseline-rules.tsv` — alert tuning (passive rules to ignore /
+# downgrade). Create this file alongside this compose to suppress
+# false-positives that don't apply to an SPA behind nginx (e.g.,
+# missing CSRF tokens — irrelevant for token-based auth).

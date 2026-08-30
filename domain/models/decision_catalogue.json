@@ -1,0 +1,32 @@
+[
+  {
+    "code": "profile_precedence_unresolved",
+    "description": "Profile overlap/precedence is not approved; automatic merge is forbidden.",
+    "blocking": true,
+    "resolution_fields": ["actor", "resolved_at", "reason", "evidence_reference", "evidence_sha256"]
+  },
+  {
+    "code": "rbac_role_mapping_unresolved",
+    "description": "Actual editor/approver/publisher role mapping is not confirmed.",
+    "blocking": true,
+    "resolution_fields": ["actor", "resolved_at", "reason", "evidence_reference", "evidence_sha256"]
+  },
+  {
+    "code": "calibration_owner_unresolved",
+    "description": "Calibration and equipment owner scope is not confirmed.",
+    "blocking": true,
+    "resolution_fields": ["actor", "resolved_at", "reason", "evidence_reference", "evidence_sha256"]
+  },
+  {
+    "code": "compliance_baseline_unresolved",
+    "description": "Applicable compliance baseline and signoff owner are not confirmed.",
+    "blocking": true,
+    "resolution_fields": ["actor", "resolved_at", "reason", "evidence_reference", "evidence_sha256"]
+  },
+  {
+    "code": "raw_artifact_retention_security_unresolved",
+    "description": "Raw artifact retention, access control, and redacted audit handling are not approved.",
+    "blocking": true,
+    "resolution_fields": ["actor", "resolved_at", "reason", "evidence_reference", "evidence_sha256"]
+  }
+]

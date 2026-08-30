@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "status": "planning_contract",
+  "owner_repository": "fcc-test-platform",
+  "description": "Policy for executing deterministic provider ingestion plans through a transaction boundary.",
+  "source_plan": "docs/platform/provider_ingestion_plan.v1.json",
+  "transaction_rules": [
+    "Every ingestion plan executes inside a single platform transaction.",
+    "The worker commits only after every planned upsert succeeds.",
+    "The worker rolls back the transaction on any failed upsert.",
+    "Transient failures may be retried from the beginning of the plan.",
+    "Retry rollback history is recorded separately from the final transaction outcome.",
+    "Permanent failures must not be retried.",
+    "Upserts must use the idempotency key produced by provider_ingestion_plan."
+  ],
+  "retry_defaults": {
+    "max_attempts": 3,
+    "retryable_error_class": "TransientIngestionError",
+    "non_retryable_error_class": "PermanentIngestionError"
+  },
+  "port_contract": {
+    "writer": "PlatformIngestionWriter.begin_transaction()",
+    "transaction_methods": [
+      "upsert(table, record, idempotency_key)",
+      "commit()",
+      "rollback()"
+    ]
+  },
+  "forbidden_in_worker_core": [
+    "provider_private_import",
+    "hardcoded_database_dsn",
+    "file_sync",
+    "report_generation",
+    "hardware_control"
+  ]
+}

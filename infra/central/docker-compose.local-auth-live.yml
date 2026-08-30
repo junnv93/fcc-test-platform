@@ -1,0 +1,98 @@
+# Disposable FCC local-auth live lane.
+#
+# This file is an additive override for infra/docker-compose.central.yml. The
+# runner supplies every interpolation from generated in-memory values and a
+# unique Compose project. It never uses a deployment env file. The override
+# keeps the service contracts and current migration job from the central
+# compose while making container names unique. Only the web gateway is
+# published; database, IdP, and API services remain Compose-network-only.
+
+services:
+  postgres:
+    container_name: ${FCC_LOCAL_AUTH_LIVE_CONTAINER_PREFIX}-postgres
+    restart: "no"
+    ports: !override []
+  keycloak:
+    container_name: ${FCC_LOCAL_AUTH_LIVE_CONTAINER_PREFIX}-keycloak
+    restart: "no"
+    ports: !override []
+  headless-api:
+    image: ${FCC_LOCAL_AUTH_LIVE_API_IMAGE}
+    container_name: ${FCC_LOCAL_AUTH_LIVE_CONTAINER_PREFIX}-headless
+    restart: "no"
+    ports: !override []
+    environment:
+      FCC_HEADLESS_AUTH_MODE: ${FCC_HEADLESS_AUTH_MODE}
+      FCC_HEADLESS_LOCAL_JWT_SECRET: ${FCC_HEADLESS_LOCAL_JWT_SECRET}
+      FCC_HEADLESS_LOCAL_JWT_ISSUER: ${FCC_HEADLESS_LOCAL_JWT_ISSUER}
+      FCC_HEADLESS_LOCAL_JWT_AUDIENCE: ${FCC_HEADLESS_LOCAL_JWT_AUDIENCE}
+      FCC_HEADLESS_LOCAL_JWT_TTL_SECONDS: ${FCC_HEADLESS_LOCAL_JWT_TTL_SECONDS}
+      FCC_HEADLESS_LOCAL_JWT_REFRESH_TTL_SECONDS: ${FCC_HEADLESS_LOCAL_JWT_REFRESH_TTL_SECONDS}
+  central-migrate:
+    image: ${FCC_LOCAL_AUTH_LIVE_API_IMAGE}
+    container_name: ${FCC_LOCAL_AUTH_LIVE_CONTAINER_PREFIX}-migrate
+    restart: "no"
+  platform-api:
+    image: ${FCC_LOCAL_AUTH_LIVE_API_IMAGE}
+    container_name: ${FCC_LOCAL_AUTH_LIVE_CONTAINER_PREFIX}-platform
+    restart: "no"
+    ports: !override []
+    environment:
+      FCC_PLATFORM_AUTH_MODE: ${FCC_PLATFORM_AUTH_MODE}
+      FCC_PLATFORM_LOCAL_JWT_SECRET: ${FCC_PLATFORM_LOCAL_JWT_SECRET}
+      FCC_PLATFORM_LOCAL_JWT_ISSUER: ${FCC_PLATFORM_LOCAL_JWT_ISSUER}
+      FCC_PLATFORM_LOCAL_JWT_AUDIENCE: ${FCC_PLATFORM_LOCAL_JWT_AUDIENCE}
+      FCC_PLATFORM_LOCAL_JWT_TTL_SECONDS: ${FCC_PLATFORM_LOCAL_JWT_TTL_SECONDS}
+      FCC_PLATFORM_LOCAL_JWT_REFRESH_TTL_SECONDS: ${FCC_PLATFORM_LOCAL_JWT_REFRESH_TTL_SECONDS}
+      FCC_PLATFORM_BOOTSTRAP_ADMIN_EMAIL: ${FCC_PLATFORM_BOOTSTRAP_ADMIN_EMAIL}
+      FCC_PLATFORM_BOOTSTRAP_ADMIN_PASSWORD: ${FCC_PLATFORM_BOOTSTRAP_ADMIN_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      central-migrate:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_started
+  web:
+    image: ${FCC_LOCAL_AUTH_LIVE_WEB_IMAGE}
+    container_name: ${FCC_LOCAL_AUTH_LIVE_CONTAINER_PREFIX}-web
+    restart: "no"
+    ports: !override
+      - "127.0.0.1:${WEB_PORT}:80"
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST}
+      WEB_PORT: ${WEB_PORT}
+      KEYCLOAK_PORT: ${KEYCLOAK_PORT}
+      OIDC_REALM: ${OIDC_REALM}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+      ALLOW_INSECURE_TRANSPORT: ${ALLOW_INSECURE_TRANSPORT}
+      WEB_AUTH_MODE: ${WEB_AUTH_MODE}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/runtime-config.js"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    depends_on:
+      headless-api:
+        condition: service_healthy
+      platform-api:
+        condition: service_healthy
+    networks:
+      app-network:
+        ipv4_address: ${CENTRAL_PROXY_IP}
+
+volumes:
+  central-pgdata:
+    labels:
+      fcc.local-auth-live: "true"
+  central-headless-data:
+    labels:
+      fcc.local-auth-live: "true"
+
+networks:
+  app-network:
+    ipam:
+      config:
+        - subnet: ${CENTRAL_APP_SUBNET}
+          ip_range: ${CENTRAL_APP_DYNAMIC_RANGE}

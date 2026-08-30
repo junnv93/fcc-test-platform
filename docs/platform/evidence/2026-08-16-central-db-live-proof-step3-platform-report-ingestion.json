@@ -1,0 +1,415 @@
+{
+  "_evidence_note": {
+    "postgres": "PostgreSQL 16.14 (fcc-central-postgres @ 172.23.0.2:5432)",
+    "runbook_step": "3 \u2014 platform report-output ingestion (--report-reconstruction)",
+    "verbatim": true,
+    "wave": "platform-live-proof-report-stage-split"
+  },
+  "generated_at": "2026-08-16T05:09:57.552297+00:00",
+  "lanes": {
+    "fresh": {
+      "stages": {
+        "report_ingestion": {
+          "expected_output_count": 2,
+          "first_run": {
+            "applied_steps": 4,
+            "attempted_steps": 4,
+            "attempts": 1,
+            "committed": true,
+            "coverage_refresh": "not_required",
+            "coverage_refresh_error": "",
+            "errors": [],
+            "retry_errors": [],
+            "rolled_back": false,
+            "steps": [
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "2e6a6838-bb0c-594e-bd9b-e88fd6fa1a63",
+                  "PROOF-SESSION-split-wave-fresh-demo"
+                ],
+                "operation": "upsert",
+                "order": 1,
+                "target_table": "test_sessions"
+              },
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "6c5ddb14-09ca-50b8-bf61-6f004414b878"
+                ],
+                "operation": "upsert",
+                "order": 2,
+                "target_table": "report_runs"
+              },
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "6c5ddb14-09ca-50b8-bf61-6f004414b878",
+                  "DEMO_MODEL_X1_BLE_report.docx"
+                ],
+                "operation": "upsert",
+                "order": 3,
+                "target_table": "report_outputs"
+              },
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "6c5ddb14-09ca-50b8-bf61-6f004414b878",
+                  "DEMO_MODEL_X1_BT_report.docx"
+                ],
+                "operation": "upsert",
+                "order": 4,
+                "target_table": "report_outputs"
+              }
+            ]
+          },
+          "generated_output_paths": [
+            "DEMO_MODEL_X1_BLE_report.docx",
+            "DEMO_MODEL_X1_BT_report.docx"
+          ],
+          "output_count_after_first": 2,
+          "output_count_after_second": 2,
+          "parent": {
+            "created_at": "2026-08-16T05:09:57.617960+00:00",
+            "id": "6c5ddb14-09ca-50b8-bf61-6f004414b878",
+            "provider_id": "2e6a6838-bb0c-594e-bd9b-e88fd6fa1a63",
+            "session_id": "3f96f908-cfa4-5eaa-b2e1-b85e6aa30b2d",
+            "status": "completed"
+          },
+          "parent_count_after_first": 1,
+          "parent_count_after_second": 1,
+          "parent_created_at_db_owned": true,
+          "project_id": "685e006f-dde6-5406-9569-3b861967f08e",
+          "provider_code": "fcc-unlicensed-conducted",
+          "provider_id": "2e6a6838-bb0c-594e-bd9b-e88fd6fa1a63",
+          "replay_idempotent": true,
+          "report_run_id": "6c5ddb14-09ca-50b8-bf61-6f004414b878",
+          "second_run": {
+            "applied_steps": 4,
+            "attempted_steps": 4,
+            "attempts": 1,
+            "committed": true,
+            "coverage_refresh": "not_required",
+            "coverage_refresh_error": "",
+            "errors": [],
+            "retry_errors": [],
+            "rolled_back": false,
+            "steps": [
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "2e6a6838-bb0c-594e-bd9b-e88fd6fa1a63",
+                  "PROOF-SESSION-split-wave-fresh-demo"
+                ],
+                "operation": "upsert",
+                "order": 1,
+                "target_table": "test_sessions"
+              },
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "6c5ddb14-09ca-50b8-bf61-6f004414b878"
+                ],
+                "operation": "upsert",
+                "order": 2,
+                "target_table": "report_runs"
+              },
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "6c5ddb14-09ca-50b8-bf61-6f004414b878",
+                  "DEMO_MODEL_X1_BLE_report.docx"
+                ],
+                "operation": "upsert",
+                "order": 3,
+                "target_table": "report_outputs"
+              },
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "6c5ddb14-09ca-50b8-bf61-6f004414b878",
+                  "DEMO_MODEL_X1_BT_report.docx"
+                ],
+                "operation": "upsert",
+                "order": 4,
+                "target_table": "report_outputs"
+              }
+            ]
+          },
+          "session_id": "3f96f908-cfa4-5eaa-b2e1-b85e6aa30b2d",
+          "valid": true
+        }
+      }
+    },
+    "upgrade": {
+      "stages": {
+        "report_ingestion": {
+          "expected_output_count": 2,
+          "first_run": {
+            "applied_steps": 4,
+            "attempted_steps": 4,
+            "attempts": 1,
+            "committed": true,
+            "coverage_refresh": "not_required",
+            "coverage_refresh_error": "",
+            "errors": [],
+            "retry_errors": [],
+            "rolled_back": false,
+            "steps": [
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "3907bbb3-049d-5f17-9bf1-6d9694686412",
+                  "PROOF-SESSION-split-wave-upgrade-demo"
+                ],
+                "operation": "upsert",
+                "order": 1,
+                "target_table": "test_sessions"
+              },
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "4f629eeb-523a-5144-96b5-02b7b2a643e8"
+                ],
+                "operation": "upsert",
+                "order": 2,
+                "target_table": "report_runs"
+              },
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "4f629eeb-523a-5144-96b5-02b7b2a643e8",
+                  "DEMO_MODEL_X1_BLE_report.docx"
+                ],
+                "operation": "upsert",
+                "order": 3,
+                "target_table": "report_outputs"
+              },
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "4f629eeb-523a-5144-96b5-02b7b2a643e8",
+                  "DEMO_MODEL_X1_BT_report.docx"
+                ],
+                "operation": "upsert",
+                "order": 4,
+                "target_table": "report_outputs"
+              }
+            ]
+          },
+          "generated_output_paths": [
+            "DEMO_MODEL_X1_BLE_report.docx",
+            "DEMO_MODEL_X1_BT_report.docx"
+          ],
+          "output_count_after_first": 2,
+          "output_count_after_second": 2,
+          "parent": {
+            "created_at": "2026-08-16T05:09:57.647630+00:00",
+            "id": "4f629eeb-523a-5144-96b5-02b7b2a643e8",
+            "provider_id": "3907bbb3-049d-5f17-9bf1-6d9694686412",
+            "session_id": "920c0056-0131-50ca-8826-0e304c0a5492",
+            "status": "completed"
+          },
+          "parent_count_after_first": 1,
+          "parent_count_after_second": 1,
+          "parent_created_at_db_owned": true,
+          "project_id": "3ac20e20-3f60-5608-ba4f-cb79b69e02e0",
+          "provider_code": "fcc-unlicensed-conducted",
+          "provider_id": "3907bbb3-049d-5f17-9bf1-6d9694686412",
+          "replay_idempotent": true,
+          "report_run_id": "4f629eeb-523a-5144-96b5-02b7b2a643e8",
+          "second_run": {
+            "applied_steps": 4,
+            "attempted_steps": 4,
+            "attempts": 1,
+            "committed": true,
+            "coverage_refresh": "not_required",
+            "coverage_refresh_error": "",
+            "errors": [],
+            "retry_errors": [],
+            "rolled_back": false,
+            "steps": [
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "3907bbb3-049d-5f17-9bf1-6d9694686412",
+                  "PROOF-SESSION-split-wave-upgrade-demo"
+                ],
+                "operation": "upsert",
+                "order": 1,
+                "target_table": "test_sessions"
+              },
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "4f629eeb-523a-5144-96b5-02b7b2a643e8"
+                ],
+                "operation": "upsert",
+                "order": 2,
+                "target_table": "report_runs"
+              },
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "4f629eeb-523a-5144-96b5-02b7b2a643e8",
+                  "DEMO_MODEL_X1_BLE_report.docx"
+                ],
+                "operation": "upsert",
+                "order": 3,
+                "target_table": "report_outputs"
+              },
+              {
+                "affected_rows": 1,
+                "idempotency_key": [
+                  "4f629eeb-523a-5144-96b5-02b7b2a643e8",
+                  "DEMO_MODEL_X1_BT_report.docx"
+                ],
+                "operation": "upsert",
+                "order": 4,
+                "target_table": "report_outputs"
+              }
+            ]
+          },
+          "session_id": "920c0056-0131-50ca-8826-0e304c0a5492",
+          "valid": true
+        }
+      }
+    }
+  },
+  "proof": "central-db-report-ingestion-proof",
+  "provider_code": "fcc-unlicensed-conducted",
+  "schema_version": 1,
+  "stages": {
+    "report_ingestion": {
+      "expected_output_count": 2,
+      "first_run": {
+        "applied_steps": 4,
+        "attempted_steps": 4,
+        "attempts": 1,
+        "committed": true,
+        "coverage_refresh": "not_required",
+        "coverage_refresh_error": "",
+        "errors": [],
+        "retry_errors": [],
+        "rolled_back": false,
+        "steps": [
+          {
+            "affected_rows": 1,
+            "idempotency_key": [
+              "2e6a6838-bb0c-594e-bd9b-e88fd6fa1a63",
+              "PROOF-SESSION-split-wave-fresh-demo"
+            ],
+            "operation": "upsert",
+            "order": 1,
+            "target_table": "test_sessions"
+          },
+          {
+            "affected_rows": 1,
+            "idempotency_key": [
+              "6c5ddb14-09ca-50b8-bf61-6f004414b878"
+            ],
+            "operation": "upsert",
+            "order": 2,
+            "target_table": "report_runs"
+          },
+          {
+            "affected_rows": 1,
+            "idempotency_key": [
+              "6c5ddb14-09ca-50b8-bf61-6f004414b878",
+              "DEMO_MODEL_X1_BLE_report.docx"
+            ],
+            "operation": "upsert",
+            "order": 3,
+            "target_table": "report_outputs"
+          },
+          {
+            "affected_rows": 1,
+            "idempotency_key": [
+              "6c5ddb14-09ca-50b8-bf61-6f004414b878",
+              "DEMO_MODEL_X1_BT_report.docx"
+            ],
+            "operation": "upsert",
+            "order": 4,
+            "target_table": "report_outputs"
+          }
+        ]
+      },
+      "generated_output_paths": [
+        "DEMO_MODEL_X1_BLE_report.docx",
+        "DEMO_MODEL_X1_BT_report.docx"
+      ],
+      "output_count_after_first": 2,
+      "output_count_after_second": 2,
+      "parent": {
+        "created_at": "2026-08-16T05:09:57.617960+00:00",
+        "id": "6c5ddb14-09ca-50b8-bf61-6f004414b878",
+        "provider_id": "2e6a6838-bb0c-594e-bd9b-e88fd6fa1a63",
+        "session_id": "3f96f908-cfa4-5eaa-b2e1-b85e6aa30b2d",
+        "status": "completed"
+      },
+      "parent_count_after_first": 1,
+      "parent_count_after_second": 1,
+      "parent_created_at_db_owned": true,
+      "project_id": "685e006f-dde6-5406-9569-3b861967f08e",
+      "provider_code": "fcc-unlicensed-conducted",
+      "provider_id": "2e6a6838-bb0c-594e-bd9b-e88fd6fa1a63",
+      "replay_idempotent": true,
+      "report_run_id": "6c5ddb14-09ca-50b8-bf61-6f004414b878",
+      "second_run": {
+        "applied_steps": 4,
+        "attempted_steps": 4,
+        "attempts": 1,
+        "committed": true,
+        "coverage_refresh": "not_required",
+        "coverage_refresh_error": "",
+        "errors": [],
+        "retry_errors": [],
+        "rolled_back": false,
+        "steps": [
+          {
+            "affected_rows": 1,
+            "idempotency_key": [
+              "2e6a6838-bb0c-594e-bd9b-e88fd6fa1a63",
+              "PROOF-SESSION-split-wave-fresh-demo"
+            ],
+            "operation": "upsert",
+            "order": 1,
+            "target_table": "test_sessions"
+          },
+          {
+            "affected_rows": 1,
+            "idempotency_key": [
+              "6c5ddb14-09ca-50b8-bf61-6f004414b878"
+            ],
+            "operation": "upsert",
+            "order": 2,
+            "target_table": "report_runs"
+          },
+          {
+            "affected_rows": 1,
+            "idempotency_key": [
+              "6c5ddb14-09ca-50b8-bf61-6f004414b878",
+              "DEMO_MODEL_X1_BLE_report.docx"
+            ],
+            "operation": "upsert",
+            "order": 3,
+            "target_table": "report_outputs"
+          },
+          {
+            "affected_rows": 1,
+            "idempotency_key": [
+              "6c5ddb14-09ca-50b8-bf61-6f004414b878",
+              "DEMO_MODEL_X1_BT_report.docx"
+            ],
+            "operation": "upsert",
+            "order": 4,
+            "target_table": "report_outputs"
+          }
+        ]
+      },
+      "session_id": "3f96f908-cfa4-5eaa-b2e1-b85e6aa30b2d",
+      "valid": true
+    }
+  },
+  "verdict": "PASS"
+}

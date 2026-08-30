@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "status": "planning_contract",
+  "owner_repository": "fcc-test-platform",
+  "description": "Platform identity-provider policy for OIDC token validation and RBAC claim mapping.",
+  "rbac_source": "docs/platform/rbac_policy.v1.json",
+  "oidc_requirements": [
+    "issuer must be HTTPS and must not use localhost",
+    "jwks_uri must be HTTPS and must not use localhost",
+    "at least one audience is required",
+    "algorithm must be an asymmetric JWT algorithm such as RS256 or ES256"
+  ],
+  "session_requirements": [
+    "idle_timeout_seconds must be between 300 and 43200",
+    "refresh_token_rotation must be true",
+    "refresh_rotation_seconds must be at least 60"
+  ],
+  "claim_mapping_rules": [
+    "subject_claim, display_name_claim, email_claim, and role_claim are required",
+    "role_map values must use the standard roles from rbac_policy.v1.json",
+    "admin role mappings require explicit admin_group_allowlist membership"
+  ],
+  "forbidden_operations": [
+    "jwt_validation",
+    "idp_network_call",
+    "database_write",
+    "session_persistence"
+  ],
+  "notes": "This policy validates configuration metadata only. Runtime token validation, login screens, sessions, and persistent user-role assignments belong to the platform backend."
+}

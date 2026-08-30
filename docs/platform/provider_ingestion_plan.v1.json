@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "status": "planning_contract",
+  "owner_repository": "fcc-test-platform",
+  "description": "Shared platform policy for converting mapped provider records into deterministic central DB upsert plans.",
+  "source_mapping": "docs/platform/provider_ingestion_mapping.v1.json",
+  "target_schema": "docs/platform/central_db_schema.v1.json",
+  "table_order": [
+    "test_sessions",
+    "report_runs",
+    "measurement_results",
+    "measurement_attempts",
+    "artifacts",
+    "report_outputs"
+  ],
+  "operation": "upsert",
+  "idempotency_keys": {
+    "test_sessions": [
+      "provider_id",
+      "provider_session_id"
+    ],
+    "report_runs": [
+      "id"
+    ],
+    "measurement_results": [
+      "provider_id",
+      "provider_result_id"
+    ],
+    "measurement_attempts": [
+      "session_id",
+      "condition_hash",
+      "attempt_number"
+    ],
+    "artifacts": [
+      "provider_id",
+      "relative_path"
+    ],
+    "report_outputs": [
+      "report_run_id",
+      "relative_path"
+    ]
+  },
+  "chamber_scoped_idempotency_keys": {
+    "test_sessions": [
+      "provider_id",
+      "chamber_id",
+      "provider_session_id"
+    ]
+  },
+  "rules": [
+    "Build ingestion records from provider_ingestion_mapping first.",
+    "Reject duplicate idempotency keys within the same batch.",
+    "Reject unknown target tables.",
+    "Reject unsafe relative_path values using artifact_storage_policy.",
+    "The generated plan is metadata only; DB transactions and retries are executed by provider_ingestion_execution_policy.",
+    "FE-P0c (2026-05-26): condition_hash is propagated verbatim from compute_condition_hash; central writers must never recompute. operator AND recorded_by columns of measurement_attempts are populated from the same provenance source (FE-P0b req5).",
+    "Session parent row (2026-07-29, multichamber repair 2026-08-05): test_sessions is ingested FIRST in the same single-chamber/session transaction as its measurement children. New chamber traffic uses (provider_id, chamber_id, provider_session_id) as its natural key and derives the session uuid from the same scope; the reserved legacy sentinel preserves pre-multichamber rows and UUIDs. created_at/updated_at are omitted because the central schema defaults both to now(). Providers that already create the session row out of band may omit it from the batch.",
+    "Report parent row (2026-08-04): a non-empty report-output batch emits exactly one report_runs row after test_sessions and before report_outputs in the same transaction. The parent uses its caller-supplied deterministic id as the primary-key replay identity, requires provider/session/terminal completed evidence, and omits created_at because the central database owns its now() default. An empty report-output collection emits neither report_runs nor report_outputs.",
+    "Provider result identity (multichamber repair 2026-08-05): chamber result ids are scoped with the same chamber identity before they reach the central provider_result_id uniqueness boundary; legacy result ids remain byte-compatible.",
+    "FE-P0c (2026-05-26): coverage_by_condition_hash is a CENTRAL materialized view derived from measurement_attempts (FE-P0a) — ingestion writers MUST NOT include it in this plan and MUST NOT write to it directly."
+  ],
+  "forbidden_operations": [
+    "database_write",
+    "network_call",
+    "queue_publish",
+    "file_read",
+    "file_write"
+  ]
+}

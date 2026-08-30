@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "allowJs": true,
+    "checkJs": false,
+    "types": ["node"]
+  },
+  "include": [
+    "vite.config.ts",
+    "playwright.config.ts",
+    "playwright.global-setup.ts",
+    "playwright.grid-poc.config.ts",
+    "scripts/**/*.mjs",
+    "scripts/**/*.ts",
+    "vite/**/*.ts",
+    "vite/**/*.mjs"
+  ]
+}

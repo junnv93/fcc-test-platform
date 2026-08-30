@@ -1,0 +1,291 @@
+{
+  "$id": "cutover_readiness_evidence.schema.v1.json",
+  "canonical_filenames": {
+    "artifact_sync": "artifact_sync.json",
+    "backup_restore_drill": "backup_restore_drill.json",
+    "db_migration": "db_migration.json",
+    "db_only_report_reconstruction": "db_only_report_reconstruction.json",
+    "extraction_package": "extraction_package.json",
+    "frontend_browser_qa": "frontend_browser_qa.json",
+    "frontend_deployment": "frontend_deployment.json",
+    "hardware_smoke": "hardware_smoke.json",
+    "identity_policy": "identity_policy.json",
+    "idp_deployment": "idp_deployment.json",
+    "ingestion_execution": "ingestion_execution.json",
+    "performance_smoke": "performance_smoke.json",
+    "rbac_assignment": "rbac_assignment.json",
+    "service_deployment": "provider_service_deployment.json"
+  },
+  "cli_arguments": {
+    "artifact_sync": "--artifact-sync",
+    "backup_restore_drill": "--backup-restore-drill",
+    "db_migration": "--db-migration",
+    "db_only_report_reconstruction": "--db-only-report-reconstruction",
+    "extraction_package": "--extraction-package",
+    "frontend_browser_qa": "--frontend-browser-qa",
+    "frontend_deployment": "--frontend-deployment",
+    "hardware_smoke": "--hardware-smoke",
+    "identity_policy": "--identity-policy",
+    "idp_deployment": "--idp-deployment",
+    "ingestion_execution": "--ingestion-execution",
+    "performance_smoke": "--performance-smoke",
+    "rbac_assignment": "--rbac-assignment",
+    "service_deployment": "--service-deployment"
+  },
+  "completion_groups": {
+    "db_only_report_reconstruction": [
+      "db_only_report_reconstruction"
+    ],
+    "deployment_idp_frontend_browser_qa": [
+      "service_deployment",
+      "identity_policy",
+      "idp_deployment",
+      "frontend_deployment",
+      "frontend_browser_qa"
+    ],
+    "live_lab_and_platform_operations": [
+      "hardware_smoke",
+      "db_migration",
+      "artifact_sync",
+      "backup_restore_drill",
+      "rbac_assignment",
+      "extraction_package",
+      "performance_smoke"
+    ],
+    "live_postgresql_ingestion_execution": [
+      "ingestion_execution"
+    ]
+  },
+  "description": "Evidence bundle gate for deciding whether an Unlicensed provider can cut over to the shared web platform workflow.",
+  "evidence_catalog": [
+    {
+      "canonical_filename": "provider_service_deployment.json",
+      "cli_argument": "--service-deployment",
+      "completion_group": "deployment_idp_frontend_browser_qa",
+      "key": "service_deployment",
+      "required_contexts": [],
+      "validator": "provider_service_deployment_errors"
+    },
+    {
+      "canonical_filename": "hardware_smoke.json",
+      "cli_argument": "--hardware-smoke",
+      "completion_group": "live_lab_and_platform_operations",
+      "key": "hardware_smoke",
+      "required_contexts": [],
+      "validator": "hardware_smoke_errors"
+    },
+    {
+      "canonical_filename": "db_migration.json",
+      "cli_argument": "--db-migration",
+      "completion_group": "live_lab_and_platform_operations",
+      "key": "db_migration",
+      "required_contexts": [
+        "central_db_schema"
+      ],
+      "validator": "central_db_migration_evidence_errors"
+    },
+    {
+      "canonical_filename": "ingestion_execution.json",
+      "cli_argument": "--ingestion-execution",
+      "completion_group": "live_postgresql_ingestion_execution",
+      "key": "ingestion_execution",
+      "required_contexts": [],
+      "validator": "ingestion_execution_errors"
+    },
+    {
+      "canonical_filename": "artifact_sync.json",
+      "cli_argument": "--artifact-sync",
+      "completion_group": "live_lab_and_platform_operations",
+      "key": "artifact_sync",
+      "required_contexts": [],
+      "validator": "artifact_sync_evidence_errors"
+    },
+    {
+      "canonical_filename": "db_only_report_reconstruction.json",
+      "cli_argument": "--db-only-report-reconstruction",
+      "completion_group": "db_only_report_reconstruction",
+      "key": "db_only_report_reconstruction",
+      "required_contexts": [],
+      "validator": "db_only_report_reconstruction_errors"
+    },
+    {
+      "canonical_filename": "backup_restore_drill.json",
+      "cli_argument": "--backup-restore-drill",
+      "completion_group": "live_lab_and_platform_operations",
+      "key": "backup_restore_drill",
+      "required_contexts": [],
+      "validator": "backup_restore_drill_errors"
+    },
+    {
+      "canonical_filename": "identity_policy.json",
+      "cli_argument": "--identity-policy",
+      "completion_group": "deployment_idp_frontend_browser_qa",
+      "key": "identity_policy",
+      "required_contexts": [],
+      "validator": "identity_policy_errors"
+    },
+    {
+      "canonical_filename": "idp_deployment.json",
+      "cli_argument": "--idp-deployment",
+      "completion_group": "deployment_idp_frontend_browser_qa",
+      "key": "idp_deployment",
+      "required_contexts": [],
+      "validator": "idp_deployment_errors"
+    },
+    {
+      "canonical_filename": "rbac_assignment.json",
+      "cli_argument": "--rbac-assignment",
+      "completion_group": "live_lab_and_platform_operations",
+      "key": "rbac_assignment",
+      "required_contexts": [],
+      "validator": "rbac_assignment_evidence_errors"
+    },
+    {
+      "canonical_filename": "extraction_package.json",
+      "cli_argument": "--extraction-package",
+      "completion_group": "live_lab_and_platform_operations",
+      "key": "extraction_package",
+      "required_contexts": [
+        "extraction_manifest"
+      ],
+      "validator": "extraction_package_errors"
+    },
+    {
+      "canonical_filename": "performance_smoke.json",
+      "cli_argument": "--performance-smoke",
+      "completion_group": "live_lab_and_platform_operations",
+      "key": "performance_smoke",
+      "required_contexts": [],
+      "validator": "performance_smoke_errors"
+    },
+    {
+      "canonical_filename": "frontend_deployment.json",
+      "cli_argument": "--frontend-deployment",
+      "completion_group": "deployment_idp_frontend_browser_qa",
+      "key": "frontend_deployment",
+      "required_contexts": [],
+      "validator": "frontend_deployment_errors"
+    },
+    {
+      "canonical_filename": "frontend_browser_qa.json",
+      "cli_argument": "--frontend-browser-qa",
+      "completion_group": "deployment_idp_frontend_browser_qa",
+      "key": "frontend_browser_qa",
+      "required_contexts": [],
+      "validator": "frontend_qa_errors"
+    }
+  ],
+  "forbidden_operations": [
+    "hardware_run",
+    "database_migration",
+    "file_sync",
+    "jwt_validation",
+    "network_call",
+    "database_write"
+  ],
+  "generic_evidence_ref_required_fields": [
+    "evidence_id",
+    "collected_at",
+    "validated",
+    "issues"
+  ],
+  "manifest_required_evidence_keys": [
+    "service_deployment",
+    "hardware_smoke",
+    "db_migration",
+    "ingestion_execution",
+    "artifact_sync",
+    "db_only_report_reconstruction",
+    "backup_restore_drill",
+    "identity_policy",
+    "idp_deployment",
+    "rbac_assignment",
+    "extraction_package",
+    "performance_smoke",
+    "frontend_deployment",
+    "frontend_browser_qa"
+  ],
+  "nested_manifest_validators": {
+    "artifact_sync": "artifact_sync_evidence_errors",
+    "backup_restore_drill": "backup_restore_drill_errors",
+    "db_migration": "central_db_migration_evidence_errors",
+    "db_only_report_reconstruction": "db_only_report_reconstruction_errors",
+    "extraction_package": "extraction_package_errors",
+    "frontend_browser_qa": "frontend_qa_errors",
+    "frontend_deployment": "frontend_deployment_errors",
+    "hardware_smoke": "hardware_smoke_errors",
+    "identity_policy": "identity_policy_errors",
+    "idp_deployment": "idp_deployment_errors",
+    "ingestion_execution": "ingestion_execution_errors",
+    "performance_smoke": "performance_smoke_errors",
+    "rbac_assignment": "rbac_assignment_evidence_errors",
+    "service_deployment": "provider_service_deployment_errors"
+  },
+  "owner_repository": "fcc-test-platform",
+  "provenance_policy": {
+    "placeholder_convention": "angle-bracket tokens (<token>) mark unresolved template values produced by suggested-command templates and the live-workflow values skeleton",
+    "real_evidence_requirement": "evidence manifests collected from a live environment never contain placeholder tokens; the cutover readiness gate emits placeholder_evidence_value for any hit and the completion audit refuses to declare completion",
+    "self_report_requirement": "the bundle assembler honors a manifest's own validated/issues fields when present and only defaults to validated=true / issues=[] when the manifest omits them"
+  },
+  "receipt_policy": {
+    "metadata_suffix": ".receipt.json",
+    "receipts_never_satisfy_required_evidence_keys": true,
+    "resume_metadata_is_not_evidence": true,
+    "resume_requires_current_catalog_validator_pass": true,
+    "resume_requires_matching_output_size_and_sha256": true
+  },
+  "required_evidence_keys": [
+    "service_deployment",
+    "hardware_smoke",
+    "db_migration",
+    "ingestion_execution",
+    "artifact_sync",
+    "db_only_report_reconstruction",
+    "backup_restore_drill",
+    "identity_policy",
+    "idp_deployment",
+    "rbac_assignment",
+    "extraction_package",
+    "performance_smoke",
+    "frontend_deployment",
+    "frontend_browser_qa"
+  ],
+  "required_top_level": [
+    "schema_version",
+    "provider_id",
+    "cutover_candidate_id",
+    "evaluated_at",
+    "evidence"
+  ],
+  "required_validation_contexts": {
+    "artifact_sync": [],
+    "backup_restore_drill": [],
+    "db_migration": [
+      "central_db_schema"
+    ],
+    "db_only_report_reconstruction": [],
+    "extraction_package": [
+      "extraction_manifest"
+    ],
+    "frontend_browser_qa": [],
+    "frontend_deployment": [],
+    "hardware_smoke": [],
+    "identity_policy": [],
+    "idp_deployment": [],
+    "ingestion_execution": [],
+    "performance_smoke": [],
+    "rbac_assignment": [],
+    "service_deployment": []
+  },
+  "rules": [
+    "validated must be true for every evidence item",
+    "issues must be an empty list for every evidence item",
+    "manifest is required for every evidence item with a dedicated validator",
+    "nested manifests are validated by their dedicated evidence validators",
+    "nested manifests are preferred where dedicated validators exist",
+    "no manifest leaf value may contain an angle-bracket template sentinel (<...>); real evidence carries no placeholder tokens",
+    "a manifest that self-reports validated:false or a non-empty issues list must not be overridden to valid by the bundle assembler"
+  ],
+  "schema_version": 1,
+  "status": "planning_contract"
+}

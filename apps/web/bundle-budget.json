@@ -1,0 +1,18 @@
+{
+  "_doc": "FE-P7 (2026-05-26) production bundle budget. NOT a magic number: maxGzipBytes is DERIVED from a measured baseline (measure-bundle.mjs --build) times a documented headroom factor. Re-measure + re-derive when the baseline legitimately shifts. Rationale + procedure: docs/architecture/frontend/performance-budget.md.",
+  "measuredGzipBytes": 318274,
+  "measuredAt": "2026-06-26",
+  "measuredCommitNote": "Platform workbench UX redesign and local dev origin standardization PR. Re-measured with `npm run measure:bundle -- --build`; reachable bundle baseline moved from 251,641 B to 318,274 B gzip after the new workbench surfaces and supporting UI code.",
+  "headroomFactor": 1.2,
+  "maxGzipBytes": 381929,
+  "initialLoadPathJs": {
+    "_doc": "Wave fe-w4-bundle-observability-cost (2026-07-31) — a SECOND budget on a DIFFERENT metric, using the same measured-derived discipline as the total above. Metric = the entry <script type=\"module\"> in dist/index.html plus every <link rel=\"modulepreload\"> it declares: exactly the JavaScript a user must download before the app can run. Lazily import()ed route and observability chunks are excluded by construction (Vite only preloads the entry's static import graph); CSS and .map files are out of scope. WHY A SECOND METRIC: totalGzipBytes is blind to *when* a chunk is fetched. This wave moved 114,561 B gzip off the initial path and the total barely moved — so a total-only budget scores both this win and its exact regression as 'no change', which is why the defect it was supposed to catch survived for two months.",
+    "measuredGzipBytes": 161064,
+    "measuredRawBytes": 522543,
+    "measuredAt": "2026-07-31",
+    "measuredCommitNote": "Measured on disk with scripts/measure-bundle.mjs (node:zlib level 9). Before, built from pristine ff47ef8a in an isolated worktree with the identical instrument: 886,519 B raw / 275,625 B gzip. After: 522,543 B raw / 161,064 B gzip (-41.1% raw, -41.6% gzip). The metric also counts the four render-blocking <head> scripts (runtime-config / theme-init / density-boot / lang-init, 5,182 B raw total) — they are part of what the browser must fetch, and they are identical on both sides.",
+    "headroomFactor": 1.1,
+    "maxGzipBytes": 177171,
+    "headroomRationale": "10% rather than the total budget's 20%: the initial path is the metric users feel, and it should not silently absorb a whole SDK. The resulting headroom is 16,107 B — deliberately SMALLER than the smallest chunk this wave removed (tracing, 36,414 B gzip), so re-gluing either SDK back into the entry graph trips the gate immediately instead of being swallowed. Ratchet: lower it when a wave measurably shrinks the initial path; raising it needs a recorded justification."
+  }
+}

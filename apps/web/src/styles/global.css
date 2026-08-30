@@ -1,0 +1,4554 @@
+/**
+ * Global CSS — design token SSOT.
+ *
+ * Sprint S1: minimum legible defaults + light/dark theme variables.
+ * Sprint S8 (production checklist) ratchets WCAG AA contrast guarantees
+ * (mirroring backend ThemePalette SSOT — see GUI-PG-2).
+ *
+ * Phase 1 (FE — fe-phase1-ui-foundation, 2026-05-30) — design identity
+ * tokens (§5.0): type/spacing/density scale + status SSOT + motion
+ * vocabulary + tabular-nums for measurement cells + dark-default theme.
+ * The token names are sealed by tests/test_fe_phase1_ui_foundation.py;
+ * primitives in src/ui/ consume these — never inline a color hex.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* ── primitive palette ───────────────────────────────────────────────────
+     Every color literal lives in a light/dark primitive. Semantic tokens below
+     alias those primitives, and component tokens later alias the semantics.
+     The graph is intentionally one-way so a route cannot invent a third
+     palette or quietly diverge from dark mode. */
+  --p-light-surface-bg: #ffffff;
+  --p-light-surface-bg-alt: #f5f6f7;
+  --p-light-surface-border: #d0d4d9;
+  --p-light-transparent: transparent;
+  --p-light-overlay-backdrop: rgba(0, 0, 0, 0.5);
+  --p-light-fg-primary: #1a1d20;
+  --p-light-fg-secondary: #4a4f55;
+  /* STATE token, not a hierarchy rung. WCAG 1.4.3 exempts inactive controls
+     from the 4.5:1 minimum, which is why this value is allowed to sit at
+     3.22:1 — so it may only dress things that are actually inactive. Readable
+     text that just wants to be quieter uses `--fg-secondary`; borrowing this
+     one imports the exemption where it does not apply (W4-A T6, 2026-07-31). */
+  --p-light-fg-disabled: #8a9098;
+  /* WCAG AA: darkened from #0b66ff, which met 4.5:1 against --surface-bg
+     (4.82) but MISSED it against --surface-bg-alt (4.45) — and the global
+     link rule colours every anchor with this token, on both surfaces.
+     Now 5.42 / 5.01. (Same correction --status-running-fg already carries.)
+     NOTE: comments inside this rule must contain no closing-brace character —
+     the vitest token parser slices at the first one and does not strip
+     comments, so prose alone can truncate the token block. */
+  --p-light-accent: #0a5fed;
+  --p-light-accent-fg: #ffffff;
+
+  /* Legacy 4-status palette — retained for backward compat (existing
+     route CSS classes still read these). Phase 1 introduces the full
+     status SSOT below as the forward path. */
+  --p-light-status-pass: #1f7a4a;
+  --p-light-status-fail: #b30000;
+  --p-light-status-warn: #946a00; /* WCAG AA: darkened from #b58300 (3.38) → 4.86 vs #fff */
+  --p-light-status-na: #6b7176;
+
+  /* ── Phase 1 §5.0-4 — status SSOT (StatusBadge consumer) ─────────────────
+     7 base kinds pass/fail/running/stale/missing/claimed/duplicate, plus the
+     draft/published lifecycle kinds added below (c3-status-kind, 2026-06-17).
+     Color alone is never
+     a status signal (StatusBadge always renders icon + label together —
+     §5.2 "상태는 색상만으로 표현하지 않고 텍스트/아이콘/role을 함께 쓴다").
+     Icon glyphs sit alongside as data tokens so primitive code is fully
+     token-driven. */
+  --p-light-status-pass-fg: #1e7849; /* WCAG AA 4.51 vs composited badge tint (design-token-conformance) */
+  --p-light-status-pass-bg: rgba(31, 122, 74, 0.14);
+  --status-pass-icon: '\2713'; /* ✓ */
+  --p-light-status-fail-fg: #b30000;
+  --p-light-status-fail-bg: rgba(179, 0, 0, 0.12);
+  --status-fail-icon: '\2715'; /* ✕ */
+  --p-light-status-running-fg: #0956d8; /* WCAG AA 5.17 vs the composited running badge tint */
+  --p-light-status-running-bg: rgba(11, 102, 255, 0.12);
+  --status-running-icon: '\25D0'; /* ◐ */
+  --p-light-status-stale-fg: #8a6300; /* WCAG AA 4.53 vs composited badge tint (was #946a00, 4.05) */
+  --p-light-status-stale-bg: rgba(148, 106, 0, 0.14);
+  --status-stale-icon: '\24D8'; /* ⓘ */
+  --p-light-status-missing-fg: #656a6f; /* WCAG AA 4.58 vs composited badge tint (was #6b7176, 4.14) */
+  --p-light-status-missing-bg: rgba(107, 113, 118, 0.14);
+  --status-missing-icon: '\2298'; /* ⊘ */
+  --p-light-status-claimed-fg: #6a3fb3;
+  --p-light-status-claimed-bg: rgba(106, 63, 179, 0.14);
+  --status-claimed-icon: '\1F512'; /* 🔒 */
+  --p-light-status-duplicate-fg: #a64d10;
+  --p-light-status-duplicate-bg: rgba(166, 77, 16, 0.14);
+  --status-duplicate-icon: '\26A0'; /* ⚠ */
+  /* test-plan lifecycle (c3-status-kind, 2026-06-17) — draft authoring +
+     publish are first-class status kinds, no longer borrowing stale/pass.
+     Hollow→filled diamond conveys the draft→published progression. */
+  --p-light-status-draft-fg: #46586b;
+  --p-light-status-draft-bg: rgba(70, 88, 107, 0.14);
+  --status-draft-icon: '\25C7'; /* ◇ */
+  --p-light-status-published-fg: #187564; /* WCAG AA 4.60 vs composited badge tint (was #197a68, 4.30) */
+  --p-light-status-published-bg: rgba(25, 122, 104, 0.14);
+
+  /* ── semantic color aliases ────────────────────────────────────────────── */
+  --surface-bg: var(--p-light-surface-bg);
+  --surface-bg-alt: var(--p-light-surface-bg-alt);
+  --surface-border: var(--p-light-surface-border);
+  --surface-transparent: var(--p-light-transparent);
+  --overlay-backdrop: var(--p-light-overlay-backdrop);
+  --fg-primary: var(--p-light-fg-primary);
+  --fg-secondary: var(--p-light-fg-secondary);
+  --fg-disabled: var(--p-light-fg-disabled);
+  --accent: var(--p-light-accent);
+  --accent-fg: var(--p-light-accent-fg);
+  --status-pass: var(--p-light-status-pass);
+  --status-fail: var(--p-light-status-fail);
+  --status-warn: var(--p-light-status-warn);
+  --status-na: var(--p-light-status-na);
+  --status-pass-fg: var(--p-light-status-pass-fg);
+  --status-pass-bg: var(--p-light-status-pass-bg);
+  --status-fail-fg: var(--p-light-status-fail-fg);
+  --status-fail-bg: var(--p-light-status-fail-bg);
+  --status-running-fg: var(--p-light-status-running-fg);
+  --status-running-bg: var(--p-light-status-running-bg);
+  --status-stale-fg: var(--p-light-status-stale-fg);
+  --status-stale-bg: var(--p-light-status-stale-bg);
+  --status-missing-fg: var(--p-light-status-missing-fg);
+  --status-missing-bg: var(--p-light-status-missing-bg);
+  --status-claimed-fg: var(--p-light-status-claimed-fg);
+  --status-claimed-bg: var(--p-light-status-claimed-bg);
+  --status-duplicate-fg: var(--p-light-status-duplicate-fg);
+  --status-duplicate-bg: var(--p-light-status-duplicate-bg);
+  --status-draft-fg: var(--p-light-status-draft-fg);
+  --status-draft-bg: var(--p-light-status-draft-bg);
+  --status-published-fg: var(--p-light-status-published-fg);
+  --status-published-bg: var(--p-light-status-published-bg);
+  --status-published-icon: '\25C6'; /* ◆ */
+
+  /* State glyphs (§M8.4). Empty / error must be distinguishable from loading
+     and from each other without relying on colour alone — same discipline as
+     the `--status-*-icon` set above. */
+  --state-empty-icon: '\2205'; /* ∅ */
+  --state-error-icon: '\26A0'; /* ⚠ */
+
+  /* Per-failure-mode glyphs (§M8.6). One token per `ErrorVariant` in
+     `ui/error-variants.ts` — the icon half of the variant contract. */
+  --error-instrument-offline-icon: '\1F50C'; /* 🔌 */
+  --error-scpi-timeout-icon: '\23F1'; /* ⏱ */
+  --error-sample-not-selected-icon: '\1F4E6'; /* 📦 */
+  --error-antenna-gain-missing-icon: '\1F4E1'; /* 📡 */
+  --error-dccf-missing-icon: '\1F4C9'; /* 📉 */
+  --error-forbidden-icon: '\1F512'; /* 🔒 */
+
+  /* ── L1 dark primitive palette — the dark scale defined exactly ONCE ──────
+     The two dark trigger blocks below (`@media (prefers-color-scheme: dark)`
+     and `:root[data-theme='dark']`) reference these instead of repeating hex
+     literals, so every dark colour is single-sourced (no value lives in two
+     places). The light scale is the :root semantic default above — it is not
+     duplicated, so it needs no separate primitive. Layering:
+     primitive (--p-dark-*) → semantic (--surface-bg / --status-*) → component. */
+  --p-dark-surface-bg: #0b0d10;
+  --p-dark-surface-bg-alt: #14171b;
+  --p-dark-surface-border: #2a3037;
+  --p-dark-transparent: transparent;
+  --p-dark-overlay-backdrop: rgba(0, 0, 0, 0.5);
+  --p-light-control-border: #767d85;
+  --p-light-overflow-shadow: rgba(0, 0, 0, 0.12);
+  --p-light-shadow-color: rgba(15, 20, 26, 0.1);
+  --p-layout-max-width: 1440px;
+  --p-layout-gutter: 24px;
+  --p-layout-workbench-rail-width: 22rem;
+  --p-dark-control-border: #6c7278;
+  --p-dark-fg-primary: #e7eaee;
+  --p-dark-fg-secondary: #b0b6bd;
+  --p-dark-fg-disabled: #6c7278;
+  --p-dark-accent: #5aa0ff;
+  --p-dark-accent-fg: #0b0d10;
+  --p-dark-status-pass: #3fb37f;
+  --p-dark-status-fail: #ff6b6b;
+  --p-dark-status-warn: #d6a13c;
+  --p-dark-status-na: #8a9098;
+  --p-dark-status-running: #5aa0ff;
+  --p-dark-status-stale: #d6a13c;
+  --p-dark-status-missing: #8a9098;
+  --p-dark-status-claimed: #b58dff;
+  --p-dark-status-duplicate: #ff8c42;
+  --p-dark-status-draft: #8aa9c9;
+  --p-dark-status-published: #46c2a4;
+  --p-dark-status-pass-bg: rgba(63, 179, 127, 0.16);
+  --p-dark-status-fail-bg: rgba(255, 107, 107, 0.16);
+  --p-dark-status-running-bg: rgba(90, 160, 255, 0.16);
+  --p-dark-status-stale-bg: rgba(214, 161, 60, 0.16);
+  --p-dark-status-missing-bg: rgba(138, 144, 152, 0.16);
+  --p-dark-status-claimed-bg: rgba(181, 141, 255, 0.16);
+  --p-dark-status-duplicate-bg: rgba(255, 140, 66, 0.16);
+  --p-dark-status-draft-bg: rgba(138, 169, 201, 0.16);
+  --p-dark-status-published-bg: rgba(70, 194, 164, 0.16);
+  --p-dark-overflow-shadow: rgba(0, 0, 0, 0.35);
+  /* W2 §M4.2 — dark shadows need a deeper alpha than light ones: on a near
+     black surface a 10% shadow is invisible, so depth there is carried
+     jointly by this stronger ambient colour and the (already lighter)
+     --p-dark-surface-border. */
+  --p-dark-shadow-color: rgba(0, 0, 0, 0.55);
+
+  /* ── component aliases ──────────────────────────────────────────────────
+     Components consume these names rather than reaching across the semantic
+     layer. Theme and density changes therefore flow through one contract. */
+  --c-button-bg-primary: var(--accent);
+  --c-button-fg-primary: var(--accent-fg);
+  --c-button-bg-secondary: var(--control-bg);
+  --c-button-fg-secondary: var(--control-fg);
+  --c-button-bg-danger: var(--status-fail);
+  --c-button-fg-danger: var(--accent-fg);
+  --c-button-bg-ghost: var(--surface-transparent);
+  --c-button-fg-ghost: var(--fg-primary);
+  --c-button-border: var(--control-border);
+  --c-button-border-primary: var(--accent);
+  --c-button-border-danger: var(--status-fail);
+  --c-button-border-ghost: var(--surface-transparent);
+  --c-button-bg-disabled: var(--control-bg-readonly);
+  --c-button-fg-disabled: var(--control-fg-disabled);
+  --c-button-height-sm: var(--space-8);
+  --c-button-height-md: var(--control-height);
+  --c-button-height-lg: calc(var(--space-8) + var(--space-2));
+  --c-button-padding-inline: var(--control-pad-inline);
+  --c-button-gap: var(--space-2);
+
+  --c-field-label: var(--fg-secondary);
+  --c-field-help: var(--fg-secondary);
+  --c-field-error: var(--status-fail-fg);
+  --c-field-success: var(--status-pass-fg);
+  --c-field-gap: var(--space-1);
+
+  --c-card-surface: var(--surface-bg);
+  --c-card-surface-alt: var(--surface-bg-alt);
+  --c-card-border: var(--surface-border);
+  --c-card-radius: var(--radius-lg);
+  --c-card-shadow: var(--elevation-0);
+  --c-card-padding: var(--space-4);
+
+  --c-toolbar-gap: var(--space-3);
+  --c-toolbar-padding-block: var(--space-3);
+  --c-toolbar-border: var(--surface-border);
+
+  --c-badge-fg: var(--fg-primary);
+  --c-badge-radius: var(--radius-pill);
+  --c-badge-padding-inline: var(--space-2);
+
+  --c-layout-max-width: var(--layout-max-width);
+  --c-layout-gutter: var(--layout-gutter);
+  --c-workbench-gap: var(--space-5);
+  --c-workbench-rail-top: var(--space-4);
+  --c-workbench-main-track: minmax(0, 1fr);
+  --c-workbench-rail-track: minmax(0, var(--layout-workbench-rail-width));
+  --c-condition-list-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+
+  /* Layout */
+  --layout-max-width: var(--p-layout-max-width);
+  --layout-gutter: var(--p-layout-gutter);
+  --layout-workbench-rail-width: var(--p-layout-workbench-rail-width);
+  --header-height: 56px;
+  --app-sidebar-width: 296px;
+
+  /* ── Responsive breakpoint SSOT ──────────────────────────────────────────
+     Plain CSS cannot read a custom property inside a `@media` condition, so the
+     functional px literal is authored EXACTLY ONCE — in the `.app-nav` collapse
+     query at the foot of this file (`max-width: 1023.98px` == `--bp-lg − 0.02`).
+     These tokens are the documented single source for those values and are read
+     by the e2e layout smoke via `getComputedStyle`, so the test asserts the same
+     threshold the stylesheet uses instead of re-hardcoding a number. `--bp-lg`
+     is the nav-collapse threshold: at/above it the grouped nav is inline (and
+     scrolls inside the header if cramped); below it (tablet + mobile) it
+     collapses behind the compact menu disclosure. A drift guard
+     (test_frontend_architecture_conformance) seals token == @media literal.
+
+     W3 (§M6) widened the scale from one working threshold to three. The four
+     bands the stylesheet implements are:
+       phone    < --bp-sm    single flow, tables become card lists
+       compact  --bp-sm … --bp-md-1   one column, `detail` columns fold into a
+                                      per-row overflow line (no information loss)
+       tablet   --bp-md … --bp-lg-1   one column, full table + horizontal scroll
+       desktop  >= --bp-lg   two-column workbench
+     Every token below is consumed by at least one `@media` block at the foot of
+     this file (sealed by TestBreakpointScaleIsFullyConsumed). */
+  --bp-sm: 640px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+
+  /* ── Touch targets (§M7.3) ───────────────────────────────────────────────
+     FCC operators drive this UI standing at a chamber, often gloved, so WCAG
+     2.5.5 AAA (44px) is the starting point rather than the ceiling. `min` is
+     the floor applied to every compact-band control; `glove` is the opt-in
+     upper rung reserved for the controls that are actually operated with
+     gloves on (nav disclosure, density switch). The expansion is applied as a
+     transparent `::after` overlay so the VISUAL size of a control never
+     changes — a blanket `min-height` would deform square controls — and it is
+     declared mobile-only, so desktop density cannot regress by construction.
+     px literals here are the SSOT; `.touch-target` consumers must not restate
+     them (sealed by TestTouchTargetTokenSSOT). */
+  --touch-target-min: 48px;
+  --touch-target-glove: 56px;
+
+  /* ── Phase 1 §5.0-2 — type scale ─────────────────────────────────────────
+     Operator-tool reading scale. W2 (§M1) widened it to 11/12/14/16/20/26
+     and restored the hierarchy: the old top rung was `lg` 20px for h1, only
+     1.43× the 14px body, so a page title and a metric value read as peers.
+     h1 now takes `xl` (1.86× body) and h2 rises from `md` to `lg`, which
+     also frees `md` for h3 / emphasised values.
+
+     Rung roles — deliberately narrow so the scale cannot drift back into a
+     free-for-all:
+       2xs (11) dense metadata ONLY — timestamps, management numbers,
+                legends. NEVER body text, form labels or buttons (WCAG 1.4.4
+                lower bound is close).
+       xs  (12) captions, uppercase micro labels, table headers.
+       sm  (14) body default.
+       md  (16) h3, emphasised values.
+       lg  (20) h2 (SectionBand), MetricStrip value.
+       xl  (26) h1 (PageHeader).
+
+     `--font-size-base` was removed here: it duplicated `sm` (both 14px) with
+     two consumers, so it was a second name for one fact. NEVER inline a
+     font-size literal — primitives read from this scale. */
+  --font-size-2xs: 11px;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 26px;
+  --line-height-base: 1.55;
+  --line-height-tight: 1.3;
+
+  /* ── W2 §M2 — weight + tracking vocabulary ───────────────────────────────
+     Before W2 the stylesheet declared `font-weight: 600` 46 times and 400
+     once: a single "not normal" tier doing the work of a hierarchy. The
+     three rungs split that mass by role —
+       semibold  h1/h2/card titles + emphasised numerics
+       medium    table headers, micro labels, button/action text
+       normal    captions, body, supporting descriptions
+     `font-weight` literals are banned outside this block (`inherit` aside);
+     tests/test_frontend_visual_language.py seals it.
+
+     Tracking is a two-token vocabulary on purpose. Optical letter-spacing
+     only has two jobs here: pull large titles slightly together, and open up
+     small uppercase labels. The pre-W2 spread (0.01 / 0.02 / 0.04em) encoded
+     no such distinction — the 0.02 and 0.04 sites were the same kind of
+     uppercase micro label, so they collapse into one token. */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --tracking-tight: -0.01em; /* titles ≥ 20px */
+  --tracking-wide: 0.04em; /* uppercase micro labels */
+
+  /* ── W2 §M3 — radius scale (PRD cap: 8px) ────────────────────────────────
+     Assignment rule, applied uniformly (the pre-W2 8px/6px split was
+     unprincipled — `.auth-failure` 8px vs its own `.auth-failure__retry`
+     6px encoded no decision):
+       pill  badges + chips + progress track
+       lg    panels, cards, table wrappers, overlays
+       md    inputs, buttons and other small controls
+       sm    micro elements inside a surface (skeleton cells, kbd glyphs) */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+
+  /* ── W2 §M4 — elevation scale ────────────────────────────────────────────
+     `var()` inside a custom property is substituted at *use* time, so these
+     three need no per-theme duplicate: remapping --shadow-color in the dark
+     blocks re-tints the whole scale. Surface separation in everyday UI is
+     the job of --surface-* + a 1px border, so elevation-0 is the default and
+     2/3 are reserved for genuine overlays (PRD excludes heavy shadows from
+     routine use). */
+  --shadow-color: var(--p-light-shadow-color);
+  --elevation-0: none;
+  --elevation-1: 0 1px 2px var(--shadow-color); /* sticky header, hover lift */
+  --elevation-2: 0 4px 12px var(--shadow-color); /* dropdown, popover */
+  --elevation-3: 0 12px 32px var(--shadow-color); /* modal, drawer, drag lift */
+
+  /* ── Phase 1 §5.0-2 — spacing scale (multiples of 4) ─────────────────────
+     Inset/gutter SSOT. The 7-rung scale (1·2·3·4·5·6·8) covers compact
+     toolbar gaps to section bands; rung 7 is intentionally omitted (1 < 7
+     < 8 reads as a continuous progression). */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* ── Phase 1 §5.0-2 — density tokens (comfortable default) ──────────────
+     "dense but readable" reified as measurable tokens. The default is
+     comfortable (36px row, 8/12 inner padding); `[data-density="compact"]`
+     ratchets to the dense ratio (28px row, 4/8 inner padding) for power
+     users / large session tables. */
+  --row-height: 36px;
+  --cell-pad-y: 8px;
+  --cell-pad-x: 12px;
+
+  /* Native control foundation. Component rules may refine layout, but every
+     ordinary field starts from this semantic contract. Special-purpose
+     widgets (checkbox/radio/range/file/date/color) deliberately retain their
+     platform rendering and are not reset with `appearance: none`. */
+  --control-height: var(--row-height);
+  --control-pad-inline: var(--cell-pad-x);
+  --control-bg: var(--surface-bg);
+  --control-bg-hover: var(--surface-bg-alt);
+  --control-bg-active: var(--surface-border);
+  --control-bg-readonly: var(--surface-bg-alt);
+  --control-fg-disabled: var(--fg-disabled);
+  --control-fg: var(--fg-primary);
+  --control-border: var(--p-light-control-border);
+  --control-border-hover: var(--fg-secondary);
+  --control-border-invalid: var(--status-fail);
+  --control-focus-ring: var(--accent);
+  --control-placeholder: var(--fg-secondary);
+
+  /* ── Phase 1 §5.0-1A typography ─────────────────────────────────────────
+     Noto Sans KR Variable is self-hosted through the Fontsource package imported
+     by main.tsx (OFL-1.1, local Vite assets). The variable face supplies the
+     existing 400/500/600 hierarchy without depending on the operator OS; the
+     platform Korean stacks remain fallback safety. Mono stays intentionally
+     system-provided until its separate self-hosting decision. */
+  --font-sans: 'Noto Sans KR Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+
+  /* ── Phase 1 §5.0-5 — motion vocabulary (restraint by default) ───────────
+     Three tiers for the rare high-impact moment (claim acquired, validation
+     reveal, draft saved). Routine state changes use --motion-fast or none.
+     The `prefers-reduced-motion: reduce` cascade below collapses every tier
+     to 0 so the system never violates the user's OS-level preference. */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-emphasis: 240ms;
+  --motion-easing: cubic-bezier(0.2, 0, 0.2, 1);
+  /* W2 §M5.2 — entry/exit pair, the only additions. Entry decelerates into
+     rest, exit accelerates away; both are asymmetric-but-monotonic, so
+     nothing overshoots. spring/bounce curves are a standing exclusion
+     (contract §1): this UI is stared at for hours next to a chamber and
+     motion that draws the eye back is a cost, not a delight. */
+  --motion-easing-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --motion-easing-accelerate: cubic-bezier(0.4, 0, 1, 1);
+
+  /* DataTable wrapper — Phase 1 §5.1 horizontal overflow.
+     Purpose-specific and deliberately NOT folded into --shadow-color: this
+     tints an *inset* shadow that signals "content continues past this edge",
+     an affordance rather than depth, and it needs a heavier alpha than the
+     ambient elevation colour to stay legible against --surface-bg-alt.
+     Its one consumer is `.data-table-overflow`; the nav panel that used to
+     borrow it now takes --elevation-2, which is what it actually meant. */
+  --datatable-overflow-shadow: var(--p-light-overflow-shadow);
+}
+
+/* ── dark semantic remap — references the L1 dark primitives (no hex here).
+   Two trigger channels: OS preference (no explicit theme) + explicit toggle.
+   Both remap the SAME semantic tokens to the SAME single-sourced primitives. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --surface-bg: var(--p-dark-surface-bg);
+    --surface-bg-alt: var(--p-dark-surface-bg-alt);
+    --surface-border: var(--p-dark-surface-border);
+    --surface-transparent: var(--p-dark-transparent);
+    --overlay-backdrop: var(--p-dark-overlay-backdrop);
+    --control-border: var(--p-dark-control-border);
+    --fg-primary: var(--p-dark-fg-primary);
+    --fg-secondary: var(--p-dark-fg-secondary);
+    --fg-disabled: var(--p-dark-fg-disabled);
+    --accent: var(--p-dark-accent);
+    --accent-fg: var(--p-dark-accent-fg);
+
+    --status-pass: var(--p-dark-status-pass);
+    --status-fail: var(--p-dark-status-fail);
+    --status-warn: var(--p-dark-status-warn);
+    --status-na: var(--p-dark-status-na);
+
+    --status-pass-fg: var(--p-dark-status-pass);
+    --status-pass-bg: var(--p-dark-status-pass-bg);
+    --status-fail-fg: var(--p-dark-status-fail);
+    --status-fail-bg: var(--p-dark-status-fail-bg);
+    --status-running-fg: var(--p-dark-status-running);
+    --status-running-bg: var(--p-dark-status-running-bg);
+    --status-stale-fg: var(--p-dark-status-stale);
+    --status-stale-bg: var(--p-dark-status-stale-bg);
+    --status-missing-fg: var(--p-dark-status-missing);
+    --status-missing-bg: var(--p-dark-status-missing-bg);
+    --status-claimed-fg: var(--p-dark-status-claimed);
+    --status-claimed-bg: var(--p-dark-status-claimed-bg);
+    --status-duplicate-fg: var(--p-dark-status-duplicate);
+    --status-duplicate-bg: var(--p-dark-status-duplicate-bg);
+    --status-draft-fg: var(--p-dark-status-draft);
+    --status-draft-bg: var(--p-dark-status-draft-bg);
+    --status-published-fg: var(--p-dark-status-published);
+    --status-published-bg: var(--p-dark-status-published-bg);
+
+    --datatable-overflow-shadow: var(--p-dark-overflow-shadow);
+    --shadow-color: var(--p-dark-shadow-color);
+  }
+}
+
+/* ── explicit dark theme (forces dark regardless of OS) ───────────────────── */
+:root[data-theme='dark'] {
+  --surface-bg: var(--p-dark-surface-bg);
+  --surface-bg-alt: var(--p-dark-surface-bg-alt);
+  --surface-border: var(--p-dark-surface-border);
+  --surface-transparent: var(--p-dark-transparent);
+  --overlay-backdrop: var(--p-dark-overlay-backdrop);
+  --control-border: var(--p-dark-control-border);
+  --fg-primary: var(--p-dark-fg-primary);
+  --fg-secondary: var(--p-dark-fg-secondary);
+  --fg-disabled: var(--p-dark-fg-disabled);
+  --accent: var(--p-dark-accent);
+  --accent-fg: var(--p-dark-accent-fg);
+
+  --status-pass: var(--p-dark-status-pass);
+  --status-fail: var(--p-dark-status-fail);
+  --status-warn: var(--p-dark-status-warn);
+  --status-na: var(--p-dark-status-na);
+
+  --status-pass-fg: var(--p-dark-status-pass);
+  --status-pass-bg: var(--p-dark-status-pass-bg);
+  --status-fail-fg: var(--p-dark-status-fail);
+  --status-fail-bg: var(--p-dark-status-fail-bg);
+  --status-running-fg: var(--p-dark-status-running);
+  --status-running-bg: var(--p-dark-status-running-bg);
+  --status-stale-fg: var(--p-dark-status-stale);
+  --status-stale-bg: var(--p-dark-status-stale-bg);
+  --status-missing-fg: var(--p-dark-status-missing);
+  --status-missing-bg: var(--p-dark-status-missing-bg);
+  --status-claimed-fg: var(--p-dark-status-claimed);
+  --status-claimed-bg: var(--p-dark-status-claimed-bg);
+  --status-duplicate-fg: var(--p-dark-status-duplicate);
+  --status-duplicate-bg: var(--p-dark-status-duplicate-bg);
+  --status-draft-fg: var(--p-dark-status-draft);
+  --status-draft-bg: var(--p-dark-status-draft-bg);
+  --status-published-fg: var(--p-dark-status-published);
+  --status-published-bg: var(--p-dark-status-published-bg);
+
+  --datatable-overflow-shadow: var(--p-dark-overflow-shadow);
+  --shadow-color: var(--p-dark-shadow-color);
+}
+
+/* ── Phase 1 §5.0-2 — compact density override ───────────────────────────── */
+:root[data-density='compact'] {
+  --row-height: 28px;
+  --cell-pad-y: 4px;
+  --cell-pad-x: 8px;
+}
+
+/* ── Phase 1 §5.0-5 — reduced-motion guarantee ────────────────────────────
+   deliberate @media split: this half neutralises the duration tokens and must
+   sit next to the `:root` token table it overrides, so the two are read and
+   edited together. The other half (`.progress-bar--indeterminate`) lives with
+   the component because a keyframe `animation` cannot be switched off by a
+   duration token — it needs its own escape hatch. Merging them would put the
+   token override 1,600 lines away from the tokens. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-emphasis: 0ms;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--surface-bg);
+  color: var(--fg-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--accent);
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--control-focus-ring);
+  outline-offset: 2px;
+}
+
+/* ── Native control foundation ────────────────────────────────────────────
+   Low-specificity selectors make this a true baseline: component classes can
+   override it without `!important`. The type allow-list prevents the common
+   blanket-reset bug that damages native checkboxes, pickers and file inputs. */
+:where(
+    input[type='text'],
+    input[type='search'],
+    input[type='email'],
+    input[type='password'],
+    input[type='url'],
+    input[type='tel'],
+    input[type='number'],
+    input:not([type]),
+    select,
+    textarea
+  ) {
+  min-height: var(--control-height);
+  max-width: 100%;
+  padding-block: var(--cell-pad-y);
+  padding-inline: var(--control-pad-inline);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  color: var(--control-fg);
+  font: inherit;
+  line-height: var(--line-height-tight);
+  transition:
+    border-color var(--motion-fast) var(--motion-easing),
+    background-color var(--motion-fast) var(--motion-easing);
+}
+
+/* Date/time controls keep their native picker affordance, but their intrinsic
+   platform height must still participate in the shared form-control rhythm. */
+:where(
+    input[type='date'],
+    input[type='datetime-local'],
+    input[type='month'],
+    input[type='time'],
+    input[type='week']
+  ) {
+  min-height: var(--control-height);
+  max-width: 100%;
+  padding-block: var(--cell-pad-y);
+  padding-inline: var(--control-pad-inline);
+}
+
+:where(select) {
+  color-scheme: inherit;
+}
+
+:where(textarea) {
+  min-height: calc(var(--control-height) * 2);
+  resize: vertical;
+}
+
+:where(
+    input[type='text'],
+    input[type='search'],
+    input[type='email'],
+    input[type='password'],
+    input[type='url'],
+    input[type='tel'],
+    input[type='number'],
+    input:not([type]),
+    select,
+    textarea
+  ):hover:not(:disabled):not([aria-disabled='true']):not(:focus) {
+  border-color: var(--control-border-hover);
+}
+
+:where(input, textarea)::placeholder {
+  color: var(--control-placeholder);
+  opacity: 1;
+}
+
+:where(input, select, textarea)[aria-invalid='true'],
+:where(input, select, textarea):user-invalid {
+  border-color: var(--control-border-invalid);
+}
+
+:where(input, select, textarea):disabled,
+:where(input, select, textarea)[aria-disabled='true'] {
+  cursor: not-allowed;
+  color: var(--control-fg-disabled);
+  opacity: 1;
+}
+
+:where(input, textarea):read-only {
+  background: var(--control-bg-readonly);
+}
+
+:where(button, input[type='button'], input[type='submit'], input[type='reset']) {
+  min-height: var(--control-height);
+  padding-inline: var(--control-pad-inline);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  color: var(--control-fg);
+  font: inherit;
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fast) var(--motion-easing),
+    background-color var(--motion-fast) var(--motion-easing);
+}
+
+:where(button, input[type='button'], input[type='submit'], input[type='reset']):hover:not(
+    :disabled
+  ):not([aria-disabled='true']) {
+  border-color: var(--control-border-hover);
+  background: var(--control-bg-hover);
+}
+
+:where(button, input[type='button'], input[type='submit'], input[type='reset']):active:not(
+    :disabled
+  ):not([aria-disabled='true']) {
+  background: var(--control-bg-active);
+}
+
+:where(button, input[type='button'], input[type='submit'], input[type='reset']):disabled,
+:where(
+    button,
+    input[type='button'],
+    input[type='submit'],
+    input[type='reset']
+  )[aria-disabled='true'] {
+  cursor: not-allowed;
+  color: var(--control-fg-disabled);
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--app-sidebar-width) minmax(0, 1fr);
+  grid-template-rows: 1fr;
+  min-height: 100vh;
+  background: var(--surface-bg);
+}
+
+.app-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-5);
+  padding: var(--space-6) var(--space-5);
+  border-right: 1px solid var(--surface-border);
+  background: var(--surface-bg-alt);
+  position: sticky;
+  top: 0;
+  min-height: 100vh;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.app-title {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-lg);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* Task-flow nav grouping (roadmap Phase 0). The nav renders one
+   `.app-nav__group` per task cluster; each holds a small caption label plus
+   the existing link list. A larger inter-group gap + a divider on every group
+   after the first reads as visual grouping without leaving the header band.
+
+   Responsive shell (operator-ux-responsive-shell): `.app-nav` flexes and may
+   shrink (`min-width: 0`); the grouped links live in `.app-nav__panel`. On the
+   desktop side the panel is an inline flex row that scrolls horizontally inside
+   the header if cramped (never expands the document); below `--bp-lg` the panel
+   becomes an absolutely-positioned dropdown gated by the toggle (see the
+   collapse query at the foot of this file). */
+.app-nav {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Desktop: the compact menu button is hidden — the panel shows inline. */
+button.app-nav__toggle {
+  display: none;
+}
+
+.app-nav__panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.app-nav__group {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.app-nav__group:not(:first-child) {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--surface-border);
+}
+
+.app-nav__group-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  /* A group caption is READ, not disabled — `--fg-disabled` put it at 2.97:1
+     on the rail (`--surface-bg-alt`) on all 16 operator routes. The caption
+     already reads as secondary through size + uppercase + tracking; it does
+     not need a colour that is exempt from the contrast minimum. */
+  color: var(--fg-secondary);
+  /* Korean group captions never fragment mid-word; Latin captions stay on one
+     line in the inline rail. */
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+/* §5 설정 — collapsible admin group via native <details>. The .app-nav__group
+ * flex row applies when open (summary + links side by side); a closed group
+ * shows only the summary, keeping the daily 시험하기/결과 flow uncluttered. */
+.app-nav__group--collapsible > summary {
+  cursor: pointer;
+}
+
+.app-nav ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-link {
+  display: block;
+  text-decoration: none;
+  color: var(--fg-secondary);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  /* Korean link labels keep-all so a 보고서 / 측정 작업 never breaks into
+     syllable fragments; the inline rail keeps each link on one line. */
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+.nav-link.active {
+  color: var(--fg-primary);
+  background: var(--surface-bg);
+}
+
+.app-nav__group--project {
+  margin-top: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg);
+}
+
+.app-nav__group--project:not(:first-child) {
+  border-top: 1px solid var(--surface-border);
+}
+
+.app-nav__project-id,
+.app-nav__project-hint {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--fg-secondary);
+}
+
+.app-nav__project-id {
+  word-break: break-all;
+}
+
+/* Compact menu disclosure toggle — hidden on desktop (the `.app-nav__panel`
+   shows inline), revealed below `--bp-lg`. Token-driven, mirrors the existing
+   `.theme-toggle` button affordance for a consistent header control language. */
+.app-nav__toggle {
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-bg);
+  color: var(--fg-primary);
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
+}
+
+.app-nav__toggle:hover {
+  background: var(--surface-bg-alt);
+}
+
+.app-nav__toggle-icon {
+  font-size: var(--font-size-md);
+  line-height: 1;
+}
+
+.app-main {
+  padding: var(--c-layout-gutter);
+  max-width: var(--c-layout-max-width);
+  width: 100%;
+  margin-inline: auto;
+}
+
+/* The main column carries `tabindex="-1"` so the skip-link and the
+   route-change focus move can land on it. Suppress the ring ONLY when the
+   browser judges the focus not keyboard-driven (`:not(:focus-visible)`) — a
+   box around the whole column is noise then. Skip-link activation and
+   keyboard navigation still paint it, which is how a sighted keyboard user
+   sees where focus went. */
+.app-main:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.error-fallback {
+  padding: var(--space-6);
+  border: 1px solid var(--status-fail);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg-alt);
+  color: var(--status-fail);
+}
+
+.overview-operations {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
+  font-family: var(--font-mono);
+  color: var(--fg-secondary);
+}
+
+.overview-operations li {
+  margin: var(--space-1) 0;
+}
+
+/* ─── Home ("오늘 할 일") — tester-ux Phase H. Token-driven, no inline hex. ── */
+.home-subheading {
+  font-size: var(--font-size-md);
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.home-inprogress {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.home-inprogress__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg-alt);
+}
+
+.home-inprogress__name {
+  font-weight: var(--font-weight-medium);
+}
+
+.home-inprogress__link {
+  margin-left: auto;
+  color: var(--accent);
+}
+
+/* ── Workbench layout SSOT (contract M9 / M10) ─────────────────────────────
+   Fifteen route workbenches share one skeleton: an overview strip, a
+   `main + rail` grid, and panels. Each route used to carry its own verbatim
+   copy of that skeleton — ~1,100 lines, roughly 30% of this file — which had
+   already drifted into five different rail widths (`360px`/`320px`/`22rem`/
+   `23rem`/`24rem`) and two sticky behaviours nobody had decided on.
+
+   The rules below are the single definition. Route markup is deliberately
+   untouched: the per-route class names stay, because a shared class would
+   have to be edited into every route file (and `routes/chambers/` is owned by
+   another workstream). Per-route differences are expressed as custom-property
+   overrides or an explicit modifier rule — never as a duplicated block.
+
+   Knobs (override on the route's own element, same specificity, later wins):
+     `.<route>-workbench`
+       --workbench-rail-width           rail track max width
+       --workbench-stack-gap            main/rail vertical rhythm
+     `.<route>-workbench-overview`
+       --workbench-overview-margin
+       --workbench-overview-item-padding
+       --workbench-overview-item-edge   accent bar vs plain left border
+       --workbench-overview-detail-size
+*/
+.chambers-workbench-overview,
+.control-workbench-overview,
+.diagnostics-workbench-overview,
+.fields-workbench-overview,
+.jobs-workbench-overview,
+.membership-workbench-overview,
+.my-projects-workbench-overview,
+.progress-workbench-overview,
+.projects-workbench-overview,
+.providers-workbench-overview,
+.reports-workbench-overview,
+.sessions-workbench-overview,
+.test-plans-workbench-overview {
+  --workbench-overview-margin: 0 0 var(--space-5);
+  --workbench-overview-item-padding: var(--space-3) var(--space-4);
+  --workbench-overview-item-edge: 3px solid var(--accent);
+  --workbench-overview-detail-size: var(--font-size-xs);
+  --workbench-overview-surface: var(--surface-bg-alt);
+  --workbench-overview-border: var(--surface-border);
+
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: var(--workbench-overview-margin);
+}
+
+.chambers-workbench-overview__item,
+.control-workbench-overview__item,
+.diagnostics-workbench-overview__item,
+.fields-workbench-overview__item,
+.jobs-workbench-overview__item,
+.membership-workbench-overview__item,
+.my-projects-workbench-overview__item,
+.progress-workbench-overview__item,
+.projects-workbench-overview__item,
+.providers-workbench-overview__item,
+.reports-workbench-overview__item,
+.sessions-workbench-overview__item,
+.test-plans-workbench-overview__item {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--workbench-overview-item-padding);
+  border: 1px solid var(--workbench-overview-border);
+  border-left: var(--workbench-overview-item-edge);
+  border-radius: var(--radius-lg);
+  background: var(--workbench-overview-surface);
+  box-shadow: var(--elevation-0);
+  color: var(--fg-primary);
+  text-decoration: none;
+  transition:
+    border-color var(--motion-fast) var(--motion-easing),
+    background-color var(--motion-fast) var(--motion-easing),
+    transform var(--motion-fast) var(--motion-easing);
+}
+
+.chambers-workbench-overview__item:hover,
+.control-workbench-overview__item:hover,
+.diagnostics-workbench-overview__item:hover,
+.fields-workbench-overview__item:hover,
+.jobs-workbench-overview__item:hover,
+.membership-workbench-overview__item:hover,
+.my-projects-workbench-overview__item:hover,
+.progress-workbench-overview__item:hover,
+.projects-workbench-overview__item:hover,
+.providers-workbench-overview__item:hover,
+.reports-workbench-overview__item:hover,
+.sessions-workbench-overview__item:hover,
+.test-plans-workbench-overview__item:hover {
+  border-color: var(--accent);
+}
+
+.chambers-workbench-overview__label,
+.control-workbench-overview__label,
+.diagnostics-workbench-overview__label,
+.fields-workbench-overview__label,
+.jobs-workbench-overview__label,
+.membership-workbench-overview__label,
+.my-projects-workbench-overview__label,
+.progress-workbench-overview__label,
+.projects-workbench-overview__label,
+.providers-workbench-overview__label,
+.reports-workbench-overview__label,
+.sessions-workbench-overview__label,
+.test-plans-workbench-overview__label {
+  font-weight: var(--font-weight-medium);
+}
+
+.chambers-workbench-overview__detail,
+.control-workbench-overview__detail,
+.diagnostics-workbench-overview__detail,
+.fields-workbench-overview__detail,
+.jobs-workbench-overview__detail,
+.membership-workbench-overview__detail,
+.my-projects-workbench-overview__detail,
+.progress-workbench-overview__detail,
+.projects-workbench-overview__detail,
+.providers-workbench-overview__detail,
+.reports-workbench-overview__detail,
+.sessions-workbench-overview__detail,
+.test-plans-workbench-overview__detail {
+  color: var(--fg-secondary);
+  font-size: var(--workbench-overview-detail-size);
+}
+
+.chambers-workbench,
+.control-workbench,
+.diagnostics-workbench,
+.fields-workbench,
+.home-workbench,
+.inventory-workbench,
+.jobs-workbench,
+.membership-workbench,
+.my-projects-workbench,
+.progress-workbench,
+.projects-workbench,
+.providers-workbench,
+.reports-workbench,
+.sessions-workbench,
+.test-plans-workbench,
+.test-plans-workbench[data-has-selection='true'] {
+  --workbench-rail-width: var(--layout-workbench-rail-width);
+  --workbench-stack-gap: var(--c-workbench-gap);
+  --workbench-panel-surface: var(--surface-bg);
+  --workbench-panel-border: var(--surface-border);
+  --workbench-panel-shadow: var(--elevation-0);
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, var(--workbench-rail-width));
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.chambers-workbench__main,
+.control-workbench__main,
+.diagnostics-workbench__main,
+.fields-workbench__main,
+.home-workbench__main,
+.jobs-workbench__main,
+.membership-workbench__main,
+.my-projects-workbench__main,
+.progress-workbench__main,
+.projects-workbench__main,
+.providers-workbench__main,
+.reports-workbench__main,
+.sessions-workbench__main,
+.test-plans-workbench__main,
+.chambers-workbench__rail,
+.control-workbench__rail,
+.diagnostics-workbench__rail,
+.fields-workbench__rail,
+.home-workbench__rail,
+.jobs-workbench__rail,
+.membership-workbench__rail,
+.my-projects-workbench__rail,
+.progress-workbench__rail,
+.projects-workbench__rail,
+.providers-workbench__rail,
+.reports-workbench__rail,
+.sessions-workbench__rail {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--workbench-stack-gap);
+}
+
+/* The rail keeps "what do I do next" in view while the operator scrolls a long
+   table in the main column. It un-sticks below `--bp-lg` where it stacks. */
+.chambers-workbench__rail,
+.control-workbench__rail,
+.diagnostics-workbench__rail,
+.fields-workbench__rail,
+.home-workbench__rail,
+.jobs-workbench__rail,
+.membership-workbench__rail,
+.my-projects-workbench__rail,
+.progress-workbench__rail,
+.projects-workbench__rail,
+.providers-workbench__rail,
+.reports-workbench__rail,
+.sessions-workbench__rail,
+.test-plans-workbench__rail {
+  position: sticky;
+  top: var(--space-4);
+}
+
+/* Panels must be allowed to shrink or a wide child (a table, a long token)
+   blows the grid track out. `.progress-workbench-panel` is in this list because
+   the route markup has always used it — the copy-paste era simply never wrote
+   the rule, which only became visible once the definitions were one list. */
+.chambers-workbench-panel,
+.control-workbench-panel,
+.diagnostics-workbench-panel,
+.fields-workbench-panel,
+.home-workbench-panel,
+.inventory-workbench-panel,
+.jobs-workbench-panel,
+.membership-workbench-panel,
+.my-projects-workbench-panel,
+.progress-workbench-panel,
+.projects-workbench-panel,
+.providers-workbench-panel,
+.reports-workbench-panel,
+.sessions-workbench-panel,
+.chambers-next,
+.fields-context,
+.inventory-next,
+.membership-admin,
+.my-projects-create,
+.projects-next {
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--workbench-panel-border);
+  border-radius: var(--radius-lg);
+  background: var(--workbench-panel-surface);
+  box-shadow: var(--workbench-panel-shadow);
+}
+
+.chambers-workbench-panel .section-band,
+.diagnostics-workbench-panel .section-band,
+.inventory-workbench-panel .section-band,
+.jobs-workbench-panel .section-band,
+.membership-workbench-panel .section-band,
+.projects-workbench-panel .section-band,
+.providers-workbench-panel .section-band,
+.reports-workbench-panel .section-band,
+.sessions-workbench-panel .section-band,
+.chambers-next .section-band,
+.diagnostics-next .section-band,
+.inventory-next .section-band,
+.jobs-next .section-band,
+.membership-admin .section-band,
+.projects-next .section-band,
+.providers-next .section-band,
+.sessions-next .section-band {
+  margin-top: 0;
+}
+
+/* Fields and My Projects run a denser rhythm: plain overview cards (no accent
+   edge) that sit between sections rather than above them, and a tighter rail
+   stack. Expressed as knob overrides, not as a second copy of the skeleton. */
+.fields-workbench,
+.my-projects-workbench {
+  --workbench-stack-gap: var(--space-4);
+}
+
+.fields-workbench-overview,
+.my-projects-workbench-overview {
+  --workbench-overview-margin: var(--space-5) 0;
+  --workbench-overview-item-padding: var(--space-3);
+  --workbench-overview-item-edge: 1px solid var(--surface-border);
+  --workbench-overview-detail-size: var(--font-size-sm);
+}
+
+/* Test Plans opens as a full-width list; the readiness rail appears only once a
+   draft is selected, and it is a bordered panel rather than a bare stack. The
+   selected state is already in the shared grid rule above (so the two-column
+   track is declared once); this collapses the *unselected* default, and loses
+   to `[data-has-selection]` on specificity regardless of source order. */
+.test-plans-workbench {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.test-plans-workbench__rail {
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg-alt);
+}
+
+/* Route-local siblings that share the rail's vertical stack rhythm. */
+.fields-context,
+.my-projects-create {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.chambers-workbench-action-panel,
+.reports-project-context,
+.test-plans-create-bar {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface-bg));
+  box-shadow: var(--elevation-1);
+}
+
+.chambers-workbench-action-panel .section-hint,
+.reports-project-context .section-hint,
+.test-plans-create-bar > .section-hint {
+  margin-top: 0;
+}
+
+.test-plans-create-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+.test-plans-create-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg);
+}
+
+.test-plans-create-card--primary {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface-bg));
+}
+
+.test-plans-create-card__title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--fg-primary);
+}
+
+.test-plans-create-card__description {
+  margin: 0;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.reports-project-context__actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-2);
+}
+
+.reports-project-context__action {
+  display: flex;
+  min-width: 0;
+  min-height: var(--touch-target-min);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg);
+  color: var(--fg-primary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  transition:
+    border-color var(--motion-fast) var(--motion-easing),
+    background-color var(--motion-fast) var(--motion-easing),
+    transform var(--motion-fast) var(--motion-easing);
+}
+
+.reports-project-context__action:hover,
+.reports-project-context__action:focus-visible,
+.chambers-workbench-overview__item:hover,
+.control-workbench-overview__item:hover,
+.diagnostics-workbench-overview__item:hover,
+.fields-workbench-overview__item:hover,
+.jobs-workbench-overview__item:hover,
+.membership-workbench-overview__item:hover,
+.my-projects-workbench-overview__item:hover,
+.progress-workbench-overview__item:hover,
+.projects-workbench-overview__item:hover,
+.providers-workbench-overview__item:hover,
+.reports-workbench-overview__item:hover,
+.sessions-workbench-overview__item:hover,
+.test-plans-workbench-overview__item:hover {
+  transform: translateY(-1px);
+}
+
+.reports-project-context__action:hover,
+.reports-project-context__action:focus-visible {
+  border-color: var(--accent);
+}
+
+.progress-next,
+.progress-area-list,
+.progress-bucket-list,
+.progress-bucket {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.progress-area-list {
+  gap: var(--space-5);
+}
+
+.home-steps {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: grid;
+  /* `auto-fit` (not `auto-fill`) collapses empty tracks so the three quick-start
+     cards stretch to fill the row and read as prominent primary actions, while
+     the six onboarding cards still wrap responsively. */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+}
+
+.home-step {
+  display: block;
+  padding: var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg-alt);
+  color: var(--fg-primary);
+  font-size: var(--font-size-md);
+  text-decoration: none;
+  transition:
+    border-color var(--motion-fast) var(--motion-easing),
+    background var(--motion-fast) var(--motion-easing);
+}
+
+.home-step:hover {
+  border-color: var(--accent);
+}
+
+/* Quick-start = the primary "what do I do next" actions. Same 8px token card
+   (no new card system, no nesting, no gradient) emphasized with an accent edge
+   + medium weight so it clearly outranks the onboarding checklist below. */
+.home-steps--primary .home-step {
+  border-left: 3px solid var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Guided onboarding = a quieter numbered checklist. Secondary foreground and a
+   tighter row keep it dense and visually subordinate to the primary actions. */
+.home-steps--guided {
+  gap: var(--space-2);
+}
+
+.home-steps--guided .home-step {
+  font-size: var(--font-size-sm);
+  color: var(--fg-secondary);
+}
+
+/* Test Plans Slice 1 — visible project/draft context. This is intentionally
+   route-scoped until the pattern proves reusable across Work/Results routes. */
+.project-context-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  margin: 0 0 var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg-alt);
+}
+
+.project-context-bar__item {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.project-context-bar__label {
+  flex: 0 0 auto;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.project-context-bar__value,
+.project-context-bar__empty {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-sm);
+}
+
+.project-context-bar__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.project-context-bar__empty {
+  color: var(--fg-secondary);
+}
+
+/* Drafts-list status filter (URL-state Slice 2) — inline label + native select. */
+.test-plans-status-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--fg-secondary);
+}
+
+/* Notice shown when the deep-linked draft (`?draft=`) is excluded from the list
+   by the active status filter — the detail panel stays open, so the conflict is
+   surfaced explicitly with a user-initiated "clear filter" affordance. */
+.test-plans-hidden-selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+}
+
+.test-plans-hidden-selection .status-message {
+  margin: 0;
+}
+
+.test-plans-next-actions {
+  min-width: 0;
+  margin: 0 0 var(--space-5);
+}
+
+.test-plans-next-actions .section-band {
+  margin-top: 0;
+}
+
+.test-plans-next-actions__state {
+  margin: 0 0 var(--space-3);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.test-plans-next-actions__links {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.test-plans-next-actions__link {
+  display: block;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+  color: var(--fg-primary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+.test-plans-next-actions__link:hover {
+  border-color: var(--accent);
+}
+
+/* Readiness rail — "next safe action" summary. */
+.readiness-next {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-4);
+}
+
+.readiness-next__label {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.readiness-next__value {
+  font-size: var(--font-size-sm);
+}
+
+/* Advanced disclosure — power-user surface (bulk CSV edit) folded behind a
+   native <details> so it stays visually secondary to normal row inspection. */
+.advanced-disclosure {
+  margin: var(--space-4) 0 0;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg);
+}
+
+/* Keep the folded form out of layout and keyboard order across engines. The
+   browser default for closed <details> content is not a component contract;
+   making it explicit prevents long forms from overflowing their workbench
+   grid before the operator opens the disclosure. */
+.advanced-disclosure:not([open]) > :not(summary) {
+  display: none;
+}
+
+.advanced-disclosure > :not(summary) {
+  margin-inline: var(--space-4);
+}
+
+.advanced-disclosure > :last-child {
+  margin-bottom: var(--space-4);
+}
+
+.advanced-disclosure__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: baseline;
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  font-weight: var(--font-weight-medium);
+}
+
+.advanced-disclosure__meta {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal);
+}
+
+.reports-preflight-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg-alt);
+}
+
+.progress-next,
+.progress-bucket-list {
+  gap: var(--space-4);
+}
+
+.progress-bucket {
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+}
+
+.progress-quality-warning {
+  margin: var(--space-1) 0 0;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.progress-bucket-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.progress-bucket__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.progress-bucket__label {
+  color: var(--fg-primary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+}
+
+.progress-bucket__hours {
+  color: var(--fg-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-next__context {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+.progress-next__context dt {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.progress-next__context dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: var(--font-weight-medium);
+}
+
+.progress-next__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.progress-next__action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.progress-next__action:hover {
+  border-color: var(--accent);
+  color: var(--fg-primary);
+}
+
+.sessions-next {
+  min-width: 0;
+}
+
+.sessions-next__state {
+  margin: 0 0 var(--space-3);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.sessions-next__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.sessions-next__action {
+  display: block;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+  color: var(--fg-primary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+.sessions-next__action:hover {
+  border-color: var(--accent);
+}
+
+.jobs-next {
+  min-width: 0;
+}
+
+.jobs-next__state {
+  margin: 0 0 var(--space-3);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.jobs-next__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.jobs-next__action {
+  display: block;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+  color: var(--fg-primary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+.jobs-next__action:hover {
+  border-color: var(--accent);
+}
+
+.diagnostics-next {
+  min-width: 0;
+}
+
+.diagnostics-next__state {
+  margin: 0 0 var(--space-3);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.diagnostics-next__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.diagnostics-next__action {
+  display: block;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+  color: var(--fg-primary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+.diagnostics-next__action:hover {
+  border-color: var(--accent);
+}
+
+.providers-next {
+  min-width: 0;
+}
+
+.providers-next__state {
+  margin: 0 0 var(--space-3);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.providers-next__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.providers-next__action {
+  display: block;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+  color: var(--fg-primary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+.providers-next__action:hover {
+  border-color: var(--accent);
+}
+
+.membership-admin__state {
+  margin: 0 0 var(--space-3);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.membership-admin__links {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.membership-admin__link {
+  display: block;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+  color: var(--fg-primary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+.membership-admin__link:hover {
+  border-color: var(--accent);
+}
+
+.projects-next__state {
+  margin: 0 0 var(--space-3);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.projects-next__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.projects-next__action {
+  display: block;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+  color: var(--fg-primary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+.projects-next__action:hover {
+  border-color: var(--accent);
+}
+
+.inventory-next__state {
+  margin: 0 0 var(--space-3);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.inventory-next__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.inventory-next__action {
+  display: block;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+  color: var(--fg-primary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+.inventory-next__action:hover {
+  border-color: var(--accent);
+}
+
+.chambers-next__state {
+  margin: 0 0 var(--space-3);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.chambers-next__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.chambers-next__action {
+  display: block;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+  color: var(--fg-primary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+.chambers-next__action:hover {
+  border-color: var(--accent);
+}
+
+/* ─── Route semantic containers — token-governed spacing rhythm ─────────
+   These route-local containers (reports request detail, session/control
+   list surfaces, sessions condition group, jobs filter) previously relied
+   on bare browser defaults. They share the same `--space-*` scale +
+   secondary-fg + mono tokens as `.overview-operations` so the vertical
+   rhythm is consistent across routes (review-design anti-pattern #2). */
+.report-request {
+  margin: var(--space-3) 0 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-3);
+}
+
+.report-request dt {
+  color: var(--fg-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.report-request dd {
+  margin: 0;
+}
+
+.session-artifacts,
+.control-events {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
+  font-family: var(--font-mono);
+  color: var(--fg-secondary);
+}
+
+.session-artifacts li,
+.control-events li {
+  margin: var(--space-1) 0;
+}
+
+.condition-group {
+  margin: var(--space-4) 0 0;
+}
+
+/* §5④ — a coverage condition row's consolidated status cell: 합/부 verdict
+ * first, then duplicate/repeat/claim chips, wrapping instead of crowding the
+ * condition label. */
+.condition-row__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* §5④ — the coverage matrix's expansion panel: one technology row expands into
+ * its condition rows. A list rather than nested `<tr>`s, so the same markup can
+ * be reused verbatim inside the phone card's `<details>` (M7.2 lossless fold).
+ * Three-part layout on wide bands, single flow when the grid runs out of room. */
+.condition-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.condition-list__item {
+  display: grid;
+  grid-template-columns: var(--c-condition-list-columns);
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.condition-list__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--fg-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* §5⑤ — a condition group's headline verdict + optional re-measure entry,
+ * shown in the SectionBand meta slot. */
+.condition-group__verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.condition-group__remeasure {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.jobs-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  color: var(--fg-secondary);
+}
+
+pre {
+  font-family: var(--font-mono);
+  background: var(--surface-bg-alt);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  overflow-x: auto;
+}
+
+/* ─── Sprint S2 — auth UI ─────────────────────────────────────────────── */
+
+.app-header__controls {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: stretch;
+  flex-shrink: 0;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-bg);
+  color: var(--fg-primary);
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
+}
+
+.theme-toggle:hover {
+  background: var(--surface-bg-alt);
+}
+
+.theme-toggle__icon {
+  font-size: var(--font-size-md);
+  line-height: 1;
+}
+
+.theme-toggle__label {
+  font-size: var(--font-size-sm);
+}
+
+.app-user {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.app-user__name {
+  color: var(--fg-secondary);
+  font-weight: var(--font-weight-medium);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auth-signout-button {
+  border: 1px solid var(--surface-border);
+  background: var(--surface-bg);
+  color: var(--fg-primary);
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
+}
+
+.auth-signout-button:hover:not(:disabled) {
+  background: var(--surface-bg-alt);
+}
+
+.auth-signout-button:disabled {
+  color: var(--fg-disabled);
+  cursor: progress;
+}
+
+.auth-callback,
+.auth-redirect {
+  padding: 48px;
+  text-align: center;
+  color: var(--fg-secondary);
+}
+
+/* Authentication entry surfaces — local sign-in and forced password change
+   intentionally live outside the application shell, but they must still use
+   the same token/primitive language as the operator screens. Keeping this
+   layout here (rather than duplicating inline styles in two routes) makes the
+   first-login workflow visually stable across auth modes and viewport sizes. */
+.login-route,
+.change-password-route {
+  width: min(100% - (var(--space-8) * 2), 520px);
+  margin: 0 auto;
+  padding: var(--space-10) var(--space-8);
+}
+
+.login-route::before,
+.change-password-route::before {
+  display: block;
+  margin-bottom: var(--space-8);
+  color: var(--accent);
+  content: 'FCC Test Platform';
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.login-route h1,
+.change-password-route h1 {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  line-height: var(--line-height-tight);
+}
+
+.login-route > p,
+.change-password-route > p {
+  margin: var(--space-2) 0 var(--space-6);
+  color: var(--fg-secondary);
+}
+
+.login-route form,
+.change-password-route form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg-alt);
+  box-shadow: var(--shadow-sm);
+}
+
+.login-route form .button,
+.change-password-route form .button {
+  align-self: flex-start;
+}
+
+.login-route__error,
+.change-password-route__error {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--control-border-invalid);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg);
+  color: var(--c-field-error);
+}
+
+.auth-failure {
+  margin: var(--space-8) auto;
+  max-width: 640px;
+  padding: var(--space-6);
+  border: 1px solid var(--status-fail);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg-alt);
+}
+
+.auth-failure__title {
+  margin: 0 0 var(--space-2);
+  color: var(--status-fail);
+}
+
+.auth-failure__description {
+  margin: 0 0 var(--space-4);
+  color: var(--fg-primary);
+}
+
+.auth-failure__detail {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.85em;
+  color: var(--fg-secondary);
+  border-color: var(--surface-border);
+}
+
+.auth-failure__retry {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font: inherit;
+}
+
+.auth-failure__retry:hover {
+  filter: brightness(0.95);
+}
+
+/* ─── Phase 1 §5.1 — UI primitive classNames ─────────────────────────────
+ *
+ * Primitives live in src/ui/ and consume these classes. NEVER inline a
+ * color hex / spacing literal in primitive markup — the SSOT lives here
+ * (sealed by tests/test_fe_phase1_ui_foundation.py). Phase 2 routes will
+ * compose these classes; Phase 1 only owns the classes themselves.
+ */
+
+/* Button — one action hierarchy for route, form and shell controls. */
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--c-button-gap);
+  min-width: 0;
+  min-height: var(--c-button-height-md);
+  padding-inline: var(--c-button-padding-inline);
+  border: 1px solid var(--c-button-border);
+  border-radius: var(--radius-md);
+  background: var(--c-button-bg-secondary);
+  color: var(--c-button-fg-secondary);
+  font: inherit;
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fast) var(--motion-easing),
+    background-color var(--motion-fast) var(--motion-easing),
+    color var(--motion-fast) var(--motion-easing);
+}
+
+.button--sm {
+  min-height: var(--c-button-height-sm);
+  font-size: var(--font-size-xs);
+}
+
+.button--lg {
+  min-height: var(--c-button-height-lg);
+  padding-inline: var(--space-4);
+}
+
+.button--primary {
+  border-color: var(--c-button-border-primary);
+  background: var(--c-button-bg-primary);
+  color: var(--c-button-fg-primary);
+}
+
+.button--danger {
+  border-color: var(--c-button-border-danger);
+  background: var(--c-button-bg-danger);
+  color: var(--c-button-fg-danger);
+}
+
+.button--ghost {
+  border-color: var(--c-button-border-ghost);
+  background: var(--c-button-bg-ghost);
+  color: var(--c-button-fg-ghost);
+}
+
+.button:hover:not(:disabled):not([aria-disabled='true']) {
+  border-color: var(--control-border-hover);
+  background: var(--control-bg-hover);
+  color: var(--control-fg);
+}
+
+.button--primary:hover:not(:disabled):not([aria-disabled='true']),
+.button--danger:hover:not(:disabled):not([aria-disabled='true']) {
+  filter: brightness(0.94);
+}
+
+.button--ghost:hover:not(:disabled):not([aria-disabled='true']) {
+  border-color: var(--c-button-border);
+}
+
+.button:disabled,
+.button[aria-disabled='true'] {
+  border-color: var(--c-button-border);
+  background: var(--c-button-bg-disabled);
+  color: var(--c-button-fg-disabled);
+  cursor: not-allowed;
+}
+
+.button:active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--control-bg-active);
+}
+
+.button--icon-only {
+  width: var(--c-button-height-md);
+  padding-inline: 0;
+}
+
+.button--icon-only.button--sm {
+  width: var(--c-button-height-sm);
+}
+
+.button--icon-only.button--lg {
+  width: var(--c-button-height-lg);
+}
+
+.button__leading,
+.button__trailing {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.button__loading-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+}
+
+.button__spinner {
+  width: var(--space-3);
+  height: var(--space-3);
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: var(--radius-pill);
+  animation: button-spin var(--motion-emphasis) linear infinite;
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* Card — the only shared surface owner for summary/action/data groupings. */
+.card {
+  min-width: 0;
+  padding: var(--c-card-padding);
+  border: 1px solid var(--c-card-border);
+  border-radius: var(--c-card-radius);
+  background: var(--c-card-surface);
+  box-shadow: var(--c-card-shadow);
+}
+
+.card--summary {
+  background: var(--c-card-surface-alt);
+}
+
+.card--action {
+  border-inline-start: 3px solid var(--accent);
+}
+
+.card--data {
+  overflow: hidden;
+}
+
+.card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+}
+
+.card__title {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  word-break: keep-all;
+}
+
+.card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.card__body {
+  min-width: 0;
+}
+
+/* WorkbenchLayout — main/rail geometry is shared across representative routes. */
+.workbench-layout {
+  display: grid;
+  grid-template-columns: var(--c-workbench-main-track);
+  gap: var(--c-workbench-gap);
+  min-width: 0;
+  align-items: start;
+}
+
+.workbench-layout--has-rail {
+  grid-template-columns: var(--c-workbench-main-track) var(--c-workbench-rail-track);
+}
+
+.workbench-layout__main,
+.workbench-layout__rail {
+  min-width: 0;
+}
+
+.workbench-layout__rail {
+  position: sticky;
+  top: var(--c-workbench-rail-top);
+}
+
+.test-reports-workbench,
+.equipment-lists-workbench,
+.reference-data-workbench {
+  min-width: 0;
+}
+
+/* 성적서 §6 장비목록 — 두 표(장비 / UL Software)를 서버가 준 열 순서대로 그린다.
+   열 폭을 여기서 고정하지 않는 이유: 열 집합이 서버 소유라 개수가 바뀔 수 있고,
+   고정 폭을 두면 그때 레이아웃만 조용히 어긋난다. */
+.equipment-lists-table-block {
+  margin-block: var(--space-5) 0;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.equipment-lists-table-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+}
+
+.equipment-lists-editor-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.equipment-lists-editor-table th,
+.equipment-lists-editor-table td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--surface-border);
+  text-align: start;
+  vertical-align: middle;
+}
+
+.equipment-lists-editor-table th {
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.equipment-lists-cell-input {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-input);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.equipment-lists-cell-input:read-only {
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+}
+
+/* PageHeader — title + description + actions */
+.page-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--surface-border);
+  align-items: end;
+}
+
+.page-header__title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--line-height-tight);
+  /* Korean headings fragment mid-word without this; §M2.5 extends the rule
+     that already governed the shell nav to route titles. */
+  word-break: keep-all;
+}
+
+.page-header__description {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-xs);
+  /* Explicit rather than inherited: this is the `normal` rung's reference
+     consumer, and it sits directly under a semibold h1. */
+  font-weight: var(--font-weight-normal);
+}
+
+/* Secondary hint under a SectionBand — one-line guidance for a section's
+ * action (e.g. "새 항목표 만들기" description, §5①). */
+.section-hint {
+  margin: var(--space-2) 0;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.page-header__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Toolbar — compact filter/action row */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--c-toolbar-gap);
+  padding: var(--c-toolbar-padding-block) 0;
+  border-bottom: 1px solid var(--c-toolbar-border);
+  margin: 0 0 var(--space-4);
+}
+
+.toolbar--inline {
+  border-bottom: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Phase 2 follow-up (fe-phase2-followup, 2026-05-30) — right-aligned status
+   pill group inside a Toolbar. Used by projects (sync/online/claim) and
+   sessions (loaded count + truncation status) so plan §6.1/§6.2's "한 Toolbar"
+   acceptance is met without nesting another component. */
+.toolbar-status-group {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* FieldGroup — label/input/help layout */
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--c-field-gap);
+  min-width: 0;
+}
+
+.field-group__label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--c-field-label);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.field-group__help {
+  font-size: var(--font-size-xs);
+  color: var(--c-field-help);
+}
+
+/* Validation message — same slot as the help text, failure palette. Linked to
+   the control through aria-describedby by the primitive (W4-A M3). */
+.field-group__error {
+  font-size: var(--font-size-xs);
+  color: var(--c-field-error);
+}
+
+.field-group__success {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--c-field-success);
+}
+
+.field-group__required {
+  color: var(--c-field-error);
+}
+
+.field-group--compact {
+  gap: 0;
+}
+
+/* ProjectPicker — project selector (native <select> + live status note).
+   project-picker-ssot (2026-06-26). Token-driven; no inline hex. */
+.project-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.project-picker__select {
+  font-size: var(--font-size-sm);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg);
+  color: var(--fg-primary);
+}
+
+.project-picker__status {
+  font-size: var(--font-size-xs);
+  color: var(--fg-secondary);
+}
+
+/* ProviderPicker list state note (loading / error / empty) — mirrors the
+   ProjectPicker status note. The error branch carries role="alert"; a danger
+   accent flags a failed list load without hiding the direct-entry fallback. */
+.provider-picker__status {
+  font-size: var(--font-size-xs);
+  color: var(--fg-secondary);
+}
+
+.provider-picker__status[role='alert'] {
+  color: var(--status-danger-fg, var(--fg-primary));
+}
+
+/* StatusBadge — status kind × icon + label + role */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--c-badge-padding-inline);
+  border-radius: var(--c-badge-radius);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.2;
+  letter-spacing: var(--tracking-wide);
+  white-space: nowrap;
+  color: var(--c-badge-fg);
+}
+
+.status-badge__icon {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  line-height: 1;
+}
+
+/* Prominent variant — a condition group's headline verdict (§5⑤). Larger type
+ * + padding so 합/부 reads at a glance; color/icon inherit the status SSOT. */
+.status-badge--lg {
+  font-size: var(--font-size-md);
+  padding: var(--space-1) var(--space-3);
+}
+.status-badge--lg .status-badge__icon {
+  font-size: var(--font-size-lg);
+}
+
+.status-badge--pass {
+  color: var(--status-pass-fg);
+  background: var(--status-pass-bg);
+}
+.status-badge--fail {
+  color: var(--status-fail-fg);
+  background: var(--status-fail-bg);
+}
+.status-badge--running {
+  color: var(--status-running-fg);
+  background: var(--status-running-bg);
+}
+.status-badge--stale {
+  color: var(--status-stale-fg);
+  background: var(--status-stale-bg);
+}
+.status-badge--missing {
+  color: var(--status-missing-fg);
+  background: var(--status-missing-bg);
+}
+.status-badge--claimed {
+  color: var(--status-claimed-fg);
+  background: var(--status-claimed-bg);
+}
+.status-badge--duplicate {
+  color: var(--status-duplicate-fg);
+  background: var(--status-duplicate-bg);
+}
+.status-badge--draft {
+  color: var(--status-draft-fg);
+  background: var(--status-draft-bg);
+}
+.status-badge--published {
+  color: var(--status-published-fg);
+  background: var(--status-published-bg);
+}
+
+/* MetricStrip — compact stat row (queue, coverage) */
+.metric-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg-alt);
+  margin: 0 0 var(--space-4);
+}
+
+.metric-strip__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 80px;
+}
+
+.metric-strip__label {
+  font-size: var(--font-size-xs);
+  color: var(--fg-secondary);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  font-weight: var(--font-weight-medium);
+}
+
+.metric-strip__value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-primary);
+}
+
+/* ProgressBar — token-driven WAI-ARIA progress indicator (A2 fe-progress-bar).
+   determinate: fill width = value%; indeterminate: an animated sweep that
+   consumes --motion-emphasis (collapsed to 0 under prefers-reduced-motion). */
+.progress-bar {
+  /* Component geometry — single declaration site for every raw literal so the
+     rule bodies below stay var()-driven (sealed: no raw geometry magic numbers
+     in the consuming declarations). */
+  --progress-bar-track-radius: 999px; /* full pill (matches badge radius SSOT) */
+  --progress-bar-track-border: 1px; /* hairline (matches --surface-border rule) */
+  --progress-bar-sliver-size: 35%; /* indeterminate sweep sliver width */
+  --progress-bar-sweep-from: -20%; /* indeterminate sweep start translate */
+  --progress-bar-sweep-to: 285%; /* indeterminate sweep end translate */
+  --progress-bar-value-min-size: 3ch; /* caption min width (e.g. "100%") */
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.progress-bar__track {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: var(--space-8);
+  height: var(--space-2);
+  overflow: hidden;
+  border-radius: var(--progress-bar-track-radius);
+  background: var(--surface-bg-alt);
+  border: var(--progress-bar-track-border) solid var(--surface-border);
+}
+
+.progress-bar__fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: inline-size var(--motion-base) var(--motion-easing-decelerate);
+}
+
+/* Tone variants reuse the status SSOT foregrounds (no new colour tokens). */
+.progress-bar--running .progress-bar__fill {
+  background: var(--status-running-fg);
+}
+.progress-bar--pass .progress-bar__fill {
+  background: var(--status-pass-fg);
+}
+.progress-bar--stale .progress-bar__fill {
+  background: var(--status-stale-fg);
+}
+
+.progress-bar__value {
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-secondary);
+  min-width: var(--progress-bar-value-min-size);
+  text-align: right;
+}
+
+/* Indeterminate: a fixed-width sliver sweeps across the track. The sweep runs
+   on --motion-emphasis; under prefers-reduced-motion that token is 0 so the
+   animation is inert — the explicit reduced-motion rule below then pins a
+   static, half-opacity full bar so the state never misreads as a partial %. */
+.progress-bar--indeterminate .progress-bar__fill {
+  inline-size: var(--progress-bar-sliver-size);
+  transition: none;
+  animation: progress-bar-sweep var(--motion-emphasis) var(--motion-easing) infinite alternate;
+}
+
+/* The animated element (.progress-bar__fill) inherits the --progress-bar-sweep-*
+   custom properties from .progress-bar, so the keyframe resolves them per-element
+   with no raw translate magic numbers. */
+@keyframes progress-bar-sweep {
+  from {
+    transform: translateX(var(--progress-bar-sweep-from));
+  }
+  to {
+    transform: translateX(var(--progress-bar-sweep-to));
+  }
+}
+
+/* deliberate @media split: the duration-token half of the reduced-motion
+   guarantee lives with the `:root` token table (see "Phase 1 §5.0-5"). A
+   keyframe `animation` is not reachable from a duration token, so the
+   indeterminate bar needs this component-local stop next to the keyframe it
+   cancels. */
+@media (prefers-reduced-motion: reduce) {
+  .progress-bar--indeterminate .progress-bar__fill {
+    inline-size: 100%;
+    transform: none;
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
+/* DataTable — dense + numeric tabular-nums + horizontal overflow */
+.data-table-overflow {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg);
+  box-shadow: inset -8px 0 8px -8px var(--datatable-overflow-shadow);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.data-table caption {
+  text-align: left;
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-3) var(--cell-pad-x);
+  color: var(--fg-secondary);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.data-table thead th {
+  text-align: left;
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  font-weight: var(--font-weight-medium);
+  color: var(--fg-secondary);
+  padding: var(--cell-pad-y) var(--cell-pad-x);
+  background: var(--surface-bg-alt);
+  border-bottom: 1px solid var(--surface-border);
+  height: var(--row-height);
+}
+
+.data-table tbody td,
+.data-table tbody th {
+  padding: var(--cell-pad-y) var(--cell-pad-x);
+  border-bottom: 1px solid var(--surface-border);
+  height: var(--row-height);
+  vertical-align: middle;
+}
+
+.data-table tbody tr:last-child td,
+.data-table tbody tr:last-child th {
+  border-bottom: none;
+}
+
+/* Phase 1 §5.0-3 FD-P0-1 — numeric cell alignment (tabular-nums + right) */
+.data-cell-numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.data-cell-status {
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* TableSkeleton — placeholder grid for perceived perf */
+.data-table-skeleton {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--cell-pad-x);
+}
+
+.data-table-skeleton__row {
+  display: grid;
+  gap: var(--space-2);
+  height: var(--row-height);
+  align-items: center;
+}
+
+.data-table-skeleton__cell {
+  height: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-bg-alt);
+  position: relative;
+  overflow: hidden;
+}
+
+.data-table-skeleton__cell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--surface-border), transparent);
+  transform: translateX(-100%);
+  animation: data-table-skeleton-shimmer var(--motion-emphasis) ease-in-out infinite;
+}
+
+@keyframes data-table-skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* EmptyState — "no data" placeholder */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8);
+  text-align: center;
+  border: 1px dashed var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg-alt);
+  color: var(--fg-secondary);
+}
+
+.empty-state__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--fg-primary);
+}
+
+.empty-state__description {
+  margin: 0;
+  max-width: 38rem;
+  font-size: var(--font-size-sm);
+}
+
+.empty-state [data-testid='empty-state-action'] {
+  margin-top: var(--space-2);
+}
+
+/* ErrorState — display-only, message supplied by describeApiError */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--status-fail-fg);
+  border-radius: var(--radius-lg);
+  background: var(--status-fail-bg);
+  color: var(--status-fail-fg);
+}
+
+.error-state__title {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-md);
+}
+
+.error-state__details {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--fg-secondary);
+  white-space: pre-wrap;
+}
+
+/* §M8.4 state glyphs — the icon is decorative (`aria-hidden` in the
+   primitive); the accessible distinction stays in `role`/`aria-live` and the
+   copy. Colour is never the only channel: shape differs too. */
+.empty-state__icon,
+.error-state__icon {
+  font-size: var(--font-size-lg);
+  line-height: 1;
+}
+
+.empty-state__icon {
+  display: block;
+  margin: 0 auto var(--space-2);
+  color: var(--fg-secondary);
+}
+
+.empty-state__icon::before {
+  content: var(--state-empty-icon);
+}
+
+.error-state__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.error-state__icon::before {
+  content: var(--state-error-icon);
+}
+
+/* One rule per variant so the glyph contract is auditable at a glance and the
+   token cannot be declared without a consumer. */
+.error-state[data-variant='instrument-offline'] .error-state__icon::before {
+  content: var(--error-instrument-offline-icon);
+}
+
+.error-state[data-variant='scpi-timeout'] .error-state__icon::before {
+  content: var(--error-scpi-timeout-icon);
+}
+
+.error-state[data-variant='sample-not-selected'] .error-state__icon::before {
+  content: var(--error-sample-not-selected-icon);
+}
+
+.error-state[data-variant='antenna-gain-missing'] .error-state__icon::before {
+  content: var(--error-antenna-gain-missing-icon);
+}
+
+.error-state[data-variant='dccf-missing'] .error-state__icon::before {
+  content: var(--error-dccf-missing-icon);
+}
+
+.error-state[data-variant='forbidden'] .error-state__icon::before {
+  content: var(--error-forbidden-icon);
+}
+
+.error-state__hint {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+/* §M8.5 recovery slot. A failure with no action still renders the block (the
+   primitive prints the "why there is no action" copy there), so the operator
+   is never left at a dead end. */
+.error-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.error-state__no-action {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--fg-secondary);
+}
+
+/* BlockSkeleton — non-table loading placeholder (§M8.1). Panels, metric
+   strips and detail readouts get a shaped skeleton instead of a bare
+   `<p aria-busy>` line, so the arriving content does not shift the layout. */
+.block-skeleton {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.block-skeleton__line {
+  height: var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--surface-bg-alt);
+  position: relative;
+  overflow: hidden;
+}
+
+.block-skeleton__line:last-child {
+  /* Ragged last line reads as text rather than as a disabled control. */
+  width: 60%;
+}
+
+.block-skeleton--metric .block-skeleton__line {
+  height: var(--space-6);
+}
+
+.block-skeleton--metric .block-skeleton__line:last-child {
+  width: 100%;
+}
+
+.block-skeleton__line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--surface-border), transparent);
+  transform: translateX(-100%);
+  animation: data-table-skeleton-shimmer var(--motion-emphasis) ease-in-out infinite;
+}
+
+/* §M8.7 middle state — a REFETCH keeps the previous result on screen and dims
+   it, because blanking a table the operator is reading loses their place. The
+   first load is a skeleton (above); this is only for filter/page changes. */
+.refetch-region {
+  position: relative;
+}
+
+.refetch-region[data-refetching='true'] > .refetch-region__content {
+  opacity: 0.55;
+  transition: opacity var(--motion-fast) var(--motion-easing-decelerate);
+  pointer-events: none;
+}
+
+.refetch-region__overlay {
+  position: absolute;
+  inset-inline: 0;
+  top: var(--space-4);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.refetch-region__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-bg);
+  box-shadow: var(--elevation-2);
+  font-size: var(--font-size-xs);
+  color: var(--fg-secondary);
+}
+
+.refetch-region__spinner {
+  width: var(--space-3);
+  height: var(--space-3);
+  border: 2px solid var(--surface-border);
+  border-top-color: var(--accent);
+  border-radius: var(--radius-pill);
+  animation: refetch-spin var(--motion-emphasis) linear infinite;
+}
+
+@keyframes refetch-spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* §M8.7 third state — a running measurement is a first-class surface, not a
+   spinner. Progress + current step (+ ETA when the caller knows it). */
+.run-progress {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg-alt);
+}
+
+.run-progress__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--fg-secondary);
+}
+
+.run-progress__step {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--fg-primary);
+  margin: 0;
+}
+
+/* ── DataTable responsive column priority (§M7.2) ────────────────────────────
+   Opt-in: only tables that pass a `columns` descriptor carry
+   `.data-table--responsive` and render the card list + overflow rows. Tables
+   that still pass raw `head`/`body` render byte-identically to before. */
+.data-table__mobile-sort,
+.data-table__overflow-row {
+  display: none;
+}
+
+.data-table-cards {
+  display: none;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.data-table__overflow-row > td {
+  padding: 0 var(--cell-pad-x) var(--cell-pad-y);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.data-table__overflow-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  font-size: var(--font-size-xs);
+}
+
+.data-table__overflow-term {
+  color: var(--fg-secondary);
+}
+
+.data-table__overflow-term::after {
+  content: ': ';
+}
+
+.data-table__overflow-value {
+  margin: 0 0 0 var(--space-1);
+  display: inline;
+}
+
+.data-table-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--cell-pad-x);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.data-table-card:last-child {
+  border-bottom: none;
+}
+
+.data-table-card__title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--fg-primary);
+}
+
+.data-table-card__fields {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.data-table-card__term {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.data-table-card__value {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 1:N expansion panel. Full-width row on the table surface; the same panel
+   rides inside the card's `<details>` on the phone band, so the fold stays
+   lossless there too. */
+.data-table__expansion-row > td {
+  padding: 0 var(--cell-pad-x) var(--cell-pad-y);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.data-table-card__expansion > summary {
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--fg-secondary);
+}
+
+.data-table__mobile-sort {
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--cell-pad-x);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+/* Screen-reader-only label (the mobile sort `<select>` has no visible label —
+   the control sits where the column headers used to be). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* §M7.3 hit-area expansion base. `position: relative` is the only always-on
+   half; the transparent overlay itself is declared mobile-only at the foot of
+   this file, so desktop density cannot regress. */
+.touch-target {
+  position: relative;
+}
+
+/* Links and disclosure summaries do not inherit the native control floor.
+   Give them the WCAG 2.5.8 inline target floor at the tablet boundary while
+   the compact-band pseudo-element below supplies the larger glove target. */
+:where(a.touch-target, summary.touch-target) {
+  display: inline-block;
+  min-block-size: var(--space-6);
+}
+
+/* StatusMessage — accessible success/info live region (WCAG 4.1.3). The
+   success/info palettes reuse the existing status tokens (no inline hex). */
+.status-message {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+}
+
+.status-message--success {
+  border-color: var(--status-pass-fg);
+  background: var(--status-pass-bg);
+  color: var(--status-pass-fg);
+}
+
+.status-message--info {
+  border-color: var(--status-stale-fg);
+  background: var(--status-stale-bg);
+  color: var(--status-stale-fg);
+}
+
+/* LoadMoreButton — keyset "더보기" control (token-driven, no inline hex). */
+.load-more {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+}
+
+/* MeasurementValueCell — value/unit split (FD-C) */
+.measurement-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.measurement-value__number {
+  font-family: var(--font-mono);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.measurement-value__unit {
+  font-size: var(--font-size-xs);
+  color: var(--fg-secondary);
+}
+
+/* SectionBand — section divider without nested cards */
+.section-band {
+  margin: var(--space-8) 0 var(--space-4);
+  padding: 0 0 var(--space-2);
+  border-bottom: 1px solid var(--surface-border);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.section-band__title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg-primary);
+  word-break: keep-all;
+}
+
+.section-band__meta {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--fg-secondary);
+}
+
+/* Phase 3 grid PoC — dev-gated ADR-0008 evidence surface */
+.grid-poc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.grid-poc__button {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg);
+  color: var(--fg-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.grid-poc__button--active {
+  border-color: var(--accent-fg);
+  background: var(--status-running-bg);
+  color: var(--accent-fg);
+  font-weight: var(--font-weight-medium);
+}
+
+.grid-poc__viewport {
+  height: 560px;
+  overflow: auto;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg);
+}
+
+.grid-poc__header,
+.grid-poc__row {
+  display: grid;
+  grid-template-columns:
+    minmax(96px, 0.7fr)
+    minmax(88px, 0.6fr)
+    minmax(260px, 2fr)
+    minmax(96px, 0.7fr)
+    minmax(140px, 1fr)
+    minmax(96px, 0.7fr)
+    minmax(92px, 0.7fr)
+    minmax(112px, 0.8fr)
+    minmax(96px, 0.7fr)
+    minmax(96px, 0.7fr)
+    minmax(108px, 0.8fr)
+    minmax(240px, 1.6fr);
+  min-width: 1640px;
+}
+
+.grid-poc__header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-bg-alt);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.grid-poc__body {
+  position: relative;
+}
+
+.grid-poc__row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  min-height: 44px;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.grid-poc__row:nth-child(even) {
+  background: var(--surface-bg-alt);
+}
+
+.grid-poc__row--dragging {
+  z-index: 2;
+  box-shadow: var(--elevation-3);
+  background: var(--surface-bg);
+}
+
+.grid-poc__cell {
+  min-width: 0;
+  padding: var(--space-2);
+  display: flex;
+  align-items: center;
+  border-right: 1px solid var(--surface-border);
+  font-size: var(--font-size-sm);
+  overflow: hidden;
+}
+
+.grid-poc__cell--header {
+  font-weight: var(--font-weight-medium);
+  color: var(--fg-secondary);
+}
+
+.grid-poc__cell--active {
+  outline: 2px solid var(--accent-fg);
+  outline-offset: -2px;
+  background: var(--status-running-bg);
+}
+
+.grid-poc__cell input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.grid-poc__cell input:focus {
+  outline: 0;
+}
+
+.grid-poc__mono,
+.grid-poc__number {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.grid-poc__number {
+  margin-left: auto;
+  text-align: right;
+}
+
+.grid-poc__muted {
+  color: var(--fg-secondary);
+}
+
+.grid-poc__issue {
+  color: var(--status-fail-fg);
+  font-size: var(--font-size-xs);
+}
+
+.grid-poc__changes {
+  margin: 0;
+  padding-left: var(--space-6);
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+}
+
+/* ─── Project entry cards (my-projects) + field cards (fields) ──────────────
+   PM·RF Phase A (2026-06-23). The "내 프로젝트" entry surface and the 분야 선택
+   surface render selectable cards. These containers share the same
+   `--space-*` / `--surface-*` / `--font-size-*` / `--motion-*` tokens as
+   `.home-step` (the established 8px-radius card pattern) so the entry layer
+   has consistent spacing rhythm + a hover affordance. No inline hex/px. */
+.project-card-list,
+.field-card-list {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.fields-context__list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+.fields-context__list dt {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.fields-context__list dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: var(--font-weight-medium);
+}
+
+.my-projects-workbench .section-band,
+.my-projects-create .section-band {
+  margin-bottom: var(--space-3);
+}
+
+.project-card,
+.field-card {
+  margin: 0;
+}
+
+.project-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.project-card__link,
+.field-card__link,
+.field-card__disabled {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg-alt);
+  color: var(--fg-primary);
+  font-size: var(--font-size-md);
+  text-decoration: none;
+  transition: border-color var(--motion-fast) var(--motion-easing);
+}
+
+.project-card__link:hover,
+.field-card__link:hover {
+  border-color: var(--accent);
+}
+
+.project-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.project-card__action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.project-card__action:hover {
+  border-color: var(--accent);
+  color: var(--fg-primary);
+}
+
+.field-card__disabled {
+  cursor: not-allowed;
+  color: var(--fg-secondary);
+}
+
+.project-card__model,
+.field-card__label {
+  font-weight: var(--font-weight-medium);
+}
+
+.project-card__mgmt,
+.project-card__fcc,
+.project-card__customer,
+.field-card__blurb {
+  width: 100%;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* Phase F — PM·RF 시료 인벤토리 통합 카드 (SampleCard primitive). */
+.sample-card-list {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-3);
+}
+
+.sample-card {
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg-alt);
+  padding: var(--space-4);
+  color: var(--fg-primary);
+}
+
+.sample-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.sample-card__number {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-md);
+}
+
+.sample-card__team {
+  font-size: var(--font-size-xs);
+  color: var(--status-claimed-fg);
+  background: var(--status-claimed-bg);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+}
+
+.sample-card__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.sample-card__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.sample-card__section-title {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--fg-secondary);
+  text-transform: uppercase;
+}
+
+.sample-card__field {
+  display: flex;
+  flex-direction: column;
+}
+
+.sample-card__field-label {
+  font-size: var(--font-size-xs);
+  color: var(--fg-secondary);
+}
+
+.sample-card__field-value {
+  font-size: var(--font-size-sm);
+  color: var(--fg-primary);
+}
+
+.sample-card__intake {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--surface-border);
+}
+
+.sample-editor,
+.sample-history,
+.sample-status-actions,
+.sample-export-actions {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--workbench-panel-border);
+  border-radius: var(--radius-lg);
+  background: var(--workbench-panel-surface);
+  box-shadow: var(--workbench-panel-shadow);
+}
+
+.sample-editor fieldset {
+  min-width: 0;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  border: 0;
+}
+
+.sample-editor__grid,
+.sample-inventory-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-3);
+}
+
+.sample-editor input,
+.sample-inventory-filters input,
+.sample-inventory-filters select {
+  width: 100%;
+}
+
+.sample-inventory-filters {
+  align-items: end;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.5rem;
+}
+
+.checkbox-field input {
+  width: auto;
+}
+
+.inventory-as-of-notice {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3);
+  border-left: 3px solid var(--status-stale-fg);
+  background: var(--status-stale-bg);
+}
+
+.sample-inventory-list,
+.sample-history__list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sample-inventory-list__item {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(80px, 1fr) auto auto;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+  color: var(--fg-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sample-inventory-list__item[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: var(--elevation-1);
+}
+
+.sample-history__item {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.sample-history__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.sample-history__event {
+  margin-top: var(--space-1);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sample-history__fields {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.sample-export-actions__buttons,
+.sample-status-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ─── Design-system reconciliation (codex/frontend-design-review, 2026-06-24) ──
+   Additive primitive/shell classNames layered onto main without touching main's
+   light-default theme tokens above. Selectors: skip-link, density-toggle,
+   shortcut-help, virtual-table, sessions-virtual-table, page-header breadcrumb,
+   data-table sort/sticky/keyboard-nav, boot-error. Token-governed (no inline
+   literals) — sealed by tests/design-token-conformance.test.ts. ─────────────── */
+
+.boot-error {
+  margin: 0;
+  padding: var(--space-6);
+  color: var(--status-fail-fg);
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+}
+
+.skip-link {
+  position: fixed;
+  inset-block-start: var(--space-2);
+  inset-inline-start: var(--space-2);
+  transform: translateY(calc(-100% - var(--space-4)));
+  z-index: 10;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg);
+  color: var(--fg-primary);
+  font-weight: var(--font-weight-medium);
+  transition: transform var(--motion-fast) var(--motion-easing);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+.virtual-table {
+  overflow: auto;
+}
+
+.virtual-table__head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  box-shadow: var(--elevation-1);
+}
+
+.virtual-table__body {
+  position: relative;
+  width: 100%;
+}
+
+.virtual-table__virtual-item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.virtual-table__row--head {
+  background: var(--surface-bg-alt);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.sessions-virtual-table {
+  max-height: 640px;
+  overflow: auto;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg);
+}
+
+.sessions-virtual-table__row {
+  display: grid;
+  grid-template-columns:
+    minmax(72px, 0.7fr)
+    minmax(96px, 1fr)
+    minmax(96px, 1fr)
+    minmax(96px, 1fr)
+    minmax(112px, 0.8fr)
+    minmax(140px, 1fr)
+    minmax(180px, 1.2fr);
+  min-width: 880px;
+}
+
+.sessions-virtual-table__row > [role='cell'],
+.sessions-virtual-table__row > [role='columnheader'] {
+  padding: var(--cell-pad-y) var(--cell-pad-x);
+  border-bottom: 1px solid var(--surface-border);
+  min-height: var(--row-height);
+}
+
+.sessions-virtual-table__group {
+  padding: var(--space-2) var(--cell-pad-x);
+  border-bottom: 1px solid var(--surface-border);
+  background: var(--surface-bg-alt);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* W2-C M4 — windowed draft-row table (test-plans). Additive sibling of the
+   `.sessions-virtual-table` family: the shared `VirtualizedTable` primitive owns
+   the windowing and the ARIA chrome, and the route owns only its column grid.
+   Nine columns (eight data facets + the manage cell) share ONE grid definition
+   with the header row, which is what keeps every value under its own header.
+
+   The `min-width` scroll floor is deliberate: a draft row carries nine
+   independent facets, and squeezing them into a phone width would make the
+   values unreadable rather than merely narrow. Horizontal scroll inside the
+   container is lossless — every cell stays in the DOM and reachable — which the
+   §M7.2 information-loss rule prefers over a lossy squeeze. */
+.test-plans-virtual-table {
+  max-height: 640px;
+  overflow: auto;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg);
+}
+
+.test-plans-virtual-table__row {
+  display: grid;
+  grid-template-columns:
+    minmax(72px, 0.6fr)
+    minmax(168px, 1.6fr)
+    minmax(96px, 0.9fr)
+    minmax(96px, 0.9fr)
+    minmax(88px, 0.7fr)
+    minmax(72px, 0.6fr)
+    minmax(88px, 0.7fr)
+    minmax(96px, 0.8fr)
+    minmax(104px, 0.8fr);
+  min-width: 960px;
+}
+
+.test-plans-virtual-table__row > [role='cell'],
+.test-plans-virtual-table__row > [role='columnheader'] {
+  padding: var(--cell-pad-y) var(--cell-pad-x);
+  border-bottom: 1px solid var(--surface-border);
+  min-height: var(--row-height);
+}
+
+.density-toggle {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface-bg);
+}
+
+.density-toggle__option {
+  border: 0;
+  border-inline-end: 1px solid var(--surface-border);
+  background: transparent;
+  color: var(--fg-secondary);
+  padding: var(--space-1) var(--space-2);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.density-toggle__option:last-child {
+  border-inline-end: 0;
+}
+
+.density-toggle__option[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: var(--font-weight-medium);
+}
+
+.shortcut-help__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--overlay-backdrop);
+}
+
+.shortcut-help {
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg);
+  color: var(--fg-primary);
+  padding: var(--space-5);
+  box-shadow: var(--elevation-3);
+}
+
+.shortcut-help__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.shortcut-help__title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.shortcut-help__close {
+  border: 0;
+  background: transparent;
+  color: var(--fg-secondary);
+  font: inherit;
+  font-size: var(--font-size-md);
+  cursor: pointer;
+  padding: 0 var(--space-1);
+}
+
+.shortcut-help__list {
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.shortcut-help__row {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.shortcut-help__row dt,
+.shortcut-help__row dd {
+  margin: 0;
+}
+
+.shortcut-help__row dd {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.shortcut-help__keys {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  color: var(--fg-primary);
+  background: var(--surface-bg-alt);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-2);
+}
+
+.page-header__breadcrumb {
+  grid-column: 1 / -1;
+  font-size: var(--font-size-xs);
+  color: var(--fg-secondary);
+}
+
+.page-header__breadcrumb a {
+  color: var(--fg-secondary);
+}
+
+.page-header__breadcrumb [aria-current='page'] {
+  color: var(--fg-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* No `box-shadow: var(--elevation-1)` here, despite this being a sticky
+   header: `.data-table` sets `border-collapse: collapse`, and a collapsed
+   cell has no border box of its own to cast from — Chromium computes the
+   shadow and paints nothing (verified by pixel diff, W2). The separation
+   from rows scrolling underneath is carried by the `th` background +
+   border-bottom instead. The virtual table's head is a plain div and does
+   take --elevation-1. */
+.data-table--sticky-header thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.data-table[data-keyboard-navigation='true'] tbody tr:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.data-table__sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font: inherit;
+  font-weight: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.data-table__sort-button::after {
+  content: '↕';
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--fg-disabled);
+}
+
+.data-table__sort-button[data-sort-direction='asc']::after {
+  content: '↑';
+  color: var(--fg-secondary);
+}
+
+.data-table__sort-button[data-sort-direction='desc']::after {
+  content: '↓';
+  color: var(--fg-secondary);
+}
+
+/* ── Single `--bp-lg` collapse block (contract M10.2) ─────────────────────
+   One `@media` per condition. Merging the previously duplicated header
+   blocks removed four selectors that could never win the cascade. */
+@media (max-width: 1023.98px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: var(--header-height) 1fr;
+  }
+
+  .app-header {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: unset;
+    padding: 0 var(--layout-gutter);
+    border-right: none;
+    border-bottom: 1px solid var(--surface-border);
+    position: relative;
+    top: auto;
+    overflow: visible;
+  }
+
+  .app-title {
+    font-size: var(--font-size-md);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-nav {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 2;
+  }
+
+  .app-header__controls {
+    margin-top: 0;
+    margin-left: auto;
+    flex-direction: row;
+    gap: var(--space-2);
+    flex-shrink: 1;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  button.app-nav__toggle {
+    display: inline-flex;
+  }
+
+  /* Closed by default; opened via the toggle (`data-open="true"`). Absolutely
+     positioned so the dropdown overlays the main content instead of stretching
+     the fixed-height header row. */
+  .app-nav__panel {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--layout-gutter);
+    background: var(--surface-bg-alt);
+    border-bottom: 1px solid var(--surface-border);
+    box-shadow: var(--elevation-2);
+    /* Tall menus on short phones scroll within the dropdown, not the page. */
+    max-height: calc(100vh - var(--header-height));
+    overflow-y: auto;
+    z-index: 20;
+  }
+
+  .app-nav__panel[data-open='true'] {
+    display: flex;
+  }
+
+  /* Groups stack vertically in the dropdown; the desktop inter-group divider
+     and inset are dropped for a clean vertical list. */
+  .app-nav__panel .app-nav__group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-1);
+  }
+
+  .app-nav__panel .app-nav__group:not(:first-child) {
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--surface-border);
+  }
+
+  .app-nav__group--project {
+    margin-top: 0;
+  }
+
+  .app-nav__panel ul {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .nav-link {
+    display: block;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  /* Header controls shrink on small screens: the theme toggle keeps its icon
+     (the accessible name lives on `aria-label`, so the visible text is safe to
+     drop) and the signed-in operator name is hidden — both are non-essential
+     next to the menu + sign-out affordances on a phone. */
+  /* §M7.4: `.density-toggle` is deliberately ABSENT from this hide list. It
+     used to be hidden here, but density matters most exactly where space is
+     scarcest; the toggle keeps its icon-sized affordance instead (its labels
+     are already `--font-size-xs` chips). Sealed by
+     TestDensityToggleSurvivesCompactViewports. */
+  .theme-toggle__label,
+  .locale-toggle__label,
+  .app-user__name {
+    display: none;
+  }
+
+  .test-plans-next-actions__links {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .auth-signout-button {
+    max-width: 4.25rem;
+    overflow: hidden;
+    padding-inline: var(--space-2);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Workbench grids collapse to a single column and the rail un-sticks. */
+  .chambers-workbench-overview,
+  .control-workbench-overview,
+  .diagnostics-workbench-overview,
+  .fields-workbench-overview,
+  .jobs-workbench-overview,
+  .membership-workbench-overview,
+  .my-projects-workbench-overview,
+  .progress-workbench-overview,
+  .projects-workbench-overview,
+  .providers-workbench-overview,
+  .reports-workbench-overview,
+  .sessions-workbench-overview,
+  .test-plans-workbench-overview,
+  .chambers-workbench,
+  .control-workbench,
+  .diagnostics-workbench,
+  .fields-workbench,
+  .home-workbench,
+  .inventory-workbench,
+  .jobs-workbench,
+  .membership-workbench,
+  .my-projects-workbench,
+  .progress-workbench,
+  .projects-workbench,
+  .providers-workbench,
+  .reports-workbench,
+  .sessions-workbench,
+  .test-plans-workbench {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workbench-layout,
+  .workbench-layout--has-rail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .test-plans-workbench[data-has-selection='true'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chambers-workbench__rail,
+  .control-workbench__rail,
+  .diagnostics-workbench__rail,
+  .fields-workbench__rail,
+  .home-workbench__rail,
+  .jobs-workbench__rail,
+  .membership-workbench__rail,
+  .my-projects-workbench__rail,
+  .progress-workbench__rail,
+  .projects-workbench__rail,
+  .providers-workbench__rail,
+  .reports-workbench__rail,
+  .sessions-workbench__rail,
+  .test-plans-workbench__rail {
+    position: static;
+  }
+
+  .workbench-layout__rail {
+    position: static;
+  }
+}
+
+/* ── `--bp-md` band: compact and below (contract M6/M7) ───────────────────────
+   Everything at or below the tablet threshold. `767.98px == --bp-md − 0.02`.
+   One `@media` per condition (M10.2), so every compact-band rule lives here.
+
+   Table behaviour in this band: `detail`-priority columns leave the row grid
+   and reappear as a per-row overflow line underneath. That is a FOLD, not a
+   hide — no value becomes unreachable (M7.2 information-loss ban), and it is
+   pure CSS, so no viewport state ever enters React (M7.2a). */
+@media (max-width: 767.98px) {
+  /* Toolbars wrap instead of forcing the document wider. */
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  /* One density step down, expressed as a token override rather than as
+     per-selector padding — the gutter is already the single inset SSOT, so
+     every surface that consumes it moves together. */
+  :root {
+    --layout-gutter: var(--space-4);
+  }
+
+  .data-table--responsive [data-priority='detail'] {
+    display: none;
+  }
+
+  .data-table__overflow-row {
+    display: table-row;
+  }
+
+  /* The three-part condition line stacks rather than squeezing its label,
+     status chips and operator column into a third of a phone width. */
+  .condition-list__item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* The virtualized attempt history stops forcing an 880px scroll floor
+     (M7.5). All seven cells stay in the DOM and reflow into two columns —
+     header row and data rows share the same flow, so each value keeps its
+     column header association. The true card transition for the windowed path
+     is contract S4 (virtualization × card view needs its own verification). */
+  .sessions-virtual-table__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
+  }
+
+  /* §M7.3 — transparent hit-area overlay. Vertical only: the horizontal box
+     stays exactly the element's own width so an expanded control can never
+     swallow a click meant for its neighbour. Mobile-only by construction. */
+  .touch-target::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: max(100%, var(--touch-target-min));
+  }
+
+  /* Gloved-operation rung: the controls an operator actually hits while
+     standing at a chamber with gloves on. */
+  .touch-target--glove::after {
+    height: max(100%, var(--touch-target-glove));
+  }
+}
+
+/* ── `--bp-sm` band: phone (contract M7) ─────────────────────────────────────
+   `639.98px == --bp-sm − 0.02`. Tables that opted into the column descriptor
+   swap to a card list; the card carries EVERY column, so the fold above and
+   this swap are both information-preserving. */
+@media (max-width: 639.98px) {
+  .login-route,
+  .change-password-route {
+    width: min(100% - (var(--space-4) * 2), 520px);
+    padding: var(--space-8) 0;
+  }
+
+  .login-route form,
+  .change-password-route form {
+    padding: var(--space-5);
+  }
+
+  /* Hiding the table hides its overflow rows with it — the card body is the
+     single narrow-band surface, so no value is rendered twice. */
+  .data-table--responsive {
+    display: none;
+  }
+
+  .data-table-cards {
+    display: block;
+  }
+
+  .data-table__mobile-sort {
+    display: flex;
+  }
+
+  /* Single flow: one more gutter step down so a 390px viewport spends its
+     width on content rather than on margins. */
+  :root {
+    --layout-gutter: var(--space-3);
+  }
+
+  .page-header__actions {
+    flex-wrap: wrap;
+  }
+}
+
+/* ── 성적서 대장 (Phase G 배선, 2026-07-29) ────────────────────────────────
+   ADDITIVE ONLY — 기존 규칙을 수정하지 않는다. 새 커스텀 프로퍼티도 선언하지
+   않는다(§8 dead-token ratchet 은 미소비 토큰 수의 *상등*을 단언하므로, 소비자
+   없는 토큰 하나가 곧 red 다). 시각 언어는 기존 토큰 조합으로만 표현한다.
+
+   `/reports`(성적서 파일 생성 요청 큐)와 도메인이 다르므로 클래스 접두도 분리한다
+   (`.reports-*` 재사용 금지). 워크벤치 스켈레톤은 쓰지 않는다 — 이 화면은 단일
+   컬럼 스택이라 rail 이 필요 없고, `-workbench` 이름을 쓰면 M9 공유 선택자 목록에
+   손대야 한다(공유 출력 append-only 규칙과 충돌). */
+.citation-list {
+  display: grid;
+  gap: var(--space-2) var(--space-3);
+  margin: var(--space-3) 0 0;
+}
+
+.citation-list__entry {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-2) var(--space-3);
+}
+
+.citation-list__entry dt {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.citation-list__entry dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 값이 있는 칸. 미기재/빈 값과 굵기·색으로 갈린다 — 색만으로 구분하지 않는다. */
+.citation-value {
+  font-weight: var(--font-weight-medium);
+}
+
+/* 미기재(null) · 빈 값('') — "값처럼 보이는 공란" 을 만들지 않기 위해 문구 자체를
+   렌더하고, 실제 값과 다른 무게/색/기울기로 세 상태를 눈으로 구분시킨다. */
+.citation-value--absent {
+  /* 같은 범주 오용 — "미기재" 는 읽으라고 쓴 문구이지 비활성 컨트롤이 아니다.
+     구분은 색이 아니라 무게·기울기가 이미 지고 있다. (axe 는 이 칸을 본 적이
+     없다 — 인용 패널은 데이터가 있어야 렌더된다. 스캔 증거가 아니라 위 nav
+     캡션과 같은 결함 클래스라는 판단으로 함께 고친다.) */
+  color: var(--fg-secondary);
+  font-weight: var(--font-weight-normal);
+  font-style: italic;
+}
+
+.citation-sample-list {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.citation-sample {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-bg-alt);
+}
+
+.citation-sample__title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ─── W3-6 잔여 능력 배선 (2026-07-31) ────────────────────────────────────────
+   백엔드가 이미 노출한 세 operation 에 화면을 붙이면서 필요한 세 형상.
+   전부 **추가 전용** — 기존 선택자를 고치지 않는다. ────────────────────────── */
+
+/* 멤버십 team 칩 — 분류 축(RF/SAR)이지 권한 축이 아니다.
+   같은 표의 `role_key` 셀은 `StatusBadge status="claimed"` 로 렌더되어
+   `--status-claimed-*` 쌍을 쓴다. team 이 그 팔레트를 빌려 쓰면 두 축이 화면에서
+   같은 것으로 보이고, RBAC 모델 왜곡이 CSS 에서 일어난다 — 그래서 상태 팔레트가
+   아니라 중립 surface 토큰을 쓴다(색은 상태를 뜻하지 않는다). */
+.membership-team {
+  font-size: var(--font-size-xs);
+  color: var(--fg-secondary);
+  background: var(--surface-bg-alt);
+  border: 1px solid var(--surface-border);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+}
+
+/* Irreversible transitions use the amber confirmation treatment: the colour
+   signals "read before committing", never failure. The warning copy remains
+   visible so colour is not the only carrier of meaning. */
+.draft-archive-confirm,
+.report-cancel-confirm {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--status-stale-fg);
+  border-radius: var(--radius-md);
+  background: var(--status-stale-bg);
+}
+
+.draft-archive-confirm__irreversible,
+.report-cancel-confirm__warning {
+  margin: 0 0 var(--space-2);
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}

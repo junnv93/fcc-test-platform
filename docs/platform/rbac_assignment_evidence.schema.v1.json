@@ -1,0 +1,32 @@
+{
+  "$id": "rbac_assignment_evidence.schema.v1.json",
+  "schema_version": 1,
+  "status": "planning_contract",
+  "owner_repository": "fcc-test-platform",
+  "description": "Evidence manifest proving persistent RBAC users, roles, permissions, and user-role assignments were applied from rbac_policy.v1.json.",
+  "required_top_level": [
+    "schema_version",
+    "evidence_id",
+    "collected_at",
+    "rbac_source",
+    "permissions",
+    "roles",
+    "users",
+    "user_roles"
+  ],
+  "rbac_source": "docs/platform/rbac_policy.v1.json",
+  "rules": [
+    "permissions must cover every non-public operation permission plus admin from the RBAC seed",
+    "roles must match the standard role permission sets from the RBAC seed",
+    "every enabled user must have at least one role assignment",
+    "at least one enabled user must have the admin role",
+    "assignments must reference enabled users and standard roles"
+  ],
+  "forbidden_operations": [
+    "database_connection",
+    "user_write",
+    "permission_mutation",
+    "network_call"
+  ],
+  "notes": "This contract validates captured RBAC assignment evidence only. A platform DB collector should emit this after applying RBAC seed records."
+}
