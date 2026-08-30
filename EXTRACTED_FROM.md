@@ -9,8 +9,8 @@
 | | |
 |---|---|
 | 원본 레포 | `https://github.com/junnv93/FCC_mobile_test_automation.git` |
-| 원본 커밋 (SHA) | `1399773c1cea6277da40d7e09f441e71232e7b1f` |
-| 추출 시각 (UTC) | `2026-08-30T22:24:03Z` |
+| 원본 커밋 (SHA) | `4ced019a6c8ec82333a85c9201e8a1d1b7d13a52` |
+| 추출 시각 (UTC) | `2026-08-30T23:02:55Z` |
 | 추출 매니페스트 판번호 | `manifest_version = 2` |
 | 레인 키 | `fcc-test-platform` |
 | 레인 소유자 (매니페스트 선언) | Shared web/platform maintainers |
@@ -29,7 +29,7 @@
 
 | | |
 |---:|---|
-| **683** 파일 | 총 8.1 MiB (이 문서 제외 — 자기 크기는 자기 숫자에 의존하므로 셀 수 없다. 파일 수에는 이 문서가 포함된다) |
+| **920** 파일 | 총 19.6 MiB (이 문서 제외 — 자기 크기는 자기 숫자에 의존하므로 셀 수 없다. 파일 수에는 이 문서가 포함된다) |
 | 파일 수의 출처 | `.extraction-layout.json` **선언** — 디스크를 훑은 값이 아니다. 따라서 이 수는 **push 된 트리**와 일치하며, 검증 산출물이 흘러든 스테이징 디렉터리와는 일치하지 않을 수 있다 |
 | **128** 매니페스트 entry | 이 파일들을 예약한 선언의 개수 |
 | 최상위 항목 | `.extraction-layout.json` · `.github` · `.gitignore` · `CODEOWNERS` · `EXTRACTED_FROM.md` · `README.md` · `application` · `apps` · `config` · `delivered_test_run_baseline.json` · `docs` · `domain` · `fcc_test_platform` · `githooks` · `infra` · `migrations` · `pyproject.toml` · `scripts` · `tests` · `web` |

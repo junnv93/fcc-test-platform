@@ -1,0 +1,14 @@
+/* Screenshot-only stabilization. Product layout and content remain visible. */
+*,
+*::before,
+*::after {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+  caret-color: transparent !important;
+}
+
+html {
+  scroll-behavior: auto !important;
+}

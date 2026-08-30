@@ -2303,10 +2303,6 @@
       "reason": "Playwright HTML report output."
     },
     {
-      "path": "apps/web/tests/*",
-      "reason": "Frontend tests follow the same Wave 3 test-lane sequencing as tests/."
-    },
-    {
       "path": "src/logs/*",
       "reason": "Runtime log output committed under src by legacy convention."
     }
@@ -2328,5 +2324,6 @@
         "notes": "Central API wire vocabulary: the route/operation/DTO table and everything its import closure reaches. ⚠️ THE MEMBERS ARE DELIBERATELY NOT LISTED HERE. Until 2026-08-29 this sentence named four of them, and the decomposition wave that split the table made the sentence false without making the declaration wrong — the root is a DIRECTORY, so membership is derived from what is in it, and an enumeration beside it is a second SSOT that goes stale on exactly the waves that succeed. The same manifest already carries that lesson one key over: shared_kernel_consumption_note records that 22/27/41 circulated for one set because a number was written down instead of derived, and shared_kernel_consumption is kept EMPTY for the same reason. Import-namespace: application.central_contract. Membership is that measured fixed point and nothing else — widening past it would hand a joining provider platform SERVICES, which is the outcome ADR-0018 D-5 keeps closed, and narrowing it would leave a name the delivered box cannot resolve. ⚠️ THE MOVE HAD TO BE PHYSICAL, and that is a packager fact rather than a preference: _expand_shared_kernel_closure derives each delivered file's destination as inner = rel[len(current_path):] against a declared DIRECTORY root, so a shared-kernel-owned file sitting outside such a root has no destination and stages to a garbage path. Declaring source_files alone would have been a half move that stages wrong. The import name changed with the files, which is a feature: a module the platform lane no longer owns must not still be addressed as application.platform.*."
       }
     ]
-  }
+  },
+  "exclusions_note": ""
 }
