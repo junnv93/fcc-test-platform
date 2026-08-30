@@ -1,6 +1,6 @@
 {
   "name": "@fcc/web",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "FCC Test Platform production frontend — React + TypeScript + Vite. Sprint S1 scaffold (2026-05-23).",
   "private": true,
   "type": "module",

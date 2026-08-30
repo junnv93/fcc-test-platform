@@ -1,0 +1,45 @@
+#!/bin/sh
+# 이 레인이 **오늘 실제로 막는** 게이트.
+#
+# GitHub Actions 가 러너를 배정받지 못하는 동안(2026-08-30 실측), 서버측에서
+# 무엇도 막지 않는다. 이것이 그 자리를 대신한다.
+#
+# ⚠️ 이것은 실수 방지층(guardrail)이지 방어층이 아니다. 설치는 clone 마다
+#    opt-in 이고(`git config core.hooksPath githooks`), `--no-verify` 한 번이면
+#    사라진다. 이 문장이 사라지면 다음 사람이 이것을 강제라고 믿는다.
+#    진짜 강제는 러너가 돌아오고 branch protection 이 이 검사를 required 로
+#    거는 날에 생긴다 — 그날까지 이것은 **가장 값싼 근사**다.
+#
+# 우회: FCC_SKIP_LANE_CHECK=1 git push   (그리고 왜 우회했는지 적어라)
+set -eu
+
+if [ "${FCC_SKIP_LANE_CHECK:-0}" = "1" ]; then
+    echo "pre-push: FCC_SKIP_LANE_CHECK=1 — 레인 검사를 건너뛴다." >&2
+    exit 0
+fi
+
+root=$(git rev-parse --show-toplevel)
+python=${FCC_LANE_CHECK_PYTHON:-python3}
+
+if [ ! -f "$root/scripts/lane_check.py" ]; then
+    echo "pre-push: scripts/lane_check.py 가 없다 — 게이트를 돌리지 못한다." >&2
+    echo "          이것은 통과가 아니다. 상자가 온전한지 확인하라." >&2
+    exit 1
+fi
+
+# 워크플로와 **같은 진입점**이다. 여기에 pytest 를 인라인하면 두 게이트가 갈라진다.
+if ! "$python" "$root/scripts/lane_check.py" --root "$root"; then
+    cat >&2 <<'MSG'
+
+pre-push: 막았다 — 관측된 실패 집합이 이 상자가 선언한 것과 다르다.
+
+  위 목록이 무엇이 어긋났는지 이름으로 말한다.
+    · "선언에 없는 실패"  → 네가 방금 깨뜨렸다. 고쳐라.
+    · "선언됐는데 통과"    → 고쳐진 것이다. 선언을 줄여라:
+                             python3 scripts/lane_check.py --write-baseline
+
+  ⚠️ 기준선을 관측값으로 덮어써서 초록을 만들지 마라. 그것은 검사를 끄는 것이다.
+
+MSG
+    exit 1
+fi

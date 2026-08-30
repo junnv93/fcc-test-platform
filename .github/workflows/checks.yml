@@ -1,0 +1,61 @@
+# 이 레인의 검사 게이트.
+#
+# ⚠️ 2026-08-30 실측: 이 계정의 GitHub Actions 는 **러너를 배정받지 못한다.**
+#    잡이 2초 만에 `steps: []` · `runner_name: ""` 로 실패한다 — 즉 실패가 아니라
+#    시작조차 못 하는 것이다. 두 상태는 다운스트림에서 똑같이 빨간 X 로 보인다.
+#    근거: 본문이 `echo` 한 줄뿐인 프로브 워크플로도 같은 지문으로 실패했다
+#    (fcc-test-contracts run 33308109800). 코드가 없으니 코드를 탓할 수 없다.
+#
+#    그래서 이 파일은 오늘 **휴면**이다. 지우지 마라 — 결제/가시성이 풀리는 순간
+#    그날로 발화하고, 그때 다시 만들지 않아도 된다. 오늘 실제로 막는 것은
+#    같은 명령을 부르는 `githooks/pre-push` 다.
+#
+#    ⚠️ 러너가 돌아와도 **private 인 동안에는 분당 과금**이다. 이 계정은 8월에
+#    포함분(3,000분)의 2.5배인 7,407분을 썼고 그것이 차단의 원인이다. 이 레포가
+#    public 이면 표준 러너는 **무과금·무제한**이다.
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  # PR 반복만 취소한다. main 런을 취소하면 그 커밋에 검증 기록이 남지 않는다.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lane-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # A 세션이 2026-08-30 에 실측한 인터프리터와 같게 둔다.
+          python-version: '3.12'
+          cache: pip
+
+      - name: 상자를 상자로서 설치한다
+        # ⚠️ `-e` 가 아니다. editable 설치는 소스 트리를 sys.path 에 얹어
+        #    「상자가 자족적인가」라는 질문에 답하지 못하게 만든다.
+        #
+        # ⚠️ 이 스텝은 오늘 **실패한다** — 이 레인은 `fcc-test-contracts` 에
+        #    의존하는데 그것을 받아올 인덱스가 없다(2026-08-30 A 세션 실측).
+        #    형제 레인을 먼저 설치하는 것이 우회이고, 팀원의 맨 `pip install .`
+        #    은 여전히 깨진다. 그것은 배송 설계 결함이라 게이트가 아니라
+        #    분리 라운드가 갚는다. 여기 적어 두는 이유는, 러너가 돌아온 날
+        #    이 스텝이 빨간 것을 보고 「게이트가 잘못됐다」고 읽지 않게 하려는 것이다.
+        run: |
+          pip install '.[test]'
+
+      - name: 선언된 실패 집합과 대조한다
+        # 검사 정의는 이 파일에 없다 — scripts/lane_check.py 가 SSOT 이고
+        # pre-push 훅도 **같은 것**을 부른다. 여기에 pytest 명령을 인라인하면
+        # 그 순간 두 게이트가 갈라진다.
+        run: python scripts/lane_check.py

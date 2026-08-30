@@ -480,6 +480,36 @@
           "future_path": "tests/",
           "kind": "lane_test_suite",
           "notes": "This lane's test suite. Membership is derived by ExtractionLanePolicy.tests_for_lane, exactly as the platform lane's is. It could not travel until 2026-08-12 because the shared harness was not dependency-free: three fixtures in tests/conftest.py reached PySide6, infrastructure.correction and domain.ports, and conftest is loaded whether or not anything imports it, so its imports are the floor every delivered suite inherits. The repair was the harness, not this manifest and not the standalone gate — the provider-shaped fixtures moved to tests/support/harness_provider.py, registered by presence."
+        },
+        {
+          "current_path": "packaging/fcc-test-contracts/scripts/lane_check.py",
+          "future_path": "scripts/lane_check.py",
+          "kind": "script",
+          "notes": "이 레인의 검사 게이트. 2026-08-30 실측으로 이 계정의 GitHub Actions 는 러너를 배정받지 못한다(잡이 2초 만에 steps:[] · runner_name:\"\" 로 끝난다 — 실패가 아니라 시작조차 못 하는 것이고, 두 상태는 다운스트림에서 같은 빨간 X 로 보인다). 그래서 오늘 실제로 막는 것은 githooks/pre-push 이고 워크플로는 휴면이다. 둘은 같은 진입점 scripts/lane_check.py 를 부르며, 그 단일성과 두 레인 사본의 바이트 동일성을 tests/test_delivered_lane_check_axis.py 가 봉인한다 — 갈라져도 양쪽이 초록일 수 있는 축이라 사람 눈이 아니라 게이트가 잡아야 한다."
+        },
+        {
+          "current_path": "packaging/fcc-test-contracts/scripts/lane_check_plugin.py",
+          "future_path": "scripts/lane_check_plugin.py",
+          "kind": "script",
+          "notes": "실패 이름 집합을 받아 적는 pytest 플러그인. 요약줄(grep '^FAILED ')은 subtest 실패와 수집 에러를 보지 못하고, 이 상자는 오늘 정확히 수집 에러로 넘어지는 모듈을 가지고 있다(test_auth_mode_local_jwt.py — import jwt 가 oidc extra 에 있는데 설치 안내는 test extra 를 시킨다). 그래서 요약줄이 아니라 리포트 훅에서 센다."
+        },
+        {
+          "current_path": "packaging/fcc-test-contracts/githooks/pre-push",
+          "future_path": "githooks/pre-push",
+          "kind": "script",
+          "notes": "러너가 없는 동안 실제로 막는 게이트. 실수 방지층이지 방어층이 아니다 — 설치가 clone 마다 opt-in(git config core.hooksPath githooks)이고 --no-verify 로 사라진다. 그 한계는 훅 본문이 스스로 적는다."
+        },
+        {
+          "current_path": "packaging/fcc-test-contracts/.github/workflows/checks.yml",
+          "future_path": ".github/workflows/checks.yml",
+          "kind": "script",
+          "notes": "이 레인의 검사 게이트. 2026-08-30 실측으로 이 계정의 GitHub Actions 는 러너를 배정받지 못한다(잡이 2초 만에 steps:[] · runner_name:\"\" 로 끝난다 — 실패가 아니라 시작조차 못 하는 것이고, 두 상태는 다운스트림에서 같은 빨간 X 로 보인다). 그래서 오늘 실제로 막는 것은 githooks/pre-push 이고 워크플로는 휴면이다. 둘은 같은 진입점 scripts/lane_check.py 를 부르며, 그 단일성과 두 레인 사본의 바이트 동일성을 tests/test_delivered_lane_check_axis.py 가 봉인한다 — 갈라져도 양쪽이 초록일 수 있는 축이라 사람 눈이 아니라 게이트가 잡아야 한다."
+        },
+        {
+          "current_path": "packaging/fcc-test-contracts/delivered_test_run_baseline.json",
+          "future_path": "delivered_test_run_baseline.json",
+          "kind": "contract_artifact",
+          "notes": "게이트가 대조하는 선언된 실패 이름 집합. 매니페스트 governance.delivered_test_run_baseline 에서 scripts/render_delivered_lane_baseline.py 가 렌더하는 사본이고 그것이 유일 writer 다. 사본을 두는 이유: 매니페스트가 실린 곳은 docs/api/ 를 통째로 받는 contracts 상자뿐이고, 그 경로의 소유가 contracts 레인이라 platform 이 같은 파일을 주장하면 매니페스트 자신의 소유권 게이트를 위반한다. 그런데 platform 상자의 EXTRACTED_FROM.md 는 그 매니페스트로 판정하라고 적는다 — 그 상자에 없는 파일을 가리키는 지시였다(2026-08-30 실측). 이 사본이 그 구멍을 메운다."
         }
       ],
       "depends_on": [],
@@ -553,6 +583,8 @@
         "src/infrastructure/adapters/driving/api/rate_limit_middleware.py"
       ],
       "extraction_target": true,
+      "delivery_remote": "https://github.com/junnv93/fcc-test-contracts.git",
+      "delivery_remote_note": "Where scripts/deliver_public_repos.py pushes this lane's box. Declared beside extraction_target because they are one decision: a lane that becomes a target without a destination is a delivery the tooling has to guess the address of, and a guessed address is the one mistake in a push that cannot be taken back. Read by the delivery command; never defaulted.",
       "entries_note": "Re-cut along the surface axis on 2026-08-29 (headless-contract-axis): three kind-of-table modules (api_contract_dtos/operations/schemas) were replaced by six surface modules plus five assembly/shared modules. The entry list moved because LANE MEMBERSHIP moved — this manifest enumerates the lane file by file, so a file-level refactor of the lane makes the declaration stale by construction, and leaving it stale is not \"not touching it\": the staged tree then cannot import itself (ModuleNotFoundError on the modules the facade now reads) while the cross-lane baseline reports the lane importing nine modules it supposedly does not own. The axis was measured from this surface's own history rather than chosen — the kind-of-table split kept 38% of feature commits inside one file against 86% for this one — and the measurement is re-runnable (scripts/measure_contract_decomposition_axis.py). No depends_on, source_root, forbidden_external or baseline value changed: this is the same lane, enumerated after its files moved.",
       "source_files_note": "One explicit rule per contracts-lane module under src/application/headless/, because that directory resolves to fcc-unlicensed-headless by default (specificity 25) and a module that is not named here inherits the provider lane. Re-cut 2026-08-29 (headless-contract-axis): the three kind-of-table modules left and eleven surface/assembly modules arrived. This list and `entries` are the same fact stated twice — ownership and relocation — and test_declared_moves_agree_with_declared_ownership exists because they once disagreed for thirty platform entries. Editing one without the other is the shape that test catches."
     },
@@ -1297,6 +1329,36 @@
           "future_path": "CODEOWNERS",
           "kind": "delivery_doc",
           "notes": "A draft, and says so. The manifest declares this lane's owner as a role name, not a GitHub handle, and no corresponding team exists yet — inventing one would point reviews at nothing while reading as though it assigns them, so the file names the one account that actually exists and records what has to change when the team is minted. It enforces nothing today: Code Owner review requires a branch protection rule, and this repository's default branch is created by the first push."
+        },
+        {
+          "current_path": "packaging/fcc-test-platform/scripts/lane_check.py",
+          "future_path": "scripts/lane_check.py",
+          "kind": "script",
+          "notes": "이 레인의 검사 게이트. 2026-08-30 실측으로 이 계정의 GitHub Actions 는 러너를 배정받지 못한다(잡이 2초 만에 steps:[] · runner_name:\"\" 로 끝난다 — 실패가 아니라 시작조차 못 하는 것이고, 두 상태는 다운스트림에서 같은 빨간 X 로 보인다). 그래서 오늘 실제로 막는 것은 githooks/pre-push 이고 워크플로는 휴면이다. 둘은 같은 진입점 scripts/lane_check.py 를 부르며, 그 단일성과 두 레인 사본의 바이트 동일성을 tests/test_delivered_lane_check_axis.py 가 봉인한다 — 갈라져도 양쪽이 초록일 수 있는 축이라 사람 눈이 아니라 게이트가 잡아야 한다."
+        },
+        {
+          "current_path": "packaging/fcc-test-platform/scripts/lane_check_plugin.py",
+          "future_path": "scripts/lane_check_plugin.py",
+          "kind": "script",
+          "notes": "실패 이름 집합을 받아 적는 pytest 플러그인. 요약줄(grep '^FAILED ')은 subtest 실패와 수집 에러를 보지 못하고, 이 상자는 오늘 정확히 수집 에러로 넘어지는 모듈을 가지고 있다(test_auth_mode_local_jwt.py — import jwt 가 oidc extra 에 있는데 설치 안내는 test extra 를 시킨다). 그래서 요약줄이 아니라 리포트 훅에서 센다."
+        },
+        {
+          "current_path": "packaging/fcc-test-platform/githooks/pre-push",
+          "future_path": "githooks/pre-push",
+          "kind": "script",
+          "notes": "러너가 없는 동안 실제로 막는 게이트. 실수 방지층이지 방어층이 아니다 — 설치가 clone 마다 opt-in(git config core.hooksPath githooks)이고 --no-verify 로 사라진다. 그 한계는 훅 본문이 스스로 적는다."
+        },
+        {
+          "current_path": "packaging/fcc-test-platform/.github/workflows/checks.yml",
+          "future_path": ".github/workflows/checks.yml",
+          "kind": "script",
+          "notes": "이 레인의 검사 게이트. 2026-08-30 실측으로 이 계정의 GitHub Actions 는 러너를 배정받지 못한다(잡이 2초 만에 steps:[] · runner_name:\"\" 로 끝난다 — 실패가 아니라 시작조차 못 하는 것이고, 두 상태는 다운스트림에서 같은 빨간 X 로 보인다). 그래서 오늘 실제로 막는 것은 githooks/pre-push 이고 워크플로는 휴면이다. 둘은 같은 진입점 scripts/lane_check.py 를 부르며, 그 단일성과 두 레인 사본의 바이트 동일성을 tests/test_delivered_lane_check_axis.py 가 봉인한다 — 갈라져도 양쪽이 초록일 수 있는 축이라 사람 눈이 아니라 게이트가 잡아야 한다."
+        },
+        {
+          "current_path": "packaging/fcc-test-platform/delivered_test_run_baseline.json",
+          "future_path": "delivered_test_run_baseline.json",
+          "kind": "contract_artifact",
+          "notes": "게이트가 대조하는 선언된 실패 이름 집합. 매니페스트 governance.delivered_test_run_baseline 에서 scripts/render_delivered_lane_baseline.py 가 렌더하는 사본이고 그것이 유일 writer 다. 사본을 두는 이유: 매니페스트가 실린 곳은 docs/api/ 를 통째로 받는 contracts 상자뿐이고, 그 경로의 소유가 contracts 레인이라 platform 이 같은 파일을 주장하면 매니페스트 자신의 소유권 게이트를 위반한다. 그런데 platform 상자의 EXTRACTED_FROM.md 는 그 매니페스트로 판정하라고 적는다 — 그 상자에 없는 파일을 가리키는 지시였다(2026-08-30 실측). 이 사본이 그 구멍을 메운다."
         }
       ],
       "depends_on": [
@@ -1388,7 +1450,9 @@
         "src/platform_api_app.py",
         "src/platform_api_composition.py"
       ],
-      "extraction_target": true
+      "extraction_target": true,
+      "delivery_remote": "https://github.com/junnv93/fcc-test-platform.git",
+      "delivery_remote_note": "Where scripts/deliver_public_repos.py pushes this lane's box. Declared beside extraction_target because they are one decision: a lane that becomes a target without a destination is a delivery the tooling has to guess the address of, and a guessed address is the one mistake in a push that cannot be taken back. Read by the delivery command; never defaulted."
     },
     "fcc-unlicensed-headless": {
       "owner": "Unlicensed Test maintainers",

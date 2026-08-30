@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 # name = 매니페스트 `repositories` 의 레인 키.
 name = "fcc-test-platform"
 # version = 이 레인이 이미 소유한 npm 배포물 apps/web/package.json 과 상등.
-version = "0.1.0"
+version = "0.1.1"
 description = "Central DB, backend API, auth/RBAC, frontend shell, provider registry, deployment composition, and report/artifact browsing workflows."
 # requires-python = infra/central/Dockerfile.api 의 `FROM python:3.11-slim`.
 requires-python = ">=3.11"
@@ -36,13 +36,22 @@ dependencies = [
     # tests/test_central_docker_compose.py 봉인).
     "fastapi>=0.136.1",
     "psycopg[binary]>=3.1",
+    # ⚠️ RUNTIME, not a test aid. fcc_test_platform/application/password_hasher.py
+    # imports it lazily, so the box installs fine and then dies on the first
+    # login. A delivered distribution that cannot perform its own function
+    # without an undeclared third party is not delivered. Floor derived from
+    # requirements-central.txt, the runtime dependency SSOT.
+    "bcrypt>=3.2.0",
 ]
 
 [project.optional-dependencies]
 # 상자가 자기 suite 를 싣는다(매니페스트 `lane_test_suite`). 실측: 테스트가
 # 모듈 레벨로 도달하는 서드파티는 pytest 와 openpyxl 둘.
 # 하한은 각각 requirements.txt:33 · requirements-central.txt SSOT.
-test = ["pytest>=7.0.0", "openpyxl>=3.1.0"]
+test = ["pytest>=7.0.0", "openpyxl>=3.1.0",
+    # starlette.testclient requires it; 19 tests error without it.
+    "httpx>=0.28.1",
+]
 
 # ⚠️ selenium(scripts/platform_frontend_browser_qa.py) 과 psycopg2 폴백
 #    (scripts/platform_db_migrate.py 외 2)은 **선언하지 않는다**. 둘 다 운영자
