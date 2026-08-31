@@ -59,3 +59,4 @@ jobs:
         # pre-push 훅도 **같은 것**을 부른다. 여기에 pytest 명령을 인라인하면
         # 그 순간 두 게이트가 갈라진다.
         run: python scripts/lane_check.py
+# CI 발화 확인 — 2026-08-31T08:44:18Z
