@@ -10,7 +10,11 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from tests.test_platform_ingestion_execution_evidence import _valid_manifest
-import scripts.platform_ingestion_execution_evidence as cli
+# ⚠️ 2026-08-31 — 알맹이가 패키지로 갔다(`scripts/` 는 휠이 나르지 못한다).
+#    `scripts/…` 는 이제 진입점 3줄뿐이라 patch 대상이 없다. 테스트는
+#    **로직이 사는 곳**을 잡아야 한다 — 껍데기를 잡으면 「이름이 사라졌다」와
+#    「로직이 사라졌다」가 같은 AttributeError 가 된다.
+import fcc_test_platform.ingestion_execution_evidence_cli as cli
 
 
 project_root = Path(__file__).parent.parent
