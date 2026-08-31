@@ -194,29 +194,41 @@ class TestTheProbeDoesNotDisarmTheRepositoryItChecks(unittest.TestCase):
     저장소의 설정이 그대로인가.
     """
 
+    # ⚠️ 이 클래스의 모든 git 호출이 환경을 격리한다 — 봉인 자신이 같은 결함을 갖지
+    #    않기 위해서다. 실측 2026-08-31: 처음 판은 `_victim` 만 격리를 빠뜨렸고, 훅
+    #    안에서는 부모의 `GIT_DIR` 이 **이미** 서 있으므로 피해자를 만들려던 `git init`
+    #    이 진짜 저장소의 `core.bare` 를 뒤집었다. ⚠️ **격리 단위 실행으로는 잡히지
+    #    않는다** — 그 문맥엔 주변 `GIT_DIR` 이 없어 같은 코드가 정상 동작한다.
+    #    훅을 통한 실제 push 가 잡았다.
+    def _git(self, *args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            ['git', *args],
+            cwd=None if cwd is None else str(cwd),
+            capture_output=True, text=True, check=False,
+            env=_git_env_without_repo_location(),
+        )
+
     def _victim(self, root: Path) -> Path:
         """링크드 워크트리를 가진 저장소 — 피해가 실측된 바로 그 형상."""
         repo = root / 'victim'
-        subprocess.run(['git', 'init', '-q', str(repo)], check=True)
+        self.assertEqual(0, self._git('init', '-q', str(repo)).returncode)
         hooks = repo / TRACKED_HOOKS_DIR
         hooks.mkdir()
         (hooks / 'pre-push').write_text('#!/bin/sh\nexit 0\n', encoding='utf-8')
         for args in (
-            ['config', 'core.hooksPath', TRACKED_HOOKS_DIR],
-            ['config', 'user.email', 'probe@example.invalid'],
-            ['config', 'user.name', 'probe'],
-            ['add', '-A'],
-            ['commit', '-qm', 'init'],
-            ['worktree', 'add', '-q', str(root / 'wt'), '-b', 'wt'],
+            ('config', 'core.hooksPath', TRACKED_HOOKS_DIR),
+            ('config', 'user.email', 'probe@example.invalid'),
+            ('config', 'user.name', 'probe'),
+            ('add', '-A'),
+            ('commit', '-qm', 'init'),
+            ('worktree', 'add', '-q', str(root / 'wt'), '-b', 'wt'),
         ):
-            subprocess.run(['git', *args], cwd=str(repo), check=True)
+            result = self._git(*args, cwd=repo)
+            self.assertEqual(0, result.returncode, f'{args}: {result.stderr}')
         return repo
 
     def _config(self, repo: Path, key: str) -> str:
-        return subprocess.run(
-            ['git', 'config', key], cwd=str(repo),
-            capture_output=True, text=True, check=False,
-        ).stdout.strip()
+        return self._git('config', key, cwd=repo).stdout.strip()
 
     def test_running_under_a_hooks_git_dir_leaves_the_repository_alone(self) -> None:
         import tempfile
@@ -231,12 +243,20 @@ class TestTheProbeDoesNotDisarmTheRepositoryItChecks(unittest.TestCase):
             self.assertEqual((TRACKED_HOOKS_DIR, 'false'), before)
 
             # git 이 훅에 물려주는 그대로. 워크트리 형상이 `core.bare` 까지 뒤집던 자리다.
+            # ⚠️ 원래 값을 **복원**한다 — 훅 안에서는 부모가 이미 하나 세워 뒀고,
+            #    지워 버리면 이 검사가 뒤따르는 검사들의 문맥을 바꾼다.
+            inherited = os.environ.get('GIT_DIR')
             os.environ['GIT_DIR'] = str(repo / '.git' / 'worktrees' / 'wt')
             try:
-                probe = TestTheCheckWouldSeeAnUnwiredCheckout('test_an_unset_checkout_reads_as_empty')
+                probe = TestTheCheckWouldSeeAnUnwiredCheckout(
+                    'test_an_unset_checkout_reads_as_empty',
+                )
                 probe._probe(root / 'elsewhere', 'some/other/hooks')
             finally:
-                os.environ.pop('GIT_DIR', None)
+                if inherited is None:
+                    os.environ.pop('GIT_DIR', None)
+                else:
+                    os.environ['GIT_DIR'] = inherited
 
             after = (
                 self._config(repo, 'core.hooksPath'),

@@ -1,3 +1,0 @@
-# Placeholder so `src/api/generated/` exists before `npm run codegen` is run.
-# Generated TypeScript files (session-api.types.ts, etc.) land here at codegen time.
-# They are gitignored (see apps/web/.gitignore).
