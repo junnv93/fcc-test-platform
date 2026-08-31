@@ -1,11 +1,39 @@
-"""Dependency-free provider registry loading for shared headless contracts."""
+"""Provider registry: the platform's *content* axis over the contract *format* axis.
+
+⚠️ **The format axis moved to ``fcc-test-contracts`` (2026-08-31) and this module
+now imports it.** What a registry document must look like -- which keys are
+required, which are forbidden, how a ``contract_artifact`` resolves, whether an
+entry's identity matches the artifact it names, what a provider may be called --
+is a contract question, and it was answered here in a copy that the contracts
+lane also answered. Two answers to one question is one answer too many: the copy
+here had already fallen behind (it never grew the naming rule the contracts lane
+settled on the same day), and nothing was red.
+
+The boundary that survives: **format is a contract question, content is a
+platform one.** *Which* providers are registered stays here
+(``config/headless_provider_registry.json``); *what a registration must look
+like* comes from the dependency.
+
+:class:`ProviderReferenceResolverRegistry` deliberately did **not** move. It is
+not about registry documents at all -- it is the platform service's mapping of
+provider ids to reference-export adapters, consumed by ``api_composition`` -- and
+sending it to a lane whose ``depends_on`` is empty would push platform service
+vocabulary into the shared kernel.
+"""
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass
 from collections.abc import Mapping as MappingABC
-from pathlib import Path
-from typing import Iterable, Iterator
+from typing import Iterator
+
+from fcc_test_contracts.headless.provider_registry import (
+    FORBIDDEN_REGISTRY_KEYS,
+    REQUIRED_PROVIDER_KEYS,
+    ProviderRegistry,
+    ProviderRegistryEntry,
+    ProviderRegistryError,
+    load_provider_registry,
+    validate_registry_contract_identities,
+)
 
 
 __all__ = [
@@ -16,19 +44,6 @@ __all__ = [
     'load_provider_registry',
     'validate_registry_contract_identities',
 ]
-
-
-FORBIDDEN_REGISTRY_KEYS = frozenset({'routes', 'schemas', 'operations'})
-REQUIRED_PROVIDER_KEYS = (
-    'provider_id',
-    'product_line',
-    'contract_family',
-    'contract_artifact',
-)
-
-
-class ProviderRegistryError(ValueError):
-    """Raised when a provider registry document is invalid."""
 
 
 class ProviderReferenceResolverRegistry(MappingABC[str, object]):
@@ -67,183 +82,3 @@ class ProviderReferenceResolverRegistry(MappingABC[str, object]):
 
     def provider_ids(self) -> tuple[str, ...]:
         return tuple(self._adapters)
-
-
-@dataclass(frozen=True)
-class ProviderRegistryEntry:
-    provider_id: str
-    product_line: str
-    contract_family: str
-    contract_artifact: str
-    resolved_contract_artifact: Path
-
-    def to_dict(self) -> dict:
-        return {
-            'provider_id': self.provider_id,
-            'product_line': self.product_line,
-            'contract_family': self.contract_family,
-            'contract_artifact': self.contract_artifact,
-            'resolved_contract_artifact': str(self.resolved_contract_artifact),
-        }
-
-    def validate_contract_identity(self) -> None:
-        contract = json.loads(self.resolved_contract_artifact.read_text(encoding='utf-8'))
-        if not isinstance(contract, dict):
-            raise ProviderRegistryError(
-                f'{self.provider_id} contract artifact must be a JSON object'
-            )
-        provider = contract.get('provider')
-        if not isinstance(provider, dict):
-            raise ProviderRegistryError(
-                f'{self.provider_id} contract artifact is missing provider metadata'
-            )
-        _require_matching_provider_field(self, provider, 'provider_id')
-        _require_matching_provider_field(self, provider, 'product_line')
-        _require_matching_provider_field(self, provider, 'contract_family')
-
-
-@dataclass(frozen=True)
-class ProviderRegistry:
-    registry_version: int
-    providers: tuple[ProviderRegistryEntry, ...]
-
-    @property
-    def artifact_paths(self) -> list[str]:
-        return [str(provider.resolved_contract_artifact) for provider in self.providers]
-
-    def to_dict(self) -> dict:
-        return {
-            'registry_version': self.registry_version,
-            'providers': [provider.to_dict() for provider in self.providers],
-        }
-
-
-def load_provider_registry(registry_path: Path, project_root: Path) -> ProviderRegistry:
-    """Load and validate a provider registry JSON file."""
-    registry_path = Path(registry_path)
-    if not registry_path.is_absolute():
-        registry_path = Path(project_root) / registry_path
-
-    document = json.loads(registry_path.read_text(encoding='utf-8'))
-    return _parse_registry(document, registry_path, Path(project_root))
-
-
-def validate_registry_contract_identities(registry: ProviderRegistry) -> None:
-    """Ensure registry identities match each referenced contract artifact."""
-    for provider in registry.providers:
-        provider.validate_contract_identity()
-
-
-def _parse_registry(
-    document: object,
-    registry_path: Path,
-    project_root: Path,
-) -> ProviderRegistry:
-    if not isinstance(document, dict):
-        raise ProviderRegistryError('provider registry must be a JSON object')
-
-    _reject_forbidden_keys(document.keys(), 'registry')
-
-    providers = document.get('providers')
-    if not isinstance(providers, list) or not providers:
-        raise ProviderRegistryError('provider registry is empty')
-
-    entries = tuple(
-        _parse_provider(provider, index, registry_path, project_root)
-        for index, provider in enumerate(providers)
-    )
-    _reject_duplicates(entries)
-
-    return ProviderRegistry(
-        registry_version=int(document.get('registry_version', 1)),
-        providers=entries,
-    )
-
-
-def _parse_provider(
-    provider: object,
-    index: int,
-    registry_path: Path,
-    project_root: Path,
-) -> ProviderRegistryEntry:
-    if not isinstance(provider, dict):
-        raise ProviderRegistryError(f'providers[{index}] must be an object')
-
-    _reject_forbidden_keys(provider.keys(), f'providers[{index}]')
-    for key in REQUIRED_PROVIDER_KEYS:
-        if not _text(provider.get(key)):
-            raise ProviderRegistryError(f'providers[{index}].{key} is required')
-
-    contract_artifact = _text(provider['contract_artifact'])
-    resolved = _resolve_artifact_path(registry_path, project_root, contract_artifact)
-    if not resolved.exists():
-        raise ProviderRegistryError(
-            f'providers[{index}].contract_artifact does not exist: {resolved}'
-        )
-
-    return ProviderRegistryEntry(
-        provider_id=_text(provider['provider_id']),
-        product_line=_text(provider['product_line']),
-        contract_family=_text(provider['contract_family']),
-        contract_artifact=contract_artifact,
-        resolved_contract_artifact=resolved,
-    )
-
-
-def _reject_forbidden_keys(keys: Iterable[str], label: str) -> None:
-    forbidden = sorted(FORBIDDEN_REGISTRY_KEYS.intersection(keys))
-    if forbidden:
-        raise ProviderRegistryError(
-            f"{label} must not duplicate contract details: {', '.join(forbidden)}"
-        )
-
-
-def _reject_duplicates(entries: tuple[ProviderRegistryEntry, ...]) -> None:
-    _reject_duplicate_value(entries, 'provider_id')
-    _reject_duplicate_value(entries, 'product_line')
-
-
-def _reject_duplicate_value(
-    entries: tuple[ProviderRegistryEntry, ...],
-    field_name: str,
-) -> None:
-    seen: set[str] = set()
-    for entry in entries:
-        value = getattr(entry, field_name)
-        if value in seen:
-            raise ProviderRegistryError(f'duplicate provider registry {field_name}: {value}')
-        seen.add(value)
-
-
-def _require_matching_provider_field(
-    entry: ProviderRegistryEntry,
-    provider: dict,
-    field_name: str,
-) -> None:
-    expected = getattr(entry, field_name)
-    actual = _text(provider.get(field_name))
-    if actual != expected:
-        raise ProviderRegistryError(
-            f'{entry.provider_id}.{field_name} mismatch: '
-            f'expected {expected!r}, got {actual!r}'
-        )
-
-
-def _resolve_artifact_path(
-    registry_path: Path,
-    project_root: Path,
-    artifact: str,
-) -> Path:
-    path = Path(artifact)
-    if path.is_absolute():
-        return path
-    candidate = project_root / path
-    if candidate.exists():
-        return candidate
-    return registry_path.parent / path
-
-
-def _text(value: object) -> str:
-    if value is None:
-        return ''
-    return str(value).strip()
