@@ -53,7 +53,7 @@ jobs:
         #    ⚠️ 그러므로 「인덱스가 없어서 못 받는다」는 진단은 **더 이상 참이
         #    아니다** — 그 문장을 남겨 두면 다음 사람이 없는 벽을 피해 간다.
         run: |
-          pip install '.[test]'
+          pip install -e '.[test]'  # editable — 비-editable 은 build/ 를 남겨 실패 집합을 오염시킨다
 
       # ⚠️ non-editable 설치는 `build/` 를 남기고 `lane_check` 는 그것을 거부한다
       #    (그 트리가 소스와 사본 둘을 갖게 되어 「무엇을 쟀나」가 모호해진다).
