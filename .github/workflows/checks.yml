@@ -54,9 +54,15 @@ jobs:
         run: |
           pip install '.[test]'
 
+      # ⚠️ non-editable 설치는 `build/` 를 남기고 `lane_check` 는 그것을 거부한다
+      #    (그 트리가 소스와 사본 둘을 갖게 되어 「무엇을 쟀나」가 모호해진다).
+      #    ⚠️ `.gitignore` 가 덮으므로 `git status` 로는 보이지 않는다 —
+      #    「깨끗하다」와 「안 보인다」가 같은 값인 자리다.
+      - name: 설치가 남긴 build/ 를 치운다
+        run: rm -rf build
+
       - name: 선언된 실패 집합과 대조한다
         # 검사 정의는 이 파일에 없다 — scripts/lane_check.py 가 SSOT 이고
         # pre-push 훅도 **같은 것**을 부른다. 여기에 pytest 명령을 인라인하면
         # 그 순간 두 게이트가 갈라진다.
         run: python scripts/lane_check.py
-# CI 발화 확인 — 2026-08-31T08:44:18Z
