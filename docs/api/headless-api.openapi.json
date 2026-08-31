@@ -1,0 +1,6435 @@
+{
+  "components": {
+    "schemas": {
+      "AddTestPlanDraftRowRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "antenna": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "capability_path": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "derived_kind": {
+            "enum": [
+              "afh_occupancy",
+              "antenna_sum"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mode_family": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scope_revision": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "test_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "capability_path"
+        ],
+        "type": "object"
+      },
+      "ApiContractDocument": {
+        "additionalProperties": false,
+        "properties": {
+          "compatibility_major": {
+            "type": "integer"
+          },
+          "operations": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ApiProviderMetadata"
+          },
+          "routes": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "schemas": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "compatibility_major",
+          "provider",
+          "routes",
+          "operations",
+          "schemas"
+        ],
+        "type": "object"
+      },
+      "ApiProviderMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "contract_family": {
+            "type": "string"
+          },
+          "product_line": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id",
+          "product_line",
+          "contract_family"
+        ],
+        "type": "object"
+      },
+      "ArtifactMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_type": {
+            "type": "string"
+          },
+          "byte_size": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "original_filename": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "relative_path": {
+            "type": "string"
+          },
+          "result_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "storage_backend": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id",
+          "session_id",
+          "artifact_type",
+          "relative_path",
+          "storage_backend"
+        ],
+        "type": "object"
+      },
+      "ArtifactMetadataList": {
+        "items": {
+          "$ref": "#/components/schemas/ArtifactMetadata"
+        },
+        "type": "array"
+      },
+      "BleGenerationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "antennas": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "bands_per_subfamily": {
+            "additionalProperties": {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "minProperties": 1,
+            "type": "object"
+          },
+          "modulations": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "phys": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "sub_families": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "technology": {
+            "const": "BLE"
+          },
+          "test_types": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "technology",
+          "sub_families",
+          "phys",
+          "test_types",
+          "antennas",
+          "modulations",
+          "bands_per_subfamily"
+        ],
+        "type": "object"
+      },
+      "BtGenerationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "antennas": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "bands_per_subfamily": {
+            "additionalProperties": {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "minProperties": 1,
+            "type": "object"
+          },
+          "modes": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "packets": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "technology": {
+            "const": "BT"
+          },
+          "test_types": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "technology",
+          "packets",
+          "modes",
+          "test_types",
+          "antennas",
+          "bands_per_subfamily"
+        ],
+        "type": "object"
+      },
+      "CancelReportAutomationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "default": "",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "CancelReportAutomationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "cancelled": {
+            "type": "boolean"
+          },
+          "request_id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "request_id",
+          "cancelled"
+        ],
+        "type": "object"
+      },
+      "CorrectionTableDescriptor": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "enum": [
+              "supported",
+              "read_only",
+              "unsupported",
+              "planned",
+              "provider_specific",
+              "restricted"
+            ],
+            "type": "string"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderFieldDescriptor"
+            },
+            "type": "array"
+          },
+          "label": {
+            "type": "string"
+          },
+          "sheet_name": {
+            "type": "string"
+          },
+          "table_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_id",
+          "label",
+          "sheet_name",
+          "access",
+          "columns"
+        ],
+        "type": "object"
+      },
+      "CreateReportOutputDownloadRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "disposition": {
+            "enum": [
+              "attachment",
+              "inline"
+            ],
+            "type": "string"
+          },
+          "relative_path": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "relative_path"
+        ],
+        "type": "object"
+      },
+      "CreateTestPlanDraftRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "created_by": {
+            "default": "",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "EquipmentConfigDescriptor": {
+        "additionalProperties": false,
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderFieldDescriptor"
+            },
+            "type": "array"
+          },
+          "group_id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "sheet_name": {
+            "description": "The workbook sheet these settings are read from today, when there is one. It was required, which quietly made this descriptor a sheet mirror rather than a settings form: a provider with no workbook could not describe its equipment at all, and the read-only status was a consequence of that shape rather than a decision. The sibling table descriptors keep it required because they really are sheet mirrors.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "group_id",
+          "label",
+          "fields"
+        ],
+        "type": "object"
+      },
+      "ErrorCode": {
+        "description": "Machine-readable error identifier (RFC 9457 code).",
+        "enum": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "NOT_FOUND",
+          "DRAFT_NOT_FOUND",
+          "MEMBERSHIP_NOT_FOUND",
+          "PROVIDER_NOT_FOUND",
+          "CONFLICT",
+          "DRAFT_ROW_CONFLICT",
+          "PUBLISH_CONFLICT",
+          "CLAIM_CONFLICT",
+          "DOWNLOAD_INTEGRITY_CONFLICT",
+          "DOWNLOAD_EXPIRED",
+          "DRAFT_UNPROCESSABLE",
+          "DRAFT_EMPTY",
+          "SESSION_RESULTS_EMPTY",
+          "RATE_LIMITED",
+          "UPSTREAM_UNAVAILABLE",
+          "REFERENCE_DATA_NOT_PROVISIONED",
+          "INTERNAL_ERROR"
+        ],
+        "type": "string"
+      },
+      "ExcludedImportRowView": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "row_number": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "row_number",
+          "reason",
+          "detail"
+        ],
+        "type": "object"
+      },
+      "HeadlessBackendStatusSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "measurement_jobs": {
+            "$ref": "#/components/schemas/MeasurementJobStatusSummary"
+          },
+          "report_automation": {
+            "$ref": "#/components/schemas/ReportAutomationQueueStats"
+          },
+          "workers": {
+            "items": {
+              "$ref": "#/components/schemas/MeasurementWorkerSnapshot"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "measurement_jobs",
+          "workers",
+          "report_automation"
+        ],
+        "type": "object"
+      },
+      "HealthCheckResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "ImportAuditView": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted_count": {
+            "type": "integer"
+          },
+          "by_technology": {
+            "items": {
+              "$ref": "#/components/schemas/ImportTechnologySummaryView"
+            },
+            "type": "array"
+          },
+          "excluded_count": {
+            "type": "integer"
+          },
+          "issue_count": {
+            "type": "integer"
+          },
+          "legend_skipped_count": {
+            "type": "integer"
+          },
+          "parser_version": {
+            "type": "string"
+          },
+          "raw_row_count": {
+            "type": "integer"
+          },
+          "sheet_name": {
+            "type": "string"
+          },
+          "workbook_filename": {
+            "type": "string"
+          },
+          "workbook_sha256": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workbook_filename",
+          "workbook_sha256",
+          "sheet_name",
+          "parser_version",
+          "raw_row_count",
+          "legend_skipped_count",
+          "accepted_count",
+          "issue_count",
+          "excluded_count",
+          "by_technology"
+        ],
+        "type": "object"
+      },
+      "ImportIssueView": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "row_number": {
+            "type": "integer"
+          },
+          "severity": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "row_number",
+          "severity",
+          "field",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ImportTechnologySummaryView": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted": {
+            "type": "integer"
+          },
+          "excluded": {
+            "type": "integer"
+          },
+          "issues": {
+            "type": "integer"
+          },
+          "technology": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "technology",
+          "accepted",
+          "issues",
+          "excluded"
+        ],
+        "type": "object"
+      },
+      "ListPublishedTestPlansResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "publications": {
+            "items": {
+              "$ref": "#/components/schemas/PublishedTestPlanSummaryView"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "publications"
+        ],
+        "type": "object"
+      },
+      "ListTestPlanDraftsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "drafts": {
+            "items": {
+              "$ref": "#/components/schemas/TestPlanDraftSummaryView"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "drafts"
+        ],
+        "type": "object"
+      },
+      "MeasurementAttemptEnvelope": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_id": {
+            "type": "string"
+          },
+          "attempt_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "condition_hash": {
+            "type": "string"
+          },
+          "measured_at": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "recorded_by": {
+            "type": "string"
+          },
+          "result": {
+            "additionalProperties": false,
+            "properties": {
+              "dccf": {
+                "type": "string"
+              },
+              "margin": {
+                "type": "string"
+              },
+              "result1": {
+                "type": "string"
+              },
+              "result1_unit": {
+                "type": "string"
+              },
+              "result2": {
+                "type": "string"
+              },
+              "result2_unit": {
+                "type": "string"
+              },
+              "result_sum": {
+                "type": "string"
+              },
+              "result_sum_unit": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "row_order": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "sheet_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "technology": {
+            "type": "string"
+          },
+          "verdict": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id",
+          "session_id",
+          "attempt_id",
+          "condition_hash"
+        ],
+        "type": "object"
+      },
+      "MeasurementAttemptPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MeasurementAttemptEnvelope"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "type": "object"
+      },
+      "MeasurementJobList": {
+        "items": {
+          "$ref": "#/components/schemas/MeasurementJobSnapshot"
+        },
+        "type": "array"
+      },
+      "MeasurementJobSnapshot": {
+        "additionalProperties": true,
+        "properties": {
+          "assigned_worker_id": {
+            "type": "string"
+          },
+          "claimed_at": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "excel_path": {
+            "type": "string"
+          },
+          "finished_at": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "job_uuid": {
+            "type": "string"
+          },
+          "lease_expires_at": {
+            "type": "string"
+          },
+          "options_json": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "payload_json": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requested_by": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "started_at": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "status_message": {
+            "type": "string"
+          },
+          "stop_requested": {
+            "type": "boolean"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "excel_path"
+        ],
+        "type": "object"
+      },
+      "MeasurementJobStatusSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "counts": {
+            "additionalProperties": false,
+            "properties": {
+              "cancelled": {
+                "type": "integer"
+              },
+              "completed": {
+                "type": "integer"
+              },
+              "failed": {
+                "type": "integer"
+              },
+              "queued": {
+                "type": "integer"
+              },
+              "running": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
+            "type": "object"
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/MeasurementJobSnapshot"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "counts",
+          "recent"
+        ],
+        "type": "object"
+      },
+      "MeasurementJobSubmitted": {
+        "additionalProperties": false,
+        "properties": {
+          "excel_path": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "job_uuid": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "excel_path",
+          "job_uuid"
+        ],
+        "type": "object"
+      },
+      "MeasurementResultEnvelope": {
+        "additionalProperties": false,
+        "properties": {
+          "condition": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "measured_at": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "result": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "result_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "technology": {
+            "type": "string"
+          },
+          "test_name": {
+            "type": "string"
+          },
+          "verdict": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id",
+          "session_id",
+          "result_id"
+        ],
+        "type": "object"
+      },
+      "MeasurementResultEnvelopeList": {
+        "items": {
+          "$ref": "#/components/schemas/MeasurementResultEnvelope"
+        },
+        "type": "array"
+      },
+      "MeasurementWorkerSnapshot": {
+        "additionalProperties": true,
+        "properties": {
+          "capabilities_json": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "last_heartbeat_at": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "test_pc_id": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "worker_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "worker_id",
+          "status"
+        ],
+        "type": "object"
+      },
+      "ProblemDetails": {
+        "additionalProperties": true,
+        "description": "RFC 9457 Problem Details for HTTP APIs (application/problem+json error body).",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "params": {
+            "additionalProperties": true,
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "format": "uri-reference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "code"
+        ],
+        "type": "object"
+      },
+      "ProviderCapabilitiesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "product_line": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "runtime_limits": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "supported_artifact_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "supported_job_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "supported_technologies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "supports_cancel": {
+            "type": "boolean"
+          },
+          "supports_offline_queue": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "provider_id",
+          "product_line",
+          "supported_job_types",
+          "supported_technologies",
+          "supported_artifact_types",
+          "supports_cancel",
+          "supports_offline_queue"
+        ],
+        "type": "object"
+      },
+      "ProviderFeature": {
+        "additionalProperties": false,
+        "properties": {
+          "feature_id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "supported",
+              "read_only",
+              "unsupported",
+              "planned",
+              "provider_specific",
+              "restricted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "feature_id",
+          "label",
+          "status"
+        ],
+        "type": "object"
+      },
+      "ProviderFieldDescriptor": {
+        "additionalProperties": false,
+        "properties": {
+          "data_type": {
+            "enum": [
+              "string",
+              "ipv4",
+              "gpib_address"
+            ],
+            "type": "string"
+          },
+          "field_id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "field_id",
+          "label",
+          "data_type",
+          "required"
+        ],
+        "type": "object"
+      },
+      "ProviderTableDescriptor": {
+        "additionalProperties": false,
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderFieldDescriptor"
+            },
+            "type": "array"
+          },
+          "label": {
+            "type": "string"
+          },
+          "row_identity_columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "row_identity_source": {
+            "enum": [
+              "Col.HISTORY_CONDITION",
+              "Col.MATCH_DEFAULT"
+            ],
+            "type": "string"
+          },
+          "sheet_name": {
+            "type": "string"
+          },
+          "table_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_id",
+          "label",
+          "sheet_name",
+          "row_identity_source",
+          "row_identity_columns",
+          "columns"
+        ],
+        "type": "object"
+      },
+      "ProviderUiDescriptor": {
+        "additionalProperties": false,
+        "properties": {
+          "correction_tables": {
+            "items": {
+              "$ref": "#/components/schemas/CorrectionTableDescriptor"
+            },
+            "type": "array"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "equipment": {
+            "items": {
+              "$ref": "#/components/schemas/EquipmentConfigDescriptor"
+            },
+            "type": "array"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderFeature"
+            },
+            "type": "array"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "reference_tables": {
+            "items": {
+              "$ref": "#/components/schemas/ReferenceTableDescriptor"
+            },
+            "type": "array"
+          },
+          "test_plan_tables": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderTableDescriptor"
+            },
+            "type": "array"
+          },
+          "ui_version": {
+            "type": "integer"
+          },
+          "workbench_area_technologies": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "provider_id",
+          "display_name",
+          "ui_version",
+          "features",
+          "test_plan_tables",
+          "equipment",
+          "reference_tables",
+          "correction_tables",
+          "workbench_area_technologies"
+        ],
+        "type": "object"
+      },
+      "PublishedTestPlanRowView": {
+        "additionalProperties": false,
+        "properties": {
+          "antenna": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "capability_path": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "condition_hash": {
+            "type": "string"
+          },
+          "derived_kind": {
+            "enum": [
+              "afh_occupancy",
+              "antenna_sum"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "generation_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mode_family": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "origin": {
+            "type": "string"
+          },
+          "scope_revision": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "test_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "condition_hash",
+          "capability_path",
+          "origin"
+        ],
+        "type": "object"
+      },
+      "PublishedTestPlanSummaryView": {
+        "additionalProperties": false,
+        "properties": {
+          "draft_id": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "published_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "published_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "row_count": {
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "published"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "draft_id",
+          "project_id",
+          "status",
+          "row_count"
+        ],
+        "type": "object"
+      },
+      "PublishedTestPlanView": {
+        "additionalProperties": false,
+        "properties": {
+          "draft_id": {
+            "type": "string"
+          },
+          "generation_metadata_json": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "published_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "published_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PublishedTestPlanRowView"
+            },
+            "type": "array"
+          },
+          "scope_profile_json": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scope_revision": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "draft_id",
+          "project_id",
+          "status",
+          "rows"
+        ],
+        "type": "object"
+      },
+      "ReferenceTableDescriptor": {
+        "additionalProperties": false,
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderFieldDescriptor"
+            },
+            "type": "array"
+          },
+          "label": {
+            "type": "string"
+          },
+          "sheet_name": {
+            "type": "string"
+          },
+          "table_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_id",
+          "label",
+          "sheet_name",
+          "columns"
+        ],
+        "type": "object"
+      },
+      "RemoveTestPlanDraftRowResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "draft_id": {
+            "type": "string"
+          },
+          "draft_row_id": {
+            "type": "integer"
+          },
+          "removed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "draft_id",
+          "draft_row_id",
+          "removed"
+        ],
+        "type": "object"
+      },
+      "ReplaceTestPlanDraftRowsRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/AddTestPlanDraftRowRequest"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows"
+        ],
+        "type": "object"
+      },
+      "ReplaceTestPlanDraftRowsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "draft_id": {
+            "type": "string"
+          },
+          "replaced_count": {
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/TestPlanDraftRowView"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "draft_id",
+          "replaced_count",
+          "rows"
+        ],
+        "type": "object"
+      },
+      "ReportAutomationQueueStats": {
+        "additionalProperties": true,
+        "properties": {
+          "cancelled": {
+            "type": "integer"
+          },
+          "completed": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "oldest_queued_request_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "queued": {
+            "type": "integer"
+          },
+          "running": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "queued",
+          "running",
+          "completed",
+          "failed",
+          "cancelled"
+        ],
+        "type": "object"
+      },
+      "ReportOutputDownloadGrant": {
+        "additionalProperties": false,
+        "properties": {
+          "download_url": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "download_url",
+          "expires_at"
+        ],
+        "type": "object"
+      },
+      "ReportOutputMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "byte_size": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "exists": {
+            "type": "boolean"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "relative_path": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "integer"
+          },
+          "storage_backend": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "file_name",
+          "relative_path",
+          "exists",
+          "byte_size",
+          "storage_backend"
+        ],
+        "type": "object"
+      },
+      "ReportOutputMetadataList": {
+        "items": {
+          "$ref": "#/components/schemas/ReportOutputMetadata"
+        },
+        "type": "array"
+      },
+      "ReportPreflightDataQuality": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "row_order": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "row_order"
+        ],
+        "type": "object"
+      },
+      "ReportPreflightMissingSource": {
+        "additionalProperties": false,
+        "properties": {
+          "channel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "missing_row",
+              "blocked_verdict"
+            ],
+            "type": "string"
+          },
+          "section": {
+            "type": "string"
+          },
+          "table_name": {
+            "type": "string"
+          },
+          "technology": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "technology",
+          "section",
+          "table_name",
+          "channel",
+          "label",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "ReportPreflightPerTech": {
+        "additionalProperties": false,
+        "properties": {
+          "complete": {
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "complete",
+              "incomplete",
+              "unknown"
+            ],
+            "type": "string"
+          },
+          "measured_count": {
+            "type": "integer"
+          },
+          "planned_total": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "technology": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "technology",
+          "measured_count",
+          "planned_total",
+          "kind",
+          "complete"
+        ],
+        "type": "object"
+      },
+      "ReportPreflightSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "data_quality": {
+            "items": {
+              "$ref": "#/components/schemas/ReportPreflightDataQuality"
+            },
+            "type": "array"
+          },
+          "has_data_quality_warnings": {
+            "type": "boolean"
+          },
+          "has_incomplete": {
+            "type": "boolean"
+          },
+          "has_missing_sources": {
+            "type": "boolean"
+          },
+          "missing_sources": {
+            "items": {
+              "$ref": "#/components/schemas/ReportPreflightMissingSource"
+            },
+            "type": "array"
+          },
+          "per_tech": {
+            "items": {
+              "$ref": "#/components/schemas/ReportPreflightPerTech"
+            },
+            "type": "array"
+          },
+          "published_plan_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "session_id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "session_id",
+          "published_plan_id",
+          "per_tech",
+          "data_quality",
+          "missing_sources",
+          "has_incomplete",
+          "has_data_quality_warnings",
+          "has_missing_sources"
+        ],
+        "type": "object"
+      },
+      "ReportRequestSnapshot": {
+        "additionalProperties": true,
+        "properties": {
+          "artifact_roots_json": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "assigned_worker_id": {
+            "type": "string"
+          },
+          "claimed_at": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "error_message": {
+            "type": "string"
+          },
+          "generated_by": {
+            "type": "string"
+          },
+          "generated_paths_json": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "job_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "lease_expires_at": {
+            "type": "string"
+          },
+          "output_dir": {
+            "type": "string"
+          },
+          "report_run_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "session_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "techs_json": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_profile": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "warnings_json": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "type": "object"
+      },
+      "ReportRequestSubmitted": {
+        "additionalProperties": false,
+        "properties": {
+          "request_id": {
+            "type": "integer"
+          },
+          "session_id": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "session_id",
+          "status"
+        ],
+        "type": "object"
+      },
+      "StopMeasurementJobRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "default": "",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "StopMeasurementJobResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "type": "integer"
+          },
+          "stop_requested": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "job_id",
+          "stop_requested"
+        ],
+        "type": "object"
+      },
+      "SubmitMeasurementJobRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "excel_path": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "options": {
+            "additionalProperties": true,
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "requested_by": {
+            "default": "",
+            "type": "string"
+          }
+        },
+        "required": [
+          "excel_path"
+        ],
+        "type": "object"
+      },
+      "SubmitReportRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_roots": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "generated_by": {
+            "default": "",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "output_dir": {
+            "type": "string"
+          },
+          "output_formats": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "report_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "template_profile": {
+            "default": "fcc-default",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "TestPlanDraftRowView": {
+        "additionalProperties": false,
+        "properties": {
+          "antenna": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "capability_path": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "derived_kind": {
+            "enum": [
+              "afh_occupancy",
+              "antenna_sum"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "draft_row_id": {
+            "type": "integer"
+          },
+          "generation_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mode_family": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "origin": {
+            "type": "string"
+          },
+          "scope_revision": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "test_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "draft_row_id",
+          "capability_path",
+          "origin"
+        ],
+        "type": "object"
+      },
+      "TestPlanDraftSummaryView": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "draft_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "row_count": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "draft_id",
+          "project_id",
+          "status",
+          "row_count"
+        ],
+        "type": "object"
+      },
+      "TestPlanDraftView": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "draft_id": {
+            "type": "string"
+          },
+          "generation_metadata_json": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/TestPlanDraftRowView"
+            },
+            "type": "array"
+          },
+          "scope_revision": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "draft_id",
+          "project_id",
+          "status",
+          "rows"
+        ],
+        "type": "object"
+      },
+      "TestPlanGenerationCatalogue": {
+        "additionalProperties": false,
+        "properties": {
+          "axes": {
+            "items": {
+              "$ref": "#/components/schemas/TestPlanGenerationCatalogueAxis"
+            },
+            "type": "array"
+          },
+          "bands_per_subfamily": {
+            "additionalProperties": {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "type": "object"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/TestPlanGenerationLimits"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "stages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "technology": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "technology",
+          "stages",
+          "axes",
+          "bands_per_subfamily",
+          "revision",
+          "sha256",
+          "limits"
+        ],
+        "type": "object"
+      },
+      "TestPlanGenerationCatalogueAxis": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "values"
+        ],
+        "type": "object"
+      },
+      "TestPlanGenerationCatalogueResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "catalogues": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TestPlanGenerationCatalogue"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "catalogues"
+        ],
+        "type": "object"
+      },
+      "TestPlanGenerationJobResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "draft_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error_message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "job_id": {
+            "type": "string"
+          },
+          "matrix_revision": {
+            "type": "string"
+          },
+          "matrix_sha256": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "request_sha256": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "job_id",
+          "project_id",
+          "status",
+          "request_sha256",
+          "matrix_revision",
+          "matrix_sha256",
+          "draft_id",
+          "error_code",
+          "error_message",
+          "created_at",
+          "updated_at"
+        ],
+        "type": "object"
+      },
+      "TestPlanGenerationLimits": {
+        "additionalProperties": false,
+        "properties": {
+          "browser_cache_page_limit": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "claim_batch_size": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "dom_row_limit": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "hard_row_limit": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "idle_fold_p95_ms": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "initial_payload_row_limit": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "keyset_page_p95_ms": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "lease_seconds": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "page_size": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "poll_interval_seconds": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "representative_sample_size": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "serialized_page_bytes": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "representative_sample_size",
+          "hard_row_limit",
+          "page_size",
+          "lease_seconds",
+          "poll_interval_seconds",
+          "claim_batch_size",
+          "idle_fold_p95_ms",
+          "keyset_page_p95_ms",
+          "serialized_page_bytes",
+          "initial_payload_row_limit",
+          "browser_cache_page_limit",
+          "dom_row_limit"
+        ],
+        "type": "object"
+      },
+      "TestPlanGenerationMetadataResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "draft_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "job_id": {
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "draft_id",
+          "metadata"
+        ],
+        "type": "object"
+      },
+      "TestPlanGenerationPreviewResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "catalogue_revision": {
+            "type": "string"
+          },
+          "catalogue_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "fingerprint": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "policy_revision": {
+            "type": "string"
+          },
+          "policy_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "production_estimate": {
+            "additionalProperties": false,
+            "properties": {
+              "derived_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "direct_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "exact_count": {
+                "minimum": 0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "exceeds_limit": {
+                "type": "boolean"
+              },
+              "lower_bound": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "exact_count",
+              "lower_bound",
+              "exceeds_limit",
+              "direct_count",
+              "derived_count"
+            ],
+            "type": "object"
+          },
+          "production_matrix": {
+            "additionalProperties": false,
+            "properties": {
+              "purpose": {
+                "type": "string"
+              },
+              "revision": {
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "purpose",
+              "revision",
+              "sha256"
+            ],
+            "type": "object"
+          },
+          "representative_matrix": {
+            "additionalProperties": false,
+            "properties": {
+              "purpose": {
+                "type": "string"
+              },
+              "revision": {
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "purpose",
+              "revision",
+              "sha256"
+            ],
+            "type": "object"
+          },
+          "representative_sample": {
+            "items": {
+              "$ref": "#/components/schemas/TestPlanGenerationSampleRow"
+            },
+            "type": "array"
+          },
+          "request_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_sha256",
+          "production_matrix",
+          "production_estimate",
+          "representative_matrix",
+          "representative_sample",
+          "catalogue_revision",
+          "catalogue_sha256",
+          "policy_revision",
+          "policy_sha256",
+          "fingerprint"
+        ],
+        "type": "object"
+      },
+      "TestPlanGenerationRequest": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/BtGenerationRequest"
+          },
+          {
+            "$ref": "#/components/schemas/BleGenerationRequest"
+          },
+          {
+            "$ref": "#/components/schemas/WlanBaseGenerationRequest"
+          },
+          {
+            "$ref": "#/components/schemas/WlanPretestGenerationRequest"
+          },
+          {
+            "$ref": "#/components/schemas/WlanMainTestGenerationRequest"
+          }
+        ]
+      },
+      "TestPlanGenerationRowPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "draft_id": {
+            "type": "string"
+          },
+          "next_after_draft_row_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/TestPlanGenerationRowView"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "draft_id",
+          "rows",
+          "next_after_draft_row_id"
+        ],
+        "type": "object"
+      },
+      "TestPlanGenerationRowView": {
+        "additionalProperties": false,
+        "properties": {
+          "antenna": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "capability_path": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "condition_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "derived_kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "draft_row_id": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "generated_from_capability": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "generation_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mode_family": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "origin": {
+            "type": "string"
+          },
+          "packet": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "row_seq": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "scope_revision": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "test_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "draft_row_id",
+          "row_seq",
+          "capability_path",
+          "origin",
+          "scope_revision",
+          "generation_key",
+          "test_type",
+          "antenna",
+          "mode_family",
+          "tone",
+          "location",
+          "packet",
+          "derived_kind",
+          "generated_from_capability",
+          "condition_hash"
+        ],
+        "type": "object"
+      },
+      "TestPlanGenerationSampleRow": {
+        "additionalProperties": false,
+        "properties": {
+          "antenna": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "capability_path": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "condition_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "derived_kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "generated_from_capability": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "generation_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mode_family": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "origin": {
+            "type": "string"
+          },
+          "packet": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scope_revision": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "test_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "capability_path",
+          "origin",
+          "scope_revision",
+          "generation_key",
+          "test_type",
+          "antenna",
+          "mode_family",
+          "tone",
+          "location",
+          "packet",
+          "derived_kind",
+          "generated_from_capability",
+          "condition_hash"
+        ],
+        "type": "object"
+      },
+      "TestPlanGenerationSubmitRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "preview": {
+            "$ref": "#/components/schemas/TestPlanGenerationPreviewResponse"
+          },
+          "request": {
+            "$ref": "#/components/schemas/TestPlanGenerationRequest"
+          }
+        },
+        "required": [
+          "request",
+          "preview"
+        ],
+        "type": "object"
+      },
+      "TestPlanGenerationSubmittedResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "matrix_revision": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "request_sha256": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "project_id",
+          "status",
+          "request_sha256",
+          "matrix_revision"
+        ],
+        "type": "object"
+      },
+      "TestPlanImportResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "audit": {
+            "$ref": "#/components/schemas/ImportAuditView"
+          },
+          "draft_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "excluded": {
+            "items": {
+              "$ref": "#/components/schemas/ExcludedImportRowView"
+            },
+            "type": "array"
+          },
+          "import_id": {
+            "type": "string"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ImportIssueView"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "import_id",
+          "draft_id",
+          "audit",
+          "issues",
+          "excluded"
+        ],
+        "type": "object"
+      },
+      "ValidateTestPlanDraftResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "draft_id": {
+            "type": "string"
+          },
+          "error_count": {
+            "type": "integer"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssueView"
+            },
+            "type": "array"
+          },
+          "warning_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "draft_id",
+          "issues",
+          "error_count",
+          "warning_count"
+        ],
+        "type": "object"
+      },
+      "ValidationIssueView": {
+        "additionalProperties": false,
+        "properties": {
+          "capability_path": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "condition_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "issue_type": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "issue_type",
+          "severity",
+          "message"
+        ],
+        "type": "object"
+      },
+      "WlanBaseGenerationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "antennas": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "bands": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "bands_per_subfamily": {
+            "additionalProperties": {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "minProperties": 1,
+            "type": "object"
+          },
+          "bandwidths": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "channels": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "modulations": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "stage": {
+            "const": "base"
+          },
+          "technologies": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "technology": {
+            "const": "WLAN"
+          },
+          "tests": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "technology",
+          "stage",
+          "technologies",
+          "bands",
+          "bandwidths",
+          "channels",
+          "modulations",
+          "tests",
+          "antennas",
+          "bands_per_subfamily"
+        ],
+        "type": "object"
+      },
+      "WlanMainTestGenerationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "antennas": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "bands": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "bands_per_subfamily": {
+            "additionalProperties": {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "minProperties": 1,
+            "type": "object"
+          },
+          "bandwidths": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "channels": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "modulations": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "selected_channels": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "source_session_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "stage": {
+            "const": "main_test"
+          },
+          "technologies": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "technology": {
+            "const": "WLAN"
+          },
+          "tests": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "worst_decision_snapshot_revision": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "technology",
+          "stage",
+          "technologies",
+          "bands",
+          "bandwidths",
+          "channels",
+          "modulations",
+          "tests",
+          "antennas",
+          "bands_per_subfamily",
+          "source_session_id",
+          "selected_channels",
+          "worst_decision_snapshot_revision"
+        ],
+        "type": "object"
+      },
+      "WlanPretestGenerationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "antennas": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "bands": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "bands_per_subfamily": {
+            "additionalProperties": {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "minProperties": 1,
+            "type": "object"
+          },
+          "bandwidths": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "channels": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "modulations": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "stage": {
+            "const": "pretest"
+          },
+          "technologies": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "technology": {
+            "const": "WLAN"
+          },
+          "tests": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "technology",
+          "stage",
+          "technologies",
+          "bands",
+          "bandwidths",
+          "channels",
+          "modulations",
+          "tests",
+          "antennas",
+          "bands_per_subfamily"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "FccHeadlessPermissions": {
+        "description": "Comma-separated permission tokens. See the ``x-fcc-permissions`` catalog for available values.",
+        "in": "header",
+        "name": "X-FCC-Permissions",
+        "type": "apiKey"
+      }
+    },
+    "x-fcc-permissions": {
+      "headless:control": "Submit/stop measurement jobs (write surface).",
+      "headless:read": "Read headless status, jobs, results, artifacts.",
+      "public": "No authorization required — health/contract discovery endpoints.",
+      "report_automation:control": "Submit/cancel report-automation requests.",
+      "report_automation:read": "Read report-automation queue stats + request/outputs.",
+      "test_plan:author": "Create drafts, add/remove draft rows, import a test-plan from an Excel workbook (draft authoring write surface).",
+      "test_plan:read": "Read/validate test-plan drafts (non-mutating)."
+    }
+  },
+  "info": {
+    "description": "FCC Headless / Platform measurement + reporting control surface. Operations group: provider capabilities, measurement job lifecycle, session result/artifact read model, report-automation request lifecycle. Authorization uses trusted-header permission tokens (see ``components.securitySchemes.FccHeadlessPermissions``).",
+    "title": "FCC Headless API",
+    "version": "1.0.0",
+    "x-fcc-api-compatibility-major": 1,
+    "x-fcc-provider": {
+      "contract_family": "fcc-conducted-headless",
+      "product_line": "unlicensed-conducted",
+      "provider_id": "fcc-unlicensed-conducted"
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/headless/api-contract": {
+      "get": {
+        "operationId": "headless_api_contract",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiContractDocument"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Self-describing API contract document (routes/schemas/permissions).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "public"
+      }
+    },
+    "/headless/capabilities": {
+      "get": {
+        "operationId": "provider_capabilities",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderCapabilitiesResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Provider capability descriptor (job/technology/artifact types).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "headless:read"
+      }
+    },
+    "/headless/jobs": {
+      "get": {
+        "operationId": "list_measurement_jobs",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasurementJobList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "List measurement jobs filtered by status.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "headless:read"
+      },
+      "post": {
+        "operationId": "submit_measurement_job",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitMeasurementJobRequest"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasurementJobSubmitted"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Submit a measurement job to the headless queue.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "headless:control"
+      }
+    },
+    "/headless/jobs/{job_id}": {
+      "get": {
+        "operationId": "get_measurement_job",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasurementJobSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Fetch a single measurement job by id.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "headless:read"
+      }
+    },
+    "/headless/jobs/{job_id}/stop": {
+      "post": {
+        "operationId": "stop_measurement_job",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StopMeasurementJobRequest"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopMeasurementJobResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Request graceful stop for a running measurement job.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "headless:control"
+      }
+    },
+    "/headless/projects/{project_id}/test-plan/drafts": {
+      "get": {
+        "operationId": "list_test_plan_drafts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by draft status (draft|archived). Omitted = all statuses. An unknown value is a 422 (unprocessable).",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of draft summaries per page. Omitted = uncapped (single page, returns all matching drafts).",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque keyset cursor from a prior response's ``next_cursor``. Omit for the first page. A malformed cursor is a 400.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListTestPlanDraftsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "List a project's draft summaries (metadata + row_count, no rows) ordered created_at DESC, draft_id ASC. Optional status filter; an unknown project yields an empty list (200, not 404).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:read"
+      },
+      "post": {
+        "operationId": "create_test_plan_draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTestPlanDraftRequest"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanDraftView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Create a manually-authored empty test-plan draft. The current generation operations own generated rows; Excel import remains a separate authoring surface (project_id boundary enforced).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:author"
+      }
+    },
+    "/headless/projects/{project_id}/test-plan/drafts/{draft_id}": {
+      "get": {
+        "operationId": "get_test_plan_draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanDraftView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Fetch a test-plan draft with its rows (stable draft_row_id handles).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:read"
+      }
+    },
+    "/headless/projects/{project_id}/test-plan/drafts/{draft_id}/archive": {
+      "post": {
+        "operationId": "archive_test_plan_draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanDraftView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Draft cannot be archived from its current status (e.g. published) or a concurrent transition conflicted. Re-archiving an already-archived draft is idempotent (200, not 409)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Archive a draft (DRAFT→ARCHIVED, terminal). Idempotent re-archive returns 200; archiving a non-draft (e.g. published) returns 409.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:author"
+      }
+    },
+    "/headless/projects/{project_id}/test-plan/drafts/{draft_id}/export": {
+      "get": {
+        "operationId": "export_test_plan_draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Draft not found, or it belongs to a different project (cross-project existence is hidden behind the project scope)."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Draft has no rows — an empty plan has nothing to export."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Download a test-plan draft as an Excel (.xlsx) workbook — an idempotent read of an existing draft (application/octet-stream attachment). 404 missing/cross-project; 422 empty draft (no rows to export).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:read"
+      }
+    },
+    "/headless/projects/{project_id}/test-plan/drafts/{draft_id}/generation-metadata": {
+      "get": {
+        "operationId": "get_test_plan_generation_metadata",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanGenerationMetadataResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Read the validated, immutable generation provenance envelope for a draft.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:read"
+      }
+    },
+    "/headless/projects/{project_id}/test-plan/drafts/{draft_id}/publish": {
+      "post": {
+        "operationId": "publish_test_plan_draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Include the verbatim publish-time audit snapshots (scope_profile_json + generation_metadata_json) in the response. Omitted/false (default) returns them as null to keep the response lean.",
+            "in": "query",
+            "name": "include_snapshots",
+            "required": false,
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishedTestPlanView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing test_plan:author)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Draft not found, or it belongs to a different project (cross-project existence is hidden behind the project scope)."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Publish conflict — the draft is not DRAFT (e.g. archived), a concurrent transition won the race, or materialize found a duplicate measurement condition (ADR-0005 Decision A reject)."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Draft is unpublishable (no rows — an empty plan has no meaning)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Publish a draft — materialize condition_hash rows + atomic CAS publish (DRAFT→PUBLISHED), returning 200 PublishedTestPlanView. Idempotent: re-publishing an already-published draft returns the existing publication. 404 missing/cross-project; 422 empty draft; 409 not-DRAFT (e.g. archived) / duplicate measurement condition / concurrent transition race.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:author"
+      }
+    },
+    "/headless/projects/{project_id}/test-plan/drafts/{draft_id}/rows": {
+      "get": {
+        "operationId": "list_test_plan_generation_rows",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Seek position from the preceding page.",
+            "in": "query",
+            "name": "after_draft_row_id",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Requested page size. The server applies the configured TestPlanGenerationLimits.page_size ceiling.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanGenerationRowPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Read generated draft rows through stable-id keyset paging; OFFSET is not used.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:read"
+      },
+      "post": {
+        "operationId": "add_test_plan_draft_row",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddTestPlanDraftRowRequest"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanDraftRowView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Append a manual row to a draft (returns the new draft_row_id handle).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:author"
+      },
+      "put": {
+        "operationId": "replace_test_plan_draft_rows",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceTestPlanDraftRowsRequest"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplaceTestPlanDraftRowsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Draft not found, or it belongs to a different project (cross-project existence is hidden behind the project scope)."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Row replace conflict — the draft is not DRAFT (archived/published, terminal row freeze) or a DB integrity constraint was violated."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Replace ALL rows in a draft with a new set in one transaction (bulk edit) — the editor sends the full desired row set; a partial failure rolls back so rows are never lost. 404 missing/cross-project; 409 not-DRAFT (terminal row freeze).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:author"
+      }
+    },
+    "/headless/projects/{project_id}/test-plan/drafts/{draft_id}/rows/{draft_row_id}": {
+      "delete": {
+        "operationId": "remove_test_plan_draft_row",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_row_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemoveTestPlanDraftRowResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Remove a draft row by its stable draft_row_id handle (idempotent; generated or manual).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:author"
+      }
+    },
+    "/headless/projects/{project_id}/test-plan/drafts/{draft_id}/validate": {
+      "post": {
+        "operationId": "validate_test_plan_draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateTestPlanDraftResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Reference data is not provisioned — a lookup family this operation needs has no rows, so the capability matrix cannot be built. An operator must seed it; retrying does not help."
+          }
+        },
+        "summary": "Re-validate a draft against its scope snapshot + capability matrix — returns issues (errors/warnings are body data, HTTP 200).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:read"
+      }
+    },
+    "/headless/projects/{project_id}/test-plan/generation/preview": {
+      "post": {
+        "operationId": "preview_test_plan_generation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestPlanGenerationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanGenerationPreviewResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflict — the production matrix cannot produce rows for this request, the preview is stale, or a staged WLAN request has missing, stale, or empty production input."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Reference data is not provisioned — a lookup family this operation needs has no rows, so the capability matrix cannot be built. An operator must seed it; retrying does not help."
+          }
+        },
+        "summary": "Preview a full test-plan generation: bounded production estimate plus a separate representative sample and freshness fingerprint.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:read"
+      }
+    },
+    "/headless/projects/{project_id}/test-plan/generations": {
+      "post": {
+        "operationId": "submit_test_plan_generation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Project-scoped retry key. Reusing it with a different canonical request returns 409.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestPlanGenerationSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanGenerationSubmittedResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflict — the preview is stale, the idempotency key was reused with a different request, or a staged WLAN request has missing, stale, or empty production input."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Reference data is not provisioned — a lookup family this operation needs has no rows, so the capability matrix cannot be built. An operator must seed it; retrying does not help."
+          }
+        },
+        "summary": "Queue a durable full test-plan generation job. Always returns 202 and requires the preview proof plus a project-scoped Idempotency-Key.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:author"
+      }
+    },
+    "/headless/projects/{project_id}/test-plan/generations/{generation_job_id}": {
+      "get": {
+        "operationId": "get_test_plan_generation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "generation_job_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanGenerationJobResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Read full-generation job status and the generated draft handle without materializing all rows.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:read"
+      }
+    },
+    "/headless/projects/{project_id}/test-plan/imports": {
+      "post": {
+        "operationId": "import_test_plan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanImportResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Workbook unprocessable — the parsed rows fail the draft write gate (out-of-scope sub_family / capability taxonomy violation)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Import a test-plan from an uploaded Excel workbook (multipart/form-data) — parse → capability-map → IMPORTED draft, returning the import outcome (draft_id when rows were accepted + honest audit accounting + blocking issues + observable exclusions).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:author"
+      }
+    },
+    "/headless/projects/{project_id}/test-plan/publications": {
+      "get": {
+        "operationId": "list_published_test_plans",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of published-plan summaries to return. Omitted = all publications for the project (publications per project are bounded), newest first. A supplied value is clamped to [1, 1000].",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPublishedTestPlansResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "List a project's published-plan summaries (identity + row_count + provenance, no rows) ordered published_at DESC, plan_id ASC — the authoritative source for plan selection. Optional limit clamped to [1, 1000]; an unknown project yields an empty list (200, not 404).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:read"
+      }
+    },
+    "/headless/reports/outputs/download": {
+      "get": {
+        "operationId": "stream_report_output_download",
+        "parameters": [
+          {
+            "description": "Signed download token from the grant response.",
+            "in": "query",
+            "name": "token",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Integrity conflict — the granted file bytes no longer match the signed sha256 (changed/corrupt on disk; request a fresh grant)."
+          },
+          "410": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Gone — the download token/grant has expired (access window elapsed; request a fresh grant)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Stream a report output file for a valid signed download token (token-authorized; no RBAC header — presigned model).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "public"
+      }
+    },
+    "/headless/reports/preflight": {
+      "get": {
+        "operationId": "get_report_preflight",
+        "parameters": [
+          {
+            "description": "Measurement session to dry-run the report preflight for (per-technology completeness + data-quality, no docx render).",
+            "in": "query",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportPreflightSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Dry-run a report preflight for a measurement session — per-technology completeness + data-quality warnings before docx generation (read-only, no side effects, advisory not blocking).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "report_automation:read"
+      }
+    },
+    "/headless/reports/{request_id}": {
+      "get": {
+        "operationId": "get_report_request",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportRequestSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Fetch a single report-automation request by id.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "report_automation:read"
+      }
+    },
+    "/headless/reports/{request_id}/outputs": {
+      "get": {
+        "operationId": "list_report_outputs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOutputMetadataList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "List generated output files for a report-automation request — distinct from submit_report_request creation route.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "report_automation:read"
+      }
+    },
+    "/headless/reports/{request_id}/outputs/download": {
+      "post": {
+        "operationId": "create_report_output_download",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReportOutputDownloadRequest"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOutputDownloadGrant"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Issue a signed, short-TTL download grant for one report output (self-authorizing URL — browser navigation needs no RBAC header).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "report_automation:read"
+      }
+    },
+    "/headless/sessions/{session_id}/artifacts": {
+      "get": {
+        "operationId": "list_session_artifacts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtifactMetadataList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "List artifact metadata for a session (plots / screenshots / traces).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "headless:read"
+      }
+    },
+    "/headless/sessions/{session_id}/attempts": {
+      "get": {
+        "operationId": "list_session_attempts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque keyset cursor from a prior response's ``next_cursor``. Omit for the first page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum attempts per page (clamped to the server max).",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 2000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Drill down to a single test-plan condition.",
+            "in": "query",
+            "name": "row_order",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasurementAttemptPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "List append-only measurement attempt history for a session (per-condition results / margin / verdict / provenance).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "headless:read"
+      }
+    },
+    "/headless/sessions/{session_id}/reports": {
+      "post": {
+        "operationId": "submit_report_request",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitReportRequest"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportRequestSubmitted"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Enqueue a report-automation request for the session — creates a request (distinct from list_report_outputs which lists generated outputs).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "report_automation:control"
+      }
+    },
+    "/headless/sessions/{session_id}/results": {
+      "get": {
+        "operationId": "list_session_results",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasurementResultEnvelopeList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "List measurement result envelopes for a session.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "headless:read"
+      }
+    },
+    "/headless/sessions/{session_id}/results/export": {
+      "get": {
+        "operationId": "export_session_results",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The session has no measurement rows — there is nothing to render into a result workbook (SESSION_RESULTS_EMPTY)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Download the session's measurement results as an .xlsx workbook. The format is owned by this service (a versioned template manifest), not by a workbook the tester opened: the response is a render of the stored rows, so verdicts, margins and units are reproduced verbatim and never recomputed. 422 when the session measured nothing.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "headless:read"
+      }
+    },
+    "/headless/status": {
+      "get": {
+        "operationId": "headless_status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadlessBackendStatusSnapshot"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Aggregate measurement job + worker + report-automation snapshot.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "headless:read"
+      }
+    },
+    "/headless/test-plan/generation/catalogue": {
+      "get": {
+        "operationId": "list_test_plan_generation_catalogue",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanGenerationCatalogueResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "List the provider-neutral generation catalogue derived from the registered provider/policy vocabulary.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "test_plan:read"
+      }
+    },
+    "/headless/ui-descriptor": {
+      "get": {
+        "operationId": "provider_ui_descriptor",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderUiDescriptor"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Provider-owned UI descriptor (test plan / equipment / reference / correction schema-first render contract).",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "headless:read"
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_check",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthCheckResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Liveness probe — no AuthZ required.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "public"
+      }
+    },
+    "/report-automation/requests/{request_id}/cancel": {
+      "post": {
+        "operationId": "cancel_report_automation_request",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelReportAutomationRequest"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelReportAutomationResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Cancel a queued/running report-automation request.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "report_automation:control"
+      }
+    },
+    "/report-automation/stats": {
+      "get": {
+        "operationId": "report_automation_stats",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportAutomationQueueStats"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource not found (missing job/session/report id)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Report automation queue counts + oldest-queued request id.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "report_automation:read"
+      }
+    }
+  }
+}

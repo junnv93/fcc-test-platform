@@ -1,0 +1,40 @@
+# Sprint S2-EXT-2 — Semgrep TypeScript security ruleset.
+#
+# Local: `semgrep --config .semgrep.yml --severity ERROR apps/web/src/`
+# CI (Sprint S9):  `.github/workflows/semgrep.yml` invokes `returntocorp/semgrep-action`
+# with the same config; the SARIF report uploads to the GitHub Security tab.
+#
+# Ratchet policy: zero ERROR-severity findings on apps/web/src/auth/ and
+# apps/web/src/observability/. WARNING-severity findings tracked but not
+# blocking (accumulate into tech-debt).
+#
+# Sprint S2-EXT-1 (axe-core) is the a11y companion to this security scan;
+# both run as part of the production-ready gate per
+# docs/architecture/frontend/external-audit-roadmap.md.
+
+#
+# Registry rule packs are passed at invocation time, not here, because
+# Semgrep's YAML schema forbids string references under `rules:`. The
+# canonical invocation chains the registry + this custom config:
+#
+#   semgrep --config p/typescript --config .semgrep.yml --severity ERROR apps/web/src/
+#
+# Sprint S9's GitHub Actions workflow uses the same two `--config` flags.
+rules:
+  # Custom rule — frontend MUST NOT touch localStorage for auth tokens.
+  # Backed by the AST guard in `tests/test_apps_web_auth_scaffold.py::TestSessionStorageOnly`;
+  # the Semgrep rule catches the same anti-pattern at SAST time so it's
+  # gated at PR review.
+  - id: fcc-no-localstorage-tokens-in-auth
+    pattern-either:
+      - pattern: localStorage.$X
+      - pattern: window.localStorage.$X
+    paths:
+      include:
+        - apps/web/src/auth/
+    message: |
+      apps/web/src/auth/ must not touch localStorage. OIDC tokens live in
+      sessionStorage only (Sprint S2 storage-keys SSOT). Use the
+      STORAGE_KEY_* constants from `./storage-keys.ts` instead.
+    languages: [typescript]
+    severity: ERROR
