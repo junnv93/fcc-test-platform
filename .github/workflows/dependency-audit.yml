@@ -1,0 +1,154 @@
+# Dependency vulnerability audit — INFORMATIONAL / NON-BLOCKING (2026-07-19).
+#
+# 이 저장소의 CI 게이트 7종(backend-invariants / api-schema-drift / frontend-*)
+# 은 전부 "이 repo 의 코드 결함" 을 막는 차단성 게이트다. 그 사이에 비어 있던
+# 축이 하나 있다 — **의존성 취약점 가시성**. Python 3 manifest(requirements*.txt)
+# 와 frontend lockfile(apps/web/package-lock.json) 에 대해 알려진 CVE 를 아무도
+# 관측하지 않고 있었다. 이 워크플로가 그 공백을 채운다.
+#
+# ── 왜 NON-BLOCKING 인가 (의도적 설계 결정) ──────────────────────────────
+# 의존성 감사가 표면화하는 것은 **upstream 의 결함**이지 이 repo 의 코드 결함이
+# 아니다. 전이 의존성 하나에 advisory 가 붙는 순간, 차단성 게이트였다면 그 시점의
+# 모든 PR 이 자기 변경과 무관한 이유로 빨갛게 죽는다 — 그리고 그 PR 작성자는
+# 그 자리에서 고칠 수단이 없다(upstream 릴리스 대기). 즉 차단성으로 두면 게이트가
+# 주는 신호 대비 비용이 압도적으로 크고, 결국 팀은 게이트를 무시하거나 끄게 된다.
+#
+# 따라서 이 게이트의 가치는 **차단이 아니라 가시성**이다:
+#   * 모든 감사 step 은 ``continue-on-error: true`` — 절대 CI 를 red 로 만들지 않는다.
+#   * job 레벨에도 ``continue-on-error: true`` — 설치/셋업 단계 실패(네트워크 등)
+#     조차 workflow 결론을 오염시키지 않는다.
+#   * 결과는 ``$GITHUB_STEP_SUMMARY`` 에 렌더되어 PR 화면에서 바로 읽힌다.
+#   * 이 job 은 branch protection 의 required status check 로 등록하지 **않는다**.
+#     (required 여부는 저장소 설정이라 파일로 봉인 불가 — documented limitation.
+#      대신 step 레벨 non-blocking 불변식이 tests/test_dependency_audit_workflow.py
+#      로 봉인되어, 감사가 조용히 차단성으로 바뀌는 드리프트를 차단한다.)
+#
+# 나중에 팀이 차단성으로 격상하고 싶다면 그것은 **별도의 의도적 결정**이며, 위
+# 불변식 테스트를 함께 고쳐야 한다 — 우발적 격상은 불가능하다.
+#
+# ── 범위 ────────────────────────────────────────────────────────────────
+# 2개 생태계:
+#   1. Python — pip-audit 를 저장소의 requirements*.txt 전수에 대해 실행.
+#      pyproject.toml 은 대상이 아니다: 이 repo 의 pyproject 는 pytest/마커 설정
+#      전용이고 ``[project].dependencies`` 를 선언하지 않는다(= 감사할 의존성 0).
+#   2. Frontend — apps/web/ 의 lockfile 이 package-lock.json(lockfileVersion 3)
+#      이므로 npm 생태계. 따라서 ``npm audit`` (pnpm/yarn 아님). lockfile 교체 시
+#      불변식 테스트가 command 불일치를 잡는다.
+#
+# 트리거는 weekly cron(신규 advisory 는 코드 변경 없이도 나타난다) + 수동 dispatch
+# + manifest 변경 PR 3종이다.
+name: dependency-audit
+
+on:
+  schedule:
+    # 매주 월요일 06:00 UTC. 코드가 그대로여도 새 advisory 는 계속 공개되므로
+    # push/PR 트리거만으로는 관측 공백이 생긴다.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      # 감사 대상 manifest 가 바뀔 때만 PR 에서 돈다. 글롭은 파일시스템을 SSOT 로
+      # 삼아, 새 requirements 파일이 생겨도 여기와 아래 감사 루프를 동시에 커버한다.
+      # 이 목록에는 **의존성 manifest 만** 넣는다 — 워크플로 파일 자신처럼 manifest 가
+      # 아닌 경로를 섞으면 "manifest 변경 시 감사" 라는 트리거 의미가 흐려진다.
+      # (불변식: tests/test_dependency_audit_workflow.py 의 allowlist 검사)
+      - 'requirements*.txt'
+      - 'apps/web/package.json'
+      - 'apps/web/package-lock.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  # ci-minutes-root-cause (2026-08-07): supersede pull-request iterations,
+  # never abandon a main/scheduled run half-verified — a cancelled
+  # post-merge run leaves that commit with no verification record.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  python-audit:
+    name: Python dependency audit (pip-audit)
+    runs-on: ubuntu-latest
+    # 정보성 게이트 — job 결론이 workflow 를 red 로 만들지 않는다.
+    continue-on-error: true
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # backend-invariants.yml 과 동일하게 로컬 회귀 환경(fcc_test_env = 3.13)에
+          # 맞춘다. 감사 결과는 인터프리터 버전에 따라 마커(python_version) 해석이
+          # 달라질 수 있으므로 실제 운영 버전을 쓴다.
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install pip-audit
+        continue-on-error: true
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+
+      - name: pip-audit (requirements*.txt)
+        continue-on-error: true
+        run: |
+          # 매니페스트 목록을 하드코딩하지 않는다 — 글롭이 곧 SSOT 라 새 manifest 가
+          # 추가돼도 이 step 은 그대로 커버한다(위 paths 필터와 같은 글롭).
+          echo '## Python dependency audit (pip-audit)' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          for manifest in requirements*.txt; do
+            echo "::group::pip-audit -r ${manifest}"
+            {
+              echo "<details open><summary><code>${manifest}</code></summary>"
+              echo ''
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            # pip-audit 는 취약점 발견 시 non-zero 로 끝난다. 그것이 정상 동작이고,
+            # 이 게이트에서는 실패가 아니라 "보고할 내용이 있다" 는 뜻이다.
+            pip-audit --requirement "${manifest}" --progress-spinner off 2>&1 \
+              | tee -a "$GITHUB_STEP_SUMMARY" || true
+            {
+              echo '```'
+              echo ''
+              echo '</details>'
+              echo ''
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo '::endgroup::'
+          done
+
+  frontend-audit:
+    name: Frontend dependency audit (npm audit)
+    runs-on: ubuntu-latest
+    # 정보성 게이트 — job 결론이 workflow 를 red 로 만들지 않는다.
+    continue-on-error: true
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: npm audit (apps/web)
+        continue-on-error: true
+        run: |
+          # ``--package-lock-only`` 는 node_modules 설치 없이 lockfile 만으로 감사한다
+          # — 설치 단계가 없으니 설치 실패로 인한 잡음도 없다(가시성 게이트에 적합).
+          echo '## Frontend dependency audit (npm audit — apps/web)' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # npm audit 는 취약점 발견 시 non-zero 로 끝난다 — 위 pip-audit 와 같은 이유로
+          # 실패가 아니라 보고 신호다.
+          npm audit --package-lock-only 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+          {
+            echo '```'
+            echo ''
+          } >> "$GITHUB_STEP_SUMMARY"
