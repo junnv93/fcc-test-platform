@@ -30,6 +30,9 @@ from pathlib import Path
 from application.headless.runtime_config import FCC_HEADLESS_AUTH_ENV_PREFIX
 from fcc_test_platform.application.runtime_config import PLATFORM_AUTH_ENV_PREFIX
 from application.session.runtime_config import FCC_SESSION_AUTH_ENV_PREFIX
+import subprocess
+from fcc_test_contracts.common.auth_config import HttpAuthConfig  # noqa: E402
+from tests.support.parity import assert_set_equality  # noqa: E402
 
 _ROOT = Path(__file__).resolve().parents[1]
 _RUNTIME_CONFIG = _ROOT / "apps" / "web" / "public" / "runtime-config.dev.json"
@@ -181,6 +184,149 @@ class TestDevRealmIssuesStandardSubjectClaim(unittest.TestCase):
                         f"defaultClientScopes, but {reason}",
                     )
 
+
+
+# ── 모노레포 `tests/test_dev_stack_oidc_parity.py` 에서 옮겨왔다 (2026-08-31).
+#    이 세 클래스가 읽는 것은 전부 `apps/web/…` 이고 그 트리는 여기 있다.
+
+
+class TestDevStackOidcSsotValueParity(unittest.TestCase):
+    """Cross-source value agreement — pure Python, always enforced."""
+
+    def setUp(self) -> None:
+        self.runtime = _load_json(_RUNTIME_CONFIG)
+        self.realm = _load_json(_REALM)
+        self.issuer = self.runtime["oidcIssuer"]
+        self.client_id = self.runtime["oidcClientId"]
+
+    def test_runtime_config_carries_the_two_ssot_fields(self) -> None:
+        self.assertTrue(self.issuer, "runtime-config.dev.json oidcIssuer is empty")
+        self.assertTrue(self.client_id, "runtime-config.dev.json oidcClientId is empty")
+        self.assertTrue(
+            self.issuer.startswith("http://") or self.issuer.startswith("https://"),
+            f"oidcIssuer must be an absolute URL, got {self.issuer!r}",
+        )
+
+    def test_backend_audience_equals_runtime_client_id(self) -> None:
+        # The token `aud` the backend verifies (= OIDC_CLIENT_ID convention, same
+        # as infra/docker-compose.central.yml) is the SSOT oidcClientId.
+        client = next(
+            (c for c in self.realm["clients"] if c.get("clientId") == self.client_id),
+            None,
+        )
+        self.assertIsNotNone(
+            client, f"realm has no client {self.client_id!r} (runtime-config oidcClientId)"
+        )
+        self.assertIn(
+            self.client_id,
+            _audience_mapper_values(client),
+            f"realm client {self.client_id!r} must emit aud={self.client_id!r} via an "
+            "oidc-audience-mapper, else oidc_jwt backends reject its tokens "
+            "(MissingRequiredClaimError 'aud').",
+        )
+
+    def test_every_api_consumer_client_emits_the_api_audience(self) -> None:
+        # Seal against the regression where a token-bearing client lacks the
+        # audience mapper (the original create_project 403 root cause).
+        for client_id in _API_CONSUMER_CLIENT_IDS:
+            client = next(
+                (c for c in self.realm["clients"] if c.get("clientId") == client_id),
+                None,
+            )
+            self.assertIsNotNone(client, f"realm missing API-consumer client {client_id!r}")
+            self.assertIn(
+                self.client_id,
+                _audience_mapper_values(client),
+                f"realm client {client_id!r} must emit aud={self.client_id!r} so the "
+                "platform/headless APIs accept its token.",
+            )
+
+    def test_backend_env_key_contract_covers_the_nine_oidc_keys(self) -> None:
+        # The launcher injects exactly these keys; assert the backend contract
+        # (HttpAuthConfig.env_keys) actually names them for all three prefixes.
+        expected = {
+            f"{prefix}{suffix}"
+            for prefix in _SURFACE_PREFIXES
+            for suffix in ("OIDC_ISSUER", "OIDC_AUDIENCE", "OIDC_JWKS_URI")
+        }
+        produced = set()
+        for prefix in _SURFACE_PREFIXES:
+            keys = HttpAuthConfig.env_keys(prefix)
+            produced |= {keys["oidc_issuer"], keys["oidc_audience"], keys["oidc_jwks_uri"]}
+        assert_set_equality(
+            self,
+            name="dev-stack OIDC env keys",
+            left_label="expected FCC_<SURFACE>_OIDC_* (derive-oidc-env.mjs surfaces)",
+            left=expected,
+            right_label="HttpAuthConfig.env_keys() backend contract",
+            right=produced,
+        )
+
+class TestDevStackOidcNoHardcode(unittest.TestCase):
+    """The launcher derives from the SSOT file; no OIDC origin literal leaks in."""
+
+    _BANNED_LITERALS = (
+        "localhost:8081",
+        "/protocol/openid-connect/certs",
+        "fcc-platform-frontend",
+        "realms/fcc-dev",
+    )
+
+    def test_dev_stack_reads_the_runtime_config_ssot(self) -> None:
+        source = _DEV_STACK_MJS.read_text(encoding="utf-8")
+        self.assertIn("runtime-config.dev.json", source)
+        self.assertIn("applyOidcDefaults", source)
+
+    def test_dev_stack_has_no_oidc_origin_literals(self) -> None:
+        source = _DEV_STACK_MJS.read_text(encoding="utf-8")
+        for literal in self._BANNED_LITERALS:
+            self.assertNotIn(
+                literal,
+                source,
+                f"dev-stack.mjs must derive OIDC from the SSOT, not hardcode {literal!r}",
+            )
+
+    def test_derive_module_only_constant_is_the_protocol_suffix(self) -> None:
+        # The single permitted literal is the protocol-standard JWKS path; no
+        # origin / realm / audience literal may appear in the derivation module.
+        source = _DERIVE_MJS.read_text(encoding="utf-8")
+        for literal in ("localhost:8081", "fcc-platform-frontend", "realms/fcc-dev"):
+            self.assertNotIn(
+                literal,
+                source,
+                f"derive-oidc-env.mjs must stay origin-agnostic, found {literal!r}",
+            )
+
+class TestDevStackOidcDerivationBehaviour(unittest.TestCase):
+    """Run the ACTUAL derivation module and check it against the formula."""
+
+    def _derive(self) -> dict:
+        script = (
+            "import {deriveOidcEnv} from "
+            f"{json.dumps(str(_DERIVE_MJS))};"
+            "import {readFileSync} from 'node:fs';"
+            f"const rc=JSON.parse(readFileSync({json.dumps(str(_RUNTIME_CONFIG))},'utf8'));"
+            "process.stdout.write(JSON.stringify(deriveOidcEnv(rc)));"
+        )
+        out = subprocess.run(
+            ["node", "--input-type=module", "-e", script],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=True,
+        )
+        return json.loads(out.stdout)
+
+    def test_emitted_env_matches_the_derivation_formula(self) -> None:
+        runtime = _load_json(_RUNTIME_CONFIG)
+        issuer = runtime["oidcIssuer"]
+        client_id = runtime["oidcClientId"]
+        jwks = issuer.rstrip("/") + _JWKS_PATH_SUFFIX
+        derived = self._derive()
+        for prefix in _SURFACE_PREFIXES:
+            self.assertEqual(derived[f"{prefix}OIDC_ISSUER"], issuer)
+            self.assertEqual(derived[f"{prefix}OIDC_AUDIENCE"], client_id)
+            self.assertEqual(derived[f"{prefix}OIDC_JWKS_URI"], jwks)
 
 if __name__ == "__main__":
     unittest.main()
