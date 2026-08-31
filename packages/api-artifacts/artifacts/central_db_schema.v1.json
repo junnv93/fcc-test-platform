@@ -1,0 +1,1022 @@
+{
+  "schema_version": 1,
+  "status": "planning_contract",
+  "owner_repository": "fcc-test-platform",
+  "description": "Common central DB contract for the FCC web platform. Provider-specific measurement algorithms remain outside this schema and are represented through JSON payload columns.",
+  "required_extensions": [
+    "pgcrypto",
+    "pg_trgm"
+  ],
+  "tables": {
+    "schema_migrations": {
+      "purpose": "Applied central DB migration ledger (version + sha256 checksum) for the incremental migration runner. INSERT-on-apply; a checksum mismatch on an already-applied version is a drift error.",
+      "append_only": true,
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "version": {"type": "text", "required": true, "unique": true},
+        "checksum": {"type": "text", "required": true},
+        "applied_at": {"type": "timestamp", "required": true},
+        "applied_by": {"type": "text", "required": false}
+      },
+      "indexes": [
+        {"name": "ux_schema_migrations_version", "columns": ["version"], "unique": true}
+      ]
+    },
+    "providers": {
+      "purpose": "Registered provider identities and capability cache.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "provider_id": {"type": "text", "required": true, "unique": true},
+        "product_line": {"type": "text", "required": true, "unique": true},
+        "contract_family": {"type": "text", "required": true},
+        "contract_version": {"type": "text", "required": true},
+        "base_url": {"type": "text", "required": true},
+        "capabilities_json": {"type": "json", "required": true},
+        "enabled": {"type": "boolean", "required": true},
+        "created_at": {"type": "timestamp", "required": true},
+        "updated_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "ux_providers_provider_id", "columns": ["provider_id"], "unique": true},
+        {"name": "ux_providers_product_line", "columns": ["product_line"], "unique": true}
+      ]
+    },
+    "projects": {
+      "purpose": "Customer/project-level grouping for test campaigns.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "project_code": {"type": "text", "required": true, "unique": true},
+        "name": {"type": "text", "required": true},
+        "customer": {"type": "text", "required": false},
+        "management_number": {"type": "text", "required": false, "unique": true},
+        "status": {"type": "text", "required": false, "allowed_values": ["active", "completed"]},
+        "fcc_grantee_code": {"type": "text", "required": false},
+        "applicant_name": {"type": "text", "required": false},
+        "applicant_address": {"type": "text", "required": false},
+        "eut_description": {"type": "text", "required": false},
+        "test_standard": {"type": "text", "required": false},
+        "created_at": {"type": "timestamp", "required": true},
+        "updated_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "ux_projects_project_code", "columns": ["project_code"], "unique": true},
+        {"name": "ux_projects_management_number", "columns": ["management_number"], "unique": true},
+        {"name": "idx_projects_directory", "columns": ["created_at", "id"], "purpose": "W3 backend — project directory keyset order (newest first). ASC columns serve the fully-reversed ORDER BY created_at DESC, id DESC via an Index Only Scan Backward, so no DESC index is needed. id is the tie-breaker that makes the sort a TOTAL order (created_at alone lets a page boundary duplicate or skip rows)."},
+        {"name": "idx_projects_status_directory", "columns": ["status", "created_at", "id"], "purpose": "W3 backend — same keyset order under the ?status filter (the default view). Earns its keep over idx_projects_directory when the filtered status is the selective one: measured on 50k rows, ?status=completed (10%) chose this index while ?status=all chose idx_projects_directory."},
+        {"name": "idx_projects_search_management_number", "using": "gin", "expressions": ["lower(management_number) gin_trgm_ops"], "purpose": "W3 backend — trigram GIN over the ?q search axis (domain SSOT project_directory_query.PROJECT_SEARCH_COLUMNS). A plain B-tree cannot serve LOWER(col) LIKE '%q%'. Measured on 50k rows: a search matching 0 rows fell from 27.6ms (Seq Scan) to 0.11ms (BitmapOr over these three indexes)."},
+        {"name": "idx_projects_search_project_code", "using": "gin", "expressions": ["lower(project_code) gin_trgm_ops"], "purpose": "W3 backend — trigram GIN over the ?q search axis. project_code == model name (ADR-0017 D1), so this also covers model-name search without indexing the device_models side of the join."},
+        {"name": "idx_projects_search_customer", "using": "gin", "expressions": ["lower(customer) gin_trgm_ops"], "purpose": "W3 backend — trigram GIN over the ?q search axis."}
+      ]
+    },
+    "device_models": {
+      "purpose": "Device model metadata shared across providers.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "project_id": {"type": "uuid", "required": true, "references": "projects.id"},
+        "model_name": {"type": "text", "required": true},
+        "manufacturer": {"type": "text", "required": false},
+        "metadata_json": {"type": "json", "required": false},
+        "created_at": {"type": "timestamp", "required": true},
+        "updated_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "idx_device_models_project", "columns": ["project_id"]}
+      ]
+    },
+    "samples": {
+      "purpose": "Physical or logical units under test.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "project_id": {"type": "uuid", "required": true, "references": "projects.id"},
+        "model_id": {"type": "uuid", "required": false, "references": "device_models.id"},
+        "sample_code": {"type": "text", "required": true},
+        "serial_number": {"type": "text", "required": false},
+        "sample_number": {"type": "text", "required": false},
+        "test_category": {"type": "text", "required": false},
+        "label_number": {"type": "text", "required": false},
+        "smsn": {"type": "text", "required": false},
+        "intake_cert": {"type": "text", "required": false},
+        "assigned_team": {"type": "text", "required": false},
+        "sender": {"type": "text", "required": false},
+        "receiver": {"type": "text", "required": false},
+        "received_date": {"type": "text", "required": false},
+        "released_date": {"type": "text", "required": false},
+        "note": {"type": "text", "required": false},
+        "status": {"type": "text", "required": true, "default": "'active'", "allowed_values": ["active", "deleted"]},
+        "row_version": {"type": "integer", "required": true, "default": "1"},
+        "deleted_at": {"type": "timestamp", "required": false},
+        "deleted_by": {"type": "text", "required": false},
+        "metadata_json": {"type": "json", "required": false},
+        "created_at": {"type": "timestamp", "required": true},
+        "updated_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "idx_samples_project", "columns": ["project_id"]},
+        {"name": "idx_samples_model", "columns": ["model_id"]},
+        {"name": "ux_samples_project_sample_number", "columns": ["project_id", "sample_number"], "unique": true}
+      ]
+    },
+    "sample_intakes": {
+    "purpose": "Per-sample append-only intake history (시험원 입고 칸, 1:N to samples). Records firmware/calibration/hardware revision snapshots at intake time; web CRUD appends observations directly and no live Excel importer owns this table.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "sample_id": {"type": "uuid", "required": true, "references": "samples.id"},
+        "intake_date": {"type": "text", "required": false},
+        "bl": {"type": "text", "required": false},
+        "ap": {"type": "text", "required": false},
+        "cp": {"type": "text", "required": false},
+        "csc": {"type": "text", "required": false},
+        "rf_cal": {"type": "text", "required": false},
+        "hw_rev": {"type": "text", "required": false},
+        "note": {"type": "text", "required": false},
+        "tech_group": {"type": "text", "required": false},
+        "created_at": {"type": "timestamp", "required": true},
+        "updated_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "idx_sample_intakes_sample", "columns": ["sample_id"]}
+      ]
+    },
+    "sample_inventory_revisions": {
+      "purpose": "Append-only full post-mutation snapshots for web sample CRUD. Every create, field patch, soft delete, and restore writes one monotonic revision in the same transaction as the current projection.",
+      "append_only": true,
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "sample_id": {"type": "uuid", "required": true, "references": "samples.id"},
+        "project_id": {"type": "uuid", "required": true, "references": "projects.id"},
+        "revision_number": {"type": "integer", "required": true},
+        "event_type": {"type": "text", "required": true, "allowed_values": ["created", "updated", "status_changed", "restored", "baseline"]},
+        "snapshot_json": {"type": "json", "required": true},
+        "changed_fields_json": {"type": "json", "required": true},
+        "actor_subject": {"type": "text", "required": true},
+        "occurred_at": {"type": "timestamp", "required": true},
+        "created_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "ux_sample_inventory_revisions_sample_revision", "columns": ["sample_id", "revision_number"], "unique": true},
+        {"name": "idx_sample_inventory_revisions_project_occurred_sample", "columns": ["project_id", "occurred_at", "sample_id"]},
+        {"name": "idx_sample_inventory_revisions_sample_occurred", "columns": ["sample_id", "occurred_at"]}
+      ]
+    },
+    "sample_import_runs": {
+    "purpose": "Retired historical archive of legacy PM·RF sample-inventory Excel import runs. Existing rows remain readable for audit/migration evidence; the web CRUD path does not create new rows and no live reader/parser/diagnostics path depends on this table.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "project_id": {"type": "uuid", "required": true, "references": "projects.id"},
+        "model_name": {"type": "text", "required": false},
+        "samples_created": {"type": "integer", "required": true},
+        "samples_updated": {"type": "integer", "required": true},
+        "intakes_appended": {"type": "integer", "required": true},
+        "intakes_skipped": {"type": "integer", "required": true},
+        "sample_count": {"type": "integer", "required": true},
+        "diagnostics_json": {"type": "json", "required": false},
+        "created_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "idx_sample_import_runs_project", "columns": ["project_id", "created_at"]}
+      ]
+    },
+    "users": {
+      "purpose": "Platform identities after IdP integration. Identity is keyed by the OIDC-standard (issuer, subject) tuple; subject alone is only issuer-local.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "issuer": {"type": "text", "required": true},
+        "subject": {"type": "text", "required": true},
+        "display_name": {"type": "text", "required": false},
+        "email": {"type": "text", "required": false},
+        "enabled": {"type": "boolean", "required": true},
+        "created_at": {"type": "timestamp", "required": true},
+        "updated_at": {"type": "timestamp", "required": true},
+        "password_hash": {"type": "text", "required": false, "added_in": "local identity — EMS schema parity (2026-08-21)"},
+        "azure_ad_id": {"type": "text", "required": false, "added_in": "local identity — EMS schema parity (2026-08-21)"},
+        "employee_id": {"type": "text", "required": false, "added_in": "local identity — EMS schema parity (2026-08-21)"},
+        "department": {"type": "text", "required": false, "added_in": "local identity — EMS schema parity (2026-08-21)"},
+        "position": {"type": "text", "required": false, "added_in": "local identity — EMS schema parity (2026-08-21)"},
+        "site": {"type": "text", "required": false, "added_in": "local identity — EMS schema parity (2026-08-21)"},
+        "phone_number": {"type": "text", "required": false, "added_in": "local identity — EMS schema parity (2026-08-21)"},
+        "last_login": {"type": "timestamp", "required": false, "added_in": "local identity — EMS schema parity (2026-08-21)"},
+        "failed_login_attempts": {"type": "integer", "required": false, "added_in": "local identity — login lockout, EMS 0065 parity (2026-08-21)"},
+        "locked_until": {"type": "timestamp", "required": false, "added_in": "local identity — login lockout, EMS 0065 parity (2026-08-21)"},
+        "last_failed_at": {"type": "timestamp", "required": false, "added_in": "local identity — login lockout, EMS 0065 parity (2026-08-21)"},
+        "password_changed_at": {"type": "timestamp", "required": false, "added_in": "local identity — forced password change, EMS 0065 parity (2026-08-21)"},
+        "force_password_change": {"type": "boolean", "required": false, "added_in": "local identity — forced password change, EMS 0065 parity (2026-08-21)"},
+        "session_version": {"type": "integer", "required": false, "added_in": "local identity — token revocation, EMS 0065 parity (2026-08-21)"}
+      },
+      "indexes": [
+        {"name": "ux_users_issuer_subject", "columns": ["issuer", "subject"], "unique": true},
+        {
+          "name": "ux_users_email_lower",
+          "expressions": ["LOWER(\"email\")"],
+          "unique": true,
+          "where": "\"issuer\" = 'urn:fcc:identity:local' AND \"email\" IS NOT NULL AND \"email\" <> ''",
+          "comment": "PARTIAL on THREE conditions, and every one of them is load-bearing. (1) issuer = local: email is the identity key for LOCAL users only. For an OIDC user the key is (issuer, subject) and email is just a claim projection, so the same person legitimately holds one row per issuer with the same email — that is exactly the Keycloak-to-Azure migration path this wave preserves. An index without this condition would let the FIRST OIDC login succeed and the SECOND one fail with a unique violation surfacing as a 503, i.e. it would silently break the existing JIT provisioning path this wave promises to leave byte-identical. (2)+(3) email non-null and non-empty: users.email is nullable and an OIDC token that carries no email claim leaves it empty, so without these ANY TWO email-less rows would collide with each other. EMS can index unconditionally (its 0075) only because EMS email is NOT NULL and EMS has exactly one issuer. The 'urn:fcc:identity:local' literal here is bound to application.common.identity.LOCAL_IDENTITY_ISSUER by a derived assertion in tests/test_local_identity_policy.py — SQL cannot import the constant, so the seal reads the constant and asserts it appears in this clause."
+        }
+      ]
+    },
+    "roles": {
+      "purpose": "Named RBAC roles.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "role_key": {"type": "text", "required": true, "unique": true},
+        "description": {"type": "text", "required": false}
+      },
+      "indexes": [
+        {"name": "ux_roles_role_key", "columns": ["role_key"], "unique": true}
+      ]
+    },
+    "permissions": {
+      "purpose": "Operation permissions aligned with the provider API contract.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "permission_key": {"type": "text", "required": true, "unique": true},
+        "description": {"type": "text", "required": false}
+      },
+      "indexes": [
+        {"name": "ux_permissions_permission_key", "columns": ["permission_key"], "unique": true}
+      ]
+    },
+    "user_roles": {
+      "purpose": "User to role membership.",
+      "columns": {
+        "user_id": {"type": "uuid", "required": true, "references": "users.id"},
+        "role_id": {"type": "uuid", "required": true, "references": "roles.id"}
+      },
+      "indexes": [
+        {"name": "ux_user_roles_user_role", "columns": ["user_id", "role_id"], "unique": true}
+      ]
+    },
+    "role_permissions": {
+      "purpose": "Role to permission grants.",
+      "columns": {
+        "role_id": {"type": "uuid", "required": true, "references": "roles.id"},
+        "permission_id": {"type": "uuid", "required": true, "references": "permissions.id"}
+      },
+      "indexes": [
+        {"name": "ux_role_permissions_role_permission", "columns": ["role_id", "permission_id"], "unique": true}
+      ]
+    },
+    "global_role_grants": {
+      "purpose": "Global role to permission grants, separate from project membership grants. A global system_admin is the only role that may receive platform:sample-hard-delete.",
+      "columns": {
+        "role_key": {"type": "text", "required": true, "references": "roles.role_key"},
+        "permission_key": {"type": "text", "required": true, "references": "permissions.permission_key"}
+      },
+      "indexes": [
+        {"name": "ux_global_role_grants_role_permission", "columns": ["role_key", "permission_key"], "unique": true},
+        {"name": "idx_global_role_grants_permission", "columns": ["permission_key"]}
+      ]
+    },
+    "test_sessions": {
+      "purpose": "Provider-normalized test sessions visible to the platform. Parent row of measurement_results / measurement_attempts / artifacts (session_id FK). The production ingestion pipeline upserts this row FIRST inside the same single-session transaction (INGESTION_TABLE_ORDER[0]) — before this, only dev_seed / live-proof scripts created it, so a live sync into a fresh DB violated the session_id FK. id is caller-supplied (deterministic uuid5 from provider_id + chamber_id + local session id for new chamber traffic; the legacy sentinel preserves the pre-multichamber UUID space), so re-sync is idempotent and the offline measurement loop needs no central round-trip); created_at/updated_at carry DB defaults so the mapper — which omits both — INSERTs without any caller stamp (same Option A ownership as measurement_results id/created_at). session_origin / workbook_handle are the per-PC mode-exclusivity observation axis (operator ruling 2026-08-16): a chamber PC either accepts web sessions or it does not, and \"a project ends in the mode it started in\" is an OPERATING rule with nothing enforcing it. Both are DECLARED by the composition root that created the session — never inferred, never client-supplied — and NULL means unknown, not LOCAL_PROGRAM. The vocabulary answers one provider-neutral sentence (did this measurement arrive as a web session); what a non-web PC runs is the provider\u2019s business and central does not model it. workbook_handle is the upload handle verbatim, and because that handle is content-digest derived, \"did two chambers use the same plan\" becomes one query. This axis is OBSERVATION: nothing refuses a measurement, a session or an ingest because of these columns.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "provider_id": {"type": "uuid", "required": true, "references": "providers.id"},
+        "provider_session_id": {"type": "text", "required": true},
+        "chamber_id": {"type": "text", "required": true, "default": "'__fcc_legacy__'"},
+        "project_id": {"type": "uuid", "required": false, "references": "projects.id"},
+        "sample_id": {"type": "uuid", "required": false, "references": "samples.id", "on_delete": "SET NULL"},
+        "sample_snapshot_json": {"type": "text", "required": false},
+        "sample_snapshot_schema_version": {"type": "text", "required": false},
+        "project_result_reference_snapshot_json": {"type": "text", "required": false},
+        "project_result_reference_snapshot_schema_version": {"type": "text", "required": false},
+        "status": {"type": "text", "required": true},
+        "started_at": {"type": "timestamp", "required": false},
+        "completed_at": {"type": "timestamp", "required": false},
+        "metadata_json": {"type": "json", "required": false},
+        "session_origin": {"type": "text", "required": false, "allowed_values": ["WEB_SESSION", "LOCAL_PROGRAM"]},
+        "workbook_handle": {"type": "text", "required": false},
+        "created_at": {"type": "timestamp", "required": true, "default": "now()"},
+        "updated_at": {"type": "timestamp", "required": true, "default": "now()"}
+      },
+      "checks": [
+        {"name": "ck_test_sessions_web_snapshot_complete", "expression": "\"session_origin\" <> 'WEB_SESSION' OR (\"project_id\" IS NOT NULL AND \"sample_snapshot_json\" IS NOT NULL AND \"sample_snapshot_schema_version\" IS NOT NULL)"}
+      ],
+      "indexes": [
+        {"name": "ux_test_sessions_provider_chamber_session", "columns": ["provider_id", "chamber_id", "provider_session_id"], "unique": true},
+        {"name": "idx_test_sessions_project_sample", "columns": ["project_id", "sample_id"]},
+        {"name": "idx_test_sessions_status", "columns": ["status"]}
+      ]
+    },
+    "jobs": {
+      "purpose": "Platform job requests sent to provider APIs.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "provider_id": {"type": "uuid", "required": true, "references": "providers.id"},
+        "session_id": {"type": "uuid", "required": false, "references": "test_sessions.id"},
+        "provider_job_id": {"type": "text", "required": false},
+        "job_type": {"type": "text", "required": true},
+        "status": {"type": "text", "required": true},
+        "requested_by_user_id": {"type": "uuid", "required": false, "references": "users.id"},
+        "request_json": {"type": "json", "required": true},
+        "provider_response_json": {"type": "json", "required": false},
+        "created_at": {"type": "timestamp", "required": true},
+        "updated_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "idx_jobs_provider_status", "columns": ["provider_id", "status"]},
+        {"name": "idx_jobs_session", "columns": ["session_id"]},
+        {"name": "idx_jobs_created_at", "columns": ["created_at"]}
+      ]
+    },
+    "measurement_results": {
+      "purpose": "Latest projection of provider-normalized measurement results per (session_id, condition_hash). FE-P0a extends with project_id direct FK + condition_hash + operator so coverage queries do not need a join through test_sessions. Append-only history lives in measurement_attempts. id/created_at carry DB defaults (gen_random_uuid()/now()) so the shared ingestion mapper — which omits both — INSERTs without any caller stamp; the production sync adapter and dev_seed share this DB owner.",
+      "columns": {
+        "id": {"type": "uuid", "required": true, "default": "gen_random_uuid()"},
+        "provider_id": {"type": "uuid", "required": true, "references": "providers.id"},
+        "session_id": {"type": "uuid", "required": true, "references": "test_sessions.id"},
+        "project_id": {"type": "uuid", "required": false, "references": "projects.id"},
+        "provider_result_id": {"type": "text", "required": true},
+        "test_name": {"type": "text", "required": true},
+        "technology": {"type": "text", "required": true},
+        "condition_hash": {"type": "text", "required": false},
+        "condition_json": {"type": "json", "required": true},
+        "result_json": {"type": "json", "required": true},
+        "verdict": {"type": "text", "required": false},
+        "operator": {"type": "text", "required": false},
+        "measured_at": {"type": "timestamp", "required": false},
+        "created_at": {"type": "timestamp", "required": true, "default": "now()"}
+      },
+      "indexes": [
+        {"name": "ux_measurement_results_provider_result", "columns": ["provider_id", "provider_result_id"], "unique": true},
+        {"name": "idx_measurement_results_session", "columns": ["session_id"]},
+        {"name": "idx_measurement_results_technology_test", "columns": ["technology", "test_name"]},
+        {"name": "idx_measurement_results_verdict", "columns": ["verdict"]},
+        {"name": "idx_measurement_results_project_condition_hash", "columns": ["project_id", "condition_hash"]},
+        {"name": "idx_measurement_results_operator", "columns": ["operator"]}
+      ]
+    },
+    "measurement_attempts": {
+      "purpose": "Append-only ledger of every measurement attempt. is_latest mirrors the latest projection in measurement_results. condition_hash is propagated from compute_condition_hash (no central recompute). Operator is the ApiPrincipal.subject (remote) or LOCAL_GUI_OPERATOR_SUBJECT (GUI default) captured at write time.",
+      "append_only": true,
+      "columns": {
+        "id": {"type": "uuid", "required": true, "default": "gen_random_uuid()"},
+        "provider_id": {"type": "uuid", "required": true, "references": "providers.id"},
+        "session_id": {"type": "uuid", "required": true, "references": "test_sessions.id"},
+        "project_id": {"type": "uuid", "required": false, "references": "projects.id"},
+        "measurement_result_id": {"type": "uuid", "required": false, "references": "measurement_results.id"},
+        "test_name": {"type": "text", "required": true},
+        "technology": {"type": "text", "required": true},
+        "condition_hash": {"type": "text", "required": true},
+        "attempt_number": {"type": "integer", "required": true},
+        "is_latest": {"type": "boolean", "required": true},
+        "operator": {"type": "text", "required": false},
+        "status": {"type": "text", "required": true},
+        "verdict": {"type": "text", "required": false},
+        "margin": {"type": "text", "required": false},
+        "result_json": {"type": "json", "required": true},
+        "run_id": {"type": "text", "required": false},
+        "idempotency_key": {"type": "text", "required": false},
+        "recorded_by": {"type": "text", "required": false},
+        "provenance_json": {"type": "json", "required": false},
+        "measured_at": {"type": "timestamp", "required": false},
+        "created_at": {"type": "timestamp", "required": true, "default": "now()"}
+      },
+      "indexes": [
+        {"name": "ux_measurement_attempts_idempotency_key", "columns": ["idempotency_key"], "unique": true, "where": "idempotency_key IS NOT NULL"},
+        {"name": "ux_measurement_attempts_session_condition_attempt", "columns": ["session_id", "condition_hash", "attempt_number"], "unique": true, "purpose": "Legacy replay compatibility; new worker writes use the provider-qualified identity."},
+        {"name": "ux_measurement_attempts_provider_session_condition_attempt", "columns": ["provider_id", "session_id", "condition_hash", "attempt_number"], "unique": true},
+        {"name": "idx_measurement_attempts_project_condition_hash", "columns": ["project_id", "condition_hash"], "purpose": "Legacy read/index compatibility; provider-scoped selection uses the provider-qualified indexes."},
+        {"name": "idx_measurement_attempts_project_provider_condition_hash", "columns": ["project_id", "provider_id", "condition_hash"]},
+        {"name": "idx_measurement_attempts_session_measured_at", "columns": ["session_id", "measured_at"]},
+        {"name": "idx_measurement_attempts_result", "columns": ["measurement_result_id"]},
+        {"name": "idx_measurement_attempts_is_latest", "columns": ["project_id", "provider_id", "condition_hash", "is_latest"]},
+        {"name": "idx_measurement_attempts_project_provider_condition_recency", "columns": ["project_id", "provider_id", "condition_hash", "measured_at", "created_at", "id"], "orders": {"measured_at": "DESC NULLS LAST", "created_at": "DESC", "id": "DESC"}, "where": "status = 'completed'", "purpose": "Candidate seek covering index; the exact project/provider/condition identity precedes deterministic recency."},
+        {"name": "idx_measurement_attempts_progress_join", "columns": ["project_id", "provider_id", "condition_hash", "is_latest"]},
+        {"name": "idx_measurement_attempts_operator", "columns": ["operator"]}
+      ]
+    },
+    "project_result_selection_events": {
+      "purpose": "Append-only examiner selection ledger for one exact (project_id, provider_id, condition_hash) result partition. A selected event names one eligible completed attempt; a cleared event removes the manual override and restores deterministic latest selection. The revision and predecessor fields provide optimistic concurrency without mutating historical facts.",
+      "append_only": true,
+      "columns": {
+        "id": {"type": "uuid", "required": true, "default": "gen_random_uuid()"},
+        "project_id": {"type": "uuid", "required": true, "references": "projects.id"},
+        "provider_id": {"type": "uuid", "required": true, "references": "providers.id"},
+        "condition_hash": {"type": "text", "required": true},
+        "action": {"type": "text", "required": true, "allowed_values": ["selected", "cleared"]},
+        "attempt_id": {"type": "uuid", "required": false, "references": "measurement_attempts.id"},
+        "revision": {"type": "integer", "required": true},
+        "predecessor_event_id": {"type": "uuid", "required": false, "references": "project_result_selection_events.id"},
+        "expected_revision": {"type": "integer", "required": true},
+        "actor_subject": {"type": "text", "required": true},
+        "occurred_at": {"type": "timestamp", "required": true},
+        "reason": {"type": "text", "required": false},
+        "created_at": {"type": "timestamp", "required": true, "default": "now()"}
+      },
+      "checks": [
+        {"name": "ck_project_result_selection_action_attempt", "expression": "(action = 'selected' AND attempt_id IS NOT NULL) OR (action = 'cleared' AND attempt_id IS NULL)"},
+        {"name": "ck_project_result_selection_revision_positive", "expression": "revision > 0 AND expected_revision >= 0 AND revision = expected_revision + 1"}
+      ],
+      "indexes": [
+        {"name": "ux_project_result_selection_partition_revision", "columns": ["project_id", "provider_id", "condition_hash", "revision"], "unique": true},
+        {"name": "idx_project_result_selection_partition_latest", "columns": ["project_id", "provider_id", "condition_hash", "revision", "occurred_at"]},
+        {"name": "idx_project_result_selection_attempt", "columns": ["attempt_id"]}
+      ]
+    },
+    "project_result_reference_revisions": {
+      "purpose": "Append-only generic project-result reference envelopes. The platform stores immutable source selection/attempt/session provenance plus an opaque provider-authored payload and exact content hash; provider compatibility and interpretation remain outside the central schema.",
+      "append_only": true,
+      "columns": {
+        "id": {"type": "uuid", "required": true, "default": "gen_random_uuid()"},
+        "project_id": {"type": "uuid", "required": true, "references": "projects.id"},
+        "producer_provider_id": {"type": "uuid", "required": true, "references": "providers.id"},
+        "revision_number": {"type": "integer", "required": true},
+        "reference_type": {"type": "text", "required": true},
+        "schema_version": {"type": "text", "required": true},
+        "source_selection_event_id": {"type": "uuid", "required": true, "references": "project_result_selection_events.id"},
+        "source_attempt_id": {"type": "uuid", "required": true, "references": "measurement_attempts.id"},
+        "source_session_id": {"type": "uuid", "required": true, "references": "test_sessions.id"},
+        "source_sample_id": {"type": "uuid", "required": false, "references": "samples.id"},
+        "source_chamber_id": {"type": "text", "required": false},
+        "payload_json": {"type": "json", "required": true},
+        "content_sha256": {"type": "text", "required": true},
+        "state": {"type": "text", "required": true, "allowed_values": ["published", "retired"]},
+        "created_by": {"type": "text", "required": true},
+        "created_at": {"type": "timestamp", "required": true, "default": "now()"},
+        "retired_by": {"type": "text", "required": false},
+        "retired_at": {"type": "timestamp", "required": false},
+        "retirement_reason": {"type": "text", "required": false}
+      },
+      "checks": [
+        {"name": "ck_project_result_reference_revision_positive", "expression": "revision_number > 0"},
+        {"name": "ck_project_result_reference_hash", "expression": "content_sha256 ~ '^[0-9a-fA-F]{64}$'"},
+        {"name": "ck_project_result_reference_retirement", "expression": "(state = 'published' AND retired_by IS NULL AND retired_at IS NULL AND retirement_reason IS NULL) OR (state = 'retired' AND retired_by IS NOT NULL AND retired_at IS NOT NULL AND retirement_reason IS NOT NULL)"}
+      ],
+      "indexes": [
+        {"name": "ux_project_result_reference_project_provider_type_revision", "columns": ["project_id", "producer_provider_id", "reference_type", "revision_number"], "unique": true},
+        {"name": "idx_project_result_reference_source_selection", "columns": ["source_selection_event_id"]},
+        {"name": "idx_project_result_reference_provider_state", "columns": ["producer_provider_id", "state", "reference_type", "schema_version"]},
+        {"name": "idx_project_result_reference_project_created", "columns": ["project_id", "created_at", "id"]}
+      ]
+    },
+    "claim_events": {
+      "purpose": "Append-only ledger of measurement claim acquire/release/expire events. FE-P3 reads active_claims view derived from this ledger; operators acquire (project_id, technology, condition_hash) and other users see lock/warning. claim_id groups acquire/release of the same claim.",
+      "append_only": true,
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "claim_id": {"type": "uuid", "required": true},
+        "project_id": {"type": "uuid", "required": true, "references": "projects.id"},
+        "technology": {"type": "text", "required": true},
+        "condition_hash": {"type": "text", "required": true},
+        "operator": {"type": "text", "required": true},
+        "action": {"type": "text", "required": true, "allowed_values": ["acquired", "released", "expired"]},
+        "reason": {"type": "text", "required": false},
+        "occurred_at": {"type": "timestamp", "required": true},
+        "expires_at": {"type": "timestamp", "required": false},
+        "session_id": {"type": "uuid", "required": false, "references": "test_sessions.id"},
+        "created_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "idx_claim_events_project_condition_hash_occurred", "columns": ["project_id", "condition_hash", "occurred_at"]},
+        {"name": "idx_claim_events_claim_id_occurred", "columns": ["claim_id", "occurred_at"]},
+        {"name": "idx_claim_events_operator_occurred", "columns": ["operator", "occurred_at"]},
+        {"name": "idx_claim_events_action", "columns": ["action", "occurred_at"]}
+      ]
+    },
+    "project_membership": {
+      "purpose": "Project-scoped role assignment for a (user, role) pair (FE-P8). Mutable: assign upserts on (project_id, user_id, role_key); revoke deletes the row. Authorization reads through the project_member_permissions view (single-pass join). Every mutation appends to audit_events in the same DB transaction so a successful membership change is durable iff its audit is durable.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "project_id": {"type": "uuid", "required": true, "references": "projects.id"},
+        "user_id": {"type": "uuid", "required": true, "references": "users.id"},
+        "role_key": {"type": "text", "required": true},
+        "team": {"type": "text", "required": false},
+        "assigned_at": {"type": "timestamp", "required": true},
+        "expires_at": {"type": "timestamp", "required": false},
+        "created_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "ux_project_membership_project_user_role", "columns": ["project_id", "user_id", "role_key"], "unique": true},
+        {"name": "idx_project_membership_user", "columns": ["user_id"]}
+      ]
+    },
+    "audit_events": {
+      "purpose": "Append-only ledger of platform writes (claim acquire/release/expire + project_membership assign/revoke + local account unlock). account.unlocked (2026-08-23) is the administrator lifting a login lockout: the row names the actor and the target_user_subject, and it is written in the same transaction as the users UPDATE, so an unlock is durable iff its audit is. It is deliberately NOT project-scoped — a local account is not a project resource — which is why project_id is nullable on this table. Mirrors the claim_events append-only pattern (no UPDATE/DELETE of historical rows). Audit rows are written in the SAME DB transaction as the primary write so a successful platform change is durable iff its audit is durable (a failed audit INSERT rolls the primary write back, never a silent unaudited mutation). actor_subject is the authenticated ApiPrincipal.subject — never the request body (FE-P8 operator provenance).",
+      "append_only": true,
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "event_type": {"type": "text", "required": true, "allowed_values": ["claim.acquired", "claim.released", "claim.expired", "membership.assigned", "membership.revoked", "account.unlocked", "sample.hard_deleted"]},
+        "project_id": {"type": "uuid", "required": false, "references": "projects.id"},
+        "actor_subject": {"type": "text", "required": true},
+        "target_user_subject": {"type": "text", "required": false},
+        "target_claim_id": {"type": "uuid", "required": false},
+        "role_key": {"type": "text", "required": false},
+        "detail_json": {"type": "json", "required": false},
+        "occurred_at": {"type": "timestamp", "required": true},
+        "created_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "idx_audit_events_project_occurred", "columns": ["project_id", "occurred_at"]},
+        {"name": "idx_audit_events_actor_occurred", "columns": ["actor_subject", "occurred_at"]},
+        {"name": "idx_audit_events_event_type_occurred", "columns": ["event_type", "occurred_at"]}
+      ]
+    },
+    "chamber_nodes": {
+      "purpose": "Registry of distributed chamber PC nodes (멀티챔버 P1). One row per chamber: identity (chamber_id) + the node Session API base_url (used by the central measurement proxy in Phase 5) + per-chamber offline TTL. heartbeat_ttl_seconds default is sourced from domain DEFAULT_HEARTBEAT_TTL_SECONDS (no magic number in this schema). Mutable registry (like providers) — operational status is NOT stored here; it is derived from the chamber_heartbeat_events ledger via the chamber_availability view. artifact_storage_root (2026-08-09, plot-custody ②) is where that chamber's PC must write measurement plots: 운영자가 웹에서 지정하는 **기계의 속성**이고 노드가 부트에 pull 한다. nullable — 미설정이면 노드는 오늘처럼 워크북 Save Data 'File Structure' 칸을 쓴다(기능 상실 0). 자가 등록은 이 값을 **덮지 않는다**(COALESCE fill-only): 노드는 자기가 어디에 써야 하는지 모르고, 재부팅마다 운영자 설정이 지워지면 이 축이 존재할 이유가 없다. 명시적 변경/삭제는 update_chamber operation 이 한다. equipment_config_json (2026-08-10, SPLIT-6 ②) 은 그 방의 계측기 연결 설정(분석기/BT 테스터/스위치박스의 GPIB·LAN 주소)이고 같은 이유로 **방의 속성**이다. platform 은 이 map 의 키를 **모른다** — 키를 아는 것은 provider descriptor 와 노드 도메인뿐이고, 키를 컬럼으로 승격하면 provider 어휘가 중앙 스키마에 들어와 provider 가 늘 때마다 중앙 마이그레이션이 필요해진다(ADR-0018 D-6 3축 소유표). nullable 이고 default 가 없다 — NULL 은 '아무도 설정한 적 없다'(노드는 워크북 Chamber Config 시트를 쓴다)이고 '{}' 는 '비우기로 결정했다'라 접으면 폴백 규칙이 무너진다. 자가 등록은 이 값을 **쓰지 못한다**: artifact_storage_root 는 이미 등록 요청에 실려 있어 COALESCE fill-only 로 소급 방어했지만, 이 축은 첫날부터 전용 PATCH 를 가지므로 등록 컬럼 목록에 아예 없다(방어가 아니라 부재). accepts_web_sessions (per-PC mode exclusivity, operator ruling 2026-08-16) is the APPROVAL half of a two-axis fact: approval is a company-policy fact the operator manages centrally, and REALISATION (\"I actually opened a listener\") is observed by the node via heartbeat. The mismatch between them is the signal, so they must not collapse into one column. It is deliberately NULLABLE and three-valued \u2014 NULL means nobody has ruled, which is a different operator action from an explicit false. It is ALSO deliberately absent from the self-registration column list: a node does not know whether it has been approved, and the admin screen edits chambers by re-POSTing the registration, so absence (not COALESCE defence) is what protects the operator\u2019s ruling. The vocabulary is provider-neutral \u2014 central knows only \"does this chamber accept web sessions\"; what a non-web PC runs is the provider\u2019s business. enabled is NOT reused for this: that column already carries operational enable/disable and mixing deployment policy into it makes both unreadable. This axis is OBSERVATION: nothing is refused because of this column.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "chamber_id": {"type": "text", "required": true, "unique": true},
+        "name": {"type": "text", "required": true},
+        "base_url": {"type": "text", "required": true},
+        "enabled": {"type": "boolean", "required": true},
+        "heartbeat_ttl_seconds": {"type": "integer", "required": true},
+        "artifact_storage_root": {"type": "text", "required": false},
+        "equipment_config_json": {"type": "json", "required": false},
+        "accepts_web_sessions": {"type": "boolean", "required": false, "added_in": "per-PC mode exclusivity — chamber mode axis (2026-08-16)"},
+        "created_at": {"type": "timestamp", "required": true},
+        "updated_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "ux_chamber_nodes_chamber_id", "columns": ["chamber_id"], "unique": true}
+      ]
+    },
+    "chamber_heartbeat_events": {
+      "purpose": "Append-only ledger of chamber heartbeat pushes (멀티챔버 P1 + C1 heartbeat-carried progress + M2 diagnostics). Each push appends one row with the node's self-reported operational status (idle/in_use). OFFLINE is NEVER stored — it is a derived state: when the latest heartbeat is older than heartbeat_ttl_seconds (or no heartbeat exists) the read service derives OFFLINE against an injected clock. progress_json carries the node's measurement progress snapshot (is_running/completed/total/ratio) and is populated ONLY on in_use heartbeats (idle nodes have no running measurement — domain Heartbeat invariant). last_error_json (M2, 2026-06-20) carries the node's latest operational error as a redacted {message, occurred_at} payload — OPTIONAL on any heartbeat status (an error is orthogonal to progress; a node may report a last error while idle/in_use). The write service redacts secrets/identifiers (URLs/tokens/paths/device ids) via the domain redaction SSOT BEFORE persistence. Both progress_json and last_error_json let the chamber_availability VIEW expose every chamber's live progress + last error in a single read, eliminating per-chamber N+1 lookups (the single get_chamber_measurement_progress endpoint remains as a fresh-fallback for one chamber). Mirrors the claim_events → active_claims append-only pattern; chamber_availability is the read projection.",
+      "append_only": true,
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "chamber_id": {"type": "text", "required": true, "references": "chamber_nodes.chamber_id"},
+        "reported_status": {"type": "text", "required": true, "allowed_values": ["idle", "in_use"]},
+        "session_id": {"type": "uuid", "required": false, "references": "test_sessions.id"},
+        "occurred_at": {"type": "timestamp", "required": true},
+        "expires_at": {"type": "timestamp", "required": false},
+        "detail_json": {"type": "json", "required": false},
+        "progress_json": {"type": "json", "required": false, "added_in": "C1 heartbeat-carried progress (2026-06-17)"},
+        "last_error_json": {"type": "json", "required": false, "added_in": "M2 chamber diagnostics (2026-06-20)"},
+        "created_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "idx_chamber_heartbeat_events_chamber_occurred", "columns": ["chamber_id", "occurred_at"]},
+        {"name": "idx_chamber_heartbeat_events_status_occurred", "columns": ["reported_status", "occurred_at"]}
+      ]
+    },
+    "artifacts": {
+      "purpose": "Metadata for files stored on the company file server or object store.",
+      "columns": {
+        "id": {"type": "uuid", "required": true, "default": "gen_random_uuid()"},
+        "provider_id": {"type": "uuid", "required": true, "references": "providers.id"},
+        "session_id": {"type": "uuid", "required": true, "references": "test_sessions.id"},
+        "measurement_result_id": {"type": "uuid", "required": false, "references": "measurement_results.id"},
+        "artifact_type": {"type": "text", "required": true},
+        "relative_path": {"type": "text", "required": true},
+        "original_filename": {"type": "text", "required": false},
+        "sha256": {"type": "text", "required": false},
+        "byte_size": {"type": "integer", "required": false},
+        "storage_backend": {"type": "text", "required": true},
+        "created_at": {"type": "timestamp", "required": true, "default": "now()"}
+      },
+      "indexes": [
+        {"name": "ux_artifacts_provider_relative_path", "columns": ["provider_id", "relative_path"], "unique": true},
+        {"name": "idx_artifacts_session_type", "columns": ["session_id", "artifact_type"]},
+        {"name": "idx_artifacts_result", "columns": ["measurement_result_id"]},
+        {"name": "idx_artifacts_provider_sha256", "columns": ["provider_id", "sha256"]}
+      ]
+    },
+    "artifact_custody_snapshots": {
+      "purpose": "챔버 노드가 보고한 플롯 원본 보관 관측 스냅샷 (plot-dual-custody ① 조회 축, 2026-08-09). 중앙은 원본 보관소(회사 파일서버/챔버 PC 로컬)를 열 수 없으므로 판정하지 않는다 — 판정은 증거가 있는 노드에서 나오고 이 테이블은 그것을 받아 보관한다(참조 데이터 origin/replica 계층의 거울상: 참조는 중앙→로컬 PULL, 보관 판정은 로컬→중앙 PUSH). 자연키는 test_sessions 와 같은 (provider_id, chamber_id, provider_session_id) 이고 session_id FK 를 두지 않는다 — 읽기 시 그 자연키로 조인하면 나중에 test_sessions.project_id 가 해소될 때 이 스냅샷의 프로젝트 귀속이 백필 없이 따라오고, 두 번째 정체성 파생이 생기지 않는다. observed_at 은 노드가 관측한 시각 = watermark 이고 쓰기는 그 값 기준 latest-wins 다 — 재시도로 늦게 도착한 낡은 관측이 새 판정을 덮으면 화면이 과거로 되돌아간다. findings 는 조치 가능한 것(비-verified)만 담고 verified 개수는 여기 카운터에 남는다: 세션당 약 1,000장을 그대로 복제하면 전송·저장이 개수에 비례해 커지는데 그 목록으로 할 수 있는 일이 없다. 설계 근거: .claude/exec-plans/active/2026-08-09-plot-custody-web-and-chamber.md",
+      "columns": {
+        "id": {"type": "uuid", "required": true, "default": "gen_random_uuid()"},
+        "provider_id": {"type": "uuid", "required": true, "references": "providers.id"},
+        "chamber_id": {"type": "text", "required": true},
+        "provider_session_id": {"type": "text", "required": true},
+        "status": {"type": "text", "required": true, "allowed_values": ["verified", "missing", "diverged", "unknown"]},
+        "verified_count": {"type": "integer", "required": true, "default": "0"},
+        "missing_count": {"type": "integer", "required": true, "default": "0"},
+        "diverged_count": {"type": "integer", "required": true, "default": "0"},
+        "unknown_count": {"type": "integer", "required": true, "default": "0"},
+        "roots_json": {"type": "text", "required": false},
+        "session_label": {"type": "text", "required": false},
+        "observed_at": {"type": "timestamp", "required": true},
+        "reported_at": {"type": "timestamp", "required": true, "default": "now()"}
+      },
+      "indexes": [
+        {"name": "ux_artifact_custody_snapshots_session", "columns": ["provider_id", "chamber_id", "provider_session_id"], "unique": true},
+        {"name": "idx_artifact_custody_snapshots_status", "columns": ["status"]}
+      ]
+    },
+    "artifact_custody_findings": {
+      "purpose": "보관 스냅샷의 조치 가능한 항목 (비-verified). 시험원이 '무엇을 옮겨야 하나'를 화면에서 답하려면 개수만으로는 부족하고 주소가 필요하다. verified 행은 담지 않는다 — 개수는 스냅샷 카운터에 남으므로 숨기는 것이 아니고, 담으면 세션당 약 1,000행이 된다. 스냅샷이 새 관측으로 갱신되면 같은 트랜잭션에서 전량 교체된다(부분 갱신이면 이미 옮긴 파일이 목록에 남아 시험원이 없는 일을 한다).",
+      "columns": {
+        "id": {"type": "uuid", "required": true, "default": "gen_random_uuid()"},
+        "snapshot_id": {"type": "uuid", "required": true, "references": "artifact_custody_snapshots.id"},
+        "relative_path": {"type": "text", "required": true},
+        "status": {"type": "text", "required": true, "allowed_values": ["missing", "diverged", "unknown"]},
+        "artifact_type": {"type": "text", "required": false},
+        "expected_sha256": {"type": "text", "required": false},
+        "observed_sha256": {"type": "text", "required": false},
+        "reason": {"type": "text", "required": false},
+        "created_at": {"type": "timestamp", "required": true, "default": "now()"}
+      },
+      "indexes": [
+        {"name": "idx_artifact_custody_findings_snapshot", "columns": ["snapshot_id"]}
+      ]
+    },
+    "report_runs": {
+      "purpose": "Platform-visible report generation requests and outcomes. Ingestion supplies the deterministic id and required provider/session/status evidence; the database owns created_at with now() for fresh and upgraded databases.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "provider_id": {"type": "uuid", "required": true, "references": "providers.id"},
+        "session_id": {"type": "uuid", "required": true, "references": "test_sessions.id"},
+        "provider_report_request_id": {"type": "text", "required": false},
+        "status": {"type": "text", "required": true},
+        "requested_by_user_id": {"type": "uuid", "required": false, "references": "users.id"},
+        "report_types_json": {"type": "json", "required": false},
+        "warnings_json": {"type": "json", "required": false},
+        "error_message": {"type": "text", "required": false},
+        "created_at": {"type": "timestamp", "required": true, "default": "now()"},
+        "completed_at": {"type": "timestamp", "required": false}
+      },
+      "indexes": [
+        {"name": "idx_report_runs_session_status", "columns": ["session_id", "status"]},
+        {"name": "idx_report_runs_provider_request", "columns": ["provider_id", "provider_report_request_id"]}
+      ]
+    },
+    "report_outputs": {
+      "purpose": "Metadata for generated DOCX/PDF/XLSX report files.",
+      "columns": {
+        "id": {"type": "uuid", "required": true, "default": "gen_random_uuid()"},
+        "report_run_id": {"type": "uuid", "required": true, "references": "report_runs.id"},
+        "file_name": {"type": "text", "required": true},
+        "relative_path": {"type": "text", "required": true},
+        "sha256": {"type": "text", "required": false},
+        "byte_size": {"type": "integer", "required": false},
+        "storage_backend": {"type": "text", "required": true},
+        "created_at": {"type": "timestamp", "required": true, "default": "now()"}
+      },
+      "indexes": [
+        {"name": "idx_report_outputs_run", "columns": ["report_run_id"]},
+        {"name": "ux_report_outputs_run_path", "columns": ["report_run_id", "relative_path"], "unique": true}
+      ]
+    },
+    "test_reports": {
+      "purpose": "성적서(FCC test certificate) instances issued per project/model (Phase G, 2026-06-23). One project (= one model) has N test_reports (editions/revisions). report_number is NOT a column — it is DERIVED from projects.management_number + edition (report_number_policy SSOT, mirror of the derived fcc_id: never stored). edition is the edition/version token (e.g. 'E2V1') that completes 'S-{management_number}-{edition}'. date_tested_start/end are stored as provided (free text, consistent with sample received_date/intake_date); auto-deriving them from the measurement min~max requires the local measurement DB and is a hardware-session follow-up. rev_history_json carries the revision history array (rev/issue_date/presented_by). The report header citation (SN / firmware / FCC ID / applicant / test_standard) is ASSEMBLED at read time from projects + samples + sample_intakes (report_citation domain SSOT) — not duplicated here.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "project_id": {"type": "uuid", "required": true, "references": "projects.id"},
+        "edition": {"type": "text", "required": true},
+        "date_of_issue": {"type": "text", "required": false},
+        "date_tested_start": {"type": "text", "required": false},
+        "date_tested_end": {"type": "text", "required": false},
+        "prepared_by": {"type": "text", "required": false},
+        "prepared_site": {"type": "text", "required": false},
+        "rev_history_json": {"type": "json", "required": false},
+        "created_at": {"type": "timestamp", "required": true},
+        "updated_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "ux_test_reports_project_edition", "columns": ["project_id", "edition"], "unique": true},
+        {"name": "idx_test_reports_project", "columns": ["project_id"]}
+      ]
+    },
+    "test_equipment_lists": {
+      "purpose": "성적서 §6 TEST AND MEASUREMENT EQUIPMENT 표에 실리는, 프로젝트가 실제로 사용한 장비 목록 (2026-08-07). EMS(사내 장비관리시스템)가 팀 × 시험항목 × 챔버별 '표준 장비리스트'의 SSOT 이고, 이 테이블은 그 표준 목록을 성적서 작성 시점에 pull 해서 시험원이 실사용본으로 편집·확정한 결과다. EMS 를 성적서 생성 시점에 실시간 조회하지 않는다 — 저장 순간 값을 items 에 복사해 고정하므로 과거 성적서를 재생성해도 값이 흔들리지 않는다. test_item_key 는 시험항목 = 성적서 한 편(DTS/BLE/BT/UNII, 도메인 test_equipment_list_policy.TestItemKey SSOT + reporting ReportTech parity)이며 coverage_technology 도, EMS 표기도 아니다 (2026-08-08 축 정정): 어떤 측정이 어떤 성적서를 발행하는지는 FCC 가 아는 사실이고, EMS 표기('DFS, UNII')는 성적서 여러 편에 걸쳐 '이 성적서의 장비목록'을 집을 수 없게 만든다. 컬럼은 text 로 두고 CHECK 를 걸지 않는다 — provider 확장(mmWave/UWB)이 곧 다른 성적서라 CHECK 로 굳히면 확장마다 중앙 마이그레이션이 필요하다; 검증은 애플리케이션 경계가 한다. test_report_id 는 nullable — 시험원은 성적서 행을 만들기 전(시험 ~90% 시점)부터 장비를 고를 수 있고, 그 단계의 목록은 프로젝트에만 귀속된다(부분 unique 인덱스 2개가 두 단계를 각각 봉인). 같은 모델에 성적서를 여러 판 내면서 장비가 달라질 수 있으므로 판마다 별도 행을 갖는다. 설계 근거: .claude/exec-plans/active/2026-08-07-report-equipment-list-domain-migration.md",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "project_id": {"type": "uuid", "required": true, "references": "projects.id"},
+        "test_report_id": {"type": "uuid", "required": false, "references": "test_reports.id"},
+        "test_item_key": {"type": "text", "required": true},
+        "test_item_name": {"type": "text", "required": false},
+        "status": {"type": "text", "required": true, "default": "'draft'", "allowed_values": ["draft", "confirmed"]},
+        "source_profile_key": {"type": "text", "required": false},
+        "source_revision_key": {"type": "text", "required": false},
+        "source_pulled_at": {"type": "timestamp", "required": false},
+        "confirmed_at": {"type": "timestamp", "required": false},
+        "created_at": {"type": "timestamp", "required": true},
+        "updated_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "ux_test_equipment_lists_project_item", "columns": ["project_id", "test_item_key"], "unique": true, "where": "test_report_id IS NULL"},
+        {"name": "ux_test_equipment_lists_report_item", "columns": ["test_report_id", "test_item_key"], "unique": true, "where": "test_report_id IS NOT NULL"},
+        {"name": "idx_test_equipment_lists_project", "columns": ["project_id"]},
+        {"name": "idx_test_equipment_lists_report", "columns": ["test_report_id"]}
+      ]
+    },
+    "test_equipment_list_items": {
+      "purpose": "test_equipment_lists 한 건에 속한 장비/시험용 소프트웨어 행. 확정 시점의 불변 스냅샷이며 EMS master 를 조인하지 않는다(값 복사). 컬럼은 성적서 §6 의 두 표를 그대로 따른다 — 장비표 Description/Manufacturer/Model/S-N/Cal Due, 소프트웨어표 Description/Manufacturer/Model/Version. calibration_due_date 는 date 가 아니라 text 다: 원천 값이 'N/A' 를 포함하고 형식도 섞여 있어 제공된 그대로 보관한다(test_reports.date_tested_* 선례). 교정성적서 번호·인정기관·불확도는 성적서 표에 나가지 않으므로 컬럼을 두지 않는다. remarks 는 화면 전용 운영 메모로 §6 표에는 출력되지 않는다.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "list_id": {"type": "uuid", "required": true, "references": "test_equipment_lists.id"},
+        "item_type": {"type": "text", "required": true, "allowed_values": ["equipment", "test_software"]},
+        "section_name": {"type": "text", "required": false},
+        "sort_order": {"type": "integer", "required": true},
+        "description": {"type": "text", "required": false},
+        "manufacturer": {"type": "text", "required": false},
+        "model_name": {"type": "text", "required": false},
+        "serial_number": {"type": "text", "required": false},
+        "calibration_due_date": {"type": "text", "required": false},
+        "software_version": {"type": "text", "required": false},
+        "remarks": {"type": "text", "required": false},
+        "created_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "idx_test_equipment_list_items_list_order", "columns": ["list_id", "sort_order"]},
+        {"name": "idx_test_equipment_list_items_list_type", "columns": ["list_id", "item_type"]}
+      ]
+    },
+    "diagnostics": {
+      "purpose": "Operator-visible diagnostics and review items from providers or platform processing.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "provider_id": {"type": "uuid", "required": false, "references": "providers.id"},
+        "session_id": {"type": "uuid", "required": false, "references": "test_sessions.id"},
+        "measurement_result_id": {"type": "uuid", "required": false, "references": "measurement_results.id"},
+        "report_run_id": {"type": "uuid", "required": false, "references": "report_runs.id"},
+        "severity": {"type": "text", "required": true},
+        "code": {"type": "text", "required": true},
+        "message": {"type": "text", "required": true},
+        "details_json": {"type": "json", "required": false},
+        "created_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "idx_diagnostics_session_severity", "columns": ["session_id", "severity"]},
+        {"name": "idx_diagnostics_report_run", "columns": ["report_run_id"]},
+        {"name": "idx_diagnostics_code", "columns": ["code"]}
+      ]
+    },
+    "standard_time_catalog": {
+      "purpose": "Provider-owned standard-time catalog (Phase 6 time-weighted progress). Maps a canonical measurement test type (test_type_canonical — the MeasurementType dispatch token) to its planned minutes at test-type granularity (D-P6-GRAN). The catalog is the provider's DEFAULT-minutes SSOT only; published_plan_expectation snapshots the value + version at ingest so editing the catalog never retroactively changes already-published progress (D-P6-SNAP). source is 'workbook_seed' (initial seed from the operator workbook) or 'manual' (edited in-app). Provider-owned: the platform stores and reads these rows but never derives the minutes (ADR-0010).",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "provider_id": {"type": "uuid", "required": true, "references": "providers.id"},
+        "test_type_canonical": {"type": "text", "required": true},
+        "planned_minutes": {"type": "numeric", "required": true},
+        "version": {"type": "integer", "required": true},
+        "source": {"type": "text", "required": true},
+        "updated_at": {"type": "timestamp", "required": true},
+        "updated_by": {"type": "text", "required": false}
+      },
+      "indexes": [
+        {"name": "ux_standard_time_catalog_provider_test_type", "columns": ["provider_id", "test_type_canonical"], "unique": true}
+      ]
+    },
+    "published_plan_expectation": {
+      "purpose": "Phase 6 time-weighted progress DENOMINATOR. One append-only row per published-plan condition, carrying the provider-computed (ADR-0010 — platform never derives these) progress bucket / area / canonical test type, plus the catalog minutes snapshotted at publish time (catalog_version stamped, D-P6-SNAP). The progress rollup LEFT JOINs measurement coverage on (project_id, provider_id, condition_hash): provider_id is REQUIRED in the join because condition_hash does NOT distinguish conducted / radiated / licensed / mmWave headless (F1) — without it, one headless's measurement would satisfy another's expectation. condition_hash is the VERBATIM stable published-plan hash (never recomputed — sealed by test_p6_2_condition_hash_join_key_seal.py). pricing_status is 'priced' (test_type_canonical in catalog → planned_minutes_snapshot set, counts toward the percent denominator) or 'unpriced' (unknown/absent type → planned_minutes_snapshot NULL, surfaced separately as unpriced_minutes, never folded into the percent as zero). progress_bucket_id NULL = unbucketable condition (surfaced, not mis-bucketed). plan_published_at carries the originating plan's publish time so the progress read can apply read-side latest-wins: per (project_id, provider_id) only the row set of the MAX(plan_published_at) plan is rolled up (ROW_NUMBER window). Writes stay pure additive upserts (no destructive supersession), so an old in-flight expectation sync committing after a newer plan can never regress the denominator — its older published_at simply loses the window. NULL plan_published_at sorts oldest.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "project_id": {"type": "uuid", "required": true, "references": "projects.id"},
+        "provider_id": {"type": "uuid", "required": true, "references": "providers.id"},
+        "plan_id": {"type": "text", "required": true},
+        "condition_hash": {"type": "text", "required": true},
+        "coverage_technology": {"type": "text", "required": true},
+        "raw_test_type": {"type": "text", "required": true},
+        "test_type_canonical": {"type": "text", "required": false},
+        "progress_bucket_id": {"type": "text", "required": false},
+        "progress_area": {"type": "text", "required": true},
+        "planned_minutes_snapshot": {"type": "numeric", "required": false},
+        "catalog_version": {"type": "integer", "required": false},
+        "pricing_status": {"type": "text", "required": true},
+        "created_at": {"type": "timestamp", "required": true},
+        "plan_published_at": {"type": "timestamp", "required": false}
+      },
+      "indexes": [
+        {"name": "ux_published_plan_expectation_project_provider_plan_condition", "columns": ["project_id", "provider_id", "plan_id", "condition_hash"], "unique": true},
+        {"name": "idx_published_plan_expectation_join", "columns": ["project_id", "provider_id", "condition_hash"]},
+        {"name": "idx_published_plan_expectation_rollup", "columns": ["project_id", "provider_id", "progress_area", "progress_bucket_id"]}
+      ]
+    },
+    "reference_revisions": {
+      "purpose": "Wave 3 (2026-08-07) — the AUTHORITATIVE ORIGIN of measurement reference data (Correction / Switch port mapping / Frequency Table / Analyzer Settings / Ant gain). The chamber PC's logs/reference_catalog.db is a READ-ONLY REPLICA of these rows, not the origin: the workbook is a one-time import source that lands HERE, editing and publishing happen in the web UI, and chamber nodes pull a delivery bundle. This mirrors the measurement-result axis in the opposite direction — results flow local→central while the offline measurement loop keeps zero central round-trips; reference data flows central→local under the same rule, so an unreachable central degrades to a stale replica rather than a stopped chamber. IDENTITY is (provider_id, family, profile_id, scope_id): provider_id is REQUIRED because 'correction' means different things to unlicensed / mmWave / licensed headless (same reason published_plan_expectation carries it), and omitting it would let one provider's cable loss satisfy another's lookup. scope_kind/scope_id carry the reference_scope_policy axis — ROOM for the cabling bolted into one shield room (correction, switch port mapping), PROJECT for values that follow the device under test. The room key is the chamber identity (one PC per room). PUBLISH UNIQUENESS IS ENFORCED HERE IN DDL by a partial unique index, not merely detected by the reader: the local adapter can only raise AmbiguousPublishedRevisionError after the fact, whereas the origin can refuse to create the second published row at all. state/scope_kind vocabularies mirror the domain enums RevisionState / ReferenceScopeKind and are sealed against them by a parity test — the DB constraint buys integrity against a corrupt writer, the test buys no-drift. Lifecycle actor/instant/reason triples are stored as provided (consistent with test_reports date fields). COLUMN SET IS A FAITHFUL SUPERSET of the chamber replica's reference_catalog_revisions: version and the approved_by/at/reason triple exist here because the replica's schema requires them and a replica must be constructible from central rows without inventing values. family_identity_key is deliberately absent — it is derived (family|profile|scope) by the domain, and storing a derived identifier is the mistake report_number and fcc_id already avoid. content_sha256 and scope_kind are central-only: the former is integrity the origin owns, the latter is derivable from the family but is stored so a bundle query can filter by axis without loading the policy. provenance_kind (2026-08-09) splits a question source_snapshot_id used to answer alone. Before web authoring existed the only way to make a revision was to import a workbook, so 'where this edition started' and 'where these values came from' were the same fact; forking snapshot X and re-measuring one port's cable loss separates them, and X stays the honest starting point while some values are no longer X's. It is stated in its own column rather than inferred from forked_from_revision_id because a field that quietly acquires a second meaning is the failure this repository has paid for repeatedly, and this axis carries audit evidence. The lattice is monotone (import=WORKBOOK, fork inherits, an entry edit promotes to FORK_EDIT at the moment a value actually changes) and the vocabulary mirrors the domain enum RevisionProvenanceKind, sealed against it and against the 017 CHECK by a three-way parity test. Clients never send it: which operation was used IS the value, so accepting it in a request body would make it forgeable. WEB_AUTHORED (2026-08-11) is the third and terminal kind: once the workbook is no longer something a tester opens, a revision can be born on the web with no workbook behind it, and source_snapshot_id/source_manifest_sha256 are therefore NULLABLE for exactly that kind. They are not simply relaxed — a CHECK ties the nullability to the provenance (a WORKBOOK/FORK_EDIT revision must still carry its snapshot link), because dropping NOT NULL alone would silently let the importer create a revision nobody can justify.",
+      "columns": {
+        "id": {"type": "uuid", "required": true, "default": "gen_random_uuid()"},
+        "provider_id": {"type": "uuid", "required": true, "references": "providers.id"},
+        "family": {"type": "text", "required": true},
+        "profile_id": {"type": "text", "required": true},
+        "scope_kind": {"type": "text", "required": true, "allowed_values": ["room", "project"]},
+        "scope_id": {"type": "text", "required": true},
+        "revision_number": {"type": "integer", "required": true},
+        "state": {"type": "text", "required": true, "allowed_values": ["CANDIDATE", "PUBLISHED", "RETIRED"]},
+        "version": {"type": "integer", "required": true, "default": "1"},
+        "etag": {"type": "text", "required": true},
+        "content_sha256": {"type": "text", "required": true},
+        "source_snapshot_id": {"type": "text", "required": false},
+        "source_manifest_sha256": {"type": "text", "required": false},
+        "official_manifest_sha256": {"type": "text", "required": false},
+        "forked_from_revision_id": {"type": "uuid", "required": false, "references": "reference_revisions.id"},
+        "provenance_kind": {"type": "text", "required": true, "default": "'WORKBOOK'", "allowed_values": ["WORKBOOK", "FORK_EDIT", "WEB_AUTHORED"]},
+        "created_by": {"type": "text", "required": true},
+        "created_at": {"type": "timestamp", "required": true, "default": "now()"},
+        "updated_by": {"type": "text", "required": true},
+        "updated_at": {"type": "timestamp", "required": true, "default": "now()"},
+        "approved_by": {"type": "text", "required": false},
+        "approved_at": {"type": "timestamp", "required": false},
+        "approval_reason": {"type": "text", "required": false},
+        "published_by": {"type": "text", "required": false},
+        "published_at": {"type": "timestamp", "required": false},
+        "publish_reason": {"type": "text", "required": false},
+        "retired_by": {"type": "text", "required": false},
+        "retired_at": {"type": "timestamp", "required": false},
+        "retirement_reason": {"type": "text", "required": false}
+      },
+      "checks": [
+        {"name": "ck_reference_revisions_snapshot_link",
+         "expression": "\"provenance_kind\" = 'WEB_AUTHORED' OR (\"source_snapshot_id\" IS NOT NULL AND \"source_manifest_sha256\" IS NOT NULL)"}
+      ],
+      "indexes": [
+        {"name": "ux_reference_revisions_identity_number", "columns": ["provider_id", "family", "profile_id", "scope_id", "revision_number"], "unique": true},
+        {"name": "ux_reference_revisions_published", "columns": ["provider_id", "family", "profile_id", "scope_id"], "unique": true, "where": "state = 'PUBLISHED'"},
+        {"name": "idx_reference_revisions_scope", "columns": ["provider_id", "scope_kind", "scope_id", "family"]},
+        {"name": "idx_reference_revisions_state", "columns": ["provider_id", "state", "updated_at"]}
+      ]
+    },
+    "reference_entries": {
+      "purpose": "Wave 3 (2026-08-07) — the rows one reference revision carries. payload_json is DELIBERATELY OPAQUE to the platform: it is a runtime lookup row whose field set is owned by the provider's PROJECTION_FIELD_CONTRACT (e.g. correction = correction_index/frequency_hz/correction_db). Normalising those 5 families × ~25 columns into central columns would fork that contract into a THIRD schema and would put measurement arithmetic fields in the platform — the same boundary forbidden_platform_columns draws, and the same reason condition_json / result_json stay opaque (ADR-0005 / ADR-0010). entry_order preserves the source row order so a replica projects rows in the order seeding would have produced them. content_sha256 is the per-entry hash from the provider's reference_hashing SSOT, reused (not recomputed centrally — the platform package may not import hashlib) so that carry-forward of effective_from across re-imports compares the same bytes on both sides. reference_id / identity_key are the provider's stable natural-key derivation; the platform stores and returns them without interpreting them.",
+      "columns": {
+        "id": {"type": "uuid", "required": true, "default": "gen_random_uuid()"},
+        "revision_id": {"type": "uuid", "required": true, "references": "reference_revisions.id"},
+        "entry_order": {"type": "integer", "required": true},
+        "reference_id": {"type": "text", "required": true},
+        "identity_key": {"type": "text", "required": true},
+        "payload_json": {"type": "json", "required": true},
+        "test_condition_ids_json": {"type": "json", "required": false},
+        "effective_from": {"type": "text", "required": false},
+        "effective_to": {"type": "text", "required": false},
+        "source_sheet_name": {"type": "text", "required": false},
+        "source_row_number": {"type": "integer", "required": false},
+        "content_sha256": {"type": "text", "required": true},
+        "created_at": {"type": "timestamp", "required": true, "default": "now()"}
+      },
+      "indexes": [
+        {"name": "ux_reference_entries_revision_reference", "columns": ["revision_id", "reference_id"], "unique": true},
+        {"name": "ux_reference_entries_revision_order", "columns": ["revision_id", "entry_order"], "unique": true},
+        {"name": "idx_reference_entries_identity", "columns": ["revision_id", "identity_key"]}
+      ]
+    }
+  },
+  "materialized_views": {
+    "coverage_by_condition_hash": {
+      "purpose": "Project × provider × condition_hash coverage derived from the latest eligible completed append-only measurement attempt. FE-P0a SSOT for coverage; provider_id is part of the durable identity so one provider cannot satisfy another provider's condition. A regular VIEW would recompute its join on every read across 16k+ test items × N concurrent sessions — that is why this is materialized. The per-partition aggregates are computed once in a GROUP BY derived table joined to the is_latest=true projection. The join is 1:1 (one latest row plus one aggregate row per exact provider partition).",
+      "select": "SELECT a.project_id, a.provider_id, a.technology, a.condition_hash, a.session_id AS latest_session_id, a.operator AS latest_operator, a.measured_at AS latest_measured_at, a.verdict AS latest_verdict, a.attempt_number AS latest_attempt_number, agg.attempt_count, agg.distinct_session_count, agg.distinct_operator_count FROM measurement_attempts a JOIN (SELECT project_id, technology, condition_hash, provider_id, COUNT(*) AS attempt_count, COUNT(DISTINCT session_id) AS distinct_session_count, COUNT(DISTINCT operator) AS distinct_operator_count FROM measurement_attempts WHERE status = 'completed' GROUP BY project_id, technology, condition_hash, provider_id) agg ON (agg.project_id IS NOT DISTINCT FROM a.project_id) AND agg.provider_id = a.provider_id AND agg.technology = a.technology AND agg.condition_hash = a.condition_hash WHERE a.is_latest = true AND a.status = 'completed'",
+      "indexes": [
+        {"name": "ux_coverage_by_condition_hash", "columns": ["project_id", "provider_id", "technology", "condition_hash"], "unique": true},
+        {"name": "idx_coverage_by_condition_hash_operator", "columns": ["latest_operator"]},
+        {"name": "idx_coverage_by_condition_hash_measured", "columns": ["latest_measured_at"]}
+      ],
+      "refresh_policy_ref": "coverage_by_condition_hash",
+      "performance_budget": {
+        "class": "background",
+        "ratio_multiplier_range_x": [3, 5],
+        "basis": "16k+ test items × N concurrent sessions per project",
+        "reference_pattern": "/verify-core-column-projection background budget (3-5×); tests/test_observability_benches_p1_5.py machine-independent ratio convention",
+        "mechanism": "Materialization is the budget-enforcing mechanism. A plain VIEW recomputes the measurement_attempts is_latest scan + correlated attempt_count subquery on every read; over 16k+ items × N sessions that exceeds the 3-5× background budget. The on_ingest 'REFRESH MATERIALIZED VIEW CONCURRENTLY' amortizes that cost to ingestion time so coverage reads (FE-P2 dedup UI) are a single indexed materialized-view scan, keeping the read path inside the background budget.",
+        "runtime_benchmark": "deferred-to-deployed",
+        "runtime_benchmark_rationale": "A machine-independent ratio benchmark requires a live PostgreSQL instance, which CI does not provision (scripts/platform_performance_smoke.py only benchmarks HTTP routes, not this read model). The schema contract is the SSOT, scripts/platform_db_migration_runner.py applies it to the deployed PostgreSQL, and the deployed environment owns the live coverage-read measurement. This budget is pinned here as a contract acceptance so the materialization/index strategy cannot silently regress to a plain VIEW.",
+        "rationale_ref": "docs/architecture/frontend/adr/0005-central-db-read-model.md (Materialized view refresh 정책)"
+      }
+    }
+  },
+  "views": {
+    "active_claims": {
+      "purpose": "Latest acquired claim per (project_id, condition_hash) where there is no later release/expire event for the same claim_id. FE-P3 reads this view to render lock/warning UX. Plain VIEW (not materialized) — claim throughput << measurement throughput and freshness must be sub-second. Uses ROW_NUMBER() OVER + outer alias 'acquired' so the NOT EXISTS subquery unambiguously self-references the outer claim_events row (avoids PG correlated-subquery alias collision) and runs on PostgreSQL + SQLite alike.",
+      "select": "SELECT ranked.project_id, ranked.claim_id, ranked.technology, ranked.condition_hash, ranked.operator, ranked.occurred_at, ranked.expires_at, ranked.session_id FROM (SELECT acquired.project_id, acquired.claim_id, acquired.technology, acquired.condition_hash, acquired.operator, acquired.occurred_at, acquired.expires_at, acquired.session_id, ROW_NUMBER() OVER (PARTITION BY acquired.project_id, acquired.condition_hash ORDER BY acquired.occurred_at DESC) AS rn FROM claim_events acquired WHERE acquired.action = 'acquired' AND NOT EXISTS (SELECT 1 FROM claim_events later WHERE later.claim_id = acquired.claim_id AND later.occurred_at > acquired.occurred_at AND later.action IN ('released', 'expired'))) ranked WHERE ranked.rn = 1"
+    },
+    "project_member_permissions": {
+      "purpose": "Effective platform permissions per (project_id, user_issuer, user_subject) derived from project_membership joined through the role → permission grant graph (roles → role_permissions → permissions). FE-P8 SSOT for membership-based authorization — PlatformApiAdapter.authorize unions the principal's token permissions with rows from this view to decide allow/deny. The view exposes users.enabled and expires_at verbatim; the application service filters disabled users and expired rows against an injected clock so authorization tests stay deterministic (no DB-side now()). Single-pass read: one SELECT per (project, issuer, user) authz check — no N+1 even at 1000s of memberships.",
+      "select": "SELECT pm.project_id, u.subject AS user_subject, p.permission_key, pm.role_key, pm.assigned_at, pm.expires_at, u.issuer AS user_issuer, u.enabled AS user_enabled FROM project_membership pm JOIN users u ON u.id = pm.user_id JOIN roles r ON r.role_key = pm.role_key JOIN role_permissions rp ON rp.role_id = r.id JOIN permissions p ON p.id = rp.permission_id"
+    },
+    "chamber_availability": {
+      "purpose": "Latest heartbeat per registered chamber joined to the chamber_nodes registry (멀티챔버 P1 + C1 heartbeat-carried progress + M2 diagnostics). Exposes reported_status + last_heartbeat_at + heartbeat_ttl_seconds + progress_json + last_error_json VERBATIM — OFFLINE is NOT computed here (no DB-side now()/CURRENT_TIMESTAMP); the read service derives OFFLINE against an injected clock via domain.models.chamber_node.derive_chamber_status (mirrors active_claims / project_member_permissions expires_at injected-clock handling) so availability tests stay deterministic. The same injected clock derives unavailable_reason (heartbeat_timeout/disabled/never_seen/unknown) via derive_unavailable_reason — an operator-diagnostic overlay orthogonal to status (a disabled-but-heartbeating chamber keeps status=idle with reason=disabled). progress_json is the latest heartbeat's measurement-progress snapshot (in_use only) exposed verbatim so a single availability read carries every chamber's live progress (per-chamber progress-poll N+1 eliminated); the read service parses + gates its exposure on the derived in_use status. last_error_json is the latest heartbeat's redacted error payload exposed verbatim so the same single read carries every chamber's last error (no per-chamber error lookup). LEFT JOIN so a registered chamber with zero heartbeats still appears (last_heartbeat_at NULL → service derives OFFLINE / never_seen). Plain VIEW (not materialized) — chamber count is small and freshness must be sub-second. ROW_NUMBER() OVER runs on PostgreSQL + SQLite alike. \u26a0\ufe0f Column order is APPEND-ONLY. PostgreSQL CREATE OR REPLACE VIEW cannot insert or reorder columns of an existing view — measured on PostgreSQL 16.14: inserting a column in the middle fails with 'cannot change name of view column', appending at the end succeeds. A new column therefore goes LAST even when it reads oddly next to its table siblings, or the incremental migration breaks every already-deployed central DB.",
+      "select": "SELECT n.chamber_id, n.name, n.base_url, n.enabled, n.heartbeat_ttl_seconds, latest.reported_status, latest.last_heartbeat_at, latest.heartbeat_expires_at, latest.session_id, latest.progress_json, latest.last_error_json, n.accepts_web_sessions FROM chamber_nodes n LEFT JOIN (SELECT ranked.chamber_id, ranked.reported_status, ranked.occurred_at AS last_heartbeat_at, ranked.expires_at AS heartbeat_expires_at, ranked.session_id, ranked.progress_json, ranked.last_error_json FROM (SELECT h.chamber_id, h.reported_status, h.occurred_at, h.expires_at, h.session_id, h.progress_json, h.last_error_json, ROW_NUMBER() OVER (PARTITION BY h.chamber_id ORDER BY h.occurred_at DESC) AS rn FROM chamber_heartbeat_events h) ranked WHERE ranked.rn = 1) latest ON latest.chamber_id = n.chamber_id"
+    }
+  },
+  "refresh_policies": {
+    "coverage_by_condition_hash": {
+      "trigger": "on_ingest",
+      "fallback_interval": "PT1H",
+      "concurrent_refresh": true,
+      "rationale": "ADR-0005:158-162 미결 해소. FE-P0c ingestion writer가 attempts를 적재한 직후 `REFRESH MATERIALIZED VIEW CONCURRENTLY coverage_by_condition_hash`를 호출하여 사용자가 보는 coverage 화면(FE-P2)이 항상 최신 attempt 기준. PT1H fallback은 ingest 신호가 누락된 경우의 안전망 — 16k+ test items × 다중 세션에 일반 VIEW 매 read 재계산은 background budget 3-5×를 초과한다."
+    }
+  },
+  "ingestion_contract": {
+    "purpose": "Atomicity and ordering rules that FE-P0c ingestion writer MUST satisfy when writing into measurement_attempts/measurement_results. The schema contract owns the rules; the writer owns the implementation. Contract test TestFeP0aIngestionContract verifies the rules are present and that the indexes/columns required to enforce them exist.",
+    "rules": [
+      {
+        "id": "attempts_insert_and_is_latest_toggle_atomic",
+        "description": "For a given (project_id, provider_id, condition_hash) partition the ingestion writer MUST execute the attempt write and latest repair as one SQL transaction. The serialized plan and legacy callers continue to expose the three-part (session_id, condition_hash, attempt_number) replay key; the worker upgrades that key to the provider-qualified storage identity before writing. The database ranks eligible completed attempts by measured_at DESC NULLS LAST, created_at DESC, id DESC and sets exactly that row is_latest=true, so attempt_number is never a cross-session recency key. The transaction MUST use SERIALIZABLE isolation OR SELECT ... FOR UPDATE on the prior is_latest=true row so concurrent ingestions do not produce two is_latest=true rows for the same provider partition.",
+        "enforced_by": [
+          "ux_measurement_attempts_session_condition_attempt UNIQUE (session_id, condition_hash, attempt_number) — retained for legacy replay compatibility",
+          "ux_measurement_attempts_provider_session_condition_attempt UNIQUE (provider_id, session_id, condition_hash, attempt_number) — provider-qualified worker storage identity",
+          "idx_measurement_attempts_project_provider_condition_recency — measured_at DESC NULLS LAST, created_at DESC, id DESC candidate order",
+          "FE-P0c ingestion writer transaction body"
+        ]
+      },
+      {
+        "id": "measurement_results_is_projection_of_latest_attempt",
+        "description": "measurement_results.(verdict, result_json, operator, measured_at, condition_hash) MUST equal the database-ranked completed measurement_attempts row that has is_latest=true for the same provider-scoped result. The ingestion writer updates measurement_results within the SAME transaction that inserts the attempt — never as a delayed projection — and an out-of-order or replayed row MUST NOT overwrite a newer projection.",
+        "enforced_by": [
+          "Same-transaction write contract in FE-P0c",
+          "TestFeP0aViewSqlSemantics fixtures (semantic equivalence)"
+        ]
+      },
+      {
+        "id": "claim_events_append_only_and_acquire_release_pairing",
+        "description": "claim_events MUST be INSERT only. A 'released' or 'expired' row MUST reference a claim_id that previously had an 'acquired' row; the writer SHOULD reject mismatched release in application code. The DB MUST NOT enforce pairing as a CHECK constraint — pairing is a temporal property and rejecting writes here would block legitimate expiry sweepers.",
+        "enforced_by": [
+          "claim_events.action allowed_values: acquired/released/expired",
+          "FE-P3 application validator (out of scope for FE-P0a)"
+        ]
+      },
+      {
+        "id": "coverage_refresh_within_same_unit_of_work",
+        "description": "After the attempt INSERT transaction commits, FE-P0c MUST enqueue (or directly call) REFRESH MATERIALIZED VIEW CONCURRENTLY coverage_by_condition_hash. Refresh failure MUST be logged and retried by the PT1H fallback cron; the ingestion transaction MUST NOT be rolled back because of refresh failure (measurement fact is durable).",
+        "enforced_by": [
+          "refresh_policies.coverage_by_condition_hash",
+          "FE-P0c ingestion writer post-commit hook"
+        ]
+      },
+      {
+        "id": "condition_hash_is_propagated_never_recomputed",
+        "description": "central writers MUST take condition_hash verbatim from the local payload (which itself comes from src/domain/services/measurement_condition_hash::compute_condition_hash). Central MUST NOT recompute the hash from condition_json or any other column — drift between the local hash and a central recompute would silently break dedup.",
+        "enforced_by": [
+          "local_central_field_mappings.tables.measurement_attempts.mappings",
+          "TestFeP0aLocalCentralFieldMapping"
+        ]
+      }
+    ]
+  },
+  "local_central_field_mappings": {
+    "purpose": "Local SQLite ↔ central PostgreSQL field correspondence. Drift between models.py and this schema is a contract failure. condition_hash is propagated from src/domain/services/measurement_condition_hash::compute_condition_hash — central never recomputes.",
+    "tables": {
+      "measurement_attempts": {
+        "local_module": "src/infrastructure/database/models.py:410-470 (MeasurementAttempt)",
+        "central_table": "measurement_attempts",
+        "mappings": [
+          {"local_column": "id (Integer autoincrement)", "central_column": "id (uuid)", "note": "Central uses uuid for cross-station uniqueness. Local integer is mapped at ingestion (FE-P0c) via deterministic uuid5 or freshly generated uuid4 stored alongside."},
+          {"local_column": "condition_id (FK measurement_conditions.id)", "central_column": "condition_hash (text)", "note": "Local FK resolves to compute_condition_hash on ingestion. Central never recomputes — propagate verbatim."},
+          {"local_column": "session_id (FK test_sessions.id)", "central_column": "session_id (uuid)", "note": "Local integer session id ↔ central uuid session id resolved by ingestion writer (FE-P0c)."},
+          {"local_column": "test_result_id (FK test_results.id)", "central_column": "measurement_result_id (uuid)", "note": "Nullable — attempt may precede projection cache write."},
+          {"local_column": "attempt_number", "central_column": "attempt_number", "note": "Verbatim integer."},
+          {"local_column": "result1/result2/result_sum + units", "central_column": "result_json", "note": "Local separate columns are normalized into one JSON envelope. Unit metadata (P0-1 migration 013) preserved verbatim."},
+          {"local_column": "margin", "central_column": "margin", "note": "Local Float vs central text — central preserves provider-supplied formatting for byte-identical reproduction."},
+          {"local_column": "pass_fail", "central_column": "verdict", "note": "Verbatim PASS/FAIL/NA token."},
+          {"local_column": "status", "central_column": "status", "note": "Verbatim string ('completed' default — server_default mirrors local)."},
+          {"local_column": "project_id (text)", "central_column": "project_id (uuid FK projects.id)", "note": "Local text project id resolved to central uuid via project_code lookup at ingestion."},
+          {"local_column": "run_id", "central_column": "run_id", "note": "Verbatim."},
+          {"local_column": "idempotency_key", "central_column": "idempotency_key", "note": "Verbatim unique key — drives ingestion dedup."},
+          {"local_column": "recorded_by (FE-P0b adds)", "central_column": "operator AND recorded_by", "note": "FE-P0b will add recorded_by to the local model. Operator is the ApiPrincipal.subject (remote) or LOCAL_GUI_OPERATOR_SUBJECT module constant (GUI default); recorded_by preserves the raw provenance string. Both populated from the same source at ingestion."},
+          {"local_column": "measured_at", "central_column": "measured_at", "note": "Verbatim UTC timestamp."},
+          {"local_column": "metadata_json", "central_column": "provenance_json", "note": "Local opaque metadata is preserved under provenance_json so audit can reconstruct the local payload exactly."}
+        ]
+      },
+      "measurement_results": {
+        "local_module": "src/infrastructure/database/models.py (TestResult — latest projection)",
+        "central_table": "measurement_results",
+        "mappings": [
+          {"local_column": "TestResult.row_order + session_id", "central_column": "(session_id, condition_hash) plus provider_result_id", "note": "Local destructive overwrite is by MATCH_DEFAULT 10 columns. Central uses condition_hash (propagated) + provider_result_id for unique identification."},
+          {"local_column": "TestResult project_id (text)", "central_column": "project_id (uuid)", "note": "Resolved by ingestion writer (FE-P0c). Adds direct FK so coverage view does not need a join through test_sessions."},
+          {"local_column": "(derived from MeasurementAttempt.recorded_by)", "central_column": "operator", "note": "Materialized into measurement_results as a projection of the latest attempt's operator — FE-P0c populates."}
+        ]
+      }
+    }
+  },
+    "rbac_role_grants": {
+    "purpose": "Project-scoped role → platform permission grants (FE-P8). The single source of truth for the role catalog used by project_membership. The DDL exporter renders this section as idempotent seed INSERTs into the roles/permissions/role_permissions tables (ON CONFLICT DO NOTHING on natural keys, gen_random_uuid() for surrogate ids), and the project_member_permissions view joins through that grant graph to resolve effective permissions per (project, user). The application loads PROJECT_ROLE_KEYS / permissions_for(role_key) from this section verbatim — no role/permission grant lives in code. permission_descriptions mirrors PlatformApiAdapter security-scheme docs so the API contract + RBAC schema cannot drift.",
+    "grants": {
+      "project_viewer":   ["platform:read"],
+      "project_engineer": ["platform:read", "platform:claim", "platform:sample-write", "platform:reference-write", "platform:chamber-config-write"],
+      "project_admin":    ["platform:read", "platform:claim", "platform:admin", "platform:sample-write", "platform:reference-write", "platform:chamber-config-write", "test_plan:read"],
+      "project_pm":       ["platform:read", "platform:sample-write"]
+    },
+    "role_descriptions": {
+      "project_viewer":   "Read-only access to project coverage / active claims / sync status.",
+      "project_engineer": "Acquire and release measurement claims on the project's central claim ledger; edit every web sample and intake field; author and publish reference-catalog revisions.",
+      "project_admin":    "Manage project membership (assign/revoke roles) — every change audited via audit_events. Also edits every web sample and reference-catalog revision.",
+      "project_pm":       "PM (시료 물류/자산) role: create and edit every web sample field, including intake history. Reads project state; does not run measurements."
+    },
+    "permission_descriptions": {
+      "platform:read":  "Read project coverage / active claims / sync status / membership list from the central read model.",
+      "platform:claim": "Acquire / release measurement claims on the central claim_events append-only ledger.",
+      "platform:admin": "Assign / revoke project_membership roles. Audited via audit_events (membership.assigned / membership.revoked).",
+      "platform:sample-write": "Create and edit all web sample and append-only intake fields; status changes and ordinary delete also write sample revisions.",
+      "platform:sample-hard-delete": "Global system_admin-only physical deletion of a sample current projection, intakes, and revisions; leaves a PII-free audit tombstone.",
+      "platform:reference-write": "Author a reference-catalog candidate revision and publish it (POST /platform/providers/{id}/reference-revisions and .../publish). Publishing changes what every chamber in that scope measures with from its NEXT session. Granted to project_engineer (=시험원) + project_admin.",
+      "platform:chamber-config-write": "Set a chamber's configuration — the instrument connection settings (analyzer / BT tester / switchbox GPIB and LAN addresses, PATCH /platform/chambers/{id}/equipment-config) AND where that chamber's plots are stored (PATCH /platform/chambers/{id}/storage-root). ONE token, because the actor and the scope are the same for both: a pair that is always granted together is just one token with an extra drift surface, which is the reasoning 016 used to refuse splitting authoring from publishing. Granted to project_engineer (=시험원) + project_admin: the person who knows the analyzer's new address after a re-cabling is the tester standing in the room, not an administrator, and operator decision 2026-08-10 put every test-related right with the tester. Deliberately NOT platform:reference-write — that token's membership path only opens for PROJECT-scoped families, and a chamber is not a project (a room outlives every project and one project spans two rooms). Deliberately NOT platform:admin — the storage-root axis used that tier until 2026-08-11 and it is exactly what the operator decision moved.",
+      "test_plan:read": "Read and validate test-plan drafts and published plans without mutating test-plan state. Granted to project_admin for project administration's read surface; test-plan authoring remains separately gated by test_plan:author."
+    },
+    "global_role_grants": {
+      "purpose": "Global role catalog, separate from project membership. system_admin is the sole global grant holder for sample hard delete.",
+      "grants": {
+        "system_admin": ["platform:sample-hard-delete"]
+      },
+      "role_descriptions": {
+        "system_admin": "Global platform operator. May physically delete sample operational rows only through the dedicated hard-delete operation."
+      }
+    }
+  },
+  "forbidden_platform_columns": [
+    "obw_value",
+    "psd_value",
+    "cse_value",
+    "scpi_command",
+    "keystring",
+    "instrument_trace_blob",
+    "plot_blob",
+    "report_blob",
+    "excel_blob"
+  ],
+  "binary_storage_policy": "Artifacts and report outputs store metadata only. File bytes live in the configured company file server or object storage.",
+  "adr_alignment": {
+    "adr_id": "0005",
+    "adr_path": "docs/architecture/frontend/adr/0005-central-db-read-model.md",
+    "alignment": "FE-P0a aligns the contract with ADR-0005 attempts table (append-only + is_latest) and resolves the open question at ADR-0005:158-162 by declaring a refresh policy for coverage_by_condition_hash. The contract additionally adds claim_events, active_claims, project_membership stub, and the local↔central field mapping table that ADR-0005 did not specify."
+  }
+}
