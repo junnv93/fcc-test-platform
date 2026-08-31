@@ -538,5 +538,77 @@ class TestFrontendUnionCompleteness(unittest.TestCase):
 
 
 
+
+class TestMutationRegressionsFromMonorepo(unittest.TestCase):
+    """모노레포에서 옮겨온 AC-4 변이 회귀 (2026-08-31).
+
+    ⚠️ 변형 대상이 `apps/web/src/shared/api-error.ts` 이고 그 파일은 여기 있다.
+    모노레포에 두면 존재하지 않는 파일을 열다 red 가 된다.
+    전부 **소스 사본**에서만 변형한다 — 원본 파일은 무변경이다.
+    """
+
+    def test_d_a_single_surface_alias_fails_ac4(self):
+        # (d) TS 텍스트 입력 카운터팩추얼 — api-error.ts 의 union 을 한 surface
+        # alias 로 되돌린다(import 문은 그대로 두어, 파일-전역 스캔이면 놓칠
+        # 함정을 보존한다).
+        original_bytes = API_ERROR_TS_PATH.read_bytes()
+        real_text = original_bytes.decode('utf-8')
+        mutated_text = re.sub(
+            r'export type ErrorCode\s*=.*?;',
+            "export type ErrorCode = components['schemas']['ErrorCode'];",
+            real_text,
+            count=1,
+            flags=re.DOTALL,
+        )
+        self.assertNotEqual(mutated_text, real_text, 'mutation must actually change the text')
+        missing = _surfaces_missing_from_union(mutated_text)
+        self.assertIn('headless-api', missing)
+
+        # 디스크의 원본 파일은 바이트 단위로 무변경 — 변형은 인메모리 문자열에만.
+        self.assertEqual(API_ERROR_TS_PATH.read_bytes(), original_bytes)
+
+    def test_e_a_decoy_index_with_the_real_alias_does_not_count_as_participation(self):
+        # (e) 2026-08-13 iteration-3 리뷰: 옛 구현은 alias *식별자*가 선언
+        # 슬라이스 안 어딘가에 나타나기만 하면 통과시켰다. 이 사본은 진짜
+        # alias(``HeadlessComponents``)의 import 는 그대로 두고 union 멤버의
+        # 인덱싱 키만 무관한 것으로 바꾼다 — alias 단어 자체는 여전히
+        # 텍스트에 존재하므로, 단어 출현 검사라면 이 사본도 ``missing=[]``
+        # 로 통과했을 것이다.
+        original_bytes = API_ERROR_TS_PATH.read_bytes()
+        real_text = original_bytes.decode('utf-8')
+        needle = "HeadlessComponents['schemas']['ErrorCode']"
+        self.assertIn(needle, real_text, 'fixture assumption drifted -- update the needle')
+        mutated_text = real_text.replace(
+            needle, "HeadlessComponents['notSchemas']['NotErrorCode']",
+        )
+        self.assertNotEqual(mutated_text, real_text, 'mutation must actually change the text')
+
+        missing = _surfaces_missing_from_union(mutated_text)
+        self.assertIn('headless-api', missing)
+
+        self.assertEqual(API_ERROR_TS_PATH.read_bytes(), original_bytes)
+
+    def test_f_renaming_the_declaration_head_is_not_mistaken_for_the_real_one(self):
+        # (f) `export type ErrorCode` is a textual *prefix* of
+        # `export type ErrorCodeLegacy` -- a bare `str.find` head search would
+        # slice the *renamed* declaration and still "find" every alias inside
+        # it, silently validating a union nothing actually exports as
+        # `ErrorCode` anymore. The boundary-aware search must instead fail
+        # loudly: there is no longer a real `ErrorCode` union to check
+        # (same "structurally different failure, not an empty one" shape as
+        # `_published_from_artifact`'s missing-schema guard elsewhere in this
+        # file).
+        original_bytes = API_ERROR_TS_PATH.read_bytes()
+        real_text = original_bytes.decode('utf-8')
+        needle = 'export type ErrorCode ='
+        self.assertIn(needle, real_text, 'fixture assumption drifted -- update the needle')
+        mutated_text = real_text.replace(needle, 'export type ErrorCodeLegacy =', 1)
+        self.assertNotEqual(mutated_text, real_text, 'mutation must actually change the text')
+
+        with self.assertRaises(AssertionError):
+            error_code_union_module_stems(mutated_text)
+
+        self.assertEqual(API_ERROR_TS_PATH.read_bytes(), original_bytes)
+
 if __name__ == '__main__':
     unittest.main()
