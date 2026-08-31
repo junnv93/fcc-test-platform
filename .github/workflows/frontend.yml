@@ -76,6 +76,13 @@ jobs:
 
       - name: format check
         run: npm run format:check
+      # ⚠️ 2026-08-31 — 미러 드리프트를 **codegen 앞에서** 잡는다. `codegen` 은
+      #    미러를 읽으므로, 미러가 정본과 어긋나 있으면 **어긋난 것에서 타입을
+      #    생성하고도 성공**한다. 그 상태는 「정본대로 생성했다」와 같은 초록이다.
+      #    실측(2026-08-31): 정본만 재생성하자 하루도 안 돼 미러가 갈라졌다.
+      - name: api-artifacts mirror drift gate
+        run: node packages/api-artifacts/scripts/sync.mjs --check
+
       - name: codegen (from @fcc/api-artifacts package SSOT)
         run: npm run codegen
       # Non-determinism only; backend contract <-> OpenAPI byte-identity is
