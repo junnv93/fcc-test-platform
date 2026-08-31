@@ -58,7 +58,26 @@ class TestTheBlockingHooksAreWiredInThisCheckout(unittest.TestCase):
             f'{TRACKED_HOOKS_DIR} 에 추적된 훅이 없다 — 이 검사가 공허하다',
         )
 
+    @staticmethod
+    def _is_a_developer_checkout() -> bool:
+        """⚠️ 이 검사의 주제는 **사람이 커밋·push 하는 체크아웃**이다.
+
+        CI 러너는 갓 클론한 **일회성** 트리이고 push 하지 않는다 — 거기서 훅을
+        걸 이유가 없고, 안 걸렸다고 red 로 만들면 **CI 가 영구 red** 가 된다.
+        그리고 영구 red 는 아무도 읽지 않는다.
+
+        ⚠️ 이것은 완화가 아니라 **주제 확정**이다. 「훅이 걸렸는가」와 「이 트리가
+        훅을 걸어야 하는 트리인가」는 다른 질문이고, 앞엣것만 물으면 뒤엣것이
+        아니오인 곳에서도 답을 요구하게 된다.
+        """
+        return os.environ.get('CI', '').lower() not in ('1', 'true')
+
     def test_core_hooks_path_points_at_the_tracked_directory(self) -> None:
+        if not self._is_a_developer_checkout():
+            self.skipTest(
+                'CI 러너는 일회성 클론이라 push 하지 않는다 — 훅 배선은 이 트리의 '
+                '질문이 아니다. 사람이 쓰는 체크아웃에서는 이 검사가 돈다.'
+            )
         configured = _git('config', 'core.hooksPath').stdout.strip()
         self.assertTrue(
             configured,
@@ -78,6 +97,8 @@ class TestTheBlockingHooksAreWiredInThisCheckout(unittest.TestCase):
         )
 
     def test_every_tracked_hook_is_present_and_executable(self) -> None:
+        if not self._is_a_developer_checkout():
+            self.skipTest('CI 러너는 훅을 걸지 않는다 — 위 축과 같은 이유.')
         """⚠️ 실행 비트가 없으면 git 은 그 훅을 **조용히 건너뛴다.**
 
         경로가 맞는 것과 세 훅이 다 도는 것은 다른 축이다.
