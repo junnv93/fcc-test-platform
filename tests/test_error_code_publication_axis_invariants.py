@@ -424,8 +424,11 @@ class TestNonEmptinessGuards(unittest.TestCase):
                     f'{surface.value} has an empty allowed scope',
                 )
 
-    # ⚠️ `test_5_at_least_one_codegen_artifact_publishes_error_code` 는 이 레포로 오지 못했다 — 사유는
-    #    `tests/RETIRED_WITH_THE_FRONTEND.md`(모노레포) §5 참조.
+    def test_5_at_least_one_codegen_artifact_publishes_error_code(self):
+        names = [entry['name'] for entry in _artifacts_publishing_error_code()]
+        self.assertTrue(
+            names, 'no codegen artifact in packages/api-artifacts publishes ErrorCode',
+        )
 
 
     def test_6_the_ts_import_alias_scan_finds_at_least_one_alias(self):
@@ -435,8 +438,13 @@ class TestNonEmptinessGuards(unittest.TestCase):
             aliases, 'import alias scan found nothing -- regex or file may be broken',
         )
 
-    # ⚠️ `test_7_the_required_stem_set_is_not_empty` 는 이 레포로 오지 못했다 — 사유는
-    #    `tests/RETIRED_WITH_THE_FRONTEND.md`(모노레포) §5 참조.
+    def test_7_the_required_stem_set_is_not_empty(self):
+        # "required stems" = module stems AC-4 demands the union cover. If
+        # this were empty AC-4's completeness assertion would pass on any
+        # union, including an empty one.
+        self.assertTrue(
+            _required_stems(), 'no codegen artifact requires union coverage at all',
+        )
 
 
     def test_8_the_real_union_declaration_parses_at_least_one_stem(self):
@@ -449,12 +457,35 @@ class TestNonEmptinessGuards(unittest.TestCase):
             stems, 'error_code_union_module_stems found nothing in the real declaration',
         )
 
-    # ⚠️ `test_9_the_required_set_excludes_an_artifact_that_publishes_no_error_code` 는 이 레포로 오지 못했다 — 사유는
-    #    `tests/RETIRED_WITH_THE_FRONTEND.md`(모노레포) §5 참조.
+    def test_9_the_required_set_excludes_an_artifact_that_publishes_no_error_code(self):
+        """AC-4 가 실제로 판별한다 — 그리고 그 증명이 fleet 구성에 의존하지 않는다.
+
+        옛 판정은 ``required < everything`` (진부분집합)이었고, 그것이 성립한 이유는
+        codegen 아티팩트 중 **session-api 하나만** ErrorCode 를 발행하지 않았기
+        때문이다. 2026-08-23 에 session 이 계약에 합류하면서 셋 다 발행하게 되어
+        그 우연은 사라졌다 — 그러면 옛 판정은 red 가 되지만, **AC-4 가 나빠진 것이
+        아니라 예시가 없어진 것**이다.
+
+        그래서 판별을 함수에게 직접 묻는다: ErrorCode 를 발행하지 않는 아티팩트를
+        하나 만들어 ``artifact_error_code_enum`` 이 ``None`` 을 답하는지 본다. 이
+        형태는 fleet 이 어떻게 바뀌든 살아남고, 옛 형태가 실제로 증명하려던 명제
+        (*"필수 집합은 발행 여부로 걸러진다"*)를 더 곧바로 증명한다.
+        """
+        self.assertIsNone(
+            artifact_error_code_enum({'components': {'schemas': {}}}),
+            'an artifact with no ErrorCode schema must not be counted as '
+            'publishing one — otherwise AC-4 requires coverage of everything '
+            'and can no longer discriminate',
+        )
+        # 그리고 오늘 실제로 발행하는 것들은 필수 집합에 들어온다(반대 방향).
+        self.assertTrue(_required_stems())
+        self.assertTrue(_required_stems() <= _all_codegen_stems())
 
 
-    # ⚠️ `test_10_the_mutation_b_and_c_fuel_code_is_genuinely_out_of_headless_scope` 는 이 레포로 오지 못했다 — 사유는
-    #    `tests/RETIRED_WITH_THE_FRONTEND.md`(모노레포) §5 참조.
+    # ⚠️ `test_10_…_out_of_headless_scope` 는 이 레포로 오지 못했다 — headless
+    #    경계 모듈(`infrastructure.adapters.driving.api.headless_routes`)을
+    #    요구하는데 headless 레인은 아직 모노레포에 있다. `packages/api-artifacts`
+    #    부재가 아니라 **다른 이유**다 — 그 패키지는 2026-08-31 에 복원됐다.
 
 
 
@@ -462,8 +493,44 @@ class TestNonEmptinessGuards(unittest.TestCase):
 
 
 
-# ⚠️ `TestFrontendUnionCompleteness` 는 이 레포로 오지 못했다 — 사유는
-#    `tests/RETIRED_WITH_THE_FRONTEND.md`(모노레포) §5 참조.
+
+class TestFrontendUnionCompleteness(unittest.TestCase):
+    """AC-4: api-error.ts 의 ``ErrorCode`` 유니온 ⊇ ErrorCode 발행 codegen 아티팩트 전량.
+
+    판정은 ``packages/api-artifacts``(FE 가 실제로 codegen 하는 미러, manifest
+    ``codegen: true`` 항목)에서 파생한다 — "모든 아티팩트" 가 아니라 "ErrorCode
+    를 발행하는 codegen 아티팩트 전량" 이다. 그 구분은 2026-08-23 이전에는
+    session 표면이 ErrorCode 를 발행하지 않는다는 사실로 **예시**됐고, 이제는
+    셋 다 발행하므로 예시가 사라졌다 — 구분 자체는 여전히 옳고, 그것을 실증하는
+    것은 아래 합성 아티팩트 판별 테스트다. ``docs/api`` 는 canonical 소스지만
+    FE 가 읽는 것이 아니다 —
+    그 동일성은 ``sync.mjs --check`` + ``test_api_artifacts_package.py`` 가
+    이미 소유한다(두 번 세지 않는다).
+    """
+
+    def test_the_session_artifact_publishes_error_code_too(self):
+        """2026-08-23 — session joined the contract; it used to publish nothing.
+
+        This assertion is the same one, inverted. Until the session surface
+        emitted RFC 9457 it published no ``ErrorCode`` enum at all, which is why
+        AC-4 had to be scoped to "codegen artifacts that publish one" rather than
+        "all codegen artifacts". That scoping is still correct — it just no
+        longer has session as its example (see the discriminator test below).
+        """
+        artifact = _load_package_artifact('session-api')
+        published = artifact_error_code_enum(artifact)
+        self.assertIsNotNone(
+            published, 'session-api publishes no ErrorCode enum',
+        )
+        self.assertIn('SESSION_NODE_NOT_PROVISIONED', published)
+
+    def test_the_union_covers_every_error_code_emitting_codegen_artifact(self):
+        ts_text = API_ERROR_TS_PATH.read_text(encoding='utf-8')
+        missing = _surfaces_missing_from_union(ts_text)
+        self.assertEqual(
+            missing, [],
+            f'api-error.ts ErrorCode union does not cover: {missing}',
+        )
 
 
 

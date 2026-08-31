@@ -1,0 +1,749 @@
+{
+  "components": {
+    "schemas": {
+      "ErrorCode": {
+        "description": "Machine-readable error identifier (RFC 9457 code).",
+        "enum": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "NOT_FOUND",
+          "DRAFT_NOT_FOUND",
+          "MEMBERSHIP_NOT_FOUND",
+          "PROVIDER_NOT_FOUND",
+          "CONFLICT",
+          "DRAFT_ROW_CONFLICT",
+          "PUBLISH_CONFLICT",
+          "CLAIM_CONFLICT",
+          "DOWNLOAD_INTEGRITY_CONFLICT",
+          "WORKBOOK_HANDLE_NOT_FOUND",
+          "SESSION_ALREADY_RUNNING",
+          "DOWNLOAD_EXPIRED",
+          "DRAFT_UNPROCESSABLE",
+          "DRAFT_EMPTY",
+          "WORKBOOK_UPLOAD_TOO_LARGE",
+          "WORKBOOK_UPLOAD_UNSUPPORTED_TYPE",
+          "RATE_LIMITED",
+          "UPSTREAM_UNAVAILABLE",
+          "SESSION_UPLOAD_UNSUPPORTED",
+          "SESSION_NODE_NOT_PROVISIONED",
+          "INTERNAL_ERROR"
+        ],
+        "type": "string"
+      },
+      "ProblemDetails": {
+        "additionalProperties": true,
+        "description": "RFC 9457 Problem Details for HTTP APIs (application/problem+json error body).",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "params": {
+            "additionalProperties": true,
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "format": "uri-reference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "code"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "FccSessionPermissions": {
+        "description": "Comma-separated permission tokens (see x-fcc-permissions catalog).",
+        "in": "header",
+        "name": "X-FCC-Permissions",
+        "type": "apiKey"
+      }
+    },
+    "x-fcc-permissions": {
+      "session:control": "Start/stop the active TestRunner session.",
+      "session:events": "Subscribe to the real-time session event WS stream.",
+      "session:read": "Read session status, progress, info, liveness."
+    }
+  },
+  "info": {
+    "description": "FCC measurement session control surface. Real-time progress events are streamed over WebSocket — see the matching AsyncAPI document for the message catalog.",
+    "title": "FCC Session API",
+    "version": "2",
+    "x-fcc-session-api-version": "2"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/session/info": {
+      "get": {
+        "operationId": "get_session_info",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "api_version": {
+                      "type": "string"
+                    },
+                    "operations": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "routes": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "method": {
+                            "type": "string"
+                          },
+                          "operation": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "operation",
+                          "method",
+                          "path"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "api_version",
+                    "operations",
+                    "routes"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unhandled server error."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "This node is not ready to measure (no upload store, or no reference data for the named families)."
+          }
+        },
+        "summary": "Return the API version + operations catalog.",
+        "tags": [
+          "session"
+        ],
+        "x-fcc-permission": "session:read"
+      }
+    },
+    "/session/is-running": {
+      "get": {
+        "operationId": "get_session_running",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "is_running": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "is_running"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unhandled server error."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "This node is not ready to measure (no upload store, or no reference data for the named families)."
+          }
+        },
+        "summary": "Return whether the session is currently running.",
+        "tags": [
+          "session"
+        ],
+        "x-fcc-permission": "session:read"
+      }
+    },
+    "/session/progress": {
+      "get": {
+        "operationId": "get_session_progress",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "completed": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "is_running": {
+                      "type": "boolean"
+                    },
+                    "ratio": {
+                      "maximum": 1.0,
+                      "minimum": 0.0,
+                      "type": "number"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "is_running",
+                    "completed",
+                    "total",
+                    "ratio"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unhandled server error."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "This node is not ready to measure (no upload store, or no reference data for the named families)."
+          }
+        },
+        "summary": "Return current progress (completed, total, percent).",
+        "tags": [
+          "session"
+        ],
+        "x-fcc-permission": "session:read"
+      }
+    },
+    "/session/start": {
+      "post": {
+        "operationId": "start_session",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "description": "The production web-session request carries project_id, sample_id, and the platform-owned immutable sample snapshot. published_plan_id is optional and, when present, seeds measurement rows from a published test plan with condition_hash preserved verbatim. The node never recomputes sample identity from workbook Save Data.",
+                "properties": {
+                  "project_id": {
+                    "description": "Central project identity selected by the platform.",
+                    "type": "string"
+                  },
+                  "project_result_reference_snapshot_json": {
+                    "description": "Canonical Platform-owned immutable reference snapshot JSON. The Session node validates size/schema and stores these exact bytes; it never queries central references or provider payloads.",
+                    "type": "string"
+                  },
+                  "project_result_reference_snapshot_schema_version": {
+                    "const": "fcc.project-result-reference-session.v1",
+                    "type": "string"
+                  },
+                  "published_plan_id": {
+                    "description": "Opaque published test plan identifier. When provided, the measurement DB is seeded from the published plan rows.",
+                    "type": "string"
+                  },
+                  "sample_id": {
+                    "description": "Central active sample identity selected by the platform.",
+                    "type": "string"
+                  },
+                  "sample_snapshot": {
+                    "additionalProperties": true,
+                    "description": "Canonical immutable sample snapshot generated by the platform. The node stores this envelope verbatim.",
+                    "required": [
+                      "schema_version",
+                      "captured_at",
+                      "project",
+                      "sample",
+                      "latest_intake",
+                      "sample_revision",
+                      "row_version"
+                    ],
+                    "type": "object"
+                  },
+                  "sample_snapshot_schema_version": {
+                    "description": "Snapshot schema version, matching sample_snapshot.schema_version.",
+                    "type": "string"
+                  },
+                  "storage_root": {
+                    "description": "plot-dual-custody — root directory the measurement plots (the authoritative submission evidence) are written to on the chamber PC. A UNC share keeps the originals on the company file server; a local path means they still have to be transferred there. Overrides the Excel \"Save Data\" File Structure value; omit to keep the sheet-derived root (byte-identical). The node accepts a value only when it lies under one of the roots configured in FCC_SESSION_ALLOWED_STORAGE_ROOTS; an unconfigured node rejects any override with 400 (this field writes submission evidence to disk, so permitting an arbitrary path is an operator decision).",
+                    "type": "string"
+                  },
+                  "workbook_id": {
+                    "description": "Opaque handle returned by upload_session_workbook. When present this session measures against that uploaded workbook instead of the one the node booted with; omit to keep the node-configured workbook (byte-identical). This field is a handle and never a filesystem path: the node chose where the bytes landed, so there is no path here for a client to point anywhere else. An unknown handle is 404.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "project_id",
+                  "sample_id",
+                  "sample_snapshot",
+                  "sample_snapshot_schema_version"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "api_version": {
+                      "type": "string"
+                    },
+                    "operation": {
+                      "const": "start",
+                      "type": "string"
+                    },
+                    "progress": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "completed": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "is_running": {
+                          "type": "boolean"
+                        },
+                        "ratio": {
+                          "maximum": 1.0,
+                          "minimum": 0.0,
+                          "type": "number"
+                        },
+                        "total": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "is_running",
+                        "completed",
+                        "total",
+                        "ratio"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "api_version",
+                    "progress"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The platform-owned project/sample snapshot is missing or invalid, or storage_root is outside this node's allow-list."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unknown workbook_id — no such upload on this node."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "A measurement is already running — stop it before starting another."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unhandled server error."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "This node is not ready to measure (no upload store, or no reference data for the named families)."
+          }
+        },
+        "summary": "Start the configured TestRunner session.",
+        "tags": [
+          "session"
+        ],
+        "x-fcc-permission": "session:control"
+      }
+    },
+    "/session/stop": {
+      "post": {
+        "operationId": "stop_session",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "description": "No request body required — stop targets the active session.",
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "api_version": {
+                      "type": "string"
+                    },
+                    "operation": {
+                      "const": "stop",
+                      "type": "string"
+                    },
+                    "progress": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "completed": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "is_running": {
+                          "type": "boolean"
+                        },
+                        "ratio": {
+                          "maximum": 1.0,
+                          "minimum": 0.0,
+                          "type": "number"
+                        },
+                        "total": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "is_running",
+                        "completed",
+                        "total",
+                        "ratio"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "api_version",
+                    "progress"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unhandled server error."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "This node is not ready to measure (no upload store, or no reference data for the named families)."
+          }
+        },
+        "summary": "Stop the active TestRunner session.",
+        "tags": [
+          "session"
+        ],
+        "x-fcc-permission": "session:control"
+      }
+    },
+    "/session/workbook": {
+      "post": {
+        "operationId": "upload_session_workbook",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "description": "The .xlsx test-plan workbook to store on this node.",
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "filename": {
+                      "description": "The uploaded file name, normalized and echoed back for display. It is not the name the node stored the bytes under.",
+                      "type": "string"
+                    },
+                    "size_bytes": {
+                      "description": "Size of the stored workbook in bytes.",
+                      "type": "integer"
+                    },
+                    "workbook_id": {
+                      "description": "Opaque handle for the stored workbook. Pass it back as start_session.workbook_id. Treat it as meaningless text: its construction is a node implementation detail and is not part of this contract.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "workbook_id",
+                    "filename",
+                    "size_bytes"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Upload exceeds this node's configured workbook ceiling."
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Uploaded bytes are not an .xlsx workbook."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unhandled server error."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "This node is not ready to measure (no upload store, or no reference data for the named families)."
+          }
+        },
+        "summary": "Upload an .xlsx test-plan workbook to this node and receive an opaque handle. The node chooses where the bytes land; the handle is the only thing start_session accepts, so no filesystem path is ever named by a client. 413 when the upload exceeds the node ceiling, 415 when the bytes are not a workbook.",
+        "tags": [
+          "session"
+        ],
+        "x-fcc-permission": "session:control"
+      }
+    }
+  },
+  "x-fcc-websocket-paths": {
+    "/session/events": {
+      "operationId": "subscribe_session_events",
+      "summary": "Subscribe to real-time session events via WebSocket.",
+      "x-fcc-asyncapi-channel": "/session/events",
+      "x-fcc-permission": "session:events"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "package": "@fcc/api-artifacts",
+  "description": "Single SSOT for the shared FCC API contract artifacts bundled into @fcc/api-artifacts. Each entry's bytes are a byte-identical mirror of its docsSource (the canonical single-writer location). Repo-split-ready: when this package is lifted to its own repo, artifacts/ becomes self-contained and docsSource is dropped.",
+  "artifacts": [
+    {
+      "name": "session-api",
+      "file": "session-api.openapi.json",
+      "kind": "openapi",
+      "codegen": true,
+      "typesBasename": "session-api.types.ts",
+      "docsSource": "docs/api/session-api.openapi.json"
+    },
+    {
+      "name": "headless-api",
+      "file": "headless-api.openapi.json",
+      "kind": "openapi",
+      "codegen": true,
+      "typesBasename": "headless-api.types.ts",
+      "docsSource": "docs/api/headless-api.openapi.json"
+    },
+    {
+      "name": "platform-api",
+      "file": "platform-api.openapi.json",
+      "kind": "openapi",
+      "codegen": true,
+      "typesBasename": "platform-api.types.ts",
+      "docsSource": "docs/api/platform-api.openapi.json"
+    },
+    {
+      "name": "central-db-schema",
+      "file": "central_db_schema.v1.json",
+      "kind": "db-schema",
+      "codegen": false,
+      "typesBasename": null,
+      "docsSource": "docs/platform/central_db_schema.v1.json"
+    }
+  ]
+}
