@@ -35,7 +35,7 @@ def is_placeholder_token(value: str) -> bool:
     """A value that is entirely an angle-bracket template sentinel (``<...>``).
 
     SSOT for the cutover workflow placeholder convention. Previously duplicated
-    in ``scripts/platform_cutover_workflow_hints.py`` and
+    in ``fcc_test_platform/cutover_workflow_hints.py`` and
     ``scripts/platform_cutover_live_workflow.py``.
     """
     return value.startswith('<') and value.endswith('>') and len(value) > 2

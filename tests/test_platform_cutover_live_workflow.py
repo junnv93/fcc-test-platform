@@ -16,7 +16,7 @@ from scripts.platform_cutover_live_workflow import (
     run_workflow,
     validate_config,
 )
-from scripts.platform_cutover_workflow_hints import suggested_command
+from fcc_test_platform.cutover_workflow_hints import suggested_command
 
 from fcc_test_contracts.common.tree_artifacts import resolve_dependency_artifact
 

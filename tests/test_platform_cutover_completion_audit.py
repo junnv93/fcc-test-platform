@@ -39,8 +39,11 @@ class TestPlaceholderDetectionSsotDedup(unittest.TestCase):
     scripts must delegate, not redefine it."""
 
     PRIMITIVES = 'platform_evidence_primitives'
+    #: ⚠️ 2026-08-31 — hints 는 `scripts/` 에서 **패키지로** 옮겼다(휠이 나르지
+    #: 못하는 자리였고, 그래서 모노레포의 컷오버 판정 도구가 죽어 있었다).
+    #: 위임 명제는 그대로다 — 어디에 살든 원시연산을 재정의하면 안 된다.
     SCRIPTS = (
-        project_root / 'scripts' / 'platform_cutover_workflow_hints.py',
+        project_root / 'fcc_test_platform' / 'cutover_workflow_hints.py',
         project_root / 'scripts' / 'platform_cutover_live_workflow.py',
     )
 
@@ -60,7 +63,7 @@ class TestPlaceholderDetectionSsotDedup(unittest.TestCase):
 
     def test_primitive_scanner_matches_workflow_hint_token_extraction(self):
         from fcc_test_platform.evidence_primitives import placeholder_tokens
-        from scripts.platform_cutover_workflow_hints import (
+        from fcc_test_platform.cutover_workflow_hints import (
             placeholder_tokens as hint_tokens,
             suggested_command,
         )

@@ -24,7 +24,7 @@ from fcc_test_platform.application.platform_cutover_catalog import (
     catalog_keys,
 )
 from fcc_test_platform.application.platform_cutover_context import build_context_read_issue
-from scripts.platform_cutover_workflow_hints import (
+from fcc_test_platform.cutover_workflow_hints import (
     attach_issue_hints,
     load_workflow_hints,
     next_commands,

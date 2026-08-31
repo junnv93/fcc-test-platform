@@ -24,7 +24,7 @@ for path in (PROJECT_ROOT, SRC_ROOT):
 
 from scripts.platform_cutover_bundle import EVIDENCE_FILENAMES
 from scripts.platform_cutover_completion_audit import build_completion_audit
-from scripts.platform_cutover_workflow_hints import redact_command, suggested_command
+from fcc_test_platform.cutover_workflow_hints import redact_command, suggested_command
 from fcc_test_platform.application.platform_cutover_catalog import catalog_entry
 from fcc_test_platform.application.platform_cutover_context import build_context_read_issue
 from fcc_test_platform.cutover_readiness import validate_collector_manifest
