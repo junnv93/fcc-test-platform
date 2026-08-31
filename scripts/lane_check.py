@@ -110,6 +110,42 @@ def observe(root: Path) -> set[str]:
         return set(json.loads(out.read_text(encoding='utf-8')))
 
 
+def _warn_if_hooks_are_not_wired(root: 'Path') -> None:
+    """훅이 이 체크아웃에 걸려 있는지 **훅 밖에서** 알린다.
+
+    ⚠️ `githooks/pre-push` 는 clone 마다 opt-in 이고, **훅은 자기가 안 걸렸다는
+    사실을 말할 수 없다** — 안 도니까. 그래서 그 사실을 이 도구가 말한다:
+    `lane_check` 는 훅만이 아니라 CI 와 사람이 **직접**도 부르므로, 훅이 죽어
+    있어도 이 경고는 나온다. 그것이 순환을 끊는 지점이다.
+
+    ⚠️ 실측(2026-08-31): 이 레포의 `core.hooksPath` 가 존재하지 않는 디렉터리로
+    **세 번** 뒤집혀 있었고, 증상이 「막힘」이 아니라 **「번갈아 막힘」**이라
+    게이트 결함처럼 보였다. 훅이 도느냐 마느냐가 매 시점 달랐던 것이다.
+
+    ⚠️ **경고이지 실패가 아니다.** 이 도구의 판정은 「선언과 관측이 맞는가」이고
+    훅 배선은 다른 질문이다. 섞으면 배선 문제로 레인 판정이 막힌다 — 그리고
+    그때 사람들은 이 도구를 끈다.
+    """
+    import subprocess
+
+    configured = subprocess.run(
+        ['git', 'config', 'core.hooksPath'], cwd=str(root),
+        capture_output=True, text=True, check=False,
+    ).stdout.strip()
+    tracked = root / 'githooks'
+    if not tracked.is_dir():
+        return
+    resolved = (root / configured).resolve() if configured else None
+    if resolved == tracked.resolve():
+        return
+    where = configured or '미설정'
+    print(
+        f'  ⚠️ core.hooksPath = {where} — 이 체크아웃에서 pre-push 게이트가 '
+        f'돌지 않는다.\n'
+        f'     고치기: git config core.hooksPath githooks',
+        file=sys.stderr,
+    )
+
 def main(argv: 'list[str] | None' = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', default='.', help='상자 루트 (기본: 현재 디렉터리)')
@@ -152,6 +188,7 @@ def main(argv: 'list[str] | None' = None) -> int:
     print()
     print(f'lane-check: {lane}')
     print(f'  선언된 실패 {len(declared)}개 / 관측된 실패 {len(observed)}개')
+    _warn_if_hooks_are_not_wired(root)
 
     if args.write_baseline:
         path = root / BASELINE_REL
