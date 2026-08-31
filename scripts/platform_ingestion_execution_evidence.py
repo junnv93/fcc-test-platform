@@ -1,161 +1,22 @@
-"""Validate and template platform ingestion execution evidence manifests."""
-from __future__ import annotations
+#!/usr/bin/env python3
+"""`fcc_test_platform.ingestion_execution_evidence_cli` 의 진입점 — 로직은 그쪽이 갖는다.
 
-import argparse
-import importlib
-import json
-from pathlib import Path
+⚠️ 이 파일이 **짧은 것이 요점**이다. `scripts/` 는 패키지가 아니라 휠이 나르지
+못하므로 이 레인을 소비하는 레포마다 사본이 필요한데, 사본이 이만큼이면
+**갈라질 것이 없다.** 알맹이가 바뀌면 휠이 나른다.
+
+⚠️ `sys.path` 한 줄은 **설치 전에도 돌기 위한 것**이다. 이 레포 체크아웃에서
+`python3 scripts/…` 로 직접 부르는 경로가 실재하고, 그때 패키지는 아직
+site-packages 에 없을 수 있다.
+"""
 import sys
+from pathlib import Path
 
+_ROOT = str(Path(__file__).resolve().parents[1])
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SRC_ROOT = PROJECT_ROOT / 'src'
-for path in (PROJECT_ROOT, SRC_ROOT):
-    path_text = str(path)
-    if path_text not in sys.path:
-        sys.path.insert(0, path_text)
+from fcc_test_platform.ingestion_execution_evidence_cli import main  # noqa: E402
 
-from fcc_test_platform.ingestion_execution_evidence import (
-    build_ingestion_execution_manifest,
-    ingestion_execution_errors,
-)
-from fcc_test_platform.provider_ingestion_plan import INGESTION_TABLE_ORDER
-from fcc_test_platform.provider_ingestion_worker import IngestionRetryPolicy, execute_platform_ingestion_plan
-from fcc_test_platform.postgres_ingestion_writer import PostgresIngestionWriter
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description='Platform ingestion execution evidence helper.')
-    subparsers = parser.add_subparsers(dest='command', required=True)
-    validate = subparsers.add_parser('validate')
-    validate.add_argument('manifest')
-    template = subparsers.add_parser('template')
-    template.add_argument('--evidence-id', default='<ingestion execution evidence id>')
-    template.add_argument('--provider-id', default='fcc-unlicensed-conducted')
-    template.add_argument('--session-id', default='<platform session id>')
-    template.add_argument('--database-name', default='fcc_platform')
-    execute = subparsers.add_parser('execute')
-    execute.add_argument('--plan', required=True)
-    execute.add_argument('--dsn', required=True)
-    execute.add_argument('--provider-id', required=True)
-    execute.add_argument('--session-id', required=True)
-    execute.add_argument('--database-name', required=True)
-    execute.add_argument('--evidence-id', required=True)
-    execute.add_argument('--collected-at', default='')
-    execute.add_argument('--max-attempts', type=int, default=3)
-    execute.add_argument('--output', default='')
-    args = parser.parse_args(argv)
-
-    if args.command == 'validate':
-        return _validate(Path(args.manifest))
-    if args.command == 'template':
-        print(json.dumps(_template(args.evidence_id, args.provider_id, args.session_id, args.database_name), sort_keys=True, indent=2))
-        return 0
-    if args.command == 'execute':
-        return _execute(args)
-    return 2
-
-
-def _validate(path: Path) -> int:
-    try:
-        manifest = json.loads(path.read_text(encoding='utf-8'))
-    except Exception as exc:
-        print(json.dumps({
-            'valid': False,
-            'issues': [{
-                'code': 'read_error',
-                'path': str(path),
-                'message': str(exc),
-            }],
-        }, sort_keys=True, indent=2))
-        return 2
-    issues = [issue.to_dict() for issue in ingestion_execution_errors(manifest)]
-    print(json.dumps({'valid': not issues, 'issues': issues}, sort_keys=True, indent=2))
-    return 0 if not issues else 1
-
-
-def _template(evidence_id: str, provider_id: str, session_id: str, database_name: str) -> dict:
-    return {
-        'schema_version': 1,
-        'evidence_id': evidence_id,
-        'collected_at': '<ISO-8601 timestamp>',
-        'provider_id': provider_id,
-        'session_id': session_id,
-        'database_name': database_name,
-        'writer_adapter': 'postgres',
-        'plan_sha256': '<sha256>',
-        'executed': False,
-        'transaction_committed': False,
-        'transaction_rolled_back': False,
-        'attempts': 0,
-        'attempted_steps': 0,
-        'applied_steps': 0,
-        'errors': ['replace with an empty list after execution succeeds'],
-        'retry_errors': [],
-        'steps': [
-            {
-                'order': index + 1,
-                'target_table': table,
-                'operation': 'upsert',
-                'idempotency_key': ['<idempotency key values>'],
-                'affected_rows': 0,
-            }
-            for index, table in enumerate(INGESTION_TABLE_ORDER)
-        ],
-    }
-
-
-def _execute(args: argparse.Namespace) -> int:
-    try:
-        output_path = Path(args.output) if args.output else None
-        if output_path is not None:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-        plan = _read_json(Path(args.plan))
-        writer = PostgresIngestionWriter(_psycopg_connection_factory(args.dsn))
-        result = execute_platform_ingestion_plan(
-            plan,
-            writer,
-            retry_policy=IngestionRetryPolicy(max_attempts=args.max_attempts),
-        )
-        manifest = build_ingestion_execution_manifest(
-            evidence_id=args.evidence_id,
-            provider_id=args.provider_id,
-            session_id=args.session_id,
-            database_name=args.database_name,
-            plan=plan,
-            result=result,
-            collected_at=args.collected_at,
-        )
-    except Exception as exc:
-        print(json.dumps({
-            'executed': False,
-            'issues': [{
-                'code': 'execution_error',
-                'path': str(getattr(exc, 'filename', '') or ''),
-                'message': str(exc),
-            }],
-        }, sort_keys=True, indent=2))
-        return 2
-
-    payload = json.dumps(manifest, sort_keys=True, indent=2)
-    if output_path is not None:
-        output_path.write_text(payload + '\n', encoding='utf-8')
-    else:
-        print(payload)
-    return 0 if not ingestion_execution_errors(manifest) else 1
-
-
-def _read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding='utf-8'))
-
-
-def _psycopg_connection_factory(dsn: str):
-    def connect():
-        psycopg = importlib.import_module('psycopg')
-        return psycopg.connect(dsn)
-
-    return connect
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())
