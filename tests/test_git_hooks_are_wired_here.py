@@ -28,6 +28,32 @@ project_root = Path(__file__).resolve().parent.parent
 TRACKED_HOOKS_DIR = 'githooks'
 INSTALL_COMMAND = 'git config core.hooksPath githooks'
 
+#: git 이 **저장소 위치**를 결정할 때 `cwd` 를 이기는 환경변수들.
+#:
+#: ⚠️ 전부 지우지 않는다 — `GIT_AUTHOR_*` 나 `GIT_CONFIG_*` 는 위치와 무관하고,
+#: 넓게 지우면 이 헬퍼가 「위치를 격리한다」가 아니라 「git 을 다르게 만든다」가 된다.
+#: 지우는 것은 *어느 저장소인가* 를 바꾸는 것뿐이다.
+GIT_REPO_LOCATION_ENV = (
+    'GIT_DIR',
+    'GIT_WORK_TREE',
+    'GIT_COMMON_DIR',
+    'GIT_INDEX_FILE',
+    'GIT_OBJECT_DIRECTORY',
+    'GIT_NAMESPACE',
+)
+
+
+def _git_env_without_repo_location() -> dict[str, str]:
+    """부모가 가리키는 저장소를 물려받지 않는 환경.
+
+    훅 안에서 돌 때만 달라지고, 훅 밖에서는 그 변수들이 애초에 없어 **무변경**이다.
+    """
+    env = dict(os.environ)
+    for name in GIT_REPO_LOCATION_ENV:
+        env.pop(name, None)
+    return env
+
+
 
 def _git(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(
@@ -104,15 +130,35 @@ class TestTheCheckWouldSeeAnUnwiredCheckout(unittest.TestCase):
     """
 
     def _probe(self, tmp: Path, value: str | None) -> Path:
-        subprocess.run(['git', 'init', '-q', str(tmp)], check=True)
+        """⚠️ ``cwd`` 는 격리가 아니다 — 환경이 아무 말도 안 할 때만 격리다.
+
+        git 의 저장소 위치 결정은 **환경변수가 `cwd` 를 이긴다.** 그리고 git 은
+        훅을 실행할 때 `GIT_DIR` 을 물려준다 — 곧 이 검사가 **실제로 의미를 갖는
+        유일한 문맥**에서 아래 두 명령이 임시 트리가 아니라 **진짜 저장소**를
+        향한다는 뜻이다.
+
+        실측된 피해 (2026-08-31, 링크드 워크트리 형상):
+
+            GIT_DIR=<repo>/.git/worktrees/<name>
+            BEFORE: bare=false hooksPath=githooks
+            AFTER : bare=true  hooksPath=some/other/hooks
+
+        즉 **push 한 번이 pre-push 를 영구히 껐다.** 첫 push 는 훅이 돌아 막히고,
+        그 훅이 자기를 무장해제하므로 두 번째 push 는 그냥 통과한다 —
+        「번갈아 막힌다」는 증상이 그것이고, 장부는 그것을 **다른 세션의 소행**으로
+        오래 기록하고 있었다(정정됨). ⚠️ 그 상태에서는 아무 검사도 돌지 않으므로
+        **이 사실을 말해 주는 것이 없다.**
+        """
+        env = _git_env_without_repo_location()
+        subprocess.run(['git', 'init', '-q', str(tmp)], check=True, env=env)
         if value is not None:
             subprocess.run(
                 ['git', 'config', 'core.hooksPath', value],
-                cwd=str(tmp), check=True,
+                cwd=str(tmp), check=True, env=env,
             )
         got = subprocess.run(
             ['git', 'config', 'core.hooksPath'], cwd=str(tmp),
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, check=False, env=env,
         ).stdout.strip()
         return Path(got) if got else Path('')
 
@@ -137,6 +183,81 @@ class TestTheCheckWouldSeeAnUnwiredCheckout(unittest.TestCase):
                 (root / got).resolve(),
                 '엉뚱한 디렉터리를 가리켜도 통과한다면 이 축은 «설정 여부»만 보는 것이다',
             )
+
+
+class TestTheProbeDoesNotDisarmTheRepositoryItChecks(unittest.TestCase):
+    """⚠️ 이 클래스가 없으면 위 수리는 되돌려져도 아무것도 red 가 되지 않는다.
+
+    검사가 **자기가 지키려는 것을 끄는** 형태였고, 그 사실을 말해 줄 수 있는 것은
+    구조적으로 없었다 — 꺼진 뒤에는 아무 검사도 돌지 않기 때문이다. 그러므로 여기서는
+    훅 문맥을 **실제로 만들어** 묻는다: `GIT_DIR` 을 세운 채 프로브를 돌리고, 지목된
+    저장소의 설정이 그대로인가.
+    """
+
+    def _victim(self, root: Path) -> Path:
+        """링크드 워크트리를 가진 저장소 — 피해가 실측된 바로 그 형상."""
+        repo = root / 'victim'
+        subprocess.run(['git', 'init', '-q', str(repo)], check=True)
+        hooks = repo / TRACKED_HOOKS_DIR
+        hooks.mkdir()
+        (hooks / 'pre-push').write_text('#!/bin/sh\nexit 0\n', encoding='utf-8')
+        for args in (
+            ['config', 'core.hooksPath', TRACKED_HOOKS_DIR],
+            ['config', 'user.email', 'probe@example.invalid'],
+            ['config', 'user.name', 'probe'],
+            ['add', '-A'],
+            ['commit', '-qm', 'init'],
+            ['worktree', 'add', '-q', str(root / 'wt'), '-b', 'wt'],
+        ):
+            subprocess.run(['git', *args], cwd=str(repo), check=True)
+        return repo
+
+    def _config(self, repo: Path, key: str) -> str:
+        return subprocess.run(
+            ['git', 'config', key], cwd=str(repo),
+            capture_output=True, text=True, check=False,
+        ).stdout.strip()
+
+    def test_running_under_a_hooks_git_dir_leaves_the_repository_alone(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            repo = self._victim(root)
+            before = (
+                self._config(repo, 'core.hooksPath'),
+                self._config(repo, 'core.bare'),
+            )
+            self.assertEqual((TRACKED_HOOKS_DIR, 'false'), before)
+
+            # git 이 훅에 물려주는 그대로. 워크트리 형상이 `core.bare` 까지 뒤집던 자리다.
+            os.environ['GIT_DIR'] = str(repo / '.git' / 'worktrees' / 'wt')
+            try:
+                probe = TestTheCheckWouldSeeAnUnwiredCheckout('test_an_unset_checkout_reads_as_empty')
+                probe._probe(root / 'elsewhere', 'some/other/hooks')
+            finally:
+                os.environ.pop('GIT_DIR', None)
+
+            after = (
+                self._config(repo, 'core.hooksPath'),
+                self._config(repo, 'core.bare'),
+            )
+            self.assertEqual(
+                before, after,
+                '프로브가 자기가 검사하는 저장소의 설정을 바꿨다 — '
+                'push 한 번이 pre-push 를 영구히 끈다',
+            )
+
+    def test_the_isolation_is_a_no_op_outside_a_hook(self) -> None:
+        """⚠️ 격리가 훅 밖에서 환경을 바꾸면 그것은 다른 결함이다."""
+        for name in GIT_REPO_LOCATION_ENV:
+            os.environ.pop(name, None)
+        self.assertEqual(dict(os.environ), _git_env_without_repo_location())
+
+    def test_the_stripped_set_leaves_identity_alone(self) -> None:
+        """지우는 것은 *어느 저장소인가* 뿐이다 — git 을 다르게 만들지 않는다."""
+        for name in ('GIT_AUTHOR_NAME', 'GIT_CONFIG_GLOBAL', 'GIT_TERMINAL_PROMPT'):
+            self.assertNotIn(name, GIT_REPO_LOCATION_ENV)
 
 
 if __name__ == '__main__':  # pragma: no cover
