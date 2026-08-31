@@ -308,10 +308,18 @@ class TestCodegenScriptSsot(unittest.TestCase):
 
     def test_consumes_api_artifacts_package(self):
         # SSOT moved from hardcoded docs paths to the @fcc/api-artifacts package.
-        self.assertIn(
-            "packages/api-artifacts/index.mjs",
-            self.source,
-            "codegen must import the @fcc/api-artifacts package (single artifact SSOT)",
+        #
+        # ⚠️ 2026-08-31 — 옛 형태는 **상대 경로 문자열**만 인정했다
+        # (`packages/api-artifacts/index.mjs`). 그 import 가 bare specifier 로
+        # 바뀌자 명제(«codegen 은 그 패키지에서 파생한다»)는 **더 나은 방법으로**
+        # 참인데 검사만 거짓이 됐다 — 옛 방법만 인정했기 때문이다.
+        # 이제 **둘 중 하나로** 그 패키지를 소비하는지 본다.
+        self.assertTrue(
+            "packages/api-artifacts/index.mjs" in self.source
+            or "'@fcc/api-artifacts'" in self.source
+            or '"@fcc/api-artifacts"' in self.source,
+            "codegen must import the @fcc/api-artifacts package (single artifact SSOT) "
+            "— either by relative path or as a bare specifier",
         )
         self.assertIn(
             "OPENAPI_SPECS",

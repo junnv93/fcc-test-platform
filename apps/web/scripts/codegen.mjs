@@ -27,15 +27,19 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
-// B3 (P14) — consume the @fcc/api-artifacts package by relative path. The
-// package owns the artifact SSOT (manifest.json -> OPENAPI_SPECS); importing it
-// here removes the previously hardcoded docs/api/*.openapi.json path list. A
-// relative import (rather than a bare `@fcc/api-artifacts` specifier) avoids
-// install/lockfile coupling while still consuming the package as the single
-// artifact source. A bare-specifier `file:` devDependency is deferred to the
-// repo-split milestone (it would require a package-lock.json regeneration —
-// a separate staging gate); see packages/api-artifacts/README.md.
-import { OPENAPI_SPECS } from '../../../packages/api-artifacts/index.mjs';
+// B3 (P14) — consume the @fcc/api-artifacts package, which owns the artifact
+// SSOT (manifest.json -> OPENAPI_SPECS).
+//
+// ⚠️ 2026-08-31 — 이 import 는 **상대 경로에서 bare specifier 로** 바뀌었다.
+// 옛 주석이 그 전환을 *"deferred to the repo-split milestone"* 이라 적어 두었고,
+// 그 마일스톤이 지금이다. 미룬 이유(`package-lock.json` 재생성이 별도 staging
+// 게이트)는 더 이상 장벽이 아니다 — 이 레포는 이제 `npm ci` 를 실제로 돌린다.
+//
+// ⚠️ 상대 경로가 왜 문제였나: `../../../packages/…` 는 **파일 배치를 전제**한다.
+// 그래서 그 트리가 없는 소비자(모노레포 · 계약 레포)는 사본을 들 수밖에 없었고,
+// 사본 셋이 서서히 갈라지는 부채가 됐다. bare specifier 는 그 전제를 지운다 —
+// 어디서 왔는지는 `package.json` 이 정하고, 코드는 이름만 안다.
+import { OPENAPI_SPECS } from '@fcc/api-artifacts';
 
 const execFileAsync = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
