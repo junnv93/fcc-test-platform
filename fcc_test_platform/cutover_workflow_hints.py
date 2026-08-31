@@ -1,4 +1,14 @@
-"""Shared helpers for cutover workflow hints and next-command diagnostics."""
+"""Shared helpers for cutover workflow hints and next-command diagnostics.
+
+⚠️ 2026-08-31 — `scripts/` 에서 패키지로 옮겼다. 이름은 스크립트였지만 **CLI 장치가
+0개인 순수 라이브러리**였고, `scripts/` 에 있는 동안은 **휠이 나르지 못했다**:
+모노레포가 핀으로 이 레인을 받아도 이 파일은 오지 않아, 그것에 의존하는 컷오버
+판정 도구 4개가 `ModuleNotFoundError` 로 죽었다(실측: 이사 직전 21 passed → 17 failed).
+
+⚠️ 소비자는 **양쪽 레포에 다 있다**(모노 3 · 여기 6). 그러면 「어디로 옮길까」는
+잘못된 질문이고 — 어느 쪽으로 옮겨도 반대쪽이 깨진다 — 답은 **양쪽이 같은 것을
+부를 수 있는 자리**, 즉 휠이 나르는 패키지 안이다.
+"""
 from __future__ import annotations
 
 import json

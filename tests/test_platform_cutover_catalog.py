@@ -19,7 +19,7 @@ from fcc_test_platform.cutover_readiness import (
 from scripts.platform_cutover_bundle import EVIDENCE_ARGUMENTS, EVIDENCE_FILENAMES
 from scripts.platform_cutover_completion_audit import REQUIREMENTS
 from scripts.platform_cutover_live_workflow import build_workflow_template
-from scripts.platform_cutover_workflow_hints import suggested_command
+from fcc_test_platform.cutover_workflow_hints import suggested_command
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
