@@ -1,0 +1,60 @@
+# ============================================================================
+# FCC Mobile Test Automation - Dependencies
+# ============================================================================
+
+# Core Dependencies
+PySide6>=6.5.0              # Qt framework for GUI
+pandas>=1.5.0               # Data manipulation and analysis
+openpyxl>=3.1.0             # Excel file operations
+lxml>=4.9.0                 # XML namespace-safe serialization (ZipCellPatcher)
+python-docx>=1.1.0          # Word document manipulation (reporting — row_semantics 단일 채널)
+numpy>=1.24.0               # Numerical computing
+
+# Instrumentation & Measurement
+pyvisa>=1.13.0              # VISA instrument control (GPIB, USB, Ethernet)
+pyvisa-py>=0.5.0            # Pure Python VISA backend
+
+# Test Automation
+selenium>=4.10.0            # Web automation framework
+Appium-Python-Client>=2.11.0  # Mobile automation client
+
+# File Operations & Locking
+filelock>=3.12.0            # Cross-platform file locking
+portalocker>=2.7.0          # File locking for Windows
+
+# Network & Utilities
+ntplib>=0.4.0               # NTP time synchronization
+pythonping>=1.1.4           # ICMP ping utility
+
+# Database (Sprint 90 Phase 1+2+3)
+sqlalchemy>=2.0             # SQLite ORM for test result persistence
+
+# Testing Framework
+pytest>=7.0.0               # Testing framework
+pytest-xdist>=3.5.0         # Parallel routine lane (-n) — see CLAUDE.md "Run tests"
+jsonschema>=4.0.0           # JSON Schema validation (Sprint S2-γ β-P1-1 — drops graceful-skip on idp-policy invariant)
+
+# Build & Packaging (Development)
+pyinstaller>=5.13.0         # Application bundler (REQUIRED for .exe build)
+
+# Optional: Performance Monitoring
+# psutil>=5.9.0             # System and process utilities (for benchmarking)
+
+# Optional: Advanced Features
+# pillow>=10.0.0            # Image processing (if needed)
+requests>=2.31.0            # HTTP library (Teams notification webhook)
+
+# ============================================================================
+# Installation Instructions
+# ============================================================================
+# 
+# Standard Installation:
+#   pip install -r requirements.txt
+#
+# Development Installation (with optional packages):
+#   pip install -r requirements.txt psutil pillow requests
+#
+# Update All Packages:
+#   pip install --upgrade -r requirements.txt
+#
+# ============================================================================

@@ -1,0 +1,292 @@
+# Frontend gate — one build, fanned out (ci-minutes-root-cause, 2026-08-07).
+#
+# Replaces frontend-build.yml + frontend-e2e.yml. They were two files, so their
+# four jobs could not share anything: `needs:` and artifacts only work inside a
+# single workflow. Each job therefore ran `npm ci`, `codegen` and `vite build`
+# for itself, and two of them ran `typecheck`/`lint`/`unit test` on top — the
+# same commit was built four times per pull request. Measured over 4.7 days that
+# was 4,969 billable minutes a month, 49% of everything this repository spends.
+#
+# The build now happens once and its output travels as an artifact:
+#
+#   build ──┬── e2e               (Playwright + axe-core, serves dist/)
+#           ├── lighthouse        (lhci staticDistDir: ./dist)
+#           └── oidc-conformance  (real Keycloak, serves dist/)
+#
+# Nothing downstream compiles. If a job below ever needs to run `npm run build`
+# again, that is the signal the artifact contract is wrong — fix the contract,
+# do not add a second build (tests/test_ci_cost_policy.py enforces this).
+#
+# References: GitHub Docs "Storing and sharing data from a workflow" and
+# "Using jobs in a workflow" (needs); Playwright Docs "Continuous Integration".
+name: frontend
+
+on:
+  # No `push: [main]`. With squash merges, the pull_request run already executed
+  # against refs/pull/N/merge — the same tree main receives — so a post-merge
+  # rerun of a ~16 minute suite bought nothing but the base-drift window. The
+  # daily run below closes that window instead, at 1/30th of the cost. The
+  # canonical fix is a merge queue (`merge_group`), which private repositories
+  # cannot use below GitHub Team.
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'docs/api/*.openapi.json'
+      - 'docs/platform/central_db_schema.v1.json'
+      # ⚠️ 'packages/api-artifacts/**' 를 2026-08-31 에 뺐다 — 그 패키지가 이
+      # 저장소를 떠났고, 없는 경로를 가리키는 트리거는 «검사가 있다»로 읽히면서
+      # 아무것도 트리거하지 않는다.
+      - 'infra/keycloak/**'
+      - '.github/workflows/frontend.yml'
+  schedule:
+    # 04:00 UTC daily — catches the case where two pull requests were each green
+    # against an older base and only their merged result is broken.
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Supersede pull-request iterations; never abandon a scheduled main run
+  # half-verified.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    working-directory: apps/web
+
+env:
+  NODE_VERSION: '22.17.1'
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+
+      - name: format check
+        run: npm run format:check
+      - name: codegen (from @fcc/api-artifacts package SSOT)
+        run: npm run codegen
+      # Non-determinism only; backend contract <-> OpenAPI byte-identity is
+      # owned by api-schema-drift.yml.
+      - name: codegen drift gate
+        run: npm run codegen:check
+      - name: lint
+        run: npm run lint
+      - name: unit tests
+        run: npm test
+      # `npm run build` is `tsc --noEmit && tsc --noEmit -p tsconfig.node.json &&
+      # vite build`, so it *is* the typecheck. A separate `npm run typecheck`
+      # step would run the same two tsc passes a second time.
+      - name: production build (typechecks, then bundles)
+        run: npm run build
+      - name: measure bundle
+        run: node scripts/measure-bundle.mjs
+      - name: bundle budget gate
+        run: node scripts/check-bundle-budget.mjs
+
+      - name: upload bundle report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-size
+          path: apps/web/dist/bundle-size.json
+          if-no-files-found: warn
+      # The contract with every downstream job: dist/ is what preview and lhci
+      # serve, src/generated/ is gitignored codegen output the specs compile
+      # against. Retention is short because these are rebuildable inputs, not
+      # evidence.
+      - name: upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: |
+            apps/web/dist
+            apps/web/src/generated
+          retention-days: 1
+          if-no-files-found: error
+
+  e2e:
+    name: e2e
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - name: download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: apps/web
+      # Playwright Docs "Continuous Integration": key the browser cache on the
+      # resolved Playwright version, not on the lockfile hash, so an unrelated
+      # dependency bump does not evict a 300 MB download.
+      - name: resolve Playwright version
+        id: pw
+        # Read with jq rather than an inline node one-liner: the OIDC job's
+        # fail-closed report validator is the only place allowed to interpret
+        # JSON inline (a second inline parser is how report validation drifted
+        # before), and jq avoids the nested-quote hazard entirely.
+        run: |
+          version="$(jq -r '.packages["node_modules/@playwright/test"].version' package-lock.json)"
+          test -n "$version" && test "$version" != "null"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.pw.outputs.version }}
+      - name: install Playwright browser
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npm run test:e2e:install
+      # System libraries live outside the cached browser directory, so they are
+      # installed on a cache hit too — this is cheap, the browser download is not.
+      - name: install Playwright system dependencies
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - name: playwright e2e (incl. axe-core a11y)
+        run: npm run test:e2e
+      - name: upload playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          if-no-files-found: warn
+
+  lighthouse:
+    name: lighthouse
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      # No `npm ci`: lhci runs via `npx --yes` and reads dist/ statically
+      # (lighthouserc.json `staticDistDir`), so this job needs no node_modules.
+      - name: download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: apps/web
+      - name: write Lighthouse runtime-config stub (P0-1 — audit the real app, not a crashed shell)
+        run: node scripts/write-runtime-config-stub.mjs
+      - name: Lighthouse CI (a11y/best-practices error, perf warn)
+        run: npx --yes @lhci/cli@0.14.0 autorun
+
+  oidc-conformance:
+    # W4-10 (2026-08-01) — apps/web/tests/e2e/oidc-conformance.spec.ts is opt-in
+    # (`E2E_OIDC=1`); before that job existed no workflow set the env or started
+    # Keycloak, so the spec had never executed in CI. Kept a separate job so an
+    # IdP flake fails only OIDC coverage and does not sit on the e2e critical
+    # path.
+    #
+    # Keycloak starts as a step AFTER checkout, not via `services:` — service
+    # containers are created before checkout, so they cannot bind-mount
+    # infra/keycloak/fcc-dev-realm.json, which `--import-realm` needs.
+    name: oidc-conformance
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      # typecheck / lint / unit tests are the build job's responsibility. They
+      # used to run here as well, which is how one pull request paid for four
+      # builds and two extra lint+test passes.
+      - name: download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: apps/web
+      - name: resolve Playwright version
+        id: pw
+        # Read with jq rather than an inline node one-liner: the OIDC job's
+        # fail-closed report validator is the only place allowed to interpret
+        # JSON inline (a second inline parser is how report validation drifted
+        # before), and jq avoids the nested-quote hazard entirely.
+        run: |
+          version="$(jq -r '.packages["node_modules/@playwright/test"].version' package-lock.json)"
+          test -n "$version" && test "$version" != "null"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.pw.outputs.version }}
+      - name: install Playwright browser
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npm run test:e2e:install
+      - name: install Playwright system dependencies
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - name: start Keycloak (infra/docker-compose.idp.yml)
+        working-directory: ${{ github.workspace }}
+        run: docker compose -f infra/docker-compose.idp.yml up -d
+      - name: wait for Keycloak readiness (fcc-dev realm discovery)
+        working-directory: ${{ github.workspace }}
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "http://localhost:8081/realms/fcc-dev/.well-known/openid-configuration" >/dev/null 2>&1; then
+              echo "Keycloak ready after ${i} attempt(s) (~$((i * 5))s)"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Keycloak did not become ready within 150s — failing the job instead of letting the spec silently skip on IdP outage."
+          docker compose -f infra/docker-compose.idp.yml logs --tail=200
+          exit 1
+      - name: playwright real OIDC auth and conformance specs
+        env:
+          E2E_OIDC: "1"
+          KEYCLOAK_BASE_URL: http://localhost:8081
+          PLAYWRIGHT_JSON_OUTPUT_NAME: oidc-results.json
+        run: >-
+          npx playwright test
+          tests/e2e/auth-flow.spec.ts
+          tests/e2e/oidc-conformance.spec.ts
+          --project=chromium-desktop
+          --workers=1
+          --retries=0
+          --reporter=list,json,html
+      - name: validate complete OIDC JSON report (fail closed)
+        run: node scripts/assert-oidc-e2e-report.mjs oidc-results.json
+      - name: upload playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oidc-conformance-report
+          path: |
+            apps/web/playwright-report
+            apps/web/oidc-results.json
+          if-no-files-found: warn
+      - name: stop Keycloak
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: docker compose -f infra/docker-compose.idp.yml down -v
