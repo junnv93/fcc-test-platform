@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 # name = 매니페스트 `repositories` 의 레인 키.
 name = "fcc-test-platform"
 # version = 이 레인이 이미 소유한 npm 배포물 apps/web/package.json 과 상등.
-version = "0.1.4"
+version = "0.1.5"
 description = "Central DB, backend API, auth/RBAC, frontend shell, provider registry, deployment composition, and report/artifact browsing workflows."
 # requires-python = infra/central/Dockerfile.api 의 `FROM python:3.11-slim`.
 requires-python = ">=3.11"
