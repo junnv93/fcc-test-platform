@@ -17,9 +17,32 @@
 # `22` alpine tag tracks the latest 22.x (>=22.13, <23), so `npm ci`/`npm run
 # build` run on the policy runtime instead of a stale Node 20.
 FROM node:22-alpine AS build
-WORKDIR /web
+# ⚠️ The build tree MIRRORS the repository layout (`/app/apps/web` +
+# `/app/packages/...`), it is not flattened to `/web`. `apps/web`'s lockfile
+# links `@fcc/api-artifacts` as `../../packages/api-artifacts`, and that relative
+# path only lands correctly when the web root sits TWO levels below the tree
+# root. At `/web` the `../..` collapses at the filesystem root (`/..` is `/`), so
+# Arborist's own key for the link target stops matching the directory it
+# resolves to and `npm ci` dies inside `loadVirtual` (measured 2026-09-01 —
+# see the COPY comment below). Moving the WORKDIR down two levels is what fixes
+# it; putting the target directory in place is NOT enough, that was measured too.
+WORKDIR /app/apps/web
 
 # Dependency layer first (package manifests only) for build-cache reuse.
+#
+# ⚠️ The link target comes FIRST, before `npm ci` — not with the source copy
+# below. `apps/web/package.json` carries `@fcc/api-artifacts: file:../../packages/
+# api-artifacts`, so the lockfile holds a `link: true` entry whose target is
+# `../../packages/api-artifacts` = `/app/packages/api-artifacts` from this WORKDIR.
+# `npm ci` resolves every lockfile link before installing anything, and when the
+# target directory is absent Arborist throws inside `loadVirtual` — which npm
+# CATCHES and reports as `EUSAGE: can only install with an existing
+# package-lock.json`. That message names the wrong file: the lockfile is present
+# and valid (measured 2026-09-01: lockfileVersion 3, 931 entries). Diagnosing it
+# requires the HEAD of `--loglevel=silly`, where the real line reads
+# `loadVirtual TypeError: Cannot read properties of undefined (reading
+# 'extraneous')`. Keep this COPY above `npm ci` or a clean build cannot run at all.
+COPY packages/api-artifacts/ /app/packages/api-artifacts/
 COPY apps/web/package.json apps/web/package-lock.json ./
 RUN npm ci
 
@@ -31,9 +54,9 @@ RUN npm ci
 # the same or the central stack cannot be built from a clean clone at all.
 #
 # codegen.mjs imports `../../../packages/api-artifacts/index.mjs` relative to
-# `apps/web/scripts/`, which resolves to `/packages/api-artifacts` once WORKDIR
-# is `/web` — hence the absolute destination below.
-COPY packages/api-artifacts/ /packages/api-artifacts/
+# `apps/web/scripts/`, which resolves to `/app/packages/api-artifacts` under this
+# WORKDIR. That tree is already in the image — it had to land before `npm ci`
+# above — so it is not copied twice.
 COPY apps/web/ ./
 RUN npm run codegen && npm run build
 
@@ -41,7 +64,7 @@ RUN npm run codegen && npm run build
 FROM nginx:1.27-alpine AS serve
 # SPA-aware nginx config (history fallback + static asset caching).
 COPY infra/central/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /web/dist /usr/share/nginx/html
+COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 # runtime-config.js is GENERATED at start from env (no endpoint is baked in).
 # The template + generator derive every browser-facing endpoint from the same
 # port SSOT compose publishes with (central.env.example), so the same image

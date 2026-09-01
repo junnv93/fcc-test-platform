@@ -183,6 +183,19 @@ def next_revision_number(revisions: Iterable[SampleRevision | Mapping[str, Any]]
     return max(numbers, default=0) + 1
 
 
+def _identity_text(value: Any) -> Any:
+    """Return an identity value as text, leaving a missing value falsy.
+
+    Database drivers return identity columns as native objects (psycopg gives
+    `uuid.UUID`). A snapshot is a JSON document, so identities cross this
+    boundary as strings. `None`/`''` are returned unchanged so the caller's
+    "requires project_id" check still fires instead of seeing `'None'`.
+    """
+    if value is None or value == '':
+        return value
+    return value if isinstance(value, str) else str(value)
+
+
 def canonical_snapshot(
     *,
     project: Mapping[str, Any],
@@ -206,7 +219,16 @@ def canonical_snapshot(
             field: intake_value.get(field) for field in INTAKE_FIELDS
         }
     project_value = {
-        'project_id': project.get('project_id', project.get('id')),
+        # ⚠️ `str(...)`, exactly as `sample_id` below. The snapshot is DEFINED to
+        # be JSON (`snapshot_json` dumps it, and the read path immediately does
+        # `json.loads(snapshot_json(...))`), and psycopg hands back `projects."id"`
+        # as a `uuid.UUID` object. Without the coercion every writer of a snapshot
+        # dies in `json.dumps` with `Object of type UUID is not JSON serializable`
+        # — measured 2026-09-01 on two independent paths (sample creation → 503,
+        # chamber measurement start → 500). The rule already existed here; it had
+        # simply been applied to one of the two identities, so the sample axis was
+        # green while the project axis could not work at all.
+        'project_id': _identity_text(project.get('project_id', project.get('id'))),
         'project_code': project.get('project_code'),
         'model_name': project.get('model_name'),
         'management_number': project.get('management_number'),
