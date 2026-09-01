@@ -33,6 +33,8 @@ __all__ = [
     'PLATFORM_RATE_LIMIT_ENV',
     'PLATFORM_AUTH_ENV_PREFIX',
     'PLATFORM_CHAMBER_PROXY_ENV',
+    'PLATFORM_NODE_CREDENTIAL_ENV',
+    'NodeMachineCredential',
     'PlatformApiConfig',
 ]
 
@@ -62,6 +64,44 @@ PLATFORM_CHAMBER_PROXY_ENV: dict = {
 }
 
 
+#: Env-var names for the credential central presents to a chamber node
+#: (운영자 판정 2026-09-01: **기계 신분증**, 사용자 토큰 위임이 아니다).
+#:
+#: ⚠️ This is the OPPOSITE direction from ``FCC_CENTRAL_*`` on a node. A node uses
+#: those to talk to central; central uses THESE to talk to a node. Two directions,
+#: two credentials — reusing one name for both would make "which side is
+#: misconfigured" unanswerable from the env alone.
+PLATFORM_NODE_CREDENTIAL_ENV: dict = {
+    'token_url': 'FCC_PLATFORM_NODE_OIDC_TOKEN_URL',
+    'client_id': 'FCC_PLATFORM_NODE_CLIENT_ID',
+    'client_secret': 'FCC_PLATFORM_NODE_CLIENT_SECRET',
+}
+
+
+@dataclass(frozen=True)
+class NodeMachineCredential:
+    """client_credentials inputs for the central→node hop.
+
+    ``is_configured`` is all three present. Partial configuration is NOT treated
+    as configured: a token URL without a secret would make every node call fail
+    at token acquisition, and the operator would read that as "the node is
+    down". Unset-and-silent is the honest state — the node then answers
+    ``403 missing_permission`` and the cause is named on the node side.
+    """
+
+    token_url: str = ''
+    client_id: str = ''
+    client_secret: str = ''
+
+    @property
+    def is_configured(self) -> bool:
+        return bool(
+            self.token_url.strip()
+            and self.client_id.strip()
+            and self.client_secret.strip()
+        )
+
+
 #: Rate-limit env names for this surface, derived from the shared
 #: ``rate_limit_config`` suffix SSOT (2026-07-19). e.g.
 #: FCC_PLATFORM_RATE_LIMIT_ENABLED / _REQUESTS / _WINDOW_SECONDS.
@@ -77,6 +117,10 @@ class PlatformApiConfig:
     #: singleton (prior hard-coded timeout, transient retry on idempotent reads).
     #: The composition root injects this into ``HttpChamberProxyAdapter``.
     chamber_proxy_policy: ChamberProxyPolicy = ChamberProxyPolicy()
+    #: Machine credential the composition root turns into the proxy's
+    #: ``token_supplier``. Empty by default so an unconfigured deployment keeps
+    #: the pre-2026-09-01 behaviour (no Authorization header) byte-identical.
+    node_credential: NodeMachineCredential = NodeMachineCredential()
     #: Inbound throttle (2026-07-19). ``from_env`` yields an ENABLED policy when
     #: unset — the platform surface is the internet-adjacent one (central hub),
     #: so it is secure by default; ``FCC_PLATFORM_RATE_LIMIT_ENABLED=0`` opts out.
@@ -89,6 +133,13 @@ class PlatformApiConfig:
             central=CentralDbConfig.from_env(env),
             auth=HttpAuthConfig.from_env(env, prefix=PLATFORM_AUTH_ENV_PREFIX),
             allow_insecure=read_bool(env, PLATFORM_ALLOW_INSECURE_ENV, default=False),
+            node_credential=NodeMachineCredential(
+                token_url=str(env.get(PLATFORM_NODE_CREDENTIAL_ENV['token_url']) or ''),
+                client_id=str(env.get(PLATFORM_NODE_CREDENTIAL_ENV['client_id']) or ''),
+                client_secret=str(
+                    env.get(PLATFORM_NODE_CREDENTIAL_ENV['client_secret']) or ''
+                ),
+            ),
             # env raw strings → policy SSOT parser (coercion + per-field fallback
             # live in ChamberProxyPolicy.from_raw — no read_float/int duplication).
             chamber_proxy_policy=ChamberProxyPolicy.from_raw(
