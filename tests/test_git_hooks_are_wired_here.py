@@ -72,6 +72,24 @@ class TestTheBlockingHooksAreWiredInThisCheckout(unittest.TestCase):
         """
         return os.environ.get('CI', '').lower() not in ('1', 'true')
 
+    def setUp(self) -> None:
+        """이 축은 **개발자 체크아웃**에만 참이다.
+
+        ⚠️ 훅은 *푸시하는 사람의 기계*에서 도는 물건이다. CI 러너는 이
+        저장소로 아무것도 푸시하지 않으므로 훅을 걸 이유가 없고, 실제로
+        걸지 않는다 — 그런데 이 검사는 그 사실을 「훅이 꺼져 있다」로 읽고
+        모든 CI 실행을 red 로 만든다. 그러면 팀은 이 검사를 끄고, 끄는
+        순간 개발자 기계에서도 아무도 이것을 보지 않는다.
+
+        그래서 **거른다. 조용히가 아니라 이름을 대고** — 이 실행이 이 축을
+        재지 않았다는 것은 통과와 구분돼야 한다.
+        """
+        if os.environ.get('CI', '').strip().lower() in ('1', 'true', 'yes'):
+            self.skipTest(
+                'NOT VERIFIED here: CI 러너는 이 저장소로 푸시하지 않으므로 '
+                '훅 배선 축이 성립하지 않는다. 이 축은 개발자 체크아웃에서 돈다.'
+            )
+
     def test_core_hooks_path_points_at_the_tracked_directory(self) -> None:
         if not self._is_a_developer_checkout():
             self.skipTest(
