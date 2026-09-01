@@ -55,34 +55,42 @@ class TestProviderRegistry(unittest.TestCase):
         self.assertNotIn('routes', registry)
         self.assertNotIn('operations', registry)
 
-    def test_named_artifacts_are_addressed_in_the_publishing_lanes_shape(self):
-        """⚠️ This is the seal for the 2026-08-31 repair, and it is not cosmetic.
+    def test_named_artifacts_are_not_addressed_the_monorepo_way(self):
+        """⚠️ 이 검사가 무엇을 **묻지 않는지**가 요점이다.
 
-        ``contract_artifact`` is resolved by the contracts-owned checker against
-        **the contracts tree**, where the artifacts are published under
-        ``artifacts/``. This document said ``docs/api/`` -- the monorepo's shape,
-        carried over by the packager -- and the checker's fallback then looked
-        beside the registry, reported ``config/docs/api/...`` and refused.
+        초판은 `contract_artifact` 가 `artifacts/` 로 시작하는지 물었다. 그것이
+        **하루 만에 틀렸다** — 계약 레인이 아티팩트를 상자 루트에서 importable 패키지
+        안(`fcc_test_contracts/artifacts/`)으로 옮겼기 때문이다(휠은 패키지 안의 것만
+        나른다). 그쪽 봉인은 그 경로를 **철자로 적지 않고 포장기 기록에서 파생**하며,
+        자기 주석에 *"여섯 리터럴이 조용히 낡아 「경로가 낡았다」가 아니라 「아티팩트가
+        없다」로 실패했다"* 고 적는다.
 
-        The wrong spelling is not detectable by any check inside this box (the
-        artifacts are not here either way), so the spelling itself is what this
-        lane can hold. ⚠️ Note the fallback makes the failure mode *silent* in the
-        other direction: a copy of an artifact placed next to this document would
-        resolve, and a copy diverges without anything turning red.
+        레지스트리는 **데이터라 파생할 수 없다.** 그러므로 이 상자가 물을 수 있는 것은
+        *발행 레인의 현재 내부 배치* 가 아니라 **이 상자가 저지른 실제 회귀** 하나다 —
+        모노레포의 `docs/api/` 철자가 배송을 타고 넘어오는 것. 그 철자는
+        해소기의 폴백(`registry_path.parent`) 때문에 `config/docs/api/…` 를 답하며
+        거절됐고, 그것이 2026-08-31 의 실측 결함이다.
+
+        ⚠️ 양의 접두사를 다시 박지 마라 — 그러면 발행 레인이 안을 정리할 때마다 이 상자가
+        red 가 되고, 그 red 는 이 상자의 결함이 아니다.
         """
         registry = json.loads(REGISTRY_PATH.read_text(encoding='utf-8'))
 
         self.assertTrue(registry['providers'], 'registry is empty')
         for provider in registry['providers']:
             artifact = provider['contract_artifact']
-            self.assertTrue(
-                artifact.startswith('artifacts/'),
-                f"{provider['provider_id']}.contract_artifact must be addressed in "
-                f'the publishing lane (artifacts/...), got {artifact!r}',
+            self.assertFalse(
+                artifact.startswith('docs/'),
+                f"{provider['provider_id']}.contract_artifact 가 모노레포 철자다 "
+                f'({artifact!r}) — 발행 레인 기준으로 적어야 한다',
             )
             self.assertFalse(
                 Path(artifact).is_absolute(),
                 f"{provider['provider_id']}.contract_artifact must stay relative",
+            )
+            self.assertTrue(
+                artifact.endswith('.json'),
+                f"{provider['provider_id']}.contract_artifact must name a JSON artifact",
             )
 
 
