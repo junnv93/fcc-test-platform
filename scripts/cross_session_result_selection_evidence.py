@@ -196,6 +196,45 @@ def _protected_data_snapshot(connection) -> dict[str, Any]:
     }
 
 
+#: Environment variables by which git decides *which repository it is looking
+#: at*.  They beat ``cwd``, and that is the whole point of listing them here.
+#:
+#: ⚠️ **``cwd=ROOT`` is not isolation — it is isolation only while the
+#: environment says nothing.** git hands ``GIT_DIR`` down to every hook it
+#: runs, so any receipt this script builds from inside a hook (or from any
+#: tool that exports one) describes *the ambient repository*, not ``ROOT``.
+#: Measured 2026-08-31 in this tree: with ``GIT_DIR`` pointing at a linked
+#: worktree, a directory that is **not a git repository at all** attested a
+#: HEAD and a cleanliness — the exact silent-green shape ``_run`` below was
+#: rewritten to forbid, reappearing one axis over.
+#:
+#: ⚠️ **The list is not "every GIT_* variable".**  ``GIT_AUTHOR_*`` and
+#: ``GIT_CONFIG_*`` have nothing to do with location, and stripping broadly
+#: would stop being "pin the repository" and start being "run a different
+#: git".  What is removed here changes *which repository answers*, nothing
+#: else.
+GIT_REPO_LOCATION_ENV = (
+    'GIT_DIR',
+    'GIT_WORK_TREE',
+    'GIT_COMMON_DIR',
+    'GIT_INDEX_FILE',
+    'GIT_OBJECT_DIRECTORY',
+    'GIT_NAMESPACE',
+)
+
+
+def git_env_pinned_to_root() -> dict[str, str]:
+    """An environment that does not inherit somebody else's repository.
+
+    Outside a hook the stripped variables are absent, so this is a **no-op**
+    and every receipt is byte-identical to before.
+    """
+    env = dict(os.environ)
+    for name in GIT_REPO_LOCATION_ENV:
+        env.pop(name, None)
+    return env
+
+
 def repository_metadata(cutoff: str | None) -> dict[str, Any]:
     """What a receipt must be able to say about the tree that produced it.
 
@@ -221,6 +260,7 @@ def repository_metadata(cutoff: str | None) -> dict[str, Any]:
         try:
             return subprocess.run(
                 args, cwd=ROOT, check=True, capture_output=True, text=True,
+                env=git_env_pinned_to_root(),
             ).stdout, True
         except Exception:
             return '', False
