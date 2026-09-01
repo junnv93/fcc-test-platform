@@ -431,11 +431,34 @@ def create_platform_runtime(
     from infrastructure.adapters.driven.chamber_proxy_adapter import (
         HttpChamberProxyAdapter,
     )
+    # 중앙이 노드에 제시할 **기계 신분증**(운영자 판정 2026-09-01). 노드는 ``oidc_jwt``
+    # 가 아니면 기동을 거부하므로 이 hop 은 자격증명 없이 성립하지 않는다 — 실측
+    # 2026-09-01: 헤더 없는 호출에 노드가 ``403 missing_permission``.
+    #
+    # ⚠️ 공급자는 노드→중앙 방향이 이미 쓰는 ``ClientCredentialsTokenProvider`` 다
+    # (캐시·단일비행·만료 마진을 그것이 소유한다 — 이쪽에 두 번째 만료 시계를 두면
+    # 두 시계가 어긋날 수 있다). 두 방향이 한 어휘를 쓴다.
+    #
+    # ⚠️ 미설정이면 ``None`` 을 넘겨 옛 동작(헤더 없음)과 byte-identical 이다. 부분
+    # 설정도 미설정으로 친다(``NodeMachineCredential.is_configured`` 참조).
+    node_token_supplier = None
+    if config.node_credential.is_configured:
+        from infrastructure.adapters.driven.chamber_token_provider import (
+            ClientCredentialsTokenProvider,
+        )
+        node_token_supplier = ClientCredentialsTokenProvider(
+            config.node_credential.token_url,
+            config.node_credential.client_id,
+            config.node_credential.client_secret,
+        ).get_token
     # timeout/재시도는 config 의 ChamberProxyPolicy SSOT 에서 파생(env override —
     # FCC_PLATFORM_CHAMBER_PROXY_*). 기본 인스턴스화 대신 정책 명시 주입(하드코딩 제거).
     chamber_measurement_service = ChamberMeasurementService(
         chamber_read_service,
-        HttpChamberProxyAdapter(policy=config.chamber_proxy_policy),
+        HttpChamberProxyAdapter(
+            policy=config.chamber_proxy_policy,
+            token_supplier=node_token_supplier,
+        ),
         sample_inventory_service=sample_inventory_service,
         project_reference_service=project_result_reference_service,
     )
