@@ -200,7 +200,22 @@ def find_satisfying_node_bin() -> Path | None:
     """
     node_lower, node_upper, npm_lower, npm_upper = _load_engine_bounds()
     for _label, bin_dir in _candidate_node_bins(node_lower[0]):
-        search_path = f'{bin_dir}{os.pathsep}{os.environ.get("PATH", "")}'
+        # ⚠️ Probe the candidate directory **alone**. Appending the ambient
+        #    PATH here made an empty candidate pass on somebody else's node:
+        #    `shutil.which` fell through to the system install, the version
+        #    check ran against *that* binary, and this function then returned
+        #    a bin directory with no node in it. The caller prepends what it
+        #    gets to PATH, so the box silently runs the ambient runtime while
+        #    the operator believes the pin was honoured — which is the exact
+        #    failure this function's docstring exists to prevent, reached
+        #    through the probe rather than around it.
+        #    Nothing is lost by dropping the fallback: the ambient PATH is
+        #    already yielded as its own concrete candidate ('PATH', …), so a
+        #    box with only a system node still resolves — it just resolves as
+        #    that candidate, under its own name.
+        #    Measured 2026-08-31: green on a box whose system node fails
+        #    `engines`, red on one where it passes. Same code, same test.
+        search_path = str(bin_dir)
         node = shutil.which('node', path=search_path)
         npm = shutil.which('npm', path=search_path) or shutil.which('npm.cmd', path=search_path)
         if node is None or npm is None:

@@ -143,12 +143,18 @@ def test_required_major_is_derived_from_package_json_not_a_literal(
         assert capsys.readouterr().out.strip() == '99'
 
 
-def test_check_engines_stops_before_the_build() -> None:
+def test_check_engines_stops_before_the_build(tmp_path: Path) -> None:
     def exploding_build(_npm: str) -> int:
         raise AssertionError('--check-engines must not run the production build')
 
+    # ⚠️ `node_modules` presence is a *different question* — whether this box
+    #    ran `npm ci` — and leaving it unstubbed made both branches return
+    #    early, so the non-vacuity probe below never reached the build and
+    #    reported DID NOT RAISE on any box without an install. Stub it, and
+    #    this test asks only what it is named for.
     with patch.object(gate, '_find_executable', return_value='/usr/bin/true'), \
             patch.object(gate, '_check_engine', return_value=None), \
+            patch.object(gate, 'NODE_MODULES', tmp_path), \
             patch.object(gate, '_run_build', side_effect=exploding_build):
         assert gate.main([gate.CHECK_ENGINES_FLAG]) == 0
         # Non-vacuity: the same stubs *do* reach the build without the flag.
@@ -163,7 +169,7 @@ def test_unsupported_argument_is_rejected_rather_than_ignored(
     assert "'--not-a-flag'" in capsys.readouterr().err
 
 
-def test_a_library_call_never_reads_process_argv() -> None:
+def test_a_library_call_never_reads_process_argv(tmp_path: Path) -> None:
     # `main()` with no argument means "no arguments", never "read sys.argv".
     # Under pytest sys.argv carries the runner's own flags, and reading it there
     # let one process's arguments leak into a library call -- observed as this
@@ -171,6 +177,7 @@ def test_a_library_call_never_reads_process_argv() -> None:
     with patch.object(sys, 'argv', ['pytest', '-q', '--tb=short']), \
             patch.object(gate, '_find_executable', return_value='/usr/bin/true'), \
             patch.object(gate, '_check_engine', return_value=None), \
+            patch.object(gate, 'NODE_MODULES', tmp_path), \
             patch.object(gate, '_run_build', return_value=0):
         assert gate.main() == 0
 
@@ -197,6 +204,55 @@ def test_selection_verifies_each_candidate_instead_of_trusting_a_manager(
     # first one offered.
     with patch.object(gate, '_candidate_node_bins', lambda _major: iter([('bogus', unusable)])):
         assert gate.find_satisfying_node_bin() is None
+
+
+def test_an_empty_candidate_never_passes_on_the_ambient_node(
+    tmp_path: Path,
+) -> None:
+    """A candidate directory holding no node must be rejected, always.
+
+    ⚠️ The existing selection test could not ask this. It offered an empty
+    directory first and asserted it was not chosen — which held on a box whose
+    *system* node fails `engines`, and only there. When the probe appended the
+    ambient PATH, an empty candidate resolved to the system node, passed the
+    version check on that binary, and was returned; the caller then prepended a
+    directory with nothing in it and ran the ambient runtime believing the pin
+    was honoured. Same code, same test, opposite verdict on two boxes — the
+    difference was never the code.
+
+    So this test stops depending on what the box happens to have installed: it
+    *supplies* a satisfying node and asks whether an empty candidate can pass
+    on it. That question has one right answer on every box.
+    """
+    satisfying = tmp_path / 'satisfying' / 'bin'
+    satisfying.mkdir(parents=True)
+    for name in ('node', 'npm'):
+        executable = satisfying / name
+        executable.write_text('#!/bin/sh\nexit 0\n')
+        executable.chmod(0o755)
+    empty = tmp_path / 'empty' / 'bin'
+    empty.mkdir(parents=True)
+
+    with patch.dict(os.environ, {'PATH': str(satisfying)}), \
+            patch.object(gate, '_check_engine', return_value=None), \
+            patch.object(
+                gate, '_candidate_node_bins',
+                lambda _major: iter([('empty', empty)]),
+            ):
+        assert gate.find_satisfying_node_bin() is None, (
+            'an empty candidate was selected — the probe reached past the '
+            'candidate directory and verified somebody else\'s node'
+        )
+
+    # Non-vacuity: the same stubs *do* select a directory that really holds one,
+    # so the assertion above is about emptiness and not about the stubbing.
+    with patch.dict(os.environ, {'PATH': ''}), \
+            patch.object(gate, '_check_engine', return_value=None), \
+            patch.object(
+                gate, '_candidate_node_bins',
+                lambda _major: iter([('satisfying', satisfying)]),
+            ):
+        assert gate.find_satisfying_node_bin() == satisfying
 
 
 # ⚠️ `test_provision_script_delegates_selection_and_pins_no_literal_version` 는 2026-08-31 에 `fcc-test-platform` 으로 옮겼다 — 소비하는
