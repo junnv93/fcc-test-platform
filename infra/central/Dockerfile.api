@@ -119,7 +119,14 @@ COPY docs/platform/ ./docs/platform/
 # 실패하지 않고 **`pending=[]` 로 조용히 성공**한다. 새 중앙 PC 에서 그것은 «빈
 # 데이터베이스인데 마이그레이션은 다 됐다»가 되고, 뒤따르는 모든 실패가 원인과
 # 무관해 보인다.
-COPY migrations/ ./docs/platform/migrations/
+# 상자 표식을 함께 싣는다. `resolve_repo_artifact` 는 이 기록으로 «이 레인은
+# docs/platform/migrations 를 migrations/ 로 배달한다» 를 알고, 그래서 **부르는
+# 쪽이 경로를 몰라도 된다** — compose 의 migrate 잡도, 드리프트 게이트의 프로브도
+# 같은 한 메커니즘을 쓴다. 경로를 양쪽에 손으로 적으면 두 SSOT 가 되어 하나가 먼저
+# 낡는다(실측 2026-09-03: 표식 없이 프로브가 `/docs/platform/migrations` 로 해소돼
+# 판정 불가가 났다).
+COPY .extraction-layout.json ./
+COPY migrations/ ./migrations/
 # Incremental migration runner (self-contained single file) — run by the
 # `central-migrate` init job in docker-compose.central.yml before the API serves.
 COPY scripts/platform_db_migrate.py ./scripts/platform_db_migrate.py

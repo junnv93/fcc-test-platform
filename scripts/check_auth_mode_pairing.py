@@ -39,11 +39,35 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT / 'src') not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT / 'src'))
 
-from fcc_test_contracts.common.auth_config import (  # noqa: E402
-    WEB_AUTH_STRATEGIES,
-    deployment_auth_defects,
-    web_auth_strategy_for,
-)
+# ⚠️ **여기서 죽으면 「검사가 죽었다」가 「설정이 어긋났다」로 보고된다** (2026-09-03).
+# 계약 패키지가 없는 인터프리터에서 이 import 가 ``ModuleNotFoundError`` 를 던지면
+# 스크립트가 traceback 으로 죽고 **exit 1** 을 냈다. 그런데 1 은 이 스크립트 자신의
+# 계약에서 「불일치」이고, ``check_deployment_drift.py::judge_auth_pairing`` 이 그것을
+# 그대로 ``DRIFT — auth mode 와 로그인 전략이 어긋난다`` 로 옮긴다.
+#
+# 실측 2026-09-03: 시스템 python3 로 돌린 드리프트 게이트가 auth-pair 를 DRIFT 로
+# 보고했지만, 계약 패키지가 있는 인터프리터로 돌리면 같은 env 가 ``coherent`` 로
+# exit 0 이었다. **어긋난 설정이 없는데 어긋났다고 말하고 있었고**, 그 상태에서는
+# 진짜 불일치가 생겨도 구분되지 않는다.
+#
+# 형제 ``check_central_provider_id_pairing.py`` 와 같은 수리다 — 로드 실패는
+# **판정 불가(2)** 이고, 게이트는 2 를 UNKNOWN 으로 옮긴다.
+_CONTRACT_IMPORT_ERROR: 'Exception | None' = None
+try:
+    from fcc_test_contracts.common.auth_config import (  # noqa: E402
+        WEB_AUTH_STRATEGIES,
+        deployment_auth_defects,
+        web_auth_strategy_for,
+    )
+except Exception as _exc:  # noqa: BLE001 — 원인을 실어 2 로 내린다
+    _CONTRACT_IMPORT_ERROR = _exc
+    WEB_AUTH_STRATEGIES = {}
+
+    def deployment_auth_defects(*_a, **_k):  # type: ignore[misc]
+        raise RuntimeError('contract package unavailable')
+
+    def web_auth_strategy_for(*_a, **_k):  # type: ignore[misc]
+        raise RuntimeError('contract package unavailable')
 
 #: 한 배포가 **함께** 정해야 하는 값들.
 #:
@@ -158,6 +182,15 @@ def fetch_runtime_auth_mode(url: str, *, timeout: float = 5.0) -> 'str | None':
 
 
 def main(argv=None) -> int:
+    if _CONTRACT_IMPORT_ERROR is not None:
+        print(
+            'auth pairing: 판정 불가 — 계약 패키지를 불러오지 못했다 '
+            f'({type(_CONTRACT_IMPORT_ERROR).__name__}: {_CONTRACT_IMPORT_ERROR})\n'
+            '  이것은 「어긋났다」가 아니다. 짝이 맞는지 **확인하지 못했다**는 뜻이다.\n'
+            '  계약 패키지가 있는 인터프리터로 다시 돌려라 (예: 이 저장소의 venv).',
+            file=sys.stderr,
+        )
+        return _EXIT_UNDETERMINED
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--env-file', type=Path)

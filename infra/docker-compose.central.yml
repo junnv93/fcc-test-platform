@@ -120,6 +120,18 @@ services:
     ports:
       - "${KEYCLOAK_PORT:-8081}:8080"
     volumes:
+      # ⚠️ **영속 볼륨이 없으면 Keycloak 재생성 = 자격 소멸이다** (2026-09-03 실측).
+      # 이 서비스는 dev 모드 H2 를 쓰고 그 DB 가 컨테이너 **쓰기 계층**에 있었다 —
+      # 마운트가 read-only import 디렉터리 하나뿐이었다. 그래서 컨테이너를 갈면
+      # DB 가 사라지고 realm 이 JSON 에서 재임포트된다.
+      #
+      # 그 결과가 왜 치명적인가: 노드가 쓰는 `fcc-chamber-chamber-devpc` 는 **런타임에
+      # 프로비저닝된** client 라 realm JSON 에 없다(실측: JSON 은 4개, 실제는 11개).
+      # 재임포트는 그 client 를 되살리지 못하고, 증상은 `invalid_client` 하나여서
+      # 「삭제됐다」와 「시크릿이 회전됐다」가 구분되지 않는다.
+      #
+      # 이 볼륨이 그 축을 닫는다. 재생성해도 프로비저닝된 자격이 남는다.
+      - central-kcdata:/opt/keycloak/data
       # Reuse the realm provisioned for the IdP-only compose (single SSOT).
       - ./keycloak:/opt/keycloak/data/import:ro
     healthcheck:
@@ -297,13 +309,10 @@ services:
       - python
       - scripts/platform_db_migrate.py
       - migrate
-      # ⚠️ **경로를 명시한다 — 추측하지 않는다** (2026-09-03). 러너의 자동 해소는
-      # 상자 루트 표식(`.extraction-layout.json`)을 찾는데 **컨테이너 이미지에는
-      # 그것이 없다**. 실측: 명시하지 않으면 `/docs/platform/migrations`(존재하지
-      # 않음)로 해소됐다. 지금은 러너가 그 상태를 거절하지만(조용한 0건 봉인),
-      # 거절당하는 것보다 맞는 경로를 주는 것이 낫다.
-      - --migrations-dir
-      - /app/docs/platform/migrations
+      # ⚠️ **경로를 여기 적지 않는다.** 이미지가 상자 표식(`.extraction-layout.json`)
+      # 을 싣고 러너가 그것으로 해소한다 — 그래야 이 잡과 드리프트 게이트의 프로브가
+      # **같은 한 메커니즘**을 쓴다. 여기 적으면 프로브는 여전히 못 찾고(그쪽은
+      # 인자를 주지 않는다) 판정 불가가 나며, 두 SSOT 중 하나가 먼저 낡는다.
       - --applied-by
       - central-migrate
     environment:
@@ -564,6 +573,7 @@ services:
         ipv4_address: ${CENTRAL_PROXY_IP:-172.31.240.10}
 
 volumes:
+  central-kcdata:
   central-pgdata:
   central-headless-data:
 
