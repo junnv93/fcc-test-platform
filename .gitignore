@@ -72,3 +72,7 @@ infra/**/*.env
 *.swp
 .DS_Store
 Thumbs.db
+
+# provider UI descriptor — provider 소유 내용이므로 이 저장소가 담지 않는다.
+# 담으면 두 벌이 되고 사본은 갈라진다(2026-09-01 실측). README 만 추적한다.
+config/provider-ui/*.json

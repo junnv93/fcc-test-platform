@@ -66,6 +66,7 @@ from fcc_test_platform.application.central_artifact_custody_service import (
 )
 from domain.ports.output.central_artifact_custody_port import (
     ArtifactCustodyNotFoundError,
+    ArtifactCustodyProviderNotFoundError,
     CentralArtifactCustodyError,
 )
 from fcc_test_contracts.common.operator_notice import (
@@ -2152,6 +2153,12 @@ _PLATFORM_ERROR_CODE_TABLE: tuple[tuple[type, ErrorCode], ...] = (
     # (CentralArtifactCustodyError)보다 **먼저** 와야 한다 — most-specific-first 가
     # 아니면 클라이언트가 고칠 수 있는 404 가 중앙 장애 503 으로 둔갑한다.
     (ArtifactCustodyNotFoundError, ErrorCode.NOT_FOUND),
+    # 등록되지 않은 provider 로 온 보고도 404 다 — provider 는 운영자가 등록하는
+    # 참조 데이터이지 인입되는 것이 아니므로 **클라이언트 잘못**이고, 형제
+    # ``ReferenceProviderNotFoundError`` 가 같은 이유로 404 다. 이 줄이 없던 동안
+    # 그 경우는 상위 클래스로 떨어져 503(중앙 장애)으로 나갔고, 운영자는 보낸 값이
+    # 아니라 컨테이너를 보러 갔다(실측 2026-09-03).
+    (ArtifactCustodyProviderNotFoundError, ErrorCode.NOT_FOUND),
     (ArtifactCustodyReportRejected, ErrorCode.VALIDATION_ERROR),
     (CentralArtifactCustodyError, ErrorCode.UPSTREAM_UNAVAILABLE),
     # 멀티챔버 P5 — measurement proxy. Unknown chamber → 404, not-idle (in_use/
@@ -2392,6 +2399,7 @@ def create_platform_router(
                 # 주석이 아니라 파생 단언으로 잠근 이유 그 자체다
                 # (`TestEveryMappedErrorIsCaughtByTheBoundary` 가 이것을 잡았다).
                 ArtifactCustodyNotFoundError,
+                ArtifactCustodyProviderNotFoundError,
                 # 신원 축 EMS 정합 (2026-08-21). InvalidCredentialsError /
                 # PasswordChangeRequiredError / LocalTokenError derive from
                 # PermissionError and PasswordRejected from ValueError, so they

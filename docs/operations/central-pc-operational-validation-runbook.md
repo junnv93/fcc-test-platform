@@ -27,16 +27,46 @@
 | 멤버십 issuer 해소 (platform-api) | **중앙 PC** | 권한 부여가 404 |
 | `test_sessions` 부모행 upsert (`test_runner_init` 합성) | **측정 PC** | 첫 sync 가 `session_id` FK 위반 |
 
+## ⚠️ 저장소 배치 (2026-09-03 변경)
+
+**중앙 PC 에는 `fcc-test-platform` 하나만 둔다. `FCC_mobile_test_automation` 을 두지
+않는다.**
+
+| PC | 두는 저장소 | 빌드하는 이미지 |
+|---|---|---|
+| **중앙 PC** | `fcc-test-platform` 하나 + Docker | `fcc-central-platform-api` · `fcc-central-web` |
+| **챔버 PC** | `FCC_mobile_test_automation` 하나 | `fcc-unlicensed-headless-api` |
+
+무엇이 바뀌었나: 이전에는 이미지 하나(`fcc-central-api:latest`)가 세 서비스를 겸했고
+빌드 컨텍스트가 FCC 저장소 루트였다 — **그것 하나 때문에** 중앙 PC 가 FCC 저장소를
+요구했다. 설계가 아니라 편의였다. 지금은 `headless-api` 만 provider 저장소가 빌드해
+태그하고, 중앙 compose 는 `build:` 없이 `image:` 로 소비한다(`web` 이 2026-08-31 에 간
+길의 거울상이다).
+
+근거(실측 2026-09-03): FCC 트리 없이 빌드한 `fcc-central-platform-api` 이미지가
+`create_app()` 에 성공하고 **OpenAPI 64 경로가 기존 서비스와 완전히 동일**하다.
+이미지 안에 `/app/src` 가 없다.
+
+⚠️ **provider UI descriptor 는 이 저장소가 담지 않는다.** provider 배포가
+`config/provider-ui/*.json` 에 놓고 platform 이 기동 시 읽는다(몇 개를 어디서 읽었는지
+매 기동 로그로 말한다). 담으면 provider 소유 내용의 두 번째 사본이 되고 사본은
+갈라진다 — 2026-09-01 에 실측된 그대로다.
+
 ### 중앙 PC
 
 ```bash
-cd /mnt/c/FCC_mobile_test_automation     # 중앙 PC 의 실제 repo 경로로
+cd /path/to/fcc-test-platform             # ⚠️ FCC 저장소가 아니다 (위 배치표)
 git status --short                        # 로컬 수정이 있으면 먼저 정리/보존
 git pull --ff-only origin main
-git log --oneline -1                      # 45d7e1f9 이상이어야 한다
-ls docs/platform/migrations/011_ingestion_owned_defaults.sql   # 존재해야 한다
-ls docs/platform/migrations/012_report_run_ingestion_parent.sql # report parent default
+git log --oneline -1
+ls migrations/011_ingestion_owned_defaults.sql    # 존재해야 한다
+ls migrations/012_report_run_ingestion_parent.sql # report parent default
 ```
+
+⚠️ **경로가 `migrations/` 이지 `docs/platform/migrations/` 가 아니다.** 이 레인은 그
+트리를 상자 루트로 배달한다. 컨테이너 **이미지 안**에서는 `/app/docs/platform/
+migrations` 이고, compose 가 그 경로를 `--migrations-dir` 로 명시한다 — 이미지에는
+상자 표식이 없어 자동 해소가 성립하지 않기 때문이다.
 
 `git pull` 이 거부되면 로컬에 커밋되지 않은 수정이 있다는 뜻이다. 그 내용을 확인해
 보존할지 버릴지 정한 뒤 진행한다(임의로 `checkout --` 하지 않는다).
@@ -51,6 +81,8 @@ ls docs/platform/migrations/012_report_run_ingestion_parent.sql # report parent 
 cd C:\FCC_mobile_test_automation
 git pull --ff-only origin main
 python build_nuitka.py                    REM .exe 로 배포해 쓰는 경우에만
+REM headless-api 이미지도 여기서 빌드해 태그한다 (2026-09-03 —
+REM 중앙 PC 는 이 저장소를 두지 않으므로 중앙에서 빌드할 수 없다).
 ```
 
 판정: 측정 PC 에서 아래가 비어 있지 않아야 한다(부모행 upsert 배선 존재 확인).
@@ -138,7 +170,7 @@ grep -i networkingMode /mnt/c/Users/*/.wslconfig
 ## S0 — 운영 env 작성
 
 ```bash
-cd /mnt/c/FCC_mobile_test_automation
+cd /path/to/fcc-test-platform    # ⚠️ 2026-09-03: 중앙 PC 는 FCC 저장소를 두지 않는다
 cp infra/central/central.env.example infra/central/central.env
 ```
 

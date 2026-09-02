@@ -38,11 +38,31 @@ from fcc_test_contracts.common.principal_resolver import (
     build_local_jwt_config,
     create_principal_resolver,
 )
-from application.headless.provider_ui_descriptor import (
-    UNLICENSED_CONDUCTED_WORKBENCH_AREA,
-    UNLICENSED_PROVIDER_ID,
-    build_unlicensed_ui_descriptor,
+# ⚠️ **provider 저장소를 import 하지 않는다** (2026-09-03).
+# 여기 있던 ``from application.headless.provider_ui_descriptor import …`` 한 줄이
+# 중앙 스택 전체가 provider 저장소를 **코드로** 요구하게 만든 유일한 자리였다
+# (실측: ``/app/src`` 를 sys.path 에서 빼면 ``create_app()`` 이 바로 그 줄에서
+# ``ModuleNotFoundError``). 그 모듈은 자기 docstring 이 «provider-owned» 라고 적고
+# ``column_names``(provider 의 Excel SSOT)를 끌어온다.
+#
+# 세 이름이 각각 어디로 갔는지:
+#   UNLICENSED_PROVIDER_ID            → 계약 SSOT 에서 파생(아래). provider 모듈도
+#                                       원래 그 값을 그 SSOT 에서 파생하고 있었다.
+#   build_unlicensed_ui_descriptor()  → 런타임 JSON (provider_ui_descriptor_loader).
+#   UNLICENSED_CONDUCTED_WORKBENCH_AREA → descriptor 에서 파생(같은 로더).
+from fcc_test_contracts.headless.api_contracts import DEFAULT_PROVIDER_METADATA
+from fcc_test_platform.application.provider_ui_descriptor_loader import (
+    load_provider_ui_descriptors,
+    sole_workbench_area,
 )
+
+#: provider 자연키. **계약 레인이 SSOT** 이고 provider 모듈도 여기서 파생했다
+#: (``UNLICENSED_PROVIDER_ID: str = str(DEFAULT_PROVIDER_METADATA['provider_id'])``).
+#: 값이 아니라 파생을 옮겼으므로 동작은 바뀌지 않는다.
+UNLICENSED_PROVIDER_ID: str = str(DEFAULT_PROVIDER_METADATA['provider_id'])
+#: provider 가 하나도 배포되지 않았을 때의 progress area. descriptor 가 있으면
+#: 거기서 파생한다(아래) — 이 값은 그 파생이 답을 못 낼 때만 쓰인다.
+_FALLBACK_WORKBENCH_AREA = 'unlicensed_conducted'
 from fcc_test_platform.provider_registry import ProviderReferenceResolverRegistry
 from application.central_contract.api_contracts import PLATFORM_API_OPERATIONS
 from fcc_test_platform.application.provider_ui_descriptor_registry import (
@@ -305,6 +325,11 @@ def create_platform_runtime(
             UNLICENSED_PROVIDER_ID: ConductedDutyReferenceAdapter(),
         })
 
+    # provider UI descriptor 를 **여기서 한 번** 읽는다. 아래 두 곳이 이것을 쓴다 —
+    # 진행률 서비스의 progress area 와 descriptor registry. 두 번 읽으면 한 기동
+    # 안에서 두 값이 갈라질 수 있다(파일이 그 사이 바뀌면).
+    provider_ui_descriptors = load_provider_ui_descriptors()
+
     read_adapter = PostgresCentralReadAdapter(connection_factory)
     read_service = CentralReadService(read_adapter)
 
@@ -450,7 +475,12 @@ def create_platform_runtime(
             PostgresCentralProgressWriteAdapter(connection_factory),
         ),
         catalog_reader=PostgresCentralProgressCatalogReadAdapter(connection_factory),
-        progress_area=UNLICENSED_CONDUCTED_WORKBENCH_AREA,
+        # descriptor 에서 파생한다 — provider 가 area 이름을 바꾸면 따라간다.
+        # 여럿이면 fallback 을 쓰고 **경고한다**(서비스가 아직 하나만 받는다는
+        # 사실이 조용히 묻히지 않게).
+        progress_area=sole_workbench_area(
+            provider_ui_descriptors, fallback=_FALLBACK_WORKBENCH_AREA,
+        ),
     )
 
     # 멀티챔버 P5 — 중앙 측정 프록시. 웹은 중앙 1곳만 인증; 이 서비스가 챔버 가용성을
@@ -544,15 +574,17 @@ def create_platform_runtime(
     )
     progress_broadcaster = ChamberProgressBroadcaster()
 
-    # WEB-PROVIDER-UI-0: provider UI descriptor registry. The composition root is
-    # the SINGLE place that imports the provider builder — the platform service /
-    # route layer stays free of provider internals (schema-driven renderer). The
-    # current repo registers the in-process Unlicensed descriptor; a future
-    # multi-repo deployment would fetch it from the provider's
-    # GET /headless/ui-descriptor (or a registry artifact fallback).
-    provider_ui_descriptor_registry = ProviderUiDescriptorRegistry({
-        UNLICENSED_PROVIDER_ID: build_unlicensed_ui_descriptor().to_dict(),
-    })
+    # WEB-PROVIDER-UI-0: provider UI descriptor registry. 합성 루트가 registry 에
+    # 배선하는 **유일한 자리**이고, 서비스/라우트 층은 provider 내부를 모른다
+    # (schema-driven renderer).
+    #
+    # 2026-09-03: 그 배선이 **import 에서 런타임 아티팩트로** 바뀌었다. 위 import
+    # 블록의 주석이 사유를 적는다 — 그 한 줄이 중앙 PC 에 provider 저장소를
+    # 요구하게 만들고 있었다. descriptor 는 provider 배포가 놓고 이 저장소는
+    # 담지 않는다(사본은 갈라진다).
+    provider_ui_descriptor_registry = ProviderUiDescriptorRegistry(
+        provider_ui_descriptors
+    )
 
     # scrape 시점 챔버 gauge 갱신기 — chamber_read_service(가용성 SSOT)에서 status별
     # 카운트 + 최대 heartbeat age 를 registry 에 set.

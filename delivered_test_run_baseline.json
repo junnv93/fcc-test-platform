@@ -2,10 +2,7 @@
  "lane": "fcc-test-platform",
  "baseline": [
   "tests/test_chamber_measurement_staging_evidence.py::TestRunbookExists::test_runbook_documents_no_fake_and_blocked_definition",
-  "tests/test_platform_artifact_custody_api.py::TestCentralNeverJudges::test_no_filesystem_access_in_the_central_custody_modules",
   "tests/test_platform_chamber_api_p2.py::TestChamberNotFoundErrorSingleDefinition::test_exactly_one_definition_site",
-  "tests/test_platform_claim_write_fe_p3.py::TestClaimWriteComposition::test_composed_adapter_acquires_through_central_ledger",
-  "tests/test_platform_claim_write_fe_p3.py::TestClaimWriteComposition::test_runtime_adapter_has_claim_write_service",
   "tests/test_platform_cutover_completion_audit.py::TestPlaceholderDetectionSsotDedup::test_scripts_import_placeholder_primitives",
   "tests/test_platform_cutover_live_workflow.py::TestPlatformCutoverLiveWorkflow::test_default_suggested_commands_match_existing_cli_entrypoints",
   "tests/test_platform_cutover_readiness_cli.py::TestPlatformCutoverReadinessCli::test_cli_does_not_import_runtime_side_effect_dependencies",

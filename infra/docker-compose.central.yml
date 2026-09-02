@@ -4,7 +4,7 @@
 #   * postgres      — central PostgreSQL DB (schema from docs/platform/migrations)
 #   * keycloak      — OIDC IdP (realm import, extends docker-compose.idp.yml)
 #   * headless-api  — uvicorn headless_api_app:create_app   (:8001)
-#   * platform-api  — uvicorn platform_api_app:create_app   (:8002)
+#   * platform-api  — uvicorn fcc_test_platform.api_app:create_app (:8002)
 #   * web           — nginx: Vite SPA static + same-origin API gateway (:8080)
 #                     (reverse-proxies /headless,/platform so the browser uses
 #                      one origin and no CORS is needed on the FastAPI surfaces)
@@ -103,6 +103,7 @@ services:
       # the POSTGRES_PASSWORD / KEYCLOAK_ADMIN_PASSWORD 12-factor posture). Real
       # deployments override these; the dev defaults match central.env.example.
       FCC_CHAMBER_CLIENT_SECRET: ${FCC_CHAMBER_CLIENT_SECRET:-fcc-chamber-dev-secret}
+      FCC_CENTRAL_SESSION_CLIENT_SECRET: ${FCC_CENTRAL_SESSION_CLIENT_SECRET:-fcc-central-session-dev-secret}
       FCC_STAGING_CLI_SECRET: ${FCC_STAGING_CLI_SECRET:-fcc-staging-cli-dev-secret}
       # OIDC issuer 결정성 (2026-06-20). 기존 KC_HOSTNAME_STRICT=false 는 토큰 `iss` 를
       # *요청 host* 에서 파생 → split-horizon 취약: PC A(127.0.0.1)·PC B(LAN IP)·내부
@@ -119,6 +120,18 @@ services:
     ports:
       - "${KEYCLOAK_PORT:-8081}:8080"
     volumes:
+      # ⚠️ **영속 볼륨이 없으면 Keycloak 재생성 = 자격 소멸이다** (2026-09-03 실측).
+      # 이 서비스는 dev 모드 H2 를 쓰고 그 DB 가 컨테이너 **쓰기 계층**에 있었다 —
+      # 마운트가 read-only import 디렉터리 하나뿐이었다. 그래서 컨테이너를 갈면
+      # DB 가 사라지고 realm 이 JSON 에서 재임포트된다.
+      #
+      # 그 결과가 왜 치명적인가: 노드가 쓰는 `fcc-chamber-chamber-devpc` 는 **런타임에
+      # 프로비저닝된** client 라 realm JSON 에 없다(실측: JSON 은 4개, 실제는 11개).
+      # 재임포트는 그 client 를 되살리지 못하고, 증상은 `invalid_client` 하나여서
+      # 「삭제됐다」와 「시크릿이 회전됐다」가 구분되지 않는다.
+      #
+      # 이 볼륨이 그 축을 닫는다. 재생성해도 프로비저닝된 자격이 남는다.
+      - central-kcdata:/opt/keycloak/data
       # Reuse the realm provisioned for the IdP-only compose (single SSOT).
       - ./keycloak:/opt/keycloak/data/import:ro
     healthcheck:
@@ -139,14 +152,20 @@ services:
       - app-network
 
   headless-api:
-    build:
-      context: ..
-      dockerfile: infra/central/Dockerfile.api
-      args:
-        # 배포 드리프트 게이트 (2026-08-23) — 빌드한 커밋을 이미지 라벨로 남긴다.
-        # 빈 값은 지원되는 상태이고 게이트가 UNKNOWN 으로 답한다(통과가 아니다).
-        GIT_REVISION: ${GIT_REVISION:-}
-    image: fcc-central-api:latest
+    # ⚠️ **`build:` 가 없는 것은 누락이 아니다** (2026-09-03). `web` 이 2026-08-31 에
+    # 간 길을 **반대 방향으로** 간 것이다: 그때 `apps/web` 이 이 저장소로 이사하면서
+    # FCC 의 compose 에서 `build:` 가 빠지고 `image:` 만 남았다. headless-api 는 그
+    # 거울상 — 소스가 provider 저장소(`FCC_mobile_test_automation`)에 있으므로 **거기가
+    # 빌드하고 이 이름으로 태그한다.**
+    #
+    # 근거(실측 2026-09-03, 도는 컨테이너 안에서): `sys.path` 에서 `/app/src` 를 빼면
+    # platform-api 는 휠만으로 조립되지만(OpenAPI 64경로 동일) headless-api 는
+    # `ModuleNotFoundError` 다. 중앙 5 서비스 중 provider 저장소가 실제로 필요한 것은
+    # **이 하나**이고, 그것 하나 때문에 이미지 하나가 셋을 겸하며 빌드 컨텍스트를
+    # FCC 루트로 잡고 있었다.
+    #
+    # provider 가 늘면: 중앙 PC 는 그대로 platform 하나, provider 마다 이미지가 하나 붙는다.
+    image: ${FCC_HEADLESS_IMAGE:-fcc-unlicensed-headless-api:latest}
     container_name: fcc-central-headless-api
     restart: unless-stopped
     stop_grace_period: 30s
@@ -180,7 +199,13 @@ services:
       # Project RBAC is resolved by the existing platform/central composition
       # through the app-tier gateway. Headless stays off data-network and must
       # never call platform-api:8002 or PostgreSQL directly.
-      FCC_HEADLESS_PLATFORM_API_BASE_URL: ${FCC_HEADLESS_PLATFORM_API_BASE_URL:-http://web:8080}
+      # ⚠️ **컨테이너 포트이지 발행 포트가 아니다.** 기본값이 `http://web:8080`
+      # 이었고 그것은 실측 `Connection refused` 다(2026-09-01, headless 컨테이너
+      # 안에서 측정) — `8080` 은 이 compose 가 **호스트에** 발행하는 포트
+      # (`"${WEB_PORT:-8080}:80"`)이고 app-network 안에서 `web` 이 듣는 것은 `80`
+      # 이다. 그 오독은 조용했다: 프로젝트 RBAC 해소가 fail-closed 로 떨어져
+      # 「권한 없음」처럼 보이지 그 원인이 주소라고 말하지 않는다.
+      FCC_HEADLESS_PLATFORM_API_BASE_URL: ${FCC_HEADLESS_PLATFORM_API_BASE_URL:-http://web}
       # ── local_jwt (다섯 번째 모드, 2026-08-22) ────────────────────────────
       # ⚠️ **이 블록이 없으면 `FCC_HEADLESS_AUTH_MODE=local_jwt` 는 부팅 거부다.**
       # 운영자가 central.env 에 다섯 값을 다 적어도 compose 가 컨테이너로 넘기지
@@ -265,13 +290,17 @@ services:
   # since scripts/platform_db_migrate.py is a single self-contained file shipped in it.
   central-migrate:
     build:
+      # ⚠️ `..` 는 이제 **이 저장소의 루트**다 (2026-09-03). 이전에는 FCC 루트였고
+      # 그것이 중앙 PC 가 FCC 저장소를 요구한 이유의 전부였다.
       context: ..
       dockerfile: infra/central/Dockerfile.api
       args:
         # 배포 드리프트 게이트 (2026-08-23) — 빌드한 커밋을 이미지 라벨로 남긴다.
         # 빈 값은 지원되는 상태이고 게이트가 UNKNOWN 으로 답한다(통과가 아니다).
         GIT_REVISION: ${GIT_REVISION:-}
-    image: fcc-central-api:latest
+    # ⚠️ 이름이 바뀌었다: `fcc-central-api` → `fcc-central-platform-api`.
+    # 옛 이름은 셋을 겸하던 시절의 이름이라 «어느 레인의 이미지인가» 를 말하지 않았다.
+    image: fcc-central-platform-api:latest
     container_name: fcc-central-migrate
     restart: "no"
     security_opt:
@@ -280,6 +309,10 @@ services:
       - python
       - scripts/platform_db_migrate.py
       - migrate
+      # ⚠️ **경로를 여기 적지 않는다.** 이미지가 상자 표식(`.extraction-layout.json`)
+      # 을 싣고 러너가 그것으로 해소한다 — 그래야 이 잡과 드리프트 게이트의 프로브가
+      # **같은 한 메커니즘**을 쓴다. 여기 적으면 프로브는 여전히 못 찾고(그쪽은
+      # 인자를 주지 않는다) 판정 불가가 나며, 두 SSOT 중 하나가 먼저 낡는다.
       - --applied-by
       - central-migrate
     environment:
@@ -294,13 +327,17 @@ services:
 
   platform-api:
     build:
+      # ⚠️ `..` 는 이제 **이 저장소의 루트**다 (2026-09-03). 이전에는 FCC 루트였고
+      # 그것이 중앙 PC 가 FCC 저장소를 요구한 이유의 전부였다.
       context: ..
       dockerfile: infra/central/Dockerfile.api
       args:
         # 배포 드리프트 게이트 (2026-08-23) — 빌드한 커밋을 이미지 라벨로 남긴다.
         # 빈 값은 지원되는 상태이고 게이트가 UNKNOWN 으로 답한다(통과가 아니다).
         GIT_REVISION: ${GIT_REVISION:-}
-    image: fcc-central-api:latest
+    # ⚠️ 이름이 바뀌었다: `fcc-central-api` → `fcc-central-platform-api`.
+    # 옛 이름은 셋을 겸하던 시절의 이름이라 «어느 레인의 이미지인가» 를 말하지 않았다.
+    image: fcc-central-platform-api:latest
     container_name: fcc-central-platform-api
     restart: unless-stopped
     stop_grace_period: 30s
@@ -309,13 +346,48 @@ services:
     command:
       - uvicorn
       - --factory
-      - platform_api_app:create_app
+      # ⚠️ `fcc_test_platform.api_app`, not the old top-level `platform_api_app`.
+      # The 2026-08-31 lane split moved this surface out of `src/` and into the
+      # consumed `fcc-test-platform` distribution; `src/platform_api_app.py` no
+      # longer exists (only a stale `__pycache__/*.pyc`, which is why an import
+      # can still look fine on a developer machine). Measured 2026-09-01: the
+      # container restart-looped on `Error loading ASGI app. Could not import
+      # module "platform_api_app"` while every other service was healthy.
+      - fcc_test_platform.api_app:create_app
       - --host
       - "0.0.0.0"
       - --port
       - "8002"
     environment:
       FCC_PLATFORM_AUTH_MODE: ${FCC_PLATFORM_AUTH_MODE:-oidc_jwt}
+      # ⚠️ REQUIRED, not a tuning knob. `fcc_test_platform.application.
+      # rbac_role_catalog` reads the central DB schema JSON AT IMPORT TIME and
+      # finds it by walking ancestors of its OWN file for `docs/platform/…`. From
+      # `site-packages/` that walk can never succeed, and the consumed
+      # `fcc-test-platform` wheel ships no copy of the file (measured 2026-09-01:
+      # 0 hits under site-packages). Without this override the container
+      # restart-loops on `FileNotFoundError: /usr/local/lib/python3.11/docs/
+      # platform/central_db_schema.v1.json` — which is the module failing SAFE
+      # on purpose, because an empty role catalog would 403 every membership
+      # check instead. The file is present because Dockerfile.api copies
+      # `docs/platform/` into the image.
+      FCC_PLATFORM_SCHEMA_PATH: /app/docs/platform/central_db_schema.v1.json
+      # provider UI descriptor 를 읽는 자리 (2026-09-03). 이 저장소는 descriptor 를
+      # 담지 않는다 — provider 배포가 호스트의 config/provider-ui 에 놓는다.
+      # 비어 있으면 platform 은 뜨고 provider 목록만 빈다(로그가 그 사실을 말한다).
+      FCC_PLATFORM_PROVIDER_UI_DIR: /app/config/provider-ui
+      # 중앙이 챔버 노드 Session API 를 부를 때 제시하는 기계 신분증
+      # (운영자 판정 2026-09-01). 노드는 oidc_jwt 가 아니면 기동을 거부하므로 이
+      # hop 은 자격증명 없이 성립하지 않는다 — 실측: 헤더 없는 호출에 노드가
+      # 403 missing_permission.
+      #
+      # ⚠️ 토큰 URL 은 브라우저가 아니라 **컨테이너 안에서** 해소되므로 내부
+      # 서비스명(keycloak:8080)이다. issuer 검증은 노드가 하고 그 값은
+      # PUBLIC_HOST 파생이라, 여기서 내부 호스트를 쓰는 것이 split-horizon
+      # (FCC_PLATFORM_OIDC_JWKS_URI 와 같은 형상)이지 불일치가 아니다.
+      FCC_PLATFORM_NODE_OIDC_TOKEN_URL: http://keycloak:8080/realms/${OIDC_REALM:-fcc-dev}/protocol/openid-connect/token
+      FCC_PLATFORM_NODE_CLIENT_ID: ${FCC_PLATFORM_NODE_CLIENT_ID:-fcc-central-session}
+      FCC_PLATFORM_NODE_CLIENT_SECRET: ${FCC_CENTRAL_SESSION_CLIENT_SECRET:-fcc-central-session-dev-secret}
       # OIDC split-horizon (see headless-api): browser-facing issuer for `iss`
       # validation, internal JWKS URL for key fetch.
       FCC_PLATFORM_OIDC_ISSUER: http://${PUBLIC_HOST:-localhost}:${KEYCLOAK_PORT:-8081}/realms/${OIDC_REALM:-fcc-dev}
@@ -330,7 +402,7 @@ services:
       # internal port 5432. For an EXTERNAL managed Postgres, set FCC_CENTRAL_DB_URL
       # directly in this mapping (or a compose override file).
       FCC_CENTRAL_DB_URL: postgresql://${POSTGRES_USER:-fcc}:${POSTGRES_PASSWORD:-fcc-dev-password}@postgres:5432/${POSTGRES_DB:-fcc_central}
-      FCC_CENTRAL_PROVIDER_ID: ${FCC_CENTRAL_PROVIDER_ID:-unlicensed}
+      FCC_CENTRAL_PROVIDER_ID: ${FCC_CENTRAL_PROVIDER_ID:-fcc-unlicensed-conducted}
       # ── local_jwt (다섯 번째 모드, 2026-08-22) ────────────────────────────
       # ⚠️ **이 블록이 없으면 `FCC_PLATFORM_AUTH_MODE=local_jwt` 는 부팅 거부다.**
       # 운영자가 central.env 에 다섯 값을 다 적어도 compose 가 컨테이너로 넘기지
@@ -419,6 +491,10 @@ services:
         condition: service_completed_successfully
       keycloak:
         condition: service_started
+    volumes:
+      # provider 배포가 놓는 descriptor. read-only — platform 은 읽기만 한다.
+      - ../config/provider-ui:/app/config/provider-ui:ro
+
     networks:
       # BRIDGES both tiers: data-network to reach postgres (DSN), app-network to
       # reach keycloak JWKS and be reverse-proxied by web.
@@ -426,12 +502,27 @@ services:
       - app-network
 
   web:
+    # ⚠️ **2026-09-03 정정 — 이 compose 는 이제 platform 저장소의 것이다.**
+    # 아래 옛 주석은 *FCC 저장소에 있던 사본* 의 관점이라 정확히 반대로 읽힌다:
+    # `apps/web` 은 **여기 있다**(실측: apps/web/index.html · infra/central/Dockerfile.web).
+    # 그러므로 이 레인은 web 을 **빌드한다**.
     build:
       context: ..
       dockerfile: infra/central/Dockerfile.web
       args:
-        # 배포 드리프트 게이트 (2026-08-23) — Dockerfile.api 와 같은 계약.
         GIT_REVISION: ${GIT_REVISION:-}
+    #
+    # ── 아래는 FCC 사본이 갖고 있던 사유이고, 그 사본 쪽에서는 여전히 참이다 ──
+    # ⚠️ **그 저장소는 web 이미지를 빌드하지 않는다** (운영자 판정 2026-09-01).
+    # `apps/web` 이 2026-08-31 레인 분리로 `fcc-test-platform` 으로 이사했으므로
+    # `Dockerfile.web` · `nginx.conf` · runtime-config 템플릿 · entrypoint 는
+    # **거기가 소유한다.** 여기 사본을 남겨 두었더니 두 벌이 됐고, 실측
+    # 2026-09-01 에 그 둘이 갈라져 있었다(게이트웨이 업로드 천장이 한쪽에만
+    # 고쳐졌다). 사본을 지운 이유가 그것이다.
+    #
+    # ⚠️ `build:` 가 없는 것은 누락이 아니다. 이 저장소에서 `--build web` 은
+    # 실측 `"/apps/web": not found` 로 **실패한다** — 빌드할 소스가 여기 없다.
+    # 이미지는 `fcc-test-platform` 에서 빌드해 이 이름으로 태그한다.
     image: fcc-central-web:latest
     container_name: fcc-central-web
     restart: unless-stopped
@@ -482,6 +573,7 @@ services:
         ipv4_address: ${CENTRAL_PROXY_IP:-172.31.240.10}
 
 volumes:
+  central-kcdata:
   central-pgdata:
   central-headless-data:
 
