@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Two refusals, in the order they can be answered.
+#
+#   1. Refuse a commit that lands on a branch this worktree did not claim.
+#      Rationale and decision rules: scripts/work_claim_branch_guard.py
+#   2. Refuse a commit whose staged paths this worktree's claim owns but had not
+#      declared before this change (M-2 declare-before-edit).
+#      Rationale and decision rules: scripts/supervisor_preflight.py
+#
+# ⚠️ The second check exists here because it existed nowhere else. It was added
+# in round 4b so the ordering question could be asked of the INDEX rather than
+# only of a commit that already exists — and a sixth independent reviewer then
+# measured that no hook, script, or CI job invoked it. A gate a human has to
+# remember to type is not a gate; the repository has recorded that shape before.
+#
+# Fails open on a missing interpreter. Blocking every commit in the repository
+# because a virtualenv is absent would be worse than the defect this prevents,
+# so the degradation is announced rather than silent.
+set -u
+
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+guard="$repo_root/scripts/work_claim_branch_guard.py"
+preflight="$repo_root/scripts/supervisor_preflight.py"
+[ -f "$guard" ] || exit 0
+
+python_bin=""
+for candidate in \
+  "$repo_root/fcc_test_env/bin/python" \
+  "$repo_root/fcc_test_env/Scripts/python.exe" \
+  "$(command -v python3 2>/dev/null)" \
+  "$(command -v python 2>/dev/null)"
+do
+  if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+    python_bin="$candidate"
+    break
+  fi
+done
+
+if [ -z "$python_bin" ]; then
+  echo "work-claim guard: no Python interpreter found — branch and ordering checks skipped." >&2
+  exit 0
+fi
+
+"$python_bin" "$guard" check || exit $?
+
+# ⚠️ Resolved from the worktree binding, not from a path typed by the caller —
+# a hook that needs to be told which claim it is under would be as unreachable as
+# the check it replaces. An unbound worktree skips this and says so; the branch
+# guard above already refuses that case on its own terms.
+if [ -f "$preflight" ]; then
+  "$python_bin" "$preflight" --check-staged-ordering || exit $?
+fi
+
+exit 0

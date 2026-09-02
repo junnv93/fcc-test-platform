@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Refuse a commit whose message lacks the 17-item self-audit.
+# Rationale and decision rules: scripts/self_audit_message.py
+#
+# `commit-msg`, not `pre-commit`: pre-commit runs before a message exists, so
+# it cannot see the thing being validated.
+#
+# Fails open on a missing interpreter. Blocking every commit in the repository
+# because a virtualenv is absent would be worse than the defect this prevents,
+# so the degradation is announced rather than silent.
+set -u
+
+message_file="${1:-}"
+[ -n "$message_file" ] || exit 0
+
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+guard="$repo_root/scripts/self_audit_message.py"
+[ -f "$guard" ] || exit 0
+
+git_dir="$(git rev-parse --absolute-git-dir 2>/dev/null)" || git_dir=""
+
+for candidate in \
+  "$repo_root/fcc_test_env/bin/python" \
+  "$repo_root/fcc_test_env/Scripts/python.exe" \
+  "$(command -v python3 2>/dev/null)" \
+  "$(command -v python 2>/dev/null)"
+do
+  if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+    if [ -n "$git_dir" ]; then
+      exec "$candidate" "$guard" "$message_file" --git-dir "$git_dir"
+    fi
+    exec "$candidate" "$guard" "$message_file"
+  fi
+done
+
+echo "self-audit gate: no Python interpreter found — message check skipped." >&2
+exit 0
