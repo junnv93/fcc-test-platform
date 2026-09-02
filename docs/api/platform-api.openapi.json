@@ -1556,6 +1556,71 @@
         ],
         "type": "object"
       },
+      "IngestPublishedPlanRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/PublishedPlanCondition"
+            },
+            "type": "array"
+          },
+          "plan_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "plan_published_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "plan_id",
+          "conditions"
+        ],
+        "type": "object"
+      },
+      "IngestPublishedPlanResult": {
+        "additionalProperties": false,
+        "properties": {
+          "catalog_version": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "conditions": {
+            "type": "integer"
+          },
+          "inserted": {
+            "type": "integer"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "priced": {
+            "type": "integer"
+          },
+          "unbucketable": {
+            "type": "integer"
+          },
+          "unpriced": {
+            "type": "integer"
+          },
+          "updated": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "plan_id",
+          "conditions",
+          "inserted",
+          "updated"
+        ],
+        "type": "object"
+      },
       "LocalAccountUnlockEnvelope": {
         "additionalProperties": false,
         "properties": {
@@ -2593,6 +2658,30 @@
             ]
           }
         },
+        "type": "object"
+      },
+      "PublishedPlanCondition": {
+        "additionalProperties": false,
+        "properties": {
+          "band": {
+            "type": "string"
+          },
+          "condition_hash": {
+            "type": "string"
+          },
+          "raw_test_type": {
+            "type": "string"
+          },
+          "technology": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "condition_hash",
+          "technology",
+          "band",
+          "raw_test_type"
+        ],
         "type": "object"
       },
       "ReferenceEntryEdit": {
@@ -8868,6 +8957,109 @@
           }
         },
         "summary": "Append a manual result selection event with an expected-revision CAS; stale writes return 409 and do not append an event.",
+        "tags": [
+          "platform"
+        ],
+        "x-fcc-permission": "platform:claim"
+      }
+    },
+    "/platform/projects/{project_id}/providers/{provider_id}/published-plans": {
+      "post": {
+        "operationId": "ingest_published_plan_expectation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestPublishedPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestPublishedPlanResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid project_id (not a valid uuid) or malformed cursor."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The project or the provider does not exist centrally."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The ingest envelope is malformed or carries no conditions."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Central backend unavailable (CentralReadError / ClaimWriteError)."
+          }
+        },
+        "summary": "Register a published test plan centrally: its conditions become this project's progress denominator AND the answer to whether central knows the plan id at all. Idempotent by (project, provider, plan, condition).",
         "tags": [
           "platform"
         ],
