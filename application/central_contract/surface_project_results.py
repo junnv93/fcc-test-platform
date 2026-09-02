@@ -45,6 +45,21 @@ ROUTES: dict[str, tuple[str, str]] = {
     'retire_project_result_reference': (
         'POST', '/platform/projects/{project_id}/project-result-references/{revision_id}/retire',
     ),
+    # plan-delivery (2026-09-02) — 게시된 계획을 중앙이 «안다» 고 만드는 유일한 쓰기.
+    #
+    # ⚠️ 이것은 진행률 분모를 채우는 일이면서 **동시에** 「그 계획을 아는가」의 답이다.
+    # ``build_measurement_snapshot`` 이 ``published_plan_expectation`` 을 조회해
+    # ``published_plan_id is unknown`` 을 판정하기 때문이다. 그래서 이 표가 비어 있는
+    # 동안에는 브라우저로 발행한 계획으로 **측정을 시작할 수 없다**(실측 2026-09-01:
+    # ``400``). 채우는 경로는 지금까지 중앙 PostgreSQL 직결 하나였고, 계획을 저작하는
+    # headless 는 그 tier 에 닿을 수 없다(compose 가 그렇게 갈라 둔다).
+    #
+    # 경로가 (project, provider) 복합 스코프인 것은 그 둘이 expectation 자연키의
+    # 구성요소이기 때문이고, 형태는 형제 ``.../providers/{provider_id}/...`` 를 그대로
+    # 따른다.
+    'ingest_published_plan_expectation': (
+        'POST', '/platform/projects/{project_id}/providers/{provider_id}/published-plans',
+    ),
     # FE-P3-write — acquire/release on the central append-only claim ledger. The
     # acquire POST shares the /claims path with the list GET (one OpenAPI path
     # item, two methods); release adds the {claim_id} segment.
@@ -66,6 +81,11 @@ PERMISSIONS: dict[str, str] = {
     'retire_project_result_reference': 'platform:reference-write',
     'acquire_project_claim': 'platform:claim',
     'release_project_claim': 'platform:claim',
+    # 게시한 사람이 곧 이 쓰기의 행위자다 — 시험원이 계획을 발행하는 그 요청의
+    # 자격으로 중앙에 알린다. 측정 시작(``start_chamber_measurement``)과 같은
+    # engineer 티어를 재사용한다: 새 grantable 토큰은 중앙 ``rbac_role_grants``
+    # 동일성(권한 − node-scoped == grant)을 깨서 스코프 밖 스키마 변경을 부른다.
+    'ingest_published_plan_expectation': 'platform:claim',
 }
 
 
@@ -116,6 +136,61 @@ RESPONSE_HEADERS: dict[str, dict] = {
 
 
 SCHEMAS: dict[str, dict] = {
+    # plan-delivery (2026-09-02) — 게시 계획의 «잴 것» 을 중앙 어휘로 옮긴 것.
+    #
+    # ⚠️ **provider 어휘를 담지 않는다.** 게시 row 는 ``mode_family``/``tone``/
+    # ``antenna``/``packet``/``capability_path`` 처럼 이 provider 의 말을 나르는데,
+    # 그것을 중앙에 실으면 provider 가 늘 때마다 중앙 마이그레이션이 필요해진다
+    # (CLAUDE.md §Chamber Equipment Config SSOT 가 이름 붙인 형태). 여기 있는 넷은
+    # ``published_plan_expectation`` 이 이미 쓰는 중립 토큰뿐이고, 계획의 **바이트**는
+    # 저작한 상자에 남는다 — 챔버는 그것을 headless 표면에서 직접 읽는다.
+    'PublishedPlanCondition': {
+        'type': 'object',
+        'required': ['condition_hash', 'technology', 'band', 'raw_test_type'],
+        'properties': {
+            # publish 시점에 확정된 stable hash — **재계산하지 않고 verbatim** 나른다.
+            # 진행률 join 축이 바로 이 값이다.
+            'condition_hash': {'type': 'string'},
+            'technology': {'type': 'string'},
+            'band': {'type': 'string'},
+            'raw_test_type': {'type': 'string'},
+        },
+        'additionalProperties': False,
+    },
+    'IngestPublishedPlanRequest': {
+        'type': 'object',
+        'required': ['plan_id', 'conditions'],
+        'properties': {
+            'plan_id': {'type': 'string', 'minLength': 1},
+            # ISO-8601. 읽기 축이 (project, provider) 당 MAX(plan_published_at) 의
+            # 계획만 롤업하므로(migration 006), 이 값이 없으면 그 계획은 «가장 오래된»
+            # 것으로 취급된다 — 누락은 조용한 0%가 아니라 조용한 뒤처짐이다.
+            'plan_published_at': {'type': 'string', 'nullable': True},
+            'conditions': {
+                'type': 'array',
+                'items': {'$ref': '#/schemas/PublishedPlanCondition'},
+            },
+        },
+        'additionalProperties': False,
+    },
+    'IngestPublishedPlanResult': {
+        'type': 'object',
+        'required': ['plan_id', 'conditions', 'inserted', 'updated'],
+        'properties': {
+            'plan_id': {'type': 'string'},
+            'conditions': {'type': 'integer'},
+            'inserted': {'type': 'integer'},
+            'updated': {'type': 'integer'},
+            # 가격이 붙은 조건 수와 붙지 않은 수를 **따로** 답한다. 분모(개수)는
+            # 카탈로그 없이도 완전하고 ETA 만 없는 것이므로, 그 둘을 한 숫자로 접으면
+            # 「계획을 모른다」와 「예상 시간을 모른다」가 구분되지 않는다.
+            'priced': {'type': 'integer'},
+            'unpriced': {'type': 'integer'},
+            'unbucketable': {'type': 'integer'},
+            'catalog_version': {'type': 'integer', 'nullable': True},
+        },
+        'additionalProperties': False,
+    },
     'ActiveClaimList': {
         'type': 'array',
         'items': {'$ref': '#/schemas/ActiveClaimEnvelope'},
@@ -384,6 +459,15 @@ OPERATIONS: dict[str, dict] = {
             '409': 'The reference revision is retired or otherwise unavailable.',
             '400': 'The provider-authored reference envelope is incompatible or has an invalid hash.',
             '422': 'The publication request contains invalid or server-owned fields.',
+        },
+    ),
+    'ingest_published_plan_expectation': _operation(
+        request='IngestPublishedPlanRequest',
+        response='IngestPublishedPlanResult',
+        permission=PERMISSIONS['ingest_published_plan_expectation'],
+        error_responses={
+            '404': 'The project or the provider does not exist centrally.',
+            '422': 'The ingest envelope is malformed or carries no conditions.',
         },
     ),
     'retire_project_result_reference': _operation(
