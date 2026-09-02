@@ -39,6 +39,7 @@ from fcc_test_contracts.common.principal_resolver import (
     create_principal_resolver,
 )
 from application.headless.provider_ui_descriptor import (
+    UNLICENSED_CONDUCTED_WORKBENCH_AREA,
     UNLICENSED_PROVIDER_ID,
     build_unlicensed_ui_descriptor,
 )
@@ -107,6 +108,19 @@ from fcc_test_platform.application.central_reference_write_adapter import (
     PostgresCentralReferenceWriteAdapter,
 )
 from fcc_test_platform.application.central_reference_service import CentralReferenceService
+from fcc_test_platform.application.central_progress_catalog_read_adapter import (
+    PostgresCentralProgressCatalogReadAdapter,
+)
+from fcc_test_platform.application.central_progress_write_adapter import (
+    PostgresCentralProgressWriteAdapter,
+)
+from fcc_test_platform.application.progress_ingest_service import ProgressIngestService
+from fcc_test_platform.application.published_plan_expectation_service import (
+    PublishedPlanExpectationService,
+)
+from fcc_test_platform.application.published_plan_identity_adapter import (
+    PostgresPublishedPlanIdentityAdapter,
+)
 from fcc_test_platform.application.chamber_result_ingestion_service import (
     ChamberResultIngestionService,
 )
@@ -421,6 +435,22 @@ def create_platform_runtime(
         PostgresCentralProjectReferenceAdapter(connection_factory),
         selection_port=result_selection_port,
         provider_resolver=project_reference_provider_resolver,
+    )
+
+    # plan-delivery (2026-09-02) — 발행된 계획을 중앙이 «안다» 고 만드는 쓰기.
+    #
+    # ⚠️ 조립 부품이 전부 이미 있었다 — 진행률 ingest 서비스, 카탈로그 read 어댑터,
+    # 진행률 write 어댑터. 없던 것은 **그것을 부르는 문**뿐이었고, 저작하는 상자가
+    # 그 문을 못 찾아 `published_plan_expectation` 이 0행으로 남았다(그리고 그 0행이
+    # 곧 "published_plan_id is unknown" 이다). 그러므로 여기서 새로 만드는 것은
+    # 서비스 하나와 신원 조회 하나뿐이다.
+    published_plan_expectation_service = PublishedPlanExpectationService(
+        identity_reader=PostgresPublishedPlanIdentityAdapter(connection_factory),
+        ingest_service=ProgressIngestService(
+            PostgresCentralProgressWriteAdapter(connection_factory),
+        ),
+        catalog_reader=PostgresCentralProgressCatalogReadAdapter(connection_factory),
+        progress_area=UNLICENSED_CONDUCTED_WORKBENCH_AREA,
     )
 
     # 멀티챔버 P5 — 중앙 측정 프록시. 웹은 중앙 1곳만 인증; 이 서비스가 챔버 가용성을
@@ -762,6 +792,7 @@ def create_platform_runtime(
         readiness_service=readiness_service,
         reference_service=reference_service,
         result_selection_service=result_selection_service,
+        published_plan_expectation_service=published_plan_expectation_service,
         project_result_reference_service=project_result_reference_service,
         artifact_custody_service=artifact_custody_service,
         local_auth_service=local_auth_service,

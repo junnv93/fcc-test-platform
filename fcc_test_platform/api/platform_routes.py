@@ -103,6 +103,14 @@ from fcc_test_platform.application.central_project_service import (
 )
 from fcc_test_platform.application.central_read_service import CentralReadService
 from fcc_test_platform.application.central_result_selection_service import CentralResultSelectionService
+from fcc_test_platform.application.published_plan_expectation_service import (
+    PublishedPlanExpectationError,
+    PublishedPlanExpectationNotFound,
+    PublishedPlanExpectationService,
+)
+from fcc_test_platform.application.published_plan_identity_adapter import (
+    PublishedPlanIdentityError,
+)
 from fcc_test_platform.application.central_project_reference_service import (
     CentralProjectReferenceService,
 )
@@ -283,6 +291,7 @@ class PlatformApiAdapter:
         equipment_list_service: Optional['CentralTestEquipmentListService'] = None,
         reference_service: Optional['CentralReferenceService'] = None,
         result_selection_service: Optional[CentralResultSelectionService] = None,
+        published_plan_expectation_service: Optional[PublishedPlanExpectationService] = None,
         project_result_reference_service: Optional[CentralProjectReferenceService] = None,
         artifact_custody_service: Optional['CentralArtifactCustodyService'] = None,
         user_provisioning_service: Optional[UserProvisioningService] = None,
@@ -362,6 +371,10 @@ class PlatformApiAdapter:
         # is reached unwired.
         self._reference_service = reference_service
         self._result_selection_service = result_selection_service
+        # plan-delivery (2026-09-02) — the write that makes central KNOW a
+        # published plan. ``None`` when the progress tier is not wired; the
+        # route then fails loud rather than pretending it registered.
+        self._published_plan_expectation_service = published_plan_expectation_service
         self._project_result_reference_service = project_result_reference_service
         # plot-dual-custody ① — 보관 판정 수신/조회. None 이면 세 handler 가
         # loud 실패한다(조용한 '이상 없음' 금지 — 빈 결과는 통과처럼 읽힌다).
@@ -472,6 +485,7 @@ class PlatformApiAdapter:
             'equipment_list_service': self._equipment_list_service,
             'reference_service': self._reference_service,
             'result_selection_service': self._result_selection_service,
+            'published_plan_expectation_service': self._published_plan_expectation_service,
             'project_result_reference_service': self._project_result_reference_service,
             'artifact_custody_service': self._artifact_custody_service,
             'user_provisioning_service': self._user_provisioning_service,
@@ -693,6 +707,32 @@ class PlatformApiAdapter:
             expected_revision=payload.get('expected_revision'),
             actor_subject=actor,
             reason=payload.get('reason'),
+        )
+
+    def ingest_published_plan_expectation(
+        self, project_id: str, provider_id: str, body: Optional[dict] = None,
+    ) -> dict:
+        """Register a published plan's conditions as this project's denominator.
+
+        ⚠️ **This is also how central learns the plan exists.**
+        ``build_measurement_snapshot`` answers ``published_plan_id is unknown``
+        from the very table this writes, so a plan that never reaches here cannot
+        be measured — the browser can author and publish it and the chamber will
+        still be told the id is not one central knows.
+        """
+        self.authorize('ingest_published_plan_expectation', project_id=project_id)
+        # The actor is required for the same reason every other central write
+        # requires one: an anonymous principal must fail before a transaction
+        # opens. The ingest itself is attributed by the plan, not the caller.
+        self._require_actor('ingest_published_plan_expectation')
+        payload = body or {}
+        return self._require_published_plan_expectation_service(
+            'ingest_published_plan_expectation'
+        ).ingest(
+            project_id, provider_id,
+            plan_id=payload.get('plan_id'),
+            plan_published_at=payload.get('plan_published_at'),
+            conditions=payload.get('conditions') or (),
         )
 
     def list_project_result_references(
@@ -1258,6 +1298,13 @@ class PlatformApiAdapter:
         if self._result_selection_service is None:
             raise RuntimeError(f'{operation} called but result_selection_service is not wired')
         return self._result_selection_service
+
+    def _require_published_plan_expectation_service(self, operation: str):
+        if self._published_plan_expectation_service is None:
+            raise RuntimeError(
+                f'{operation} called but published_plan_expectation_service is not wired'
+            )
+        return self._published_plan_expectation_service
 
     def _require_project_result_reference_service(self, operation: str):
         if self._project_result_reference_service is None:
@@ -2068,6 +2115,12 @@ _PLATFORM_ERROR_CODE_TABLE: tuple[tuple[type, ErrorCode], ...] = (
     (ClaimPairingError, ErrorCode.CLAIM_CONFLICT),
     (CentralReadError, ErrorCode.UPSTREAM_UNAVAILABLE),
     (SelectionRevisionConflictError, ErrorCode.CONFLICT),
+    # plan-delivery (2026-09-02). NotFound(LookupError) → 404 and the malformed
+    # envelope(ValueError) → 422 must both precede the generic ValueError → 400
+    # row; the identity backend failure is a 503 like every other central read.
+    (PublishedPlanExpectationNotFound, ErrorCode.NOT_FOUND),
+    (PublishedPlanExpectationError, ErrorCode.VALIDATION_ERROR),
+    (PublishedPlanIdentityError, ErrorCode.UPSTREAM_UNAVAILABLE),
     (SelectionProviderNotFoundError, ErrorCode.NOT_FOUND),
     (SelectionCandidateNotFoundError, ErrorCode.NOT_FOUND),
     (SelectionCrossScopeError, ErrorCode.NOT_FOUND),
@@ -2494,6 +2547,15 @@ def create_platform_router(
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).select_project_result(
             project_id, provider_id, condition_hash, body,
+        )
+
+    def ingest_published_plan_expectation(
+        project_id: str, provider_id: str,
+        request: Request, body: Optional[dict] = None,
+    ):
+        request, body = _normalize_request_body_args(request, body)
+        return request_adapter(request).ingest_published_plan_expectation(
+            project_id, provider_id, body,
         )
 
     def clear_project_result_selection(
@@ -3005,6 +3067,7 @@ def create_platform_router(
         'list_project_result_selections': list_project_result_selections,
         'list_project_result_attempts': list_project_result_attempts,
         'select_project_result': select_project_result,
+        'ingest_published_plan_expectation': ingest_published_plan_expectation,
         'clear_project_result_selection': clear_project_result_selection,
         'list_project_result_references': list_project_result_references,
         'create_project_result_reference': create_project_result_reference,
