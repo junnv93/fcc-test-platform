@@ -23,14 +23,45 @@ findings 를 지우면 중앙이 **더 새로운 판정의 상세를 잃는다**
 **교체는 전량이다(부분 병합 아님).** 시험원이 파일을 옮기면 그 항목은 목록에서 사라져야
 하는데, 부분 병합이면 이미 해결된 항목이 남아 **없는 일을 하게 만든다.**
 
+**노드가 보내는 ``provider_id`` 는 자연키이고, 이 표의 컬럼은 uuid 다 — 해소는 여기서
+한다 (2026-09-03).** ``artifact_custody_snapshots.provider_id`` 는 ``providers.id`` 를
+가리키는 **uuid** FK 이고, 인입 축이 주고받는 값은 ``providers.provider_id`` **자연키**
+다(계약 SSOT · 중앙 env · 노드 런처가 그것으로 일치한다). 이 어댑터는 2026-09-02 에
+그 자연키를 **verbatim** 으로 uuid 칸에 넣고 있었고, 그래서 그날 이후 보관 보고가
+**전량 거절**됐다. 같은 순간 대조 실측(2026-09-03, 도는 중앙):
+
+    fcc-unlicensed-conducted  →  503  invalid input syntax for type uuid, 행 델타 0
+    70a985fa-…                →  200  accepted
+
+⚠️ **env 를 UUID 로 되돌리는 것은 정공이 아니다.** 인입 축은 자연키가 맞고 형제들이
+모두 해소를 갖고 있었다 — ``CentralBackendSyncAdapter`` 는 platform readiness 가 해소한
+``provider_uuid`` 를 받고, ``PostgresCentralResultSelectionAdapter`` 는 스스로 해소하며,
+``PostgresCentralReferenceWriteAdapter`` 는 INSERT 안에서 providers 를 조인한다.
+**이 어댑터 하나만 그 해소를 건너뛰었다.**
+
+⚠️ **해소를 INSERT 안으로 접지 않는다.** ``INSERT … SELECT p."id" … FROM providers``
+로 접으면 한 줄이 줄지만, 그 순간 **빈 ``RETURNING`` 의 뜻이 둘이 된다** — "중앙이 더
+새로운 관측을 갖고 있다(밀려남)" 와 "그런 provider 가 없다". 위 문단 전체가 존재하는
+이유가 바로 그 반환값 하나로 저장 여부를 가르기 때문이므로, 접으면 **없는 provider 로
+온 보고가 조용한 «밀려남»** 이 된다. 그래서 같은 트랜잭션 안에서 **먼저 해소하고**
+loud-fail 한다.
+
 설계(``PostgresCentralTestEquipmentListWriteAdapter`` 미러): 주입
 ``connection_factory`` / ``%s`` paramstyle / loud-fail / 단일 트랜잭션.
 """
 from __future__ import annotations
 
+import uuid
 from typing import Callable, Mapping, Sequence
 
+# 해소 SQL 은 **다시 적지 않고 빌려온다.** readiness 가 이 레인에서 «자연키 →
+# providers.id» 를 소유하는 자리이고, 여기서 같은 SELECT 를 새로 쓰면 두 벌이 되어
+# providers 의 열이 바뀔 때 한쪽만 따라간다.
+from application.central_contract.central_sync_readiness import (
+    PROVIDER_READINESS_SQL,
+)
 from domain.ports.output.central_artifact_custody_port import (
+    ArtifactCustodyProviderNotFoundError,
     CentralArtifactCustodyError,
 )
 from domain.ports.output.platform_database_port import DbConnection
@@ -42,8 +73,13 @@ __all__ = [
     'UPSERT_SNAPSHOT_SQL',
     'DELETE_FINDINGS_SQL',
     'INSERT_FINDING_SQL',
+    'RESOLVE_PROVIDER_UUID_SQL',
     'PostgresCentralArtifactCustodyWriteAdapter',
 ]
+
+
+#: 자연키 → ``providers.id``. readiness 의 SSOT 를 그대로 쓴다(위 주석 참조).
+RESOLVE_PROVIDER_UUID_SQL = PROVIDER_READINESS_SQL
 
 
 SNAPSHOT_INSERT_COLUMNS: tuple[str, ...] = (
@@ -121,11 +157,12 @@ class PostgresCentralArtifactCustodyWriteAdapter:
         superseded: list[str] = []
 
         def _txn(cursor) -> dict:
+            provider_uuid = self._resolve_provider_uuid(cursor, provider_id)
             for session in sessions:
                 session_key = str(session.get('provider_session_id') or '')
                 counts = session.get('counts') or {}
                 cursor.execute(UPSERT_SNAPSHOT_SQL, (
-                    provider_id,
+                    provider_uuid,
                     chamber_id,
                     session_key,
                     session.get('status'),
@@ -159,6 +196,35 @@ class PostgresCentralArtifactCustodyWriteAdapter:
             return {'accepted': accepted, 'superseded': superseded}
 
         return self._in_transaction(_txn)
+
+    @staticmethod
+    def _resolve_provider_uuid(cursor, provider_id: str) -> str:
+        """자연키를 ``providers.id`` 로 바꾼다. **같은 트랜잭션 안에서** 한다.
+
+        ``uuid.UUID`` 로 정규화하는 것은 모양 검사가 아니라 **경계 방어**다 —
+        registry 행이 깨져 있으면 그 값은 여기서 멈춰야지, 나중에 FK 경계에서
+        「중앙 장애」로 나타나면 안 된다(``CentralSyncProviderIdentity`` 가 같은
+        이유로 같은 정규화를 한다).
+        """
+        key = str(provider_id or '').strip()
+        if not key:
+            raise ArtifactCustodyProviderNotFoundError(
+                'provider_id is required on an artifact custody report'
+            )
+        cursor.execute(RESOLVE_PROVIDER_UUID_SQL, (key,))
+        row = cursor.fetchone()
+        if not row:
+            raise ArtifactCustodyProviderNotFoundError(
+                f'unknown provider_id {key!r}; providers are operator-registered '
+                'reference data, never ingested'
+            )
+        try:
+            return str(uuid.UUID(str(row[0])))
+        except (TypeError, ValueError) as exc:
+            raise CentralArtifactCustodyError(
+                f'central providers registry returned a non-uuid id for '
+                f'{key!r} — the custody FK cannot be satisfied'
+            ) from exc
 
     def _in_transaction(self, body: Callable[[object], object]):
         try:

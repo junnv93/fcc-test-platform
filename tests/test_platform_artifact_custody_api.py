@@ -51,7 +51,18 @@ from fcc_test_contracts.common.sqlite_connection_factory import (  # noqa: E402
 )
 
 
-_PROVIDER = '11111111-1111-1111-1111-111111111111'
+# ⚠️ **자연키다. UUID 를 적으면 안 된다** (2026-09-03).
+# 노드가 봉투에 싣는 값은 ``providers.provider_id`` 자연키이고, 컬럼은 uuid FK 다.
+# 이 상수가 UUID 모양이던 동안 이 파일 전체가 **해소를 한 번도 지나가지 않았고**,
+# 그래서 write 어댑터가 자연키를 uuid 칸에 그대로 넣는 결함을 35개 테스트가 초록으로
+# 통과시켰다(실측 2026-09-03 — 도는 중앙에서는 같은 payload 가 503 이었다).
+# 두 번째 이유는 ``central_pg_sqlite_shim`` 이 ``uuid`` 를 ``TEXT`` 로 매핑한다는
+# 것이다. 즉 이 픽스처는 타입으로도 값으로도 그 결함을 볼 수 없었다.
+_PROVIDER = 'fcc-unlicensed-conducted'
+#: 중앙 registry 가 그 자연키에 대해 갖는 ``providers.id``.
+_PROVIDER_UUID = '11111111-1111-1111-1111-111111111111'
+_OTHER_PROVIDER = 'fcc-other-provider'
+_OTHER_PROVIDER_UUID = '99999999-9999-9999-9999-999999999999'
 _PROJECT = '22222222-2222-2222-2222-222222222222'
 _OTHER_PROJECT = '33333333-3333-3333-3333-333333333333'
 _CHAMBER = 'chamber-a'
@@ -82,6 +93,21 @@ class _CentralFixture:
         ])
         # test_sessions 는 조인 상대다. 전체 스키마를 끌어오지 않고 이 테이블만 세운다.
         create_tables_from_schema(conn, ['test_sessions'])
+        # providers 는 **해소 상대**다 (2026-09-03). 이 표가 없으면 write 어댑터의
+        # 자연키→uuid 해소가 돌지 않고, 그 해소가 이 축의 결함이 있던 자리다.
+        create_tables_from_schema(conn, ['providers'])
+        conn.execute(
+            'INSERT INTO providers (id, provider_id) VALUES (?, ?)',
+            (_PROVIDER_UUID, _PROVIDER),
+        )
+        # 「남의 provider 는 세지 않는다」를 재려면 그쪽도 **등록돼 있어야** 한다.
+        # 등록되지 않은 provider 로 재면 404 를 재는 것이지 집계 범위를 재는 것이
+        # 아니다 — 두 사실이 한 테스트에서 같은 초록으로 접힌다.
+        conn.execute(
+            'INSERT INTO providers (id, provider_id) VALUES (?, ?)',
+            (_OTHER_PROVIDER_UUID, _OTHER_PROVIDER),
+        )
+        conn.commit()
         conn.close()
 
     def factory(self):
@@ -92,7 +118,7 @@ class _CentralFixture:
         conn.execute(
             'INSERT INTO test_sessions (id, provider_id, chamber_id, '
             'provider_session_id, project_id, status) VALUES (?,?,?,?,?,?)',
-            (f'sess-{provider_session_id}', _PROVIDER, chamber_id,
+            (f'sess-{provider_session_id}', _PROVIDER_UUID, chamber_id,
              provider_session_id, project_id, 'completed'),
         )
         conn.commit()
@@ -360,7 +386,7 @@ class TestUnresolvedCountIsScopedToTheProject(CustodyCentralTestCase):
             write_port=PostgresCentralArtifactCustodyWriteAdapter(self.central.factory),
         )
         other.store_report(
-            chamber_id='chamber-z', provider_id='99999999-9999-9999-9999-999999999999',
+            chamber_id='chamber-z', provider_id=_OTHER_PROVIDER,
             sessions=[_session(f'X{i}') for i in range(7)],
         )
         after = self.service.get_project_custody(_PROJECT)['unresolved_session_count']
@@ -382,18 +408,26 @@ class TestUnresolvedCountIsScopedToTheProject(CustodyCentralTestCase):
 class TestCentralNeverJudges(unittest.TestCase):
     """중앙이 파일을 열면 이 축의 전제(원본이 권위, 판정은 노드)가 무너진다."""
 
+    # ⚠️ 경로가 낡아 있었다 (실측 2026-09-03). 레인 분리 전 `src/application/platform/`
+    # 을 가리키고 있었는데 이 저장소에는 `src/` 자체가 없어서, 이 봉인은 **세 subTest
+    # 전부가 FileNotFoundError 로 죽는** 상태였다. 죽은 봉인은 「파일을 안 연다」를
+    # 확인해 주지 않으면서도 초록/빨강 어느 쪽 신호도 주지 못한다 — 늘 빨간 봉인은
+    # 읽히지 않기 때문이다. 아래 존재 단언이 그 재발을 막는다.
     _MODULES = (
-        'application/platform/central_artifact_custody_service.py',
-        'application/platform/central_artifact_custody_read_adapter.py',
-        'application/platform/central_artifact_custody_write_adapter.py',
+        'fcc_test_platform/application/central_artifact_custody_service.py',
+        'fcc_test_platform/application/central_artifact_custody_read_adapter.py',
+        'fcc_test_platform/application/central_artifact_custody_write_adapter.py',
     )
     _FORBIDDEN = {'os', 'pathlib', 'hashlib', 'shutil', 'glob'}
 
     def test_no_filesystem_access_in_the_central_custody_modules(self):
-        src = Path(__file__).resolve().parents[1] / 'src'
+        root = Path(__file__).resolve().parents[1]
         for relative in self._MODULES:
             with self.subTest(module=relative):
-                tree = ast.parse((src / relative).read_text(encoding='utf-8'))
+                path = root / relative
+                # 비-공허성: 파일이 없으면 이 봉인은 아무것도 묻지 않은 것이다.
+                self.assertTrue(path.is_file(), f'{relative} 가 없다 — 경로가 낡았다')
+                tree = ast.parse(path.read_text(encoding='utf-8'))
                 imported = set()
                 for node in ast.walk(tree):
                     if isinstance(node, ast.Import):
