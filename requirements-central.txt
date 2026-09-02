@@ -1,0 +1,87 @@
+# ============================================================================
+# FCC Central Hub — Container runtime dependencies (B1/P13)
+# ============================================================================
+#
+# This is the dependency SSOT for the *central hub* container image
+# (`infra/central/Dockerfile.api`), which runs ONLY the two web surfaces:
+#
+#   * Headless API   — uvicorn --factory headless_api_app:create_app   (:8001)
+#   * Platform API   — uvicorn --factory platform_api_app:create_app   (:8002)
+#
+# It is deliberately a STRICT SUBSET of `requirements-web.txt`: the desktop /
+# chamber-node packages are excluded because the central import closure never
+# reaches them. Chamber nodes stay native (GPIB/USB/Nuitka Windows exe) and
+# keep using `requirements.txt` / `requirements-web.txt`.
+#
+# EXCLUDED ON PURPOSE (and SEALED by tests/test_central_docker_compose.py):
+#   PySide6              — Qt GUI; the central path is headless (no GUI).
+#   pyvisa / pyvisa-py   — GPIB/VISA instrument control; chamber-node only.
+#   selenium             — web automation; device-automation only.
+#   Appium-Python-Client — appium subprocess; chamber-node only (win32 path).
+#   ntplib / pythonping  — NTP/ICMP device utilities; chamber-node only.
+#   pyinstaller          — desktop bundler; release build only.
+#
+# The central runtime is proven win32-free by the import-closure guard in
+# tests/test_central_docker_compose.py (no winsound / thread_sampler
+# GetThreadTimes / appium subprocess in the central composition).
+#
+# Install:  pip install -r requirements-central.txt
+
+# --- Shared application / reporting core (DB-only report reconstruction) ---
+pandas>=1.5.0              # DataFrame reads for reporting / lookup projections
+openpyxl>=3.1.0            # Excel read/write used by report generation
+lxml>=4.9.0               # XML serialization (docx / ZipCellPatcher)
+python-docx>=1.1.0        # Word document manipulation (reporting — row_semantics 단일 채널)
+numpy>=1.24.0             # Numerical computing (reporting/measurement math)
+sqlalchemy>=2.0           # ORM for SQLite-backed headless runtime
+jsonschema>=4.0.0         # Provider registry / policy JSON validation
+filelock>=3.12.0          # Cross-platform file locking
+portalocker>=2.7.0        # File locking (cross-platform, no win32 hard dep)
+requests>=2.31.0          # HTTP client (Teams notification webhook)
+
+# --- Web / API surface ---
+fastapi>=0.136.1          # ASGI framework for both central web surfaces
+uvicorn[standard]>=0.46.0 # ASGI server (--factory entrypoints)
+httpx>=0.28.1             # Async/sync HTTP client (API surface)
+python-multipart>=0.0.9   # FastAPI multipart/form-data routes (test-plan/sample import upload)
+PyJWT[crypto]>=2.8.0      # OIDC JWT validation (Keycloak) + local_jwt issue/verify
+# ⚠️ Was a TRANSITIVE dependency until 2026-08-21 — it imported on the developer
+# machine but nothing declared it, so it would have been ABSENT on a clean central
+# host. Local login has no fallback if the hasher cannot import.
+# 3.2.0 is the measured floor (bcrypt 3.2.2 is what this repository runs on).
+# ⚠️ The 72-byte ceiling is NOT delegated to this library: 3.2.2 silently accepts a
+# 73-byte password and 4.x raises. domain/services/password_policy.py refuses it in
+# both worlds, so the version floor cannot change login behaviour.
+bcrypt>=3.2.0             # Local identity password hashing (EMS parity: cost 12)
+
+# --- Central PostgreSQL ---
+psycopg[binary]>=3.1      # PostgreSQL driver for the platform read API + sync
+
+# --- Shared lanes (public repos — the monorepo CONSUMES these, it no longer contains them) ---
+# 운영자 결정 2026-08-30: 팀원이 fcc-test-platform 에서 직접 개발한다. 그러므로 이 두
+# 이름은 납품물이 아니라 **의존**이고, 정본은 저 레포들에 있다.
+#
+# ⚠️ Pinned to a TAG, never a branch. A moving ref makes "which code ran" impossible
+# to answer after the fact, and this pair carries the central DB and auth surfaces.
+#
+# ⚠️ No credentials appear here. Plain HTTPS resolves through the machine's git
+# credential helper. `git+ssh://` was measured on 2026-08-30 and rejected:
+# `ssh -T git@github.com` => Permission denied (publickey) on this box, so an ssh URL
+# would declare an access path that does not exist here. Embedding a token instead
+# would put a secret in a tracked file.
+#
+# ⚠️ 2026-08-31 정정 — 위 두 줄의 옛 문언은 **없는 것을 둘 가리키고 있었다**:
+#    `TestTheConsumedTagMatchesTheDeclaredVersion` 이라는 이름은 저장소에 **0건**이고,
+#    비교 대상으로 든 `packaging/<lane>/pyproject.toml` 도 컷오버와 함께 떠났다.
+#    없는 게이트를 있다고 적은 문서는, 그 문장을 믿은 사람에게 **지키지 않는 것을
+#    지켜진다고** 말한다.
+#
+# ⚠️ 지금 실재하는 축은 **선언 ↔ 설치**다. 여기 적은 태그와 실제로 설치된 배포판이
+#    어긋나면 「어느 코드가 돌았나」의 답이 선언과 달라지고, 낡은 설치본에서 재면
+#    「저쪽 변경이 반영됐다」와 「반영되지 않았다」가 **같은 초록**이 된다.
+#    실측(2026-08-31): 선언 v0.1.4 · 설치 0.1.3 이었고 그것을 보는 검사가 없었다.
+#    지금은 `tests/test_lane_pin_matches_installed.py` 가 본다 — 레인 목록을 손으로
+#    나열하지 않고 **이 파일에서 파생**하므로 레인이 늘어도 따라간다.
+#    같은 검사가 「태그가 아닌 움직이는 ref」도 막는다(위 규칙을 산문에서 게이트로).
+fcc-test-contracts @ git+https://github.com/junnv93/fcc-test-contracts@v0.1.11
+fcc-test-platform @ git+https://github.com/junnv93/fcc-test-platform@v0.1.8

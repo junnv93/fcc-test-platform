@@ -88,10 +88,31 @@ test = [
 # `application/` 아래 이 폐포뿐이지만, 넓은 패턴은 «이 상자가 application 계층을
 # 받는다» 라고 선언하는 것이고 그것은 ADR-0018 D-5 가 닫아 둔 방향이다 —
 # 다음에 다른 `application/` 하위가 실리면 조용히 딸려 나간다.
-include = ["fcc_test_platform*", "domain*", "application.central_contract*"]
+# ⚠️ 2026-09-03 — 세 이름이 늘었다. 늘린 이유는 «있으면 좋아서» 가 아니라 **실측**이다:
+# 중앙 스택에서 FCC 트리를 없애자 platform-api 의 합성이 이 셋에서 멈췄다.
+#   infrastructure*            챔버 프록시 · 기계 신분증 토큰 · 진행률 브로드캐스터 ·
+#                              샘플재고 Excel. 전부 **중앙 관심사**이고 provider 것이
+#                              아니다 — 추출 때 안 왔을 뿐이다(15파일 2,717줄 이관).
+#   application.session*       `chamber_proxy_adapter` 가 `SESSION_API_ROUTES` 를 쓴다.
+#                              노드 Session API 의 경로 SSOT 이고, 중앙이 그 hop 을
+#                              거는 쪽이므로 소비가 맞다.
+# `application*` 로 넓히지 않는 이유는 아래 옛 주석 그대로다 — 넓은 패턴은 «이 상자가
+# application 계층을 받는다» 는 선언이고 ADR-0018 D-5 가 닫아 둔 방향이다.
+include = [
+    "fcc_test_platform*", "domain*", "infrastructure*",
+    "application.central_contract*", "application.session*",
+]
 # 실측: 상자의 fcc_test_platform/ 에 `__init__.py` 가 없다(PEP 420). domain/ 은
 # 있다. 두 모양이 한 배포에 섞이므로 명시한다.
 namespaces = true
+
+[tool.setuptools]
+# ⚠️ **최상위 모듈은 `packages.find` 가 못 찾는다** — 패키지가 아니기 때문이다.
+# `logger_config` 는 `infrastructure/excel/atomic_write.py` 와
+# `chamber_progress_broadcaster.py` 가 모듈 레벨에서 부른다. 빠지면 휠은 만들어지고
+# 설치도 되는데 **import 하는 순간 죽는다** — 바로 아래 package-data 주석이 적는
+# `decision_catalogue.json` 과 같은 계급의 결함이다.
+py-modules = ["logger_config"]
 
 [tool.setuptools.package-data]
 # ⚠️ **패키지 데이터는 import 가 아니다** — 이 저장소가 이미 한 번 값을 치른 계급이다.
