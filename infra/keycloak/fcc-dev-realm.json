@@ -152,6 +152,47 @@
       ]
     },
     {
+      "clientId": "fcc-central-session",
+      "name": "FCC Central -> Session Node (machine token)",
+      "description": "Central platform-api -> chamber node Session API (client_credentials). Mirror of fcc-chamber-node, opposite direction. Emits permissions=session:control/read/events + aud=fcc-platform-frontend. Secret from FCC_CENTRAL_SESSION_CLIENT_SECRET.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "secret": "${FCC_CENTRAL_SESSION_CLIENT_SECRET}",
+      "fullScopeAllowed": true,
+      "protocolMappers": [
+        {
+          "name": "fcc-central-session-permissions",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "permissions",
+            "claim.value": "session:control session:read session:events",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        },
+        {
+          "name": "fcc-central-session-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "fcc-platform-frontend",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
       "clientId": "fcc-chamber-node",
       "name": "FCC Chamber Node (machine token)",
       "description": "Machine token for native chamber PCs (client_credentials). Emits permissions=platform:chamber + aud=fcc-platform-frontend. Secret from FCC_CHAMBER_CLIENT_SECRET env (never raw in file).",

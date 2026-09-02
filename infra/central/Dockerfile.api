@@ -1,9 +1,15 @@
-# FCC Central Hub — Python web-surface image (B1/P13).
+# FCC Central Hub — **platform** web-surface image (2026-09-03: 레인 분리 완료).
 #
-# Single image, two entrypoints. The `command` in docker-compose.central.yml
-# selects which ASGI factory uvicorn serves:
-#   * headless-api : uvicorn --factory headless_api_app:create_app  --port 8001
-#   * platform-api : uvicorn --factory platform_api_app:create_app  --port 8002
+# ⚠️ **이 이미지는 이제 headless-api 를 담지 않는다.** 2026-09-03 이전에는 하나가 셋을
+# 겸했고(headless-api · platform-api · central-migrate) 빌드 컨텍스트가 FCC 저장소
+# 루트였다 — **그래서 중앙 PC 가 FCC 저장소를 요구했다.** 설계가 아니라 편의였다.
+# 선례는 `web` 이다(2026-08-31): 이 저장소가 빌드하고 FCC 의 compose 는 `build:` 없이
+# `image:` 로 소비만 한다. headless-api 에 그 형태를 반대 방향으로 적용한 것이 이 변경이다.
+#
+# 이 이미지가 서비스하는 것:
+#   * platform-api    : uvicorn --factory fcc_test_platform.api_app:create_app --port 8002
+#   * central-migrate : scripts/platform_db_migrate.py (init job)
+# headless-api 는 provider 저장소가 빌드해 `fcc-unlicensed-headless-api` 로 태그한다.
 #
 # Dependencies come from the lean central SSOT (requirements-central.txt) — a
 # strict subset of requirements-web.txt with the desktop/chamber-node packages
@@ -12,21 +18,115 @@
 FROM python:3.11-slim AS runtime
 
 # Slim images omit curl; the compose healthcheck uses Python stdlib instead.
+# ⚠️ `PYTHONPATH=/app/src` 가 **없다** (2026-09-03). 이 이미지에는 `src/` 가 없고,
+# 모든 것이 설치된 배포판(site-packages)에서 온다. 없는 경로를 PYTHONPATH 에 남기면
+# 「무엇을 읽어 돌았나」가 흐려지고, 나중에 누가 그 경로에 파일을 놓으면 **휠을 조용히
+# 가린다** — 실측 2026-09-03: 옛 이미지에서 `/app/src` 가 휠의 `application`/`domain` 을
+# 정확히 그렇게 가리고 있었고, 그래서 «휠만으로 돈다» 가 참인지 아무도 몰랐다.
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH=/app/src \
     PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
 # Dependency layer first for build-cache friendliness.
+#
+# ⚠️ `git` is installed for the duration of the resolve and then removed.
+# The 2026-08-30 lane cutover turned two dependencies into `git+https://` refs
+# (`fcc-test-contracts`, `fcc-test-platform` — see requirements-central.txt),
+# and pip resolves a VCS ref by SHELLING OUT to git. `python:3.11-slim` ships
+# without git on purpose, so from that cutover onward this image could not be
+# built at all; the failure is `ERROR: Cannot find command 'git'` during pip,
+# not a missing package (measured 2026-09-01). Both repos are public, so no
+# credential reaches this layer — plain HTTPS is enough. git is purged after the
+# install so the runtime image keeps no VCS client.
+#
+# ⚠️ The install is SPLIT IN TWO, and the split is DERIVED from the file — the
+# pins are never restated here, or this layer becomes a second SSOT that drifts.
+#
+#   1. everything that is not a `git+` ref  -> normal resolve
+#   2. the two shared lanes                 -> `--no-deps`
+#
+# Step 2 exists because the lanes' own metadata pins each other and those pins
+# lag. Measured 2026-09-01: `fcc-test-platform` v0.1.6 requires
+# `fcc-test-contracts@v0.1.4` while this file pins v0.1.8, so a single resolve
+# ends in `ResolutionImpossible` and the image cannot be built at all. The pair
+# THIS file declares is the pair that is tested (it is what the dev venv runs and
+# what `tests/test_lane_pin_matches_installed.py` asserts), so this file is the
+# authority on lane versions — which is why that test's own FIX_COMMAND is
+# likewise `pip install --no-deps`. This layer applies the same rule.
+#
+# `--no-deps` drops nothing: measured 2026-09-01, every third-party dependency
+# the two lanes declare (PyJWT[crypto], fastapi, psycopg[binary], bcrypt) is
+# already required by this file at the same floor. Only `pytest` is unlisted and
+# the runtime image does not run tests.
+#
+# ⚠️ **`fcc-test-platform` 자신은 git 태그가 아니라 이 체크아웃에서 설치된다**
+# (운영자 판정 2026-09-03). 이 저장소가 자기 이미지를 빌드하면서 자기를 태그로 받으면
+# 「clone → up」이 **clone 한 코드와 다른 코드**를 돌린다 — 두 벌이 생기고 사본은
+# 갈라진다. 실측이 이미 그 상태였다: 선언 v0.1.6 · 설치 0.1.8.
+# 그래서 아래 grep 은 `fcc-test-platform` 줄을 **뺀다**(requirements-central.txt 는
+# 그대로 두어 provider 이미지가 계속 쓴다 — 그쪽은 이 레인의 소비자다).
 COPY requirements-central.txt ./
-RUN pip install --upgrade pip \
-    && pip install -r requirements-central.txt
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && pip install --upgrade pip \
+    && grep -v '@[[:space:]]*git+' requirements-central.txt > /tmp/req-third-party.txt \
+    && grep '@[[:space:]]*git+' requirements-central.txt \
+       | grep -v '^fcc-test-platform' > /tmp/req-lanes.txt \
+    && test -s /tmp/req-lanes.txt \
+    && pip install -r /tmp/req-third-party.txt \
+    && pip install --no-deps -r /tmp/req-lanes.txt \
+    && rm -f /tmp/req-third-party.txt /tmp/req-lanes.txt \
+    && apt-get purge -y --auto-remove git \
+    && rm -rf /var/lib/apt/lists/*
 
-# Application source + central DB schema/migration artifacts.
-COPY src/ ./src/
+# ── 이 저장소 자신 ────────────────────────────────────────────────────────────
+# ⚠️ `COPY src/` 가 **없다**. 그 한 줄이 FCC 트리를 요구하던 유일한 이유였다.
+# 실측 2026-09-03: 그것을 없애기 전에 두 결합을 먼저 끊어야 했다 —
+#   (a) `api_composition` 이 provider 의 UI descriptor 빌더를 import 했다
+#       → 런타임 JSON 등록으로 바꿨다(`provider_ui_descriptor_loader`).
+#   (b) 중앙 소유 infrastructure 15파일(2,717줄)이 FCC 에 남아 있었다 → 이관했다.
+# 끊은 뒤 실측: FCC 트리 0으로 `create_app()` 성공, OpenAPI 64경로가 도는 서비스와 동일.
+COPY pyproject.toml README.md ./
+COPY fcc_test_platform/ ./fcc_test_platform/
+COPY application/ ./application/
+COPY domain/ ./domain/
+COPY infrastructure/ ./infrastructure/
+COPY logger_config.py ./
+# ⚠️ 설치 뒤 소스를 지운다. 남기면 `/app` 이 cwd 이므로 **휠보다 먼저 import 되어**
+# 휠을 조용히 가린다 — 이 이미지가 「휠만으로 돈다」를 주장하는데 실제로는 트리로 도는
+# 상태가 되고, 둘이 갈라져도 아무 데도 드러나지 않는다. `build/`·`*.egg-info` 도 같은
+# 이유로 함께 지운다(setuptools 가 만든다).
+RUN pip install --no-deps . \
+    && rm -rf /app/fcc_test_platform /app/application /app/domain /app/infrastructure \
+       /app/logger_config.py /app/pyproject.toml /app/README.md \
+       /app/build /app/*.egg-info
+
+# 중앙 DB 스키마/마이그레이션 산출물.
+# ⚠️ `FCC_PLATFORM_SCHEMA_PATH` 가 이것을 가리켜야 한다(compose 가 준다). 휠은 이
+# JSON 을 담지 않고 `rbac_role_catalog` 는 **import 시점**에 그것을 읽는다 — 실측
+# 2026-09-03: env 없이 site-packages 에서 import 하면 `FileNotFoundError`.
 COPY docs/platform/ ./docs/platform/
+# ⚠️ **마이그레이션은 이 저장소에서 `migrations/` 에 있고 러너는 `docs/platform/
+# migrations` 를 찾는다.** 두 이름이 다른 것은 실수가 아니다 — 이 레인은 그 트리를
+# 상자 루트로 배달하고(`platform_db_migrate.py` 의 주석이 그 사실을 적는다),
+# `resolve_repo_artifact` 가 저장소 안에서는 그 차이를 흡수한다. **이미지 안에서는
+# 흡수하지 못한다** (조상 walk 가 붙잡을 저장소 표식이 없다).
+#
+# 실측 2026-09-03 — 이 줄이 없던 빌드에서: 이미지 안 마이그레이션 파일 **0개**,
+# 러너 해소 경로 `/docs/platform/migrations`(없음). 그 상태의 `central-migrate` 는
+# 실패하지 않고 **`pending=[]` 로 조용히 성공**한다. 새 중앙 PC 에서 그것은 «빈
+# 데이터베이스인데 마이그레이션은 다 됐다»가 되고, 뒤따르는 모든 실패가 원인과
+# 무관해 보인다.
+# 상자 표식을 함께 싣는다. `resolve_repo_artifact` 는 이 기록으로 «이 레인은
+# docs/platform/migrations 를 migrations/ 로 배달한다» 를 알고, 그래서 **부르는
+# 쪽이 경로를 몰라도 된다** — compose 의 migrate 잡도, 드리프트 게이트의 프로브도
+# 같은 한 메커니즘을 쓴다. 경로를 양쪽에 손으로 적으면 두 SSOT 가 되어 하나가 먼저
+# 낡는다(실측 2026-09-03: 표식 없이 프로브가 `/docs/platform/migrations` 로 해소돼
+# 판정 불가가 났다).
+COPY .extraction-layout.json ./
+COPY migrations/ ./migrations/
 # Incremental migration runner (self-contained single file) — run by the
 # `central-migrate` init job in docker-compose.central.yml before the API serves.
 COPY scripts/platform_db_migrate.py ./scripts/platform_db_migrate.py

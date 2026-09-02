@@ -36,6 +36,7 @@ from typing import Mapping, Optional, Protocol, Sequence, runtime_checkable
 __all__ = [
     'CentralArtifactCustodyError',
     'ArtifactCustodyNotFoundError',
+    'ArtifactCustodyProviderNotFoundError',
     'CentralArtifactCustodyWritePort',
     'CentralArtifactCustodyReadPort',
 ]
@@ -47,6 +48,22 @@ class CentralArtifactCustodyError(RuntimeError):
 
 class ArtifactCustodyNotFoundError(CentralArtifactCustodyError):
     """스냅샷이 없거나 이 프로젝트의 것이 아니다."""
+
+
+class ArtifactCustodyProviderNotFoundError(CentralArtifactCustodyError):
+    """보고에 실린 ``provider_id`` 가 중앙 registry 에 없다 (2026-09-03).
+
+    ⚠️ **이것을 503 으로 내보내면 안 된다.** provider 는 운영자가 등록하는 참조
+    데이터이지 인입되는 것이 아니므로, 없는 provider 로 보고가 오는 것은 **클라이언트
+    잘못**이다. 서비스 docstring 의 Platform Boundary Honesty 가 ``status`` 어휘에
+    대해 말하는 것과 같은 규율이고, 형제 ``ReferenceProviderNotFoundError`` 가 같은
+    이유로 404 다.
+
+    이 구분이 필요한 이유가 실측으로 있다(2026-09-03): 자연키를 uuid 컬럼에 그대로
+    넣던 동안 이 축은 ``503 invalid input syntax for type uuid`` 를 냈고, 그것은
+    **중앙 장애처럼 읽혔다.** 운영자는 컨테이너를 보러 갔지 보낸 값을 보러 가지
+    않는다. 해소를 붙이면서 그 오독의 자리도 함께 없앤다.
+    """
 
 
 @runtime_checkable

@@ -49,6 +49,10 @@ DEFAULT_MIGRATIONS_DIR = resolve_repo_artifact(__file__, 'docs/platform/migratio
 #: Whole-run serialisation lock (session-scoped; held across every per-migration tx).
 RUN_LOCK_KEY = 'fcc-platform:central-db-migrate'
 LEDGER_TABLE = 'schema_migrations'
+
+
+class MigrationsDirectoryUnavailable(RuntimeError):
+    """마이그레이션을 찾지 못했다. **0건으로 강등하지 않는다** (2026-09-03)."""
 #: NNN_<slug>.sql — the numeric prefix orders; the full stem is the ledger version.
 _MIGRATION_RE = re.compile(r'^(?P<num>\d+)_.+\.sql$')
 # Liquibase formatted-SQL convention. The keyword is the contiguous token
@@ -120,7 +124,25 @@ def discover_migrations(migrations_dir: Path = DEFAULT_MIGRATIONS_DIR) -> list[t
 
     ``version`` is the filename stem (e.g. ``001_initial_central_db``). Files that
     do not match ``NNN_*.sql`` are ignored. Duplicate numeric prefixes raise.
+
+    ⚠️ **없는/빈 디렉터리는 «마이그레이션 0건» 이 아니라 «찾지 못했다» 다** (봉인
+    2026-09-03). 이 함수는 그 둘을 같은 ``[]`` 로 답하고 있었고, 그 위의 ``migrate`` 는
+    그것을 ``pending=[]`` — 즉 **성공** — 으로 보고했다. 실측 2026-09-03: 컨테이너
+    이미지에 마이그레이션 파일을 하나도 싣지 않은 빌드에서 ``central-migrate`` 가
+    성공으로 끝났다. 새 중앙 PC 에서 그 답의 뜻은 «빈 데이터베이스인데 스키마는
+    최신» 이고, 뒤따르는 모든 실패가 원인과 무관해 보인다.
+
+    진짜 0건은 실재하지 않는다 — 이 레인은 ``001_initial_central_db.sql`` 을 항상
+    갖는다(그것이 ``schema_migrations`` 원장 자체를 만든다). 그러므로 0건은 언제나
+    **경로가 틀렸다**는 뜻이고, 그렇게 말한다.
     """
+    if not migrations_dir.is_dir():
+        raise MigrationsDirectoryUnavailable(
+            f'마이그레이션 디렉터리가 없다: {migrations_dir}\n'
+            '  이것은 «적용할 것이 없다» 가 아니라 «찾지 못했다» 다.\n'
+            '  --migrations-dir 로 경로를 명시하라(컨테이너 이미지는 상자 표식이 '
+            '없어 자동 해소가 성립하지 않는다).'
+        )
     found: list[tuple[int, str, Path]] = []
     seen_nums: dict[int, str] = {}
     for path in sorted(migrations_dir.glob('*.sql')):
@@ -135,6 +157,12 @@ def discover_migrations(migrations_dir: Path = DEFAULT_MIGRATIONS_DIR) -> list[t
         seen_nums[num] = path.name
         found.append((num, path.stem, path))
     found.sort(key=lambda item: item[0])
+    if not found:
+        raise MigrationsDirectoryUnavailable(
+            f'{migrations_dir} 에 NNN_*.sql 이 하나도 없다.\n'
+            '  이 레인은 001_initial_central_db.sql 을 항상 갖는다 — 0건은 «적용할 '
+            '것이 없다» 가 아니라 경로가 틀렸다는 뜻이다.'
+        )
     return [(stem, path) for _num, stem, path in found]
 
 
