@@ -1260,6 +1260,12 @@
               "null"
             ]
           },
+          "generated_from_capability": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "generation_key": {
             "type": [
               "string",
@@ -1280,6 +1286,12 @@
           },
           "origin": {
             "type": "string"
+          },
+          "packet": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "scope_revision": {
             "type": [
@@ -1947,7 +1959,6 @@
             ]
           },
           "template_profile": {
-            "default": "fcc-default",
             "type": "string"
           }
         },
@@ -3191,6 +3202,7 @@
     "x-fcc-permissions": {
       "headless:control": "Submit/stop measurement jobs (write surface).",
       "headless:read": "Read headless status, jobs, results, artifacts.",
+      "platform:chamber": "Chamber node machine token — read the published plan this chamber was told to measure.",
       "public": "No authorization required — health/contract discovery endpoints.",
       "report_automation:control": "Submit/cancel report-automation requests.",
       "report_automation:read": "Read report-automation queue stats + request/outputs.",
@@ -6160,6 +6172,79 @@
           "headless"
         ],
         "x-fcc-permission": "test_plan:read"
+      }
+    },
+    "/headless/test-plan/publications/{plan_id}": {
+      "get": {
+        "operationId": "get_published_test_plan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishedTestPlanView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Contract validation failed (ApiContractError)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "No publication with that plan_id. The identifier is opaque and server-generated, so an unknown one is a genuine not-found — not a scope refusal."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unclassified server error (INTERNAL_ERROR)."
+          }
+        },
+        "summary": "Read one immutable published plan by its opaque plan_id, rows included (condition_hash + the display fields the Test Plan cells are rendered from). The chamber-facing counterpart of the publish response — a node measuring a browser-authored plan has no local copy to seed from. Not project-scoped: the caller is a machine principal with no project membership. 404 when no publication carries that id.",
+        "tags": [
+          "headless"
+        ],
+        "x-fcc-permission": "platform:chamber"
       }
     },
     "/headless/ui-descriptor": {

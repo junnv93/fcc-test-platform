@@ -15,7 +15,8 @@
 from __future__ import annotations
 
 import json
-from typing import Mapping, Optional, Sequence
+from datetime import datetime, timezone
+from typing import Callable, Mapping, Optional, Sequence
 
 from application.central_contract.envelope_helpers import parse_timestamp
 from domain.models.artifact_custody import CustodyStatus
@@ -55,9 +56,17 @@ class ArtifactCustodyReportRejected(ValueError):
 class CentralArtifactCustodyService:
     """보관 스냅샷 수신 + 프로젝트 축 조회."""
 
-    def __init__(self, *, read_port=None, write_port=None) -> None:
+    def __init__(
+        self, *, read_port=None, write_port=None,
+        clock: Optional[Callable[[], datetime]] = None,
+    ) -> None:
         self._read_port = read_port
         self._write_port = write_port
+        #: 수신 시각을 찍는 시계. 형제 수신 서비스
+        #: (``chamber_result_ingestion_service``)와 **같은 모양**이다 — 같은 이름의
+        #: 칸(``received_at``)을 같은 계층에서 찍으므로 두 경계가 서로 다른 규약을
+        #: 갖지 않게 한다.
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
 
     # ── 수신 ────────────────────────────────────────────────────────────────
 
@@ -73,10 +82,17 @@ class CentralArtifactCustodyService:
         """
         if self._write_port is None:
             raise RuntimeError('CentralArtifactCustodyService has no write port')
+        # ⚠️ **도착 시각이지 완료 시각이 아니다.** 이름이 ``received_at`` 이므로 쓰기
+        # *이전* 에 찍는다 — 느린 쓰기가 도착을 늦게 보이게 하면, 노드가 순서를 뒤집어
+        # 보낸 것과 중앙이 느렸던 것을 사후에 구분할 수 없다.
+        received_at = self._clock().astimezone(timezone.utc).isoformat()
         prepared = [self._prepare_session(session) for session in sessions]
-        return self._write_port.store_report(
+        receipt = self._write_port.store_report(
             provider_id=provider_id, chamber_id=chamber_id, sessions=prepared,
         )
+        # 포트가 돌려준 dict 를 제자리에서 고치지 않는다 — 어댑터가 자기 캐시 행을
+        # 돌려주는 구현이면 그 mutation 이 어댑터 안으로 새어 들어간다.
+        return {**(receipt or {}), 'received_at': received_at}
 
     def _prepare_session(self, session: Mapping) -> dict:
         if not isinstance(session, Mapping):
