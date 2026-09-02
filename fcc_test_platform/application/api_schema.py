@@ -162,6 +162,11 @@ _OPERATION_SUMMARIES: dict[str, str] = {
         'Append a manual result selection event with an expected-revision CAS; '
         'stale writes return 409 and do not append an event.'
     ),
+    'ingest_published_plan_expectation': (
+        'Register a published test plan centrally: its conditions become this '
+        "project's progress denominator AND the answer to whether central knows "
+        'the plan id at all. Idempotent by (project, provider, plan, condition).'
+    ),
     'clear_project_result_selection': (
         'Append a clear event for one exact provider-scoped result partition.'
     ),
