@@ -1888,7 +1888,13 @@ class PlatformApiAdapter:
             'chamber_id': chamber_id,
             'accepted': receipt.get('accepted', []),
             'superseded': receipt.get('superseded', []),
-            'received_at': _utc_now_iso(),
+            # ⚠️ 시각은 **서비스가 찍는다**. 여기서 벽시계를 부르지 않는 것이 이 모듈의
+            # import 집합이 이미 단언하던 사실이고(이 파일에는 ``datetime`` import 가
+            # 없다), 그것을 어긴 한 줄이 정확히 이 자리에서 ``NameError`` 로 죽었다 —
+            # 세 형제 서비스에 각각 정의된 ``_utc_now_iso`` 를 이 계층으로 복사해 온
+            # 것이라, 이름은 있어 보이는데 여기엔 없었다. 같은 이름의 칸을 찍는 형제
+            # 수신 서비스(``chamber_result_ingestion_service``)도 서비스에서 찍는다.
+            'received_at': receipt.get('received_at'),
         }
 
     def get_project_artifact_custody(self, project_id: str) -> dict:
