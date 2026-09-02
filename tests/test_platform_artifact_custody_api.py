@@ -468,6 +468,63 @@ class TestTheNodeScopedOperationsAreBoundToTheirChamber(unittest.TestCase):
                 'chamber-a', {'chamber_id': 'chamber-a', 'provider_id': 'p', 'sessions': []},
             )
 
+    def test_the_bound_chamber_reaches_the_service_and_gets_a_receipt(self):
+        """비-공허성 — **이 operation 의** 정당한 호출이 라우트 본문 끝까지 간다.
+
+        ⚠️ 이 검사가 없던 것이 2026-09-02 결함의 기전이다. 위 세 형제는 전부 *거부*
+        축을 재고, 이 클래스의 비-공허성 증인은 **다른 operation**
+        (``get_chamber_settings``)에 붙어 있었다. 그래서 봉인 셋이 나란히 초록인 채로
+        라우트 본문 마지막 줄의 ``NameError`` 가 살아남았다 — 배포된 v0.1.7 에서
+        **한 번도 성공한 적이 없는** 라우트다.
+
+        거부 축만 덮인 operation 은 「막는다」는 증명하고 「통과시킨다」는 증명하지
+        않는다. 두 축은 같은 초록을 낸다.
+        """
+        from datetime import datetime, timezone
+
+        from fcc_test_platform.application.central_artifact_custody_service import (
+            CentralArtifactCustodyService,
+        )
+        from application.central_contract.api_vocabulary import (
+            ARTIFACT_CUSTODY_REPORT_SCHEMA_VERSION,
+        )
+
+        class _WritePort:
+            def store_report(self, *, provider_id, chamber_id, sessions):
+                return {
+                    'accepted': [s['provider_session_id'] for s in sessions],
+                    'superseded': [],
+                }
+
+        frozen = datetime(2026, 9, 2, 3, 4, 5, tzinfo=timezone.utc)
+        adapter = self._adapter(
+            artifact_custody_service=CentralArtifactCustodyService(
+                write_port=_WritePort(), clock=lambda: frozen,
+            ),
+        )
+        receipt = adapter.push_artifact_custody_report('chamber-a', {
+            'chamber_id': 'chamber-a',
+            'provider_id': 'fcc',
+            'sessions': [{
+                'provider_session_id': 'sess-1',
+                'status': 'verified',
+                'observed_at': '2026-09-02T03:00:00+00:00',
+                'counts': {'verified': 4, 'missing': 0, 'diverged': 0, 'unknown': 0},
+                'findings': [],
+            }],
+        })
+
+        self.assertEqual(
+            receipt['schema_version'], ARTIFACT_CUSTODY_REPORT_SCHEMA_VERSION,
+        )
+        self.assertEqual(receipt['chamber_id'], 'chamber-a')
+        self.assertEqual(receipt['accepted'], ['sess-1'])
+        self.assertEqual(receipt['superseded'], [])
+        # ⚠️ 「문자열이다」가 아니라 **주입한 값 그대로**를 단언한다. 시계가 서비스로
+        # 내려가 있으므로 이 값은 결정적이고, 라우트가 다시 벽시계를 부르면 여기서
+        # 어긋난다.
+        self.assertEqual(receipt['received_at'], frozen.isoformat())
+
     def test_a_node_cannot_read_another_chambers_settings(self):
         from fcc_test_platform.api.platform_routes import (
             PlatformAuthorizationError,
