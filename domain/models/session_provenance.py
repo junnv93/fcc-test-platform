@@ -18,9 +18,10 @@ PC 단위 모드 배타 판정(운영자 2026-08-16)은 *"프로젝트는 시작
 
     이 측정이 **웹 세션으로** 왔나.
 
-*"GUI 였나"* 는 provider 어휘다 — FCC 의 GUI · KC 의 MPTool · mmWave 의 자기 프로그램은
-서로 다른 물건이고, 그것을 공통 enum 으로 만들면 provider 가 늘 때마다 중앙 마이그레이션이
-필요해진다(``CLAUDE.md`` §Chamber Equipment Config SSOT 가 이미 이름 붙인 형태).
+*"GUI 였나"* 는 provider 어휘다 — FCC 와 KC 는 각자 자기 GUI 를 돌리고(진입점 이름까지
+같다) mmWave 는 자기 프로그램을 돌린다. **이름이 같아도 다른 물건**이고 그 아래 DUT 제어는
+Appium · Realtek MPTool · QRCT 로 또 갈리므로, 그것을 공통 enum 으로 만들면 provider 가
+늘 때마다 중앙 마이그레이션이 필요해진다(``CLAUDE.md`` §Chamber Equipment Config SSOT 가 이미 이름 붙인 형태).
 웹 세션을 받지 않은 PC 가 **무엇으로** 측정했는지는 provider 의 일이고 중앙은 알지 않는다.
 
 **추론이 아니라 선언이다.** 오늘 간접 신호가 몇 개 있다 — 업로드 경로 문자열, 러너 클래스,
