@@ -70,14 +70,29 @@ class TestTheShadowingAxis(unittest.TestCase):
         # 운영자가 무엇을 치울지 알 수 없다.
         self.assertIn('/repo/src/domain', v.detail)
 
-    def test_unresolvable_is_undetermined_not_ok(self):
+    def test_unresolvable_is_not_applicable_not_undetermined(self):
+        """⚠️ 정정 2026-09-03 — 처음 판은 이것을 판정 불가로 냈다.
+
+        그래서 정상 환경에서 게이트가 **영구 amber** 였다(`_bcrypt` · `Shiboken` —
+        배포판 메타데이터가 최상위로 기록했지만 실제로는 하위 모듈이다).
+        **해소되지 않는 이름은 가려질 수가 없다** — 가릴 대상이 없기 때문이다.
+        「확인하지 못했다」가 아니라 「해당 없다」이고, 둘을 합치면 *판정 불가* 라는
+        상태가 의미를 잃는다.
+        """
         v = guard.judge_name(
             'ghost', ['some-dist'], {'some-dist': Path('/site-packages')},
             find_spec=_fixed({}),
         )
         self.assertEqual(v.state, 'unresolvable')
-        self.assertTrue(v.is_undetermined)
+        self.assertTrue(v.is_not_applicable)
+        self.assertFalse(v.is_undetermined)
         self.assertFalse(v.is_violation)
+        # 그리고 종료 코드를 바꾸지 않는다.
+        code, report = guard.render([
+            v, guard.NameVerdict('a', ('d',), '/sp/a', '/sp', 'ok'),
+        ])
+        self.assertEqual(code, guard.EXIT_OK)
+        self.assertIn('해당없음', report)
 
 
 class TestTheSharedNamespaceAxisIsAnObservation(unittest.TestCase):
@@ -133,7 +148,7 @@ class TestExitCodesKeepTheThreeStatesApart(unittest.TestCase):
         self.assertEqual(guard.render([bad])[0], guard.EXIT_VIOLATION)
 
     def test_undetermined_is_two_not_zero(self):
-        unk = guard.NameVerdict('x', ('d',), None, None, 'unresolvable', 'x')
+        unk = guard.NameVerdict('x', ('d',), '/elsewhere/x', None, 'editable', 'x')
         code, report = guard.render([unk])
         self.assertEqual(code, guard.EXIT_UNDETERMINED)
         self.assertIn('판정 불가는 통과가 아니다', report)

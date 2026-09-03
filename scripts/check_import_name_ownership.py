@@ -115,7 +115,23 @@ class NameVerdict:
 
     @property
     def is_undetermined(self) -> bool:
-        return self.state in ('editable', 'unresolvable')
+        # ⚠️ **`unresolvable` 은 여기 없다 — 그리고 그것이 정정이다** (2026-09-03).
+        # 처음 판은 그것을 판정 불가로 냈고, 그래서 정상 환경에서 게이트가 **영구
+        # amber** 였다(`_bcrypt` · `Shiboken` — 배포판 메타데이터가 최상위로 기록했지만
+        # 실제로는 C 확장/하위 모듈이라 최상위 조회가 실패한다).
+        #
+        # 그것은 이 축의 자기 오류다: **해소되지 않는 이름은 가려질 수가 없다** —
+        # 가릴 대상이 없기 때문이다. 즉 「확인하지 못했다」가 아니라 **「해당 없다」**이고,
+        # 둘을 한 값으로 내면 *판정 불가* 라는 상태 자체가 의미를 잃는다. 영구 amber 인
+        # 게이트는 읽히지 않게 되고, 읽히지 않는 게이트는 없는 게이트다.
+        #
+        # editable 은 남는다 — 그쪽은 **가려질 수 있는데 우리가 판정하지 않기로** 한 것이라
+        # 진짜 판정 불가다.
+        return self.state == 'editable'
+
+    @property
+    def is_not_applicable(self) -> bool:
+        return self.state == 'unresolvable'
 
     @property
     def is_observation(self) -> bool:
@@ -267,6 +283,7 @@ def render(verdicts: list[NameVerdict]) -> tuple[int, str]:
     violations = [v for v in verdicts if v.is_violation]
     undetermined = [v for v in verdicts if v.is_undetermined]
     observations = [v for v in verdicts if v.is_observation]
+    not_applicable = [v for v in verdicts if v.is_not_applicable]
     ok = [v for v in verdicts if v.state == 'ok']
 
     lines: list[str] = []
@@ -276,13 +293,18 @@ def render(verdicts: list[NameVerdict]) -> tuple[int, str]:
         lines.append(f'  판정불가 {v.name}  — {v.detail}')
     for v in observations:
         lines.append(f'  관측     {v.name}  — {v.detail} (종료 코드를 바꾸지 않는다)')
+    if not_applicable:
+        lines.append(
+            f'  해당없음 {len(not_applicable)}건 — 최상위로 해소되지 않는 이름이라 '
+            '가려질 수가 없다: ' + ', '.join(v.name for v in not_applicable[:6])
+        )
 
     # ⚠️ 비-공허성 ② — 몇 개를 실제로 관측했는지 매번 말한다. 「초록」만 찍으면
     # 아무것도 안 본 초록과 구분되지 않는다.
     tally = (
         f'import 이름 소유권: 판정 {len(verdicts)}건 '
         f'(일치 {len(ok)} · 위반 {len(violations)} · 판정 불가 {len(undetermined)}'
-        f' · 관측 {len(observations)})'
+        f' · 관측 {len(observations)} · 해당없음 {len(not_applicable)})'
     )
 
     if violations:
