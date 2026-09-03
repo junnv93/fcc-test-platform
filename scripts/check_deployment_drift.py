@@ -268,6 +268,17 @@ def judge_public_host(public_host: str | None, host_addresses: Sequence[str] | N
     if not host_addresses:
         return AxisResult('public-host', VERDICT_UNKNOWN, '이 PC 의 주소 목록을 읽지 못했다')
     if public_host not in host_addresses:
+        # ⚠️ WSL 인데 Windows 주소를 못 읽었으면 **DRIFT 가 아니라 판정 불가**다.
+        # 그 경우 「설정이 틀렸다」와 「축이 볼 수 없다」가 같은 값이 되고,
+        # 중앙 PC 가 WSL 이므로 그것은 영원한 오탐이 된다.
+        if is_wsl() and not any(_is_windows_host_candidate(a) for a in host_addresses):
+            return AxisResult(
+                'public-host',
+                VERDICT_UNKNOWN,
+                f'PUBLIC_HOST={public_host} 가 WSL VM 주소 {list(host_addresses)} 에 '
+                '없고, Windows 호스트 주소를 읽지 못했다 — 이 축이 판정할 수 없다. '
+                '(LAN 이 보는 주소는 Windows 쪽이고 WSL2 가 포워딩한다.)',
+            )
         return AxisResult(
             'public-host',
             VERDICT_DRIFT,
@@ -473,11 +484,71 @@ def collect_auth_pairing_exit(
     return None if result.returncode == 127 else result.returncode
 
 
+#: WSL VM 이 자기에게 주는 사설 대역. **이 밖의 주소가 목록에 있으면**
+#: Windows 쪽을 실제로 읽었다는 뜻이다 — 「읽었는데 없다」와 「못 읽었다」를 가른다.
+_WSL_PRIVATE_PREFIXES = ('172.', '10.255.', '127.')
+
+
+def _is_windows_host_candidate(address: str) -> bool:
+    return not address.startswith(_WSL_PRIVATE_PREFIXES)
+
+
+def is_wsl() -> bool:
+    """이 프로세스가 WSL 안에서 도는가.
+
+    ``/proc/version`` 에 ``microsoft`` 가 있으면 WSL 이다 — 커널 자신이 답하므로
+    환경변수(``WSL_DISTRO_NAME``)보다 지우기 어렵다.
+    """
+    try:
+        return 'microsoft' in Path('/proc/version').read_text(encoding='utf-8').lower()
+    except OSError:
+        return False
+
+
+def collect_windows_host_addresses(runner: Runner) -> list[str] | None:
+    """Windows 호스트의 IPv4 주소. **WSL 에서만 의미가 있다.**
+
+    ⚠️ **이 함수가 없던 동안 이 축은 중앙 PC 에서 영원히 DRIFT 였다** (실측 2026-09-03).
+
+    중앙 PC 는 WSL 이고, LAN 이 보는 주소(`PUBLIC_HOST`)는 **Windows 호스트**의
+    것이다. WSL VM 은 `172.x` 만 갖고 그 주소를 **자기 인터페이스로 갖지 않는다** —
+    WSL2 가 포워딩할 뿐이다. 그래서 `hostname -I` 만 보면
+    *「PUBLIC_HOST 가 이 PC 주소에 없다」* 가 **항상** 참이 된다.
+
+    실측: 중앙 PC 에서 `PUBLIC_HOST=10.206.34.233` 이 DRIFT 로 나왔고,
+    `powershell.exe Get-NetIPAddress` 로 물으니 **그 주소가 거기 있었다.**
+    설정은 옳았고 **축이 볼 수 없었다.**
+
+    > 그리고 오탐을 내는 게이트는 삭제된다 — 이 저장소가 반복해서 낸 결론이다.
+
+    ⚠️ 실패는 **조용히 None** 이다(예외 아님). powershell 이 없거나 느린 것은
+    *「Windows 주소가 없다」* 가 아니라 *「물어보지 못했다」* 이고, 호출자가 그 둘을
+    가른다.
+    """
+    result = runner([
+        'powershell.exe', '-NoProfile', '-NonInteractive', '-Command',
+        'Get-NetIPAddress -AddressFamily IPv4 | Select-Object -ExpandProperty IPAddress',
+    ])
+    if not result.ok:
+        return None
+    addresses = [
+        line.strip() for line in result.stdout.splitlines()
+        if _looks_like_ipv4(line.strip())
+    ]
+    return addresses or None
+
+
 def collect_host_addresses(runner: Runner) -> list[str] | None:
     result = runner(['hostname', '-I'])
     if not result.ok:
         return None
     addresses = result.stdout.split()
+    if is_wsl():
+        # ⚠️ **합친다, 대체하지 않는다.** WSL VM 주소도 여전히 유효한 답이다
+        # (컨테이너끼리는 그쪽으로 통신한다). 대체하면 그 경우를 잃는다.
+        windows = collect_windows_host_addresses(runner)
+        if windows is not None:
+            addresses = addresses + [a for a in windows if a not in addresses]
     return addresses or None
 
 
@@ -531,9 +602,53 @@ def run_all_axes(
     return results
 
 
-def format_report(results: Sequence[AxisResult]) -> str:
+def describe_measuring_host(runner: Runner) -> str:
+    """**어느 기계에서 쟀는지** 한 줄. 축이 아니라 머리말이다.
+
+    ⚠️ **오늘 이 자리에 네 번 걸렸다** (실측 2026-09-03).
+
+    이 계열은 개발 PC 와 중앙 PC 에서 **같은 이름의 컨테이너**를 돌린다
+    (`fcc-central-platform-api` · `fcc-central-keycloak` · …). 그래서
+    `docker compose ps` · `docker inspect` · 이 게이트의 출력이 **두 기계에서
+    완전히 같은 모양**이고, 그 출력을 복사해 옮기면 **기계 축이 사라진다.**
+
+    실측된 네 건: 한 세션이 개발 PC 관측으로 「중앙이 서비스 가능하다」를 두 번
+    보고했고, 다른 세션이 개발 PC 의 Keycloak 을 중앙으로 읽었으며, 세 번째가
+    그 보고를 근거로 운영자에게 전달했다. **매번 사람이 「여기는 개발 PC야」라고
+    알려줘서** 정정됐다.
+
+    가른 것은 결국 **도달성**이었다 — `curl 10.206.34.233:8081` 이 닿느냐.
+    이름·포트·컨테이너 목록은 어느 것도 그 축을 갖지 않았다.
+
+    > **어느 기계인지는 이름이 아니라 도달성으로 판정한다.**
+
+    그러므로 처방은 「더 주의하자」가 아니라 **관측이 스스로 기계를 말하게 하는
+    것**이다. 이 한 줄이 있었으면 네 건 중 셋은 복사하는 순간 드러났다.
+
+    ⚠️ 못 읽는 값은 **비워 두지 않고 `?` 로 적는다** — 빈 자리는 「없다」와
+    「못 읽었다」를 같은 값으로 만든다.
+    """
+    hostname = runner(['hostname'])
+    addresses = runner(['hostname', '-I'])
+    host = hostname.stdout.strip() if hostname.ok else '?'
+    addrs = addresses.stdout.split() if addresses.ok else []
+    label = f'측정 기계: {host}'
+    if addrs:
+        label += f'  [{" ".join(addrs[:4])}{" …" if len(addrs) > 4 else ""}]'
+    else:
+        label += '  [주소 ?]'
+    if is_wsl():
+        label += '  (WSL — LAN 주소는 Windows 호스트 쪽이다)'
+    return label
+
+
+def format_report(results: Sequence[AxisResult], *, header: str | None = None) -> str:
     width = max((len(r.axis) for r in results), default=0)
     lines = [f'{r.axis.ljust(width)}  {r.verdict:<7} {r.detail}' for r in results]
+    if header:
+        # ⚠️ 머리말을 **맨 위**에 둔다. 꼬리에 두면 `| tail` 로 잘려 나가고,
+        # 출력을 잘라 붙이는 것이 정확히 이 결함이 퍼지는 경로다.
+        lines = [header, ''] + lines
     return '\n'.join(lines)
 
 
@@ -561,10 +676,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     code = overall_exit_code(results)
 
+    measuring_host = describe_measuring_host(subprocess_runner)
+
     if args.json:
         print(json.dumps(
             {
                 'exit_code': code,
+                # ⚠️ JSON 에도 넣는다 — 기계 축이 사람용 출력에만 있으면
+                # 자동화가 그것을 잃는다.
+                'measuring_host': measuring_host,
                 'axes': [
                     {'axis': r.axis, 'verdict': r.verdict, 'detail': r.detail}
                     for r in results
@@ -574,7 +694,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             indent=2,
         ))
     else:
-        print(format_report(results))
+        print(format_report(results, header=measuring_host))
         if code == EXIT_DRIFT:
             print('\nDRIFT — 도는 배포가 이 저장소의 현재 상태와 다르다.')
         elif code == EXIT_UNKNOWN:

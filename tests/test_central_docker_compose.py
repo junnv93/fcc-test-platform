@@ -30,6 +30,7 @@ import re
 import subprocess
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 # The prod gateway's prefix coverage is derived from the SAME helper the dev
@@ -1466,6 +1467,167 @@ class TestDeploymentRevisionLabelWiring(unittest.TestCase, _DriftGateMixin):
                 )
 
 
+class TestTheReportNamesTheMachineItMeasured(unittest.TestCase, _DriftGateMixin):
+    """⚠️ **오늘 이 자리에 네 번 걸렸다** (실측 2026-09-03).
+
+    이 계열은 개발 PC 와 중앙 PC 에서 **같은 이름의 컨테이너**를 돌린다
+    (`fcc-central-platform-api` · `fcc-central-keycloak` · …). 그래서
+    `docker compose ps` · `docker inspect` · 이 게이트의 출력이 **두 기계에서
+    완전히 같은 모양**이고, 그 출력을 복사해 옮기면 **기계 축이 사라진다.**
+
+    실측된 네 건: 한 세션이 개발 PC 관측으로 「중앙이 서비스 가능하다」를 두 번
+    보고했고, 다른 세션이 개발 PC 의 Keycloak 을 중앙으로 읽었으며, 세 번째가 그
+    보고를 근거로 운영자에게 전달했다. **매번 사람이 알려줘서** 정정됐다.
+
+    가른 것은 결국 **도달성**이었다 — `curl <중앙IP>:8081` 이 닿느냐.
+    이름·포트·컨테이너 목록은 어느 것도 그 축을 갖지 않았다.
+
+    처방은 「더 주의하자」가 아니라 **관측이 스스로 기계를 말하게 하는 것**이다.
+    """
+
+    class _R:
+        def __init__(self, ok, stdout=''):
+            self.ok, self.stdout = ok, stdout
+
+    def _runner(self, *, host='central-pc', addrs='10.0.0.5 172.17.0.1'):
+        def run(cmd):
+            if cmd == ['hostname']:
+                return self._R(True, host + '\n')
+            if cmd == ['hostname', '-I']:
+                return self._R(True, addrs)
+            return self._R(False)
+        return run
+
+    def test_the_header_names_the_host_and_its_addresses(self):
+        gate = self._gate_module()
+        line = gate.describe_measuring_host(self._runner())
+        self.assertIn('central-pc', line)
+        self.assertIn('10.0.0.5', line)
+
+    def test_an_unreadable_value_is_a_question_mark_not_a_blank(self):
+        """⚠️ 빈 자리는 「없다」와 「못 읽었다」를 같은 값으로 만든다."""
+        gate = self._gate_module()
+
+        def broken(cmd):
+            return self._R(False)
+
+        line = gate.describe_measuring_host(broken)
+        self.assertIn('?', line)
+
+    def test_the_header_is_the_first_line_not_the_last(self):
+        """⚠️ 꼬리에 두면 `| tail` 로 잘려 나간다 — 출력을 잘라 붙이는 것이
+        정확히 이 결함이 퍼지는 경로다."""
+        gate = self._gate_module()
+        results = [gate.AxisResult('x', gate.VERDICT_PASS, 'ok')]
+        report = gate.format_report(results, header='측정 기계: central-pc')
+        self.assertTrue(report.startswith('측정 기계: central-pc'), report)
+
+    def test_the_report_without_a_header_is_unchanged(self):
+        """머리말은 선택이다 — 기존 호출부를 깨지 않는다."""
+        gate = self._gate_module()
+        results = [gate.AxisResult('x', gate.VERDICT_PASS, 'ok')]
+        self.assertNotIn('측정 기계', gate.format_report(results))
+
+    def test_wsl_is_named_because_its_lan_address_lives_elsewhere(self):
+        gate = self._gate_module()
+        with mock.patch.object(gate, 'is_wsl', lambda: True):
+            line = gate.describe_measuring_host(self._runner())
+        self.assertIn('WSL', line)
+        with mock.patch.object(gate, 'is_wsl', lambda: False):
+            line = gate.describe_measuring_host(self._runner())
+        self.assertNotIn('WSL', line)
+
+
+class TestThePublicHostAxisCanSeeTheWslHost(unittest.TestCase, _DriftGateMixin):
+    """⚠️ **이 축이 중앙 PC 에서 영원히 DRIFT 였다** (실측 2026-09-03).
+
+    중앙 PC 는 WSL 이고 LAN 이 보는 주소(`PUBLIC_HOST`)는 **Windows 호스트**의
+    것이다. WSL VM 은 `172.x` 만 갖고 그 주소를 자기 인터페이스로 **갖지 않는다** —
+    WSL2 가 포워딩할 뿐이다. 그래서 `hostname -I` 만 보면
+    *「PUBLIC_HOST 가 이 PC 주소에 없다」* 가 **항상** 참이 된다.
+
+    실측: 중앙 PC 최초 구축에서 `PUBLIC_HOST=10.206.34.233` 이 DRIFT 로 나왔고,
+    `powershell.exe Get-NetIPAddress` 로 물으니 **그 주소가 거기 있었다.**
+    **설정은 옳았고 축이 볼 수 없었다.**
+
+    > 그리고 **오탐을 내는 게이트는 삭제된다** — 이 저장소가 반복해서 낸 결론이다.
+
+    ⚠️ 그래서 처방은 「DRIFT 를 끄는 것」이 아니라 **「구분되게 만드는 것」**이다:
+    Windows 주소를 읽으면 판정하고, 못 읽으면 **판정 불가**다.
+    「설정이 틀렸다」와 「축이 볼 수 없다」를 가른다.
+    """
+
+    _WSL_ONLY = ['172.31.240.128', '172.18.0.1']
+    _WITH_WINDOWS = ['172.31.240.128', '172.18.0.1', '10.206.34.233']
+    _LAN_HOST = '10.206.34.233'
+
+    def _judge(self, *, wsl: bool, addresses, public_host: str):
+        gate = self._gate_module()
+        with mock.patch.object(gate, 'is_wsl', lambda: wsl):
+            return gate.judge_public_host(public_host, addresses)
+
+    def test_a_wsl_host_address_we_could_not_read_is_undetermined_not_drift(self):
+        """⚠️ **이 팔이 이 클래스의 존재 이유다.**"""
+        result = self._judge(
+            wsl=True, addresses=self._WSL_ONLY, public_host=self._LAN_HOST)
+        self.assertEqual('UNKNOWN', result.verdict, result.detail)
+        self.assertIn('Windows 호스트 주소를 읽지 못했다', result.detail)
+
+    def test_reading_the_windows_address_makes_it_pass(self):
+        result = self._judge(
+            wsl=True, addresses=self._WITH_WINDOWS, public_host=self._LAN_HOST)
+        self.assertEqual('PASS', result.verdict, result.detail)
+
+    def test_a_real_drift_outside_wsl_is_still_drift(self):
+        """⚠️ **반대 방향** — 완화가 「WSL 이면 무조건 통과」로 퇴화하면 안 된다.
+
+        이 팔이 없으면 위 정정이 그 축을 통째로 꺼 버린 것과 구분되지 않는다.
+        """
+        result = self._judge(
+            wsl=False, addresses=self._WSL_ONLY, public_host=self._LAN_HOST)
+        self.assertEqual('DRIFT', result.verdict, result.detail)
+
+    def test_an_address_the_vm_really_owns_still_passes(self):
+        result = self._judge(
+            wsl=True, addresses=self._WITH_WINDOWS, public_host='172.31.240.128')
+        self.assertEqual('PASS', result.verdict, result.detail)
+
+    def test_the_collector_merges_rather_than_replaces(self):
+        """WSL VM 주소도 여전히 유효한 답이다 — 대체하면 그 경우를 잃는다."""
+        gate = self._gate_module()
+
+        class _Result:
+            def __init__(self, ok, stdout):
+                self.ok, self.stdout = ok, stdout
+
+        def runner(cmd):
+            if cmd[0] == 'hostname':
+                return _Result(True, '172.31.240.128 172.18.0.1')
+            return _Result(True, '10.206.34.233\n192.168.0.5\n')
+
+        with mock.patch.object(gate, 'is_wsl', lambda: True):
+            merged = gate.collect_host_addresses(runner)
+        self.assertIn('172.31.240.128', merged)
+        self.assertIn('10.206.34.233', merged)
+
+    def test_a_failed_powershell_call_does_not_erase_the_vm_addresses(self):
+        """⚠️ 못 물어본 것이 「주소가 없다」가 되면 안 된다."""
+        gate = self._gate_module()
+
+        class _Result:
+            def __init__(self, ok, stdout):
+                self.ok, self.stdout = ok, stdout
+
+        def runner(cmd):
+            if cmd[0] == 'hostname':
+                return _Result(True, '172.31.240.128')
+            return _Result(False, '')
+
+        with mock.patch.object(gate, 'is_wsl', lambda: True):
+            merged = gate.collect_host_addresses(runner)
+        self.assertEqual(['172.31.240.128'], merged)
+
+
 class TestDeploymentDriftGateVerdicts(unittest.TestCase, _DriftGateMixin):
     """게이트의 판정 계약 — 특히 «모른다» 가 «통과» 로 접히지 않는다.
 
@@ -1652,14 +1814,20 @@ class TestDeploymentDriftGateVerdicts(unittest.TestCase, _DriftGateMixin):
 
     def test_public_host_axis_refuses_to_guess_about_names(self):
         m = self._gate_module()
-        self.assertEqual(
-            m.VERDICT_PASS,
-            m.judge_public_host('10.0.0.5', ['172.17.0.1', '10.0.0.5']).verdict,
-        )
-        self.assertEqual(
-            m.VERDICT_DRIFT,
-            m.judge_public_host('10.0.0.5', ['172.17.0.1']).verdict,
-        )
+        # ⚠️ **WSL 축을 명시적으로 고정한다** (2026-09-03).
+        # 2026-09-03 에 이 판정에 「WSL 인가」 축이 생겼다(Windows 호스트 주소를
+        # 못 읽으면 DRIFT 가 아니라 판정 불가). 그것을 고정하지 않으면 **같은
+        # 입력이 기계에 따라 다른 답**을 내고, 이 팔은 그 사실을 잡아 red 가 됐다
+        # — 올바른 반응이었다. 여기서 재는 것은 *이름 축*이지 WSL 축이 아니다.
+        with mock.patch.object(m, 'is_wsl', lambda: False):
+            self.assertEqual(
+                m.VERDICT_PASS,
+                m.judge_public_host('10.0.0.5', ['172.17.0.1', '10.0.0.5']).verdict,
+            )
+            self.assertEqual(
+                m.VERDICT_DRIFT,
+                m.judge_public_host('10.0.0.5', ['172.17.0.1']).verdict,
+            )
         self.assertEqual(
             m.VERDICT_UNKNOWN,
             m.judge_public_host('localhost', ['127.0.0.1']).verdict,
