@@ -28,7 +28,7 @@ import threading
 import zipfile
 from typing import Callable
 
-from logger_config import get_logger
+from fcc_test_kernel.logger_config import get_logger
 
 logger = get_logger('excel')
 
