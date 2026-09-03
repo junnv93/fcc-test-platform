@@ -20,6 +20,7 @@ import hashlib
 import json
 import sys
 import unittest
+from tests._moved_module_source import moved_module_source  # noqa: E402
 from pathlib import Path
 
 
@@ -202,17 +203,31 @@ class TestConditionHashByteIdenticalPropagation(unittest.TestCase):
 class TestCoverageDirectWriteForbidden(unittest.TestCase):
     """Axis 4 — coverage_by_condition_hash MUST NOT have a direct write path."""
 
+    #: ⚠️ **경로가 아니라 모듈 이름이다** (2026-09-03). 추출(2026-08-30)이 이 넷을
+    #: `fcc_test_platform/` 아래로 옮겼고 이름도 `platform_*` → `provider_*` 로
+    #: 바뀌었는데, 이 튜플은 모노레포 시절 경로를 그대로 들고 있었다. 그래서 이
+    #: 검사는 **선언된 부채**로 4 subtest 가 red 였다.
+    #:
+    #: 같은 클래스의 형제 검사가 이미 `fcc_test_platform.provider_ingestion_plan`
+    #: 을 import 하고 있었다 — 매핑의 증거는 거기 있었다.
+    #:
+    #: `moved_module_source` 는 없는 모듈에 **예외를 낸다**. 그래서 이 목록이 다시
+    #: 낡으면 조용히 통과하지 않고 붉는다 — 경로판은 그러지 못했다.
     INGESTION_MODULES = (
-        'src/application/headless/platform_ingestion.py',
-        'src/application/headless/platform_ingestion_plan.py',
-        'src/application/headless/platform_postgres_ingestion_writer.py',
-        'src/application/headless/platform_ingestion_worker.py',
+        'fcc_test_platform.provider_ingestion',
+        'fcc_test_platform.provider_ingestion_plan',
+        'fcc_test_platform.postgres_ingestion_writer',
+        'fcc_test_platform.provider_ingestion_worker',
     )
 
     def test_no_coverage_table_string_in_ingestion_modules(self):
+        self.assertTrue(
+            self.INGESTION_MODULES,
+            '검사할 모듈이 0개다 — 이 검사는 아무것도 판정하지 않는다.',
+        )
         for relative in self.INGESTION_MODULES:
             with self.subTest(module=relative):
-                path = project_root / relative
+                path = moved_module_source(relative)
                 source = path.read_text(encoding='utf-8')
                 tree = ast.parse(source, filename=str(path))
                 for node in ast.walk(tree):

@@ -44,6 +44,7 @@ pytestmark = pytest.mark.invariant
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COMPOSE_PATH = REPO_ROOT / 'infra' / 'docker-compose.central.yml'
 
+from tests._moved_module_source import moved_module_source  # noqa: E402
 from fcc_test_platform.application.central_health_adapter import (  # noqa: E402
     CENTRAL_PING_SQL,
     PostgresCentralHealthAdapter,
@@ -373,10 +374,15 @@ class TestProbeRateLimitInteraction(unittest.TestCase):
 
     def test_probe_suffix_ssot_is_shared_with_the_policy(self):
         """The throttle must derive probe paths from the health policy SSOT."""
-        source = (
-            resolve_dependency_artifact('src/domain/services/rate_limit_policy.py')
+        # ⚠️ **경로가 아니라 모듈에게 묻는다** (2026-09-03). 이 모듈은 2026-08-31 에
+        # 계약 레인으로 갔고, `src/domain/services/…` 는 이제 아무 트리에도 없다.
+        # 경로를 하드코딩한 검사는 *트리*에 대해 단언하지 검사하려는 *코드*에 대해
+        # 단언하지 않는다 — `tests/_moved_module_source.py` 참조.
+        source = moved_module_source(
+            'fcc_test_contracts.common.rate_limit_policy'
         ).read_text(encoding='utf-8')
-        self.assertIn('from domain.services.health_probe_policy import', source)
+        self.assertIn(
+            'from fcc_test_contracts.common.health_probe_policy import', source)
         self.assertNotIn(f"'{LIVENESS_PATH_SUFFIX}'", source.replace("'/metrics'", ''))
         self.assertNotIn(f"'{READINESS_PATH_SUFFIX}'", source)
 
