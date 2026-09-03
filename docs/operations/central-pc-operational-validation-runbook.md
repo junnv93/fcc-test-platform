@@ -99,8 +99,9 @@ findstr /C:"provider_session_id" src\application\headless\central_backend_sync_a
 | `fcc-test-platform` | **둔다** | 두지 않는다 | `git clone` / `git pull` |
 | `FCC_mobile_test_automation` | 두지 않는다 | **둔다** | `git clone` / `git pull` |
 | `fcc-test-contracts` | 두지 않는다 | 두지 않는다 | 이미지 빌드 때 `pip` 가 태그로 가져온다 |
+| `fcc-test-kernel` | 두지 않는다 | 두지 않는다 | 위와 같다 (같은 저장소의 다른 배포판) |
 
-**계약 레인은 클론하지 않는다.** `requirements-central.txt` 가 그것을 커밋 태그로
+**공유 레인은 클론하지 않는다.** `requirements-central.txt` 가 그것들을 커밋 태그로
 고정해 두었고 `docker compose build` 가 받아서 이미지 안에 설치한다.
 **클론하면 정본이 두 벌이 되고, 두 벌은 갈라진다** — 이 문서가 이관되던 그날
 같은 형태가 실측으로 확인됐다(같은 설정 폴더 19개 중 7개가 이미 서로 다른 내용이었다).
