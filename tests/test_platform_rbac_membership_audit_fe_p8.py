@@ -27,6 +27,7 @@ import ast
 import json
 import sys
 import unittest
+from tests._moved_module_source import moved_module_source
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -817,8 +818,12 @@ def _read_users(db_path: str) -> list[dict]:
 # ── 6. G1 no-op audit grain policy structural guard ───────────────────────
 
 
-def _class_method_body(module_path: str, class_name: str, method_name: str) -> list[ast.stmt]:
-    tree = ast.parse((project_root / module_path).read_text(encoding='utf-8'))
+def _class_method_body(dotted: str, class_name: str, method_name: str) -> list[ast.stmt]:
+    # ⚠️ **경로가 아니라 모듈에게 묻는다** (2026-09-03). 추출(2026-08-30)이 이
+    # 모듈을 `fcc_test_platform/` 아래로 옮겼고 `src/application/platform/` 은
+    # 아무 트리에도 없다. `moved_module_source` 는 없는 모듈에 예외를 내므로
+    # 이 지도가 다시 낡으면 조용히 통과하지 않는다.
+    tree = ast.parse(moved_module_source(dotted).read_text(encoding='utf-8'))
     for node in tree.body:
         if isinstance(node, ast.ClassDef) and node.name == class_name:
             for item in node.body:
@@ -877,7 +882,7 @@ class TestNoOpAuditGrainPolicyStructuralGuard(unittest.TestCase):
     def test_claim_acquire_contention_is_delta_grained_before_audit(self):
         body = _nested_function_body(
             _class_method_body(
-                'src/application/platform/central_claim_write_adapter.py',
+                'fcc_test_platform.application.central_claim_write_adapter',
                 'PostgresCentralClaimWriteAdapter',
                 'acquire_claim_if_unclaimed',
             ),
@@ -912,7 +917,7 @@ class TestNoOpAuditGrainPolicyStructuralGuard(unittest.TestCase):
     def test_membership_assign_is_action_grained_audit_after_upsert(self):
         body = _nested_function_body(
             _class_method_body(
-                'src/application/platform/central_membership_write_adapter.py',
+                'fcc_test_platform.application.central_membership_write_adapter',
                 'PostgresCentralMembershipWriteAdapter',
                 'assign_role_with_audit',
             ),
@@ -945,7 +950,7 @@ class TestNoOpAuditGrainPolicyStructuralGuard(unittest.TestCase):
     def test_membership_revoke_missing_role_is_delta_grained_before_audit(self):
         body = _nested_function_body(
             _class_method_body(
-                'src/application/platform/central_membership_write_adapter.py',
+                'fcc_test_platform.application.central_membership_write_adapter',
                 'PostgresCentralMembershipWriteAdapter',
                 'revoke_role_with_audit',
             ),
@@ -988,16 +993,20 @@ class TestRbacAdapterPurity(unittest.TestCase):
 
     def test_no_psycopg_module_level_import(self):
         forbidden = ('psycopg', 'psycopg2', 'sqlalchemy', 'fastapi', 'pyvisa', 'PySide6')
-        for module_path in (
-            'src/application/platform/central_rbac_read_adapter.py',
-            'src/application/platform/central_rbac_read_service.py',
-            'src/application/platform/central_audit_write_adapter.py',
-            'src/application/platform/central_membership_write_adapter.py',
-            'src/application/platform/central_membership_write_service.py',
-            'src/application/platform/rbac_role_catalog.py',
-        ):
-            path = project_root / module_path
-            tree = ast.parse(path.read_text(encoding='utf-8'))
+        # ⚠️ **경로가 아니라 모듈에게 묻는다** (2026-09-03) — 여섯 전부.
+        # 앞선 정정이 둘만 모듈 이름으로 바꾸고 넷을 경로로 남겨, 한 목록 안에
+        # **두 축이 섞였다.** 섞인 목록은 다음 사람이 어느 쪽이 맞는지 알 수 없다.
+        modules = (
+            'fcc_test_platform.application.central_rbac_read_adapter',
+            'fcc_test_platform.application.central_rbac_read_service',
+            'fcc_test_platform.application.central_audit_write_adapter',
+            'fcc_test_platform.application.central_membership_write_adapter',
+            'fcc_test_platform.application.central_membership_write_service',
+            'fcc_test_platform.application.rbac_role_catalog',
+        )
+        self.assertTrue(modules, '검사할 모듈이 0개다 — 이 검사는 아무것도 판정하지 않는다.')
+        for module_path in modules:
+            tree = ast.parse(moved_module_source(module_path).read_text(encoding='utf-8'))
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     for alias in node.names:

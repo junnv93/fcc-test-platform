@@ -30,6 +30,7 @@ import json
 import sys
 import tempfile
 import unittest
+from tests._moved_module_source import moved_module_source
 import uuid
 from pathlib import Path
 
@@ -81,7 +82,9 @@ _P2 = '22222222-2222-2222-2222-222222222222'
 
 _SCHEMA_JSON = _REPO_ROOT / 'docs' / 'platform' / 'central_db_schema.v1.json'
 _PLATFORM_PKG = resolve_repo_artifact(__file__, 'src/application/platform')
-_WRITE_ADAPTER_MODULE = resolve_repo_artifact(__file__, 'src/application/platform/central_claim_write_adapter.py')
+# ⚠️ **경로가 아니라 모듈에게 묻는다** (2026-09-03) — `tests/_moved_module_source.py`.
+_WRITE_ADAPTER_MODULE = moved_module_source(
+    'fcc_test_platform.application.central_claim_write_adapter')
 _ARTIFACT = resolve_dependency_artifact('docs/api/platform-api.openapi.json')
 
 
