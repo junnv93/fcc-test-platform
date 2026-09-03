@@ -36,6 +36,7 @@ for _path in (str(_REPO_ROOT), str(_SRC)):
 
 from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # noqa: E402
 from tests._moved_module_source import moved_module_source  # noqa: E402
+from tests._layer_of_import import imported_layers  # noqa: E402
 
 
 def _repo_source(rel: str) -> str:
@@ -942,17 +943,24 @@ class TestTheEditPolicyRefusesWhatIsNotAnEdit(unittest.TestCase):
 
     def test_the_policy_is_domain_pure(self) -> None:
         source = _kernel_source('fcc_test_kernel.domain.services.reference_entry_edit_policy')
-        # ⚠️ **접두사 붙은 이름도 금지어에 든다** (2026-09-03).
-        # 이 모듈이 커널로 간 뒤 `'from infrastructure'` 는 `'from
-        # fcc_test_kernel.infrastructure'` 에 **걸리지 않는다** — 이관이
-        # 게이트를 조용히 약하게 만든다. 판정은 계층 이름이지 접두사가 아니다.
-        for forbidden in (
-            'import infrastructure', 'from infrastructure',
-            'import fcc_test_kernel.infrastructure', 'from fcc_test_kernel.infrastructure',
-            'import pyvisa', 'import PySide6', 'import pandas',
-        ):
+        # ⚠️ **판정을 계층 축으로 올렸다** (2026-09-03).
+        #
+        # 여기 있던 것은 문자열 대조였고(`'from infrastructure' in source`), 이 모듈이
+        # 커널로 가자 실제 import 가 `from fcc_test_kernel.infrastructure…` 가 되어
+        # **그 문자열에 걸리지 않았다.** 첫 정정은 금지어에 접두사판을 *더하는*
+        # 것이었는데, 그것은 **접두사가 또 늘면 같은 자리에서 또 낡는다.**
+        #
+        # ⚠️ 그리고 이 저장소의 다른 AST 가드(`_imported_roots`)도 같은 맹점을
+        # 갖고 있었다 — **최상위 이름**을 뽑으면 접두사가 붙는 순간 최상위가
+        # `fcc_test_kernel` 이 된다. 「AST 로 하면 된다」가 답이 아니었다.
+        #
+        # 판정 단위는 **계층 절**이다: `tests/_layer_of_import.py`.
+        layers = imported_layers(source)
+        self.assertTrue(
+            layers, '이 모듈이 아무것도 import 하지 않는다 — 순수성 판정이 공허하다')
+        for forbidden in ('infrastructure', 'pyvisa', 'PySide6', 'pandas'):
             with self.subTest(forbidden=forbidden):
-                self.assertNotIn(forbidden, source)
+                self.assertNotIn(forbidden, layers)
 
 
 class TestTheStatusCodesActuallyReachAnHttpClient(unittest.TestCase):
