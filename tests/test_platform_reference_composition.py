@@ -38,11 +38,14 @@ AST 로 읽어 **집합 상등**을 단언한다. 새 협력자를 어댑터에 
 from __future__ import annotations
 
 import ast
+import contextlib
 import json
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 _SRC = _PROJECT_ROOT / 'src'
@@ -222,23 +225,61 @@ class TestTheComposedRuntimeReachesTheReferenceService(unittest.TestCase):
     만든다. 컬럼 목록을 여기에 적으면 그것이 두 번째 스키마가 된다.
     """
 
-    @staticmethod
-    def _offered_provider_id() -> str:
-        """Which provider this deployment's picker offers, asked of the registry.
+    #: 이 검사가 심는 descriptor. **배포 내용이 아니라 배선을 재기 위한 최소값**이다.
+    #:
+    #: ⚠️ **왜 fixture 인가** (2026-09-03). 2026-09-03 이전에는 레지스트리가
+    #: provider 빌더 import 로 채워졌고, 그때 「어떤 provider 를 내놓는가」는
+    #: **코드 사실**이라 체크아웃에서 답이 있었다. 같은 날 그것이 **런타임 JSON
+    #: 등록**으로 바뀌었고, `config/provider-ui/*.json` 은 provider 소유 내용이라
+    #: **의도적으로 gitignore** 다(`config/provider-ui/README.md`).
+    #:
+    #: 그래서 이 클래스는 배선을 재는데 **배포 내용**에 걸려 red 였다 — 검사의
+    #: 이름(`…ReachesTheReferenceService`)이 말하는 것과 실제로 재던 것이 달랐다.
+    #:
+    #: ⚠️ **그리고 이 fixture 는 「배포가 descriptor 를 싣는가」를 재지 않는다.**
+    #: 그것은 다른 축이고 이 검사의 일이 아니다 — 로더가 그 자리를 이미 갖는다
+    #: (없으면 경고, 깨졌거나 중복이면 **기동 거부**). 두 축을 한 검사에 묶으면
+    #: 배선이 멀쩡한데 배포가 비었다는 이유로 red 가 되고, 그 red 는 무시된다.
+    _FIXTURE_PROVIDER_ID = 'fcc-wiring-probe'
+    _FIXTURE_WORKBENCH_AREA = 'wiring_probe_area'
 
-        Built through the composition root rather than by importing the provider
-        builder: the root is the single place allowed to know that builder, so
-        importing it here would both spell the fact a second way and pull a
-        platform-lane test across into the provider package.
+    @classmethod
+    def _descriptor_dir(cls, stack: contextlib.ExitStack) -> str:
+        """`provider_id` 와 area 하나만 가진 descriptor 를 심은 임시 디렉터리."""
+        directory = stack.enter_context(tempfile.TemporaryDirectory())
+        (Path(directory) / f'{cls._FIXTURE_PROVIDER_ID}.json').write_text(
+            json.dumps({
+                'provider_id': cls._FIXTURE_PROVIDER_ID,
+                # area 이름은 descriptor 가 소유한다 — `workbench_areas()` 가
+                # 이 키에서 **파생**하므로 상수를 따로 두지 않는다.
+                'workbench_area_technologies': {cls._FIXTURE_WORKBENCH_AREA: ['PROBE']},
+            }, ensure_ascii=False),
+            encoding='utf-8',
+        )
+        return directory
+
+    def _offered_provider_id(self) -> str:
+        """레지스트리가 실제로 내놓는 id — **심은 값이 아니라 레지스트리에게 묻는다.**
+
+        심은 값을 그대로 돌려주면 이 함수는 아무것도 확인하지 않는다. 합성 뿌리를
+        지나 레지스트리까지 도달한 값을 읽어야 「배선됐다」가 증명된다.
+
+        ⚠️ env 는 `setUp` 이 이미 세워 뒀다 — 여기서 또 세우면 **두 합성이 서로
+        다른 디렉터리를 볼 수 있고**, 그러면 이 검사가 재는 「같은 프로세스에서
+        만난다」가 성립하지 않는다.
         """
         from fcc_test_platform.central_db_config import CentralDbConfig
         from fcc_test_contracts.common.auth_config import HttpAuthConfig
         from fcc_test_platform.application.runtime_config import PlatformApiConfig
         from fcc_test_platform.api_composition import create_platform_runtime
+        from fcc_test_platform.application.provider_ui_descriptor_loader import (
+            PROVIDER_UI_DIR_ENV,
+        )
 
         def _no_connection():  # pragma: no cover — never called
             raise AssertionError('the registry must not need a database')
 
+        del PROVIDER_UI_DIR_ENV  # setUp 이 세웠다 — 여기서 다시 세우지 않는다
         runtime = create_platform_runtime(
             PlatformApiConfig(
                 central=CentralDbConfig(
@@ -251,10 +292,28 @@ class TestTheComposedRuntimeReachesTheReferenceService(unittest.TestCase):
             connection_factory=_no_connection,
         )
         offered = runtime.api_adapter._provider_ui_descriptor_registry.provider_ids()  # noqa: SLF001
-        assert offered, 'the composed registry offers no provider at all'
+
+        self.assertEqual(
+            [self._FIXTURE_PROVIDER_ID], sorted(offered),
+            '심은 descriptor 가 합성 뿌리를 지나 레지스트리에 도달하지 않았다 — '
+            '이 검사가 재는 배선이 바로 그것이다.',
+        )
         return offered[0]
 
     def setUp(self) -> None:
+        # ⚠️ **디렉터리는 이 테스트 전체에 하나다.** `_offered_provider_id` 와
+        # `_runtime()` 이 각자 세우면 두 합성이 서로 다른 레지스트리를 보게 되고,
+        # 그러면 「화면이 제공하는 집합과 중앙 등록부가 같은 프로세스에서 만난다」는
+        # 이 클래스의 명제 자체가 무너진다.
+        from fcc_test_platform.application.provider_ui_descriptor_loader import (
+            PROVIDER_UI_DIR_ENV,
+        )
+
+        stack = contextlib.ExitStack()
+        self.addCleanup(stack.close)
+        stack.enter_context(mock.patch.dict(
+            os.environ, {PROVIDER_UI_DIR_ENV: self._descriptor_dir(stack)},
+        ))
         self.offered_provider_id = self._offered_provider_id()
         schema = json.loads(_SCHEMA.read_text(encoding='utf-8'))
         self._tmp = tempfile.TemporaryDirectory()
@@ -337,10 +396,61 @@ class TestTheComposedRuntimeReachesTheReferenceService(unittest.TestCase):
         )
 
     def test_the_composed_runtime_wires_the_reference_resolver_registry(self) -> None:
+        """resolver 는 **이 빌드가 싣는 구현 집합**이다 — 배포된 집합이 아니다.
+
+        ⚠️ **이 검사는 두 축을 같다고 단언하고 있었고, 2026-09-03 에 그것이
+        틀렸음이 드러났다.** 그날 descriptor 레지스트리가 *provider 빌더 import*
+        에서 *런타임 JSON 등록* 으로 바뀌었다. 그전에는 두 값이 같은 출처에서
+        나와 우연히 일치했다:
+
+            resolver           어떤 provider **구현**을 이 빌드가 싣는가   (코드 사실)
+            descriptor 레지스트리  어떤 provider 가 **배포**됐는가          (배포 사실)
+
+        같은 출처였을 때는 하나의 검사로 둘 다 잡혔지만, 출처가 갈린 지금
+        상등을 단언하면 **정상 배포에서 red** 가 난다 — 그리고 그런 red 는 무시된다.
+        """
+        from fcc_test_platform.api_composition import UNLICENSED_PROVIDER_ID
+
         runtime = self._runtime()
         service = runtime.api_adapter._project_result_reference_service  # noqa: SLF001
         resolver = service._provider_resolver  # noqa: SLF001
-        self.assertEqual(resolver.provider_ids(), (self.offered_provider_id,))
+
+        # 코드 축 — 리터럴로 적지 않는다. 합성이 쓰는 그 상수를 그대로 읽는다.
+        self.assertEqual((UNLICENSED_PROVIDER_ID,), resolver.provider_ids())
+        # 배포 축 — 이 검사가 심은 것.
+        self.assertEqual(
+            [self._FIXTURE_PROVIDER_ID],
+            sorted(runtime.api_adapter._provider_ui_descriptor_registry.provider_ids()),  # noqa: SLF001
+        )
+        # 그리고 둘이 **다를 수 있다**는 것이 이 웨이브가 배운 사실이다.
+        self.assertNotEqual(
+            resolver.provider_ids(),
+            tuple(runtime.api_adapter._provider_ui_descriptor_registry.provider_ids()),  # noqa: SLF001
+            '두 축이 같아졌다 — 그러면 이 검사가 구분하려는 것이 사라진다. '
+            'fixture provider_id 가 실수로 빌드의 것과 같아지지 않았는지 보라.',
+        )
+
+    def test_a_deployed_provider_without_an_adapter_fails_loudly(self) -> None:
+        """⚠️ **위 검사가 드러낸 간극에 이름을 붙인다.**
+
+        descriptor 를 놓으면 화면이 그 provider 를 제공하는데, 그 provider 의
+        참조 어댑터가 이 빌드에 없으면 참조 조회가 무엇을 하는가?
+
+        실측: `ProviderReferenceResolverRegistry.__getitem__` 이 `KeyError` 를
+        낸다 — **조용하지 않다.** 그것을 여기 봉인한다. 조용해지는 변경(빈 결과
+        반환 · `None` 반환)이 들어오면 red 가 되고, 그때 운영자는 「참조가 없는
+        provider」와 「배포가 잘못된 provider」를 구분할 수 없게 된다.
+
+        ⚠️ 이 검사는 그 거동이 **옳다**고 말하지 않는다. 요청 시점 `KeyError` 는
+        기동 시점 거부보다 늦고, 더 나은 자리는 합성이 「descriptor 가 있는데
+        어댑터가 없다」를 기동에서 말하는 것이다. 그 판정은 아직 안 내렸다 —
+        여기서는 **지금 무엇이 일어나는지**만 붙잡는다.
+        """
+        runtime = self._runtime()
+        service = runtime.api_adapter._project_result_reference_service  # noqa: SLF001
+        resolver = service._provider_resolver  # noqa: SLF001
+        with self.assertRaises(KeyError):
+            resolver[self._FIXTURE_PROVIDER_ID]
 
     def test_the_unwired_shape_still_raises(self) -> None:
         """비-공허성 — 서비스를 떼면 옛 RuntimeError 가 그대로 난다."""
