@@ -23,10 +23,10 @@ from fcc_test_kernel.application.central_contract.api_contracts import (  # noqa
     PLATFORM_API_ROUTES,
     PLATFORM_API_SCHEMAS,
 )
-from domain.models.progress_time_catalog import (  # noqa: E402
+from fcc_test_platform.domain.models.progress_time_catalog import (  # noqa: E402
     CatalogSource, PricingStatus, StandardTimeCatalog,
 )
-from domain.models.enums import MeasurementType  # noqa: E402
+from fcc_test_kernel.domain.models.enums import MeasurementType  # noqa: E402
 from fcc_test_platform.application.progress_ingest_service import (  # noqa: E402
     ProgressIngestService,
 )
@@ -49,7 +49,7 @@ class _RecordingWritePort:
         self.atoms = []
 
     def write_expectations(self, atoms, now):
-        from domain.ports.output.central_progress_write_port import (
+        from fcc_test_platform.domain.ports.output.central_progress_write_port import (
             ExpectationWriteSummary,
         )
         self.atoms.extend(atoms)

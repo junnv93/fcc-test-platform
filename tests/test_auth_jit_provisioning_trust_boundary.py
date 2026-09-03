@@ -16,7 +16,7 @@ from fcc_test_contracts.common.oidc_principal_resolver import (
 )
 from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_OPERATIONS
 from fcc_test_platform.application.user_provisioning_service import UserProvisioningService
-from domain.ports.output.central_user_write_port import UserWriteError
+from fcc_test_platform.domain.ports.output.central_user_write_port import UserWriteError
 from fcc_test_platform.api.platform_routes import (
     PlatformApiAdapter,
     PlatformAuthorizationError,

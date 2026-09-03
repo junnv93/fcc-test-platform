@@ -83,8 +83,8 @@ from fcc_test_contracts.common.login_throttle_policy import (
     is_lock_active,
     spraying_suspected,
 )
-from domain.services.password_policy import password_defects
-from domain.services.token_revocation_policy import (
+from fcc_test_platform.domain.services.password_policy import password_defects
+from fcc_test_platform.domain.services.token_revocation_policy import (
     UNATTRIBUTED_CUSTODIAN,
     custodian_should_yield,
     custody_fair_share,

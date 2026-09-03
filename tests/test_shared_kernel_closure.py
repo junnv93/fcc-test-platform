@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import json
+import pathlib
 import sys
 import tempfile
 import unittest
@@ -243,14 +244,95 @@ class TestTheRatchetDirection(unittest.TestCase):
         self.assertIn('「공유가 없다」가 아니라', report)
 
 
-class TestTheBaselineIsPresentAndShaped(unittest.TestCase):
-    """비-공허성 — 기준선이 없으면 이 축은 아무것도 붙잡지 않는다."""
+class TestTheTwoKindsOfZero(unittest.TestCase):
+    """공유 0 에는 **두 상태**가 있고, 하나는 성공이다 (2026-09-03).
 
-    def test_baseline_exists_and_records_a_nonempty_closure(self):
+    ⚠️ 이 팔이 없던 동안 게이트는 **목표를 달성하면 답할 수 없었다.**
+    완료 오라클이 *「공유 폐포 0」* 인데, 3단계가 그 0 을 만들자 공유 최상위
+    이름 집합이 비어 `Undetermined` 가 났다 — **성공이 실패와 같은 모양**이었다.
+
+    가르는 증거는 **두 트리를 실제로 읽었는가**다. 양쪽에 파이썬 파일이 있는데
+    겹치는 최상위가 없다면 그것은 「못 찾았다」가 아니라 「이름을 다 놓았다」다.
+    """
+
+    def test_a_completed_zero_passes_and_says_so(self):
+        with _TwoLanes() as t:
+            # 겹치는 최상위가 없도록 각자 고유 이름만 둔다
+            t.write(t.central, 'fcc_test_platform/app.py', 'X = 1')
+            t.write(t.provider_src, 'runner.py', 'Y = 2')
+            for base in (t.central, t.provider_src):
+                for stale in (base / 'shared_pkg').rglob('*.py'):
+                    stale.unlink()
+            obs = guard.measure(t.central, t.provider_src)
+            self.assertEqual([], obs['shared'])
+            self.assertTrue(obs.get('both_trees_read'))
+            code, report = guard.judge(obs, {'shared': ['x.py']})
+            self.assertEqual(guard.EXIT_OK, code)
+            self.assertIn('종료 상태', report)
+
+    def test_a_zero_from_an_unreadable_tree_is_still_undetermined(self):
+        """⚠️ 반대 방향 — 경로가 틀린 것을 「완료」로 읽으면 안 된다.
+
+        이 팔이 없으면 위 정정이 *「0 이면 통과」* 로 퇴화하고, 그때 provider
+        경로를 잘못 준 실행이 **완료를 선언한다.**
+        """
+        with _TwoLanes() as t:
+            empty = pathlib.Path(t.central.parent) / 'nothing-here'
+            empty.mkdir()
+            with self.assertRaises(guard.Undetermined):
+                guard.measure(t.central, empty)
+
+    def test_judge_without_the_evidence_key_is_undetermined(self):
+        """증거 키가 없는 관측은 통과시키지 않는다 — 옛 판과 섞여도 안전하다."""
+        code, report = guard.judge(
+            {'shared': [], 'central_only': 0, 'provider_only': 0,
+             'provider_vocabulary': [], 'third_party_dependencies': {},
+             'sibling_lane_dependencies': {}, 'shared_tops': []},
+            {'shared': ['x.py']},
+        )
+        self.assertEqual(guard.EXIT_UNDETERMINED, code)
+        self.assertIn('증거가 없다', report)
+
+
+class TestTheBaselineIsPresentAndShaped(unittest.TestCase):
+    """비-공허성 — 기준선이 없으면 이 축은 아무것도 붙잡지 않는다.
+
+    ⚠️ **이 팔은 2026-09-03 에 정정됐다. 「목표에 도달하지 않는다」를 전제하고
+    있었다.**
+
+    원래 술어는 *「기준선의 공유 폐포가 비어 있지 않다」* 였고, 폐포가 0 이 아닌
+    동안은 옳은 비-공허성이었다. 그런데 3단계가 **폐포를 0 으로 만들자 그것이
+    red 가 됐다** — 종료 상태를 검사가 금지하고 있었던 것이다.
+
+    붙잡아야 할 성질은 「기준선이 비어 있지 않다」가 아니라
+    **「기준선이 회귀를 잡는다」**다. 빈 기준선도 그것을 한다 — 무엇이든 늘면
+    늘어난 것이다. 축을 그리로 옮긴다.
+    """
+
+    def test_baseline_exists_and_has_the_shape_judge_reads(self):
         self.assertTrue(guard.BASELINE.is_file(), f'{guard.BASELINE} 가 없다')
         data = json.loads(guard.BASELINE.read_text(encoding='utf-8'))
-        self.assertTrue(data['shared'], '기준선의 공유 폐포가 비어 있다 — 붙잡는 것이 없다')
-        self.assertTrue(data['shared_tops'])
+        for key in ('shared', 'shared_tops'):
+            with self.subTest(key=key):
+                self.assertIn(key, data, f'judge 가 읽는 키 {key!r} 가 없다')
+                self.assertIsInstance(data[key], list)
+
+    def test_the_recorded_baseline_still_catches_growth(self):
+        """⚠️ **진짜 비-공허성은 이것이다** — 기준선이 무엇을 붙잡는가.
+
+        빈 기준선이든 아니든, 실제 파일에 기록된 그 값이 **늘어남을 잡아야**
+        의미가 있다. 이 팔은 기준선이 0 이 된 뒤에도 계속 참이다.
+        """
+        data = json.loads(guard.BASELINE.read_text(encoding='utf-8'))
+        grown = {
+            'shared': sorted(set(data['shared']) | {'zz_regression_probe.py'}),
+            'central_only': 1, 'provider_only': 1, 'provider_vocabulary': [],
+            'third_party_dependencies': {}, 'sibling_lane_dependencies': {},
+            'shared_tops': ['zz'], 'both_trees_read': True,
+        }
+        code, report = guard.judge(grown, data)
+        self.assertEqual(guard.EXIT_GREW, code)
+        self.assertIn('zz_regression_probe.py', report)
 
 
 if __name__ == '__main__':  # pragma: no cover

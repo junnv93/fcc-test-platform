@@ -173,7 +173,7 @@ from fcc_test_platform.application.runtime_config import (
     PLATFORM_AUTH_ENV_PREFIX,
     PlatformApiConfig,
 )
-from domain.ports.output.platform_database_port import DbConnection
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 from fcc_test_contracts.common.health_probe_policy import DEPENDENCY_CENTRAL_DB
 
 
@@ -317,7 +317,7 @@ def create_platform_runtime(
         # The composition root is the one permitted crossing point for provider
         # implementations. The application service still receives only the
         # dependency-free natural-id registry, never this provider import.
-        from domain.services.unlicensed.project_result_reference import (
+        from fcc_test_platform.domain.services.unlicensed.project_result_reference import (
             ConductedDutyReferenceAdapter,
         )
 
@@ -383,7 +383,7 @@ def create_platform_runtime(
     from fcc_test_platform.application.sample_inventory_export_service import (
         SampleInventoryExportService,
     )
-    from infrastructure.excel.sample_inventory_exporter import (
+    from fcc_test_platform.infrastructure.excel.sample_inventory_exporter import (
         SampleInventoryExcelExporter,
     )
     sample_inventory_read_adapter = PostgresCentralSampleInventoryReadAdapter(
@@ -488,7 +488,7 @@ def create_platform_runtime(
     # 한다. forward 어댑터는 stdlib urllib + outbound_http traceparent SSOT(httpx 금지).
     # ``HttpChamberProxyAdapter`` 는 infrastructure → lazy import(PlatformApiAdapter 와
     # 동일 패턴, frozen-exe 표면 최소화).
-    from infrastructure.adapters.driven.chamber_proxy_adapter import (
+    from fcc_test_platform.infrastructure.adapters.driven.chamber_proxy_adapter import (
         HttpChamberProxyAdapter,
     )
     # 중앙이 노드에 제시할 **기계 신분증**(운영자 판정 2026-09-01). 노드는 ``oidc_jwt``
@@ -503,7 +503,7 @@ def create_platform_runtime(
     # 설정도 미설정으로 친다(``NodeMachineCredential.is_configured`` 참조).
     node_token_supplier = None
     if config.node_credential.is_configured:
-        from infrastructure.adapters.driven.chamber_token_provider import (
+        from fcc_test_kernel.infrastructure.adapters.driven.chamber_token_provider import (
             ClientCredentialsTokenProvider,
         )
         node_token_supplier = ClientCredentialsTokenProvider(
@@ -569,7 +569,7 @@ def create_platform_runtime(
     # 멀티챔버 P7/B4 — central progress relay fan-out engine (ADR-0015 Option B).
     # heartbeat ingest publishes in_use progress here; the WS endpoint subscribes
     # and fans out to web clients. stdlib asyncio only (no new outbound dep).
-    from infrastructure.adapters.driven.chamber_progress_broadcaster import (
+    from fcc_test_platform.infrastructure.adapters.driven.chamber_progress_broadcaster import (
         ChamberProgressBroadcaster,
     )
     progress_broadcaster = ChamberProgressBroadcaster()

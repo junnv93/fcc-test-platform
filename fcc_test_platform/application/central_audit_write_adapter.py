@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from typing import Mapping
 
-from domain.ports.output.central_audit_write_port import AuditWriteError
+from fcc_test_platform.domain.ports.output.central_audit_write_port import AuditWriteError
 
 
 __all__ = [

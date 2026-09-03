@@ -43,7 +43,7 @@ from fcc_test_platform.application.central_artifact_custody_service import (  # 
 from fcc_test_platform.application.central_artifact_custody_write_adapter import (  # noqa: E402
     PostgresCentralArtifactCustodyWriteAdapter,
 )
-from domain.ports.output.central_artifact_custody_port import (  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_artifact_custody_port import (  # noqa: E402
     ArtifactCustodyNotFoundError,
 )
 from fcc_test_contracts.common.sqlite_connection_factory import (  # noqa: E402

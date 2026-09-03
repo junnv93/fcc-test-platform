@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Callable, Mapping, Optional, Sequence
 
 from fcc_test_contracts.common.identity import LOCAL_IDENTITY_ISSUER, local_identity_key
-from domain.ports.output.platform_database_port import DbConnection
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 from fcc_test_contracts.common.login_throttle_policy import (
     LOCKOUT_DURATION_MINUTES,
     LOCKOUT_MAX_ATTEMPTS,

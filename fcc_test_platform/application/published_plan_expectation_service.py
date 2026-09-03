@@ -30,7 +30,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Callable, Mapping, Optional, Sequence
 
-from domain.models.progress_time_catalog import CatalogSource, StandardTimeCatalog
+from fcc_test_platform.domain.models.progress_time_catalog import CatalogSource, StandardTimeCatalog
 from fcc_test_platform.application.progress_ingest_service import (
     ProgressIngestService,
     PublishedConditionRow,

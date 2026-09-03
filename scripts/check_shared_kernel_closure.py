@@ -153,10 +153,32 @@ def measure(central_root: Path, provider_src: Path) -> dict:
     """두 레인의 폐포와 그 교집합. **관측만 한다** — 판정은 호출자가 한다."""
     tops = discover_shared_tops(central_root, provider_src)
     if not tops:
-        raise Undetermined(
-            f'두 트리가 공유하는 최상위 이름이 0개다 ({central_root} · {provider_src}) — '
-            '경로가 맞는지 확인하라. 0개는 「공유가 없다」가 아니라 「못 찾았다」일 수 있다.'
-        )
+        # ⚠️ **2026-09-03 — 여기가 「완료」와 「못 찾음」을 구분하지 못했다.**
+        #
+        # 이 게이트의 완료 오라클이 「공유 폐포 0」인데, 3단계가 그 0 을 달성하자
+        # 공유 최상위 이름 집합이 비어 이 분기가 **판정 불가**를 냈다. 즉
+        # **목표를 달성하면 게이트가 답할 수 없게** 되어 있었다 — 이 저장소가
+        # 반복해서 이름 붙인 형태다: *성공이 실패와 같은 모양*.
+        #
+        # 가르는 것은 **두 트리를 실제로 읽었는가**다. 양쪽에 파이썬 파일이
+        # 있는데 겹치는 최상위가 없다면 그것은 「못 찾았다」가 아니라 **「이름을
+        # 다 놓았다」**이고, 이 결정이 겨냥한 종료 상태다.
+        central_has = any(central_root.rglob('*.py'))
+        provider_has = any(provider_src.rglob('*.py'))
+        if not (central_has and provider_has):
+            raise Undetermined(
+                f'두 트리가 공유하는 최상위 이름이 0개이고, 한쪽 트리에서 파이썬 '
+                f'파일을 하나도 못 찾았다 ({central_root} · {provider_src}) — '
+                '경로가 맞는지 확인하라. 이것은 「공유가 없다」가 아니라 「못 찾았다」다.'
+            )
+        return {
+            'shared': [], 'central_only': 0, 'provider_only': 0,
+            'provider_vocabulary': [], 'third_party_dependencies': {},
+            'sibling_lane_dependencies': {}, 'shared_tops': [],
+            #: ⚠️ 이 키가 「성공한 0」의 증거다. 없으면 judge 가 그것을
+            #: 「못 찾은 0」과 구분할 수 없다.
+            'both_trees_read': True,
+        }
 
     central_seed_root = central_root / _CENTRAL_SEED_PACKAGE
     if not central_seed_root.is_dir():
@@ -223,11 +245,27 @@ def measure(central_root: Path, provider_src: Path) -> dict:
 
 def judge(observed: Mapping, baseline: Mapping | None) -> tuple[int, str]:
     shared = list(observed['shared'])
-    # ⚠️ 비-공허성 — 공유가 0개면 이 검사는 아무것도 묻지 않은 것이다.
+    # ⚠️ 비-공허성 — 공유가 0개일 때 **두 상태를 가른다.**
+    #
+    # 「폐포 계산이 대상을 못 찾았다」와 「두 레인이 이름을 다 놓았다」는
+    # 이 축에서 같은 값이다. 후자가 이 결정의 **종료 상태**이므로, 그것을
+    # 판정 불가로 내면 목표를 달성한 날 게이트가 답할 수 없게 된다.
+    #
+    # 가르는 증거는 `measure` 가 넣는 `both_trees_read` 다 — 양쪽 트리에
+    # 파이썬 파일이 있는데 겹치는 최상위가 없을 때만 참이다.
     if not shared:
+        if observed.get('both_trees_read'):
+            return EXIT_OK, (
+                '공유 커널 폐포: **0개 — 두 레인이 최상위 이름을 하나도 함께 '
+                '주장하지 않는다.**\n'
+                '  이 결정(ADR-0001)의 종료 상태다. 같은 import 이름으로 서로 다른 '
+                '코드가 도는 일이 구조적으로 불가능해졌다.\n'
+                '  ⚠️ 기준선은 자동으로 낮추지 않는다 — 줄이려면 손으로 줄여라.'
+            )
         return EXIT_UNDETERMINED, (
-            '공유 커널 폐포: 판정 불가 — 두 레인이 함께 도달하는 모듈이 0개다.\n'
-            '  이것은 「공유가 없다」가 아니라 폐포 계산이 대상을 못 찾았다는 뜻일 수 있다.'
+            '공유 커널 폐포: 판정 불가 — 두 레인이 함께 도달하는 모듈이 0개인데 '
+            '두 트리를 읽었다는 증거가 없다.\n'
+            '  이것은 「공유가 없다」가 아니라 폐포 계산이 대상을 못 찾았다는 뜻이다.'
         )
 
     head = (

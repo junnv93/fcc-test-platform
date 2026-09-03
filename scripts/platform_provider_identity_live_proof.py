@@ -12,7 +12,7 @@ import psycopg
 from fcc_test_platform.application.central_reference_read_adapter import PostgresCentralReferenceReadAdapter
 from fcc_test_platform.application.central_reference_write_adapter import PostgresCentralReferenceWriteAdapter
 from fcc_test_platform.application.central_reference_service import CentralReferenceService
-from domain.ports.output.central_reference_port import (
+from fcc_test_platform.domain.ports.output.central_reference_port import (
     CentralReferenceError, ReferenceProviderNotFoundError,
     ReferenceProviderNotRegisteredError,
 )

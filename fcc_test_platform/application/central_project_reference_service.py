@@ -5,15 +5,15 @@ from datetime import datetime, timezone
 from typing import Callable, Mapping, Optional, Sequence, Union
 from uuid import uuid4
 
-from domain.models.project_result_reference import (
+from fcc_test_kernel.domain.models.project_result_reference import (
     REFERENCE_SESSION_SNAPSHOT_SCHEMA_VERSION,
     build_reference_session_snapshot_json,
     canonical_payload_hash,
 )
-from domain.ports.output.central_result_selection_port import (
+from fcc_test_platform.domain.ports.output.central_result_selection_port import (
     CentralResultSelectionPort,
 )
-from domain.ports.output.central_project_reference_port import (
+from fcc_test_platform.domain.ports.output.central_project_reference_port import (
     CentralProjectReferencePort,
     ReferenceHashMismatchError,
     ReferenceIncompatibleError,
@@ -21,7 +21,7 @@ from domain.ports.output.central_project_reference_port import (
     ReferenceScopeMismatchError,
     ReferenceSourceMismatchError,
 )
-from domain.ports.output.project_result_reference_provider_port import (
+from fcc_test_platform.domain.ports.output.project_result_reference_provider_port import (
     ProjectResultReferenceProviderError,
     ProjectResultReferenceProviderPort,
 )

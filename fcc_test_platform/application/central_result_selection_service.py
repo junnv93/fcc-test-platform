@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Callable, Mapping, Optional
 from uuid import uuid4
 
-from domain.ports.output.central_result_selection_port import (
+from fcc_test_platform.domain.ports.output.central_result_selection_port import (
     CentralResultSelectionPort,
     SelectionCandidateNotFoundError,
     SelectionCrossScopeError,

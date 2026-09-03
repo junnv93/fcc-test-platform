@@ -109,7 +109,7 @@ GENERATED_DIR = SRC_DIR / "api" / "generated"
 # 그 사실을 테스트에 다시 적으면 **드리프트의 세 번째 사본**이 될 뿐이다.
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from domain.services.project_directory_query import (  # noqa: E402
+from fcc_test_platform.domain.services.project_directory_query import (  # noqa: E402
     PROJECT_SEARCH_COLUMNS,
 )
 from fcc_test_kernel.domain.services.project_metadata_edit import (  # noqa: E402
@@ -3016,7 +3016,7 @@ class TestSearchScopeClaimsMatchTheServerAxes(unittest.TestCase):
         근거가 사라지면 "모델명으로 찾기"가 참이라는 판단도 함께 무너진다.
         """
         domain_src = moved_module_source(
-            'domain.services.project_directory_query'
+            'fcc_test_platform.domain.services.project_directory_query'
         ).read_text(encoding="utf-8")
         self.assertIn(
             "project_code == model name",

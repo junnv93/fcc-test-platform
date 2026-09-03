@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 
 from fcc_test_platform.application.central_result_selection_service import CentralResultSelectionService
-from domain.ports.output.central_result_selection_port import SelectionRevisionConflictError
+from fcc_test_platform.domain.ports.output.central_result_selection_port import SelectionRevisionConflictError
 
 
 class FakeSelectionPort:

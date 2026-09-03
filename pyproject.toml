@@ -45,7 +45,7 @@ dependencies = [
     #
     # 형제와 같은 이유로 **DIRECT reference** 다 — 이 배포물을 담을 인덱스가 없다.
     # 태그를 못 박는다: 움직이는 ref 는 「어느 코드가 돌았나」를 사후에 답할 수 없게 한다.
-    "fcc-test-kernel @ git+https://github.com/junnv93/fcc-test-contracts@kernel-v0.2.0#subdirectory=packages/fcc-test-kernel",
+    "fcc-test-kernel @ git+https://github.com/junnv93/fcc-test-contracts@kernel-v0.3.0#subdirectory=packages/fcc-test-kernel",
     # 상자의 런타임이 실제로 도달하는 서드파티. 실측 기준은 *도달*이지
     # 모듈 레벨 여부가 아니다 — platform 의 런타임 import 는 합성 경계에서
     # 지연되지만(fastapi 4건 · psycopg 2건이 함수 안) 그 지연은 합성 패턴이지
@@ -109,9 +109,16 @@ test = [
 #                              거는 쪽이므로 소비가 맞다.
 # `application*` 로 넓히지 않는 이유는 아래 옛 주석 그대로다 — 넓은 패턴은 «이 상자가
 # application 계층을 받는다» 는 선언이고 ADR-0018 D-5 가 닫아 둔 방향이다.
-include = [
-    "fcc_test_platform*", "domain*", "infrastructure*",
-]
+include = ["fcc_test_platform*"]
+# ⚠️ **2026-09-03 — `domain*` 과 `infrastructure*` 가 여기서 사라졌다.**
+# 커널 3단계가 마지막 두 최상위 이름을 놓았다:
+#   공유 24    → `fcc_test_kernel.{domain,infrastructure}.*`
+#   중앙 전용 62 → `fcc_test_platform/{domain,infrastructure}/`
+#
+# **이 상자는 이제 최상위 이름을 하나만 주장한다: `fcc_test_platform`.**
+# 챔버 PC 의 `PYTHONPATH=src` 와 겹치던 이름 넷이 전부 정리됐다
+# (`logger_config` 1단계 · `application` 2단계 · `domain`·`infrastructure` 3단계).
+# 판정: `scripts/check_import_name_ownership.py` — 두 기계 모두 exit 0 이어야 한다.
 # ⚠️ **2026-09-03 — `application.central_contract*` 와 `application.session*` 이
 # 여기서 사라졌다.** 커널 2단계가 그 최상위 이름을 통째로 놓았다:
 #   공유 31파일   → `fcc_test_kernel.application.*` / `fcc_test_kernel.domain.*`

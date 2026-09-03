@@ -43,7 +43,7 @@ from fcc_test_platform.application.central_reference_service import (  # noqa: E
     CentralReferenceService,
 )
 from fcc_test_kernel.domain.models.reference_catalog import CatalogFamily, RevisionState  # noqa: E402
-from domain.ports.output.central_reference_port import (  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_reference_port import (  # noqa: E402
     ReferenceCoupledPublishError,
     ReferenceRevisionNotFoundError,
 )

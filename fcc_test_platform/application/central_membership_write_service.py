@@ -39,8 +39,8 @@ from fcc_test_contracts.common.identity import LEGACY_IDENTITY_ISSUER
 from fcc_test_platform.application.central_rbac_read_service import CentralRbacReadService
 from fcc_test_kernel.application.central_contract.envelope_helpers import optional_text, require_uuid, text
 from fcc_test_platform.application.rbac_role_catalog import is_known_role
-from domain.services.team_policy import is_known_team, normalize_team
-from domain.ports.output.central_membership_write_port import CentralMembershipWritePort
+from fcc_test_platform.domain.services.team_policy import is_known_team, normalize_team
+from fcc_test_platform.domain.ports.output.central_membership_write_port import CentralMembershipWritePort
 
 
 __all__ = [

@@ -30,15 +30,15 @@ from typing import Callable, Optional
 from fcc_test_platform.application.central_project_service import ProjectNotFoundError
 from fcc_test_kernel.application.central_contract.envelope_helpers import optional_text, require_uuid, text
 from fcc_test_kernel.domain.models.sample_inventory import SNAPSHOT_SCHEMA_VERSION
-from domain.models.session_provenance import SessionOrigin
-from domain.ports.output.central_project_port import CentralProjectReadPort
-from domain.ports.output.central_report_port import (
+from fcc_test_kernel.domain.models.session_provenance import SessionOrigin
+from fcc_test_platform.domain.ports.output.central_project_port import CentralProjectReadPort
+from fcc_test_platform.domain.ports.output.central_report_port import (
     CentralReportReadPort,
     CentralReportWritePort,
     ReportEditionConflictError,
     ReportSessionNotFoundError,
 )
-from domain.services import report_citation, report_number_policy
+from fcc_test_platform.domain.services import report_citation, report_number_policy
 
 
 __all__ = ['CentralReportService']

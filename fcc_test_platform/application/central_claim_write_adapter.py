@@ -37,9 +37,9 @@ from fcc_test_platform.application.central_read_adapter import (
     ACTIVE_CLAIM_COLUMNS,
     ACTIVE_CLAIMS_VIEW,
 )
-from domain.ports.output.central_audit_write_port import CentralAuditWritePort
-from domain.ports.output.central_claim_write_port import ClaimWriteError
-from domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.domain.ports.output.central_audit_write_port import CentralAuditWritePort
+from fcc_test_platform.domain.ports.output.central_claim_write_port import ClaimWriteError
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = [

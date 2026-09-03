@@ -21,7 +21,7 @@ from __future__ import annotations
 import uuid as _uuid
 from typing import Callable, Optional
 
-from domain.ports.output.platform_database_port import DbConnection
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = [

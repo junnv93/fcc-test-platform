@@ -41,7 +41,7 @@ from fcc_test_contracts.common.central_sync_config import (
     CentralHttpSyncConfig,
     coerce_poll_interval,
 )
-from domain.services.outbox_retry_policy import OutboxRetryPolicy
+from fcc_test_kernel.domain.services.outbox_retry_policy import OutboxRetryPolicy
 
 
 __all__ = [

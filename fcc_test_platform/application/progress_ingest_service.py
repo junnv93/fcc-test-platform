@@ -19,12 +19,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Optional, Sequence
 
-from domain.models.progress_time_catalog import PricingStatus, StandardTimeCatalog
-from domain.ports.output.central_progress_write_port import (
+from fcc_test_platform.domain.models.progress_time_catalog import PricingStatus, StandardTimeCatalog
+from fcc_test_platform.domain.ports.output.central_progress_write_port import (
     CentralProgressWritePort,
     ExpectationWriteSummary,
 )
-from domain.services.progress_expectation import build_expectation_atom
+from fcc_test_platform.domain.services.progress_expectation import build_expectation_atom
 
 
 __all__ = ['PublishedConditionRow', 'IngestReport', 'ProgressIngestService']

@@ -1,39 +1,5 @@
 {
-  "shared_tops": [
-    "domain",
-    "infrastructure"
-  ],
-  "shared": [
-    "domain/models/artifact_custody_snapshot.py",
-    "domain/models/capability_taxonomy.py",
-    "domain/models/enums.py",
-    "domain/models/expectation_sync.py",
-    "domain/models/measurement_target_identity.py",
-    "domain/models/project_result_reference.py",
-    "domain/models/published_test_plan.py",
-    "domain/models/session_provenance.py",
-    "domain/models/test_plan_authoring.py",
-    "domain/ports/output/central_backend_sync_port.py",
-    "domain/ports/output/central_rbac_read_port.py",
-    "domain/ports/output/expectation_sync_state_port.py",
-    "domain/ports/output/platform_database_port.py",
-    "domain/services/central_session_identity.py",
-    "domain/services/outbox_retry_policy.py",
-    "domain/services/progress_publish_glue.py",
-    "domain/services/reference_hashing.py",
-    "domain/services/sample_inventory_policy.py",
-    "domain/services/unlicensed/channel_ref_identity.py",
-    "domain/services/unlicensed/wlan_import_capability_policy.py",
-    "domain/services/unlicensed/wlan_report_partition.py",
-    "domain/services/workbook_upload_policy.py",
-    "infrastructure/adapters/driven/chamber_token_provider.py",
-    "infrastructure/excel/atomic_write.py"
-  ],
-  "provider_vocabulary": [
-    "domain/models/capability_taxonomy.py",
-    "domain/models/enums.py",
-    "domain/models/test_plan_authoring.py",
-    "domain/services/progress_publish_glue.py",
-    "domain/services/unlicensed/wlan_report_partition.py"
-  ]
+  "shared_tops": [],
+  "shared": [],
+  "provider_vocabulary": []
 }

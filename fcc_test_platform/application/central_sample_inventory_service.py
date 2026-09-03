@@ -8,14 +8,14 @@ import json
 from typing import Any, Callable, Mapping, Optional
 
 from fcc_test_kernel.domain.models.sample_inventory import SampleStatus
-from domain.ports.output.central_sample_inventory_read_port import (
+from fcc_test_platform.domain.ports.output.central_sample_inventory_read_port import (
     CentralSampleInventoryReadPort,
 )
-from domain.ports.output.central_sample_inventory_write_port import (
+from fcc_test_platform.domain.ports.output.central_sample_inventory_write_port import (
     CentralSampleInventoryNotFoundError,
     CentralSampleInventoryWritePort,
 )
-from domain.services.sample_inventory_policy import (
+from fcc_test_kernel.domain.services.sample_inventory_policy import (
     SampleExpectedVersionConflict,
     SampleInvalidFilter,
     assert_expected_version,

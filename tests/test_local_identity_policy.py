@@ -31,7 +31,7 @@ from fcc_test_contracts.common.identity import (  # noqa: E402
     local_identity_key,
     normalize_email,
 )
-from domain.services.password_policy import (  # noqa: E402
+from fcc_test_platform.domain.services.password_policy import (  # noqa: E402
     BCRYPT_COST_ROUNDS,
     PASSWORD_HASH_INPUT_MAX_BYTES,
     PASSWORD_MIN_LENGTH,

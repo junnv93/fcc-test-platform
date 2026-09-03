@@ -71,7 +71,7 @@ from fcc_test_platform.application.central_read_adapter import (  # noqa: E402
     ACTIVE_CLAIMS_VIEW,
     COVERAGE_VIEW,
 )
-from domain.ports.output.central_claim_write_port import (  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_claim_write_port import (  # noqa: E402
     CentralClaimWritePort,
     ClaimWriteError,
 )

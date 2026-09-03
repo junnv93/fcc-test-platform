@@ -53,15 +53,15 @@ from __future__ import annotations
 import json
 from typing import Callable, List, Mapping, Optional, Tuple
 
-from domain.ports.output.central_audit_write_port import CentralAuditWritePort
-from domain.ports.output.central_rekey_ingest_port import (
+from fcc_test_platform.domain.ports.output.central_audit_write_port import CentralAuditWritePort
+from fcc_test_platform.domain.ports.output.central_rekey_ingest_port import (
     RekeyIngestAudit,
     RekeyIngestConflict,
     RekeyIngestConflictError,
     RekeyIngestError,
     RekeyMappingEnvelopeLike,
 )
-from domain.ports.output.platform_database_port import DbConnection
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = [

@@ -27,8 +27,8 @@ from __future__ import annotations
 from typing import Callable, NamedTuple, Optional, Sequence
 
 from fcc_test_kernel.application.central_contract.pagination import CursorValueDomain
-from domain.ports.output.central_read_port import CentralReadError
-from domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.domain.ports.output.central_read_port import CentralReadError
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = [

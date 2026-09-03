@@ -51,14 +51,14 @@ from fcc_test_kernel.domain.models.reference_catalog import (
     RevisionState,
     promote_provenance,
 )
-from domain.ports.output.central_reference_port import (
+from fcc_test_platform.domain.ports.output.central_reference_port import (
     ReferenceCoupledPublishError,
     ReferenceProviderNotFoundError,
     ReferenceProviderNotRegisteredError,
     ReferenceRevisionNotFoundError,
     ReferenceStateConflictError,
 )
-from domain.services.provider_identity_policy import (
+from fcc_test_platform.domain.services.provider_identity_policy import (
     ProviderIdentityStatus,
     classify_provider_identity,
 )
@@ -69,12 +69,12 @@ from fcc_test_kernel.domain.services.reference_entry_edit_policy import (
     validate_entry_payload_shape,
     validate_entry_payload_values,
 )
-from domain.services.reference_row_edit_policy import (
+from fcc_test_platform.domain.services.reference_row_edit_policy import (
     ReferenceRowEditError,
     apply_row_edits,
 )
-from domain.services.reference_hashing import build_reference_entry_hash
-from domain.services.reference_hashing import canonical_semantic_hash
+from fcc_test_kernel.domain.services.reference_hashing import build_reference_entry_hash
+from fcc_test_kernel.domain.services.reference_hashing import canonical_semantic_hash
 from fcc_test_kernel.domain.services.reference_ownership_policy import (
     COUPLED_FAMILY_GROUPS,
     DEFAULT_REFERENCE_PROFILE_ID,

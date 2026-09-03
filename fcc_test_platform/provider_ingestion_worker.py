@@ -10,7 +10,7 @@ from fcc_test_platform.provider_ingestion_plan import (
     build_platform_ingestion_plan,
     provider_scoped_idempotency_key,
 )
-from domain.ports.output.platform_ingestion_port import (
+from fcc_test_platform.domain.ports.output.platform_ingestion_port import (
     PlatformIngestionTransaction,
     PlatformIngestionWriter,
 )

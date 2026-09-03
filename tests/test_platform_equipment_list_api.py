@@ -495,7 +495,7 @@ class TestErrorStatusMapping(unittest.TestCase):
     def test_status_mapping(self):
         from fcc_test_platform.api.platform_routes import api_error_status
         from fcc_test_platform.application.central_project_service import ProjectNotFoundError
-        from domain.ports.output.central_test_equipment_list_port import (
+        from fcc_test_platform.domain.ports.output.central_test_equipment_list_port import (
             CentralTestEquipmentListError,
             EquipmentListConflictError,
             EquipmentListNotFoundError,

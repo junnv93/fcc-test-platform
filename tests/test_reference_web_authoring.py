@@ -74,7 +74,7 @@ from fcc_test_kernel.domain.models.reference_catalog import (  # noqa: E402
     RevisionProvenanceKind,
     RevisionState,
 )
-from domain.ports.output.central_reference_port import (  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_reference_port import (  # noqa: E402
     ReferencePublishConflictError,
     ReferenceRevisionNotFoundError,
     ReferenceStateConflictError,
@@ -85,10 +85,10 @@ from fcc_test_kernel.domain.services.reference_entry_edit_policy import (  # noq
     ReferenceEntryPayloadValueError,
     apply_entry_edits,
 )
-from domain.services.reference_hashing import (  # noqa: E402
+from fcc_test_kernel.domain.services.reference_hashing import (  # noqa: E402
     build_reference_entry_hash,
 )
-from domain.services.reference_row_edit_policy import (  # noqa: E402
+from fcc_test_platform.domain.services.reference_row_edit_policy import (  # noqa: E402
     ReferenceRowEditError,
 )
 from fcc_test_kernel.domain.services.reference_ownership_policy import (  # noqa: E402
@@ -1040,7 +1040,7 @@ class TestTheStatusCodesActuallyReachAnHttpClient(unittest.TestCase):
         self.assertEqual(self._get_detail(), 409)
 
     def test_a_coupled_refusal_is_409_not_500(self) -> None:
-        from domain.ports.output.central_reference_port import (
+        from fcc_test_platform.domain.ports.output.central_reference_port import (
             ReferenceCoupledPublishError,
         )
 
@@ -1048,7 +1048,7 @@ class TestTheStatusCodesActuallyReachAnHttpClient(unittest.TestCase):
         self.assertEqual(self._get_detail(), 409)
 
     def test_a_backend_outage_is_503_not_500(self) -> None:
-        from domain.ports.output.central_reference_port import CentralReferenceError
+        from fcc_test_platform.domain.ports.output.central_reference_port import CentralReferenceError
 
         self._raise = CentralReferenceError('no route to host')
         self.assertEqual(self._get_detail(), 503)

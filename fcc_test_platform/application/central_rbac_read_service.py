@@ -42,7 +42,7 @@ from fcc_test_kernel.application.central_contract.envelope_helpers import (
     text,
 )
 from fcc_test_kernel.application.central_contract.pagination import clamp_limit, decode_cursor, encode_cursor
-from domain.ports.output.central_rbac_read_port import CentralRbacReadPort
+from fcc_test_kernel.domain.ports.output.central_rbac_read_port import CentralRbacReadPort
 
 
 __all__ = ['CentralRbacReadService']

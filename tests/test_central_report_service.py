@@ -18,8 +18,8 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from fcc_test_platform.application.central_project_service import ProjectNotFoundError  # noqa: E402
 from fcc_test_platform.application.central_report_service import CentralReportService  # noqa: E402
 from fcc_test_kernel.domain.models.sample_inventory import SNAPSHOT_SCHEMA_VERSION  # noqa: E402
-from domain.ports.output.central_report_port import ReportSessionNotFoundError  # noqa: E402
-from domain.ports.output.central_report_port import ReportEditionConflictError  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_report_port import ReportSessionNotFoundError  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_report_port import ReportEditionConflictError  # noqa: E402
 
 _PID = "11111111-1111-1111-1111-111111111111"
 

@@ -66,15 +66,15 @@ from fcc_test_platform.session_identity import (
     normalize_chamber_id,
     provider_session_natural_key,
 )
-from domain.models.session_provenance import (
+from fcc_test_kernel.domain.models.session_provenance import (
     SESSION_ORIGIN_PAYLOAD_KEY,
     WORKBOOK_HANDLE_PAYLOAD_KEY,
     normalize_workbook_handle,
     parse_session_origin,
     session_origin_value,
 )
-from domain.ports.output.central_backend_sync_port import ResultSyncBatchResult
-from domain.ports.output.platform_ingestion_port import PlatformIngestionWriter
+from fcc_test_kernel.domain.ports.output.central_backend_sync_port import ResultSyncBatchResult
+from fcc_test_platform.domain.ports.output.platform_ingestion_port import PlatformIngestionWriter
 
 
 __all__ = [

@@ -17,9 +17,9 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from fcc_test_platform.application.published_plan_progress_glue import (  # noqa: E402
     published_conditions_from_plan,
 )
-from domain.models.published_test_plan import PublishedTestPlan  # noqa: E402
-from domain.models.test_plan_authoring import RowOrigin, TestPlanRow  # noqa: E402
-from domain.services.progress_bucket import progress_bucket_id  # noqa: E402
+from fcc_test_kernel.domain.models.published_test_plan import PublishedTestPlan  # noqa: E402
+from fcc_test_kernel.domain.models.test_plan_authoring import RowOrigin, TestPlanRow  # noqa: E402
+from fcc_test_platform.domain.services.progress_bucket import progress_bucket_id  # noqa: E402
 
 
 def _row(capability_path, *, condition_hash, test_type="PSD"):

@@ -5,7 +5,7 @@
 순수성 가드의 명제는 *「도메인 정책이 인프라를 부르지 않는다」* 다. 그것을
 최상위 import 이름으로 재면, 배포판 접두사가 붙는 순간 **판정이 조용히 사라진다**:
 
-    from infrastructure.db import x                 최상위 = infrastructure   ✅ 잡힌다
+    from fcc_test_platform.infrastructure.db import x                 최상위 = infrastructure   ✅ 잡힌다
     from fcc_test_kernel.infrastructure.db import x 최상위 = fcc_test_kernel  ❌ 안 잡힌다
 
 ⚠️ **실측 2026-09-03 — 이 저장소가 두 형태를 다 갖고 있었다.** 문자열 축

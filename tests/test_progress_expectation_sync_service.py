@@ -19,11 +19,11 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from domain.models.enums import MeasurementType  # noqa: E402
-from domain.models.expectation_sync import PendingExpectationPlan  # noqa: E402
-from domain.models.progress_time_catalog import CatalogSource, StandardTimeCatalog  # noqa: E402
-from domain.models.test_plan_authoring import RowOrigin, TestPlanRow  # noqa: E402
-from domain.ports.output.central_progress_write_port import ExpectationWriteSummary  # noqa: E402
+from fcc_test_kernel.domain.models.enums import MeasurementType  # noqa: E402
+from fcc_test_kernel.domain.models.expectation_sync import PendingExpectationPlan  # noqa: E402
+from fcc_test_platform.domain.models.progress_time_catalog import CatalogSource, StandardTimeCatalog  # noqa: E402
+from fcc_test_kernel.domain.models.test_plan_authoring import RowOrigin, TestPlanRow  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_progress_write_port import ExpectationWriteSummary  # noqa: E402
 from fcc_test_platform.application.progress_ingest_service import ProgressIngestService  # noqa: E402
 from fcc_test_platform.application.progress_expectation_sync_service import (  # noqa: E402
     ProgressExpectationSyncService,

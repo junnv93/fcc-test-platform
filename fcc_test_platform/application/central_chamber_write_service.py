@@ -35,7 +35,7 @@ from fcc_test_kernel.domain.models.chamber_node import (
     Heartbeat,
     redact_error_message,
 )
-from domain.ports.output.central_chamber_write_port import CentralChamberWritePort
+from fcc_test_platform.domain.ports.output.central_chamber_write_port import CentralChamberWritePort
 
 
 __all__ = ['CentralChamberWriteService']

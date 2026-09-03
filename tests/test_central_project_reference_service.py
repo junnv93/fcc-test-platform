@@ -5,8 +5,8 @@ import unittest
 from fcc_test_platform.application.central_project_reference_service import (
     CentralProjectReferenceService,
 )
-from domain.models.project_result_reference import canonical_payload_hash
-from domain.ports.output.central_project_reference_port import (
+from fcc_test_kernel.domain.models.project_result_reference import canonical_payload_hash
+from fcc_test_platform.domain.ports.output.central_project_reference_port import (
     ReferenceHashMismatchError,
     ReferenceNotFoundError,
 )

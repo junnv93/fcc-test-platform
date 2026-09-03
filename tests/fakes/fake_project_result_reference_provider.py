@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from domain.models.project_result_reference import canonical_payload_hash
+from fcc_test_kernel.domain.models.project_result_reference import canonical_payload_hash
 
 
 class FakeRadiatedReferenceAdapter:

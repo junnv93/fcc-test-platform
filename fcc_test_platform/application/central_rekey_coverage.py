@@ -27,7 +27,7 @@ from typing import Mapping, Tuple
 
 # 같은 central 대상 테이블 — ingest adapter 가 정의한 단일 SSOT 를 import (중복 정의 0).
 from fcc_test_platform.application.central_rekey_ingest_adapter import MEASUREMENT_ATTEMPTS_TABLE
-from domain.ports.output.platform_database_port import DbConnection
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = [

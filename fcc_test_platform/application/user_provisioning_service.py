@@ -7,7 +7,7 @@ from typing import Callable, MutableSet, Optional
 
 from fcc_test_contracts.common.access_policy import ApiPrincipal
 from fcc_test_contracts.common.identity import canonical_issuer
-from domain.ports.output.central_user_write_port import CentralUserWritePort
+from fcc_test_platform.domain.ports.output.central_user_write_port import CentralUserWritePort
 
 
 __all__ = ['UserProvisioningService']

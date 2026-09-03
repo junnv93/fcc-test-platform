@@ -86,19 +86,19 @@ from fcc_test_kernel.application.central_contract.pagination import (  # noqa: E
     CursorError,
     encode_cursor,
 )
-from domain.ports.output.central_project_port import (  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_project_port import (  # noqa: E402
     CentralProjectError,
     CentralProjectReadPort,
     CentralProjectWritePort,
     ProjectIdentifierConflictError,
 )
-from domain.services.project_identifier_conflict import (  # noqa: E402
+from fcc_test_platform.domain.services.project_identifier_conflict import (  # noqa: E402
     PROJECT_CONFLICT_RESOURCE,
     PROJECT_UNIQUE_CONSTRAINTS,
     UNIQUE_VIOLATION_SQLSTATE,
     classify_project_unique_violation,
 )
-from domain.services.project_directory_query import (  # noqa: E402
+from fcc_test_platform.domain.services.project_directory_query import (  # noqa: E402
     PROJECT_DIRECTORY_CURSOR_FIELDS,
     PROJECT_DIRECTORY_LEGACY_ORDER_COLUMNS,
     PROJECT_DIRECTORY_ORDER_COLUMNS,
@@ -122,15 +122,15 @@ from fcc_test_kernel.domain.services.project_metadata_edit import (  # noqa: E40
 _DOMAIN_POLICY_MODULE = (
     moved_module_source('fcc_test_kernel.domain.services.project_metadata_edit')
 )
-_WRITE_ADAPTER_MODULE = (
-    resolve_repo_artifact(__file__, 'src/application/platform/central_project_write_adapter.py')
-)
-_DIRECTORY_POLICY_MODULE = (
-    resolve_repo_artifact(__file__, 'src/domain/services/project_directory_query.py')
-)
-_CONFLICT_POLICY_MODULE = (
-    resolve_repo_artifact(__file__, 'src/domain/services/project_identifier_conflict.py')
-)
+_WRITE_ADAPTER_MODULE = moved_module_source(
+    'fcc_test_platform.application.central_project_write_adapter')
+# ⚠️ **경로가 아니라 모듈에게 묻는다** (2026-09-03, 커널 3단계).
+# 이 둘은 중앙 전용이라 `fcc_test_platform.domain.services.*` 로 갔다.
+# 경로를 적으면 다음 이관에서 또 낡는다 — `tests/_moved_module_source.py`.
+_DIRECTORY_POLICY_MODULE = moved_module_source(
+    'fcc_test_platform.domain.services.project_directory_query')
+_CONFLICT_POLICY_MODULE = moved_module_source(
+    'fcc_test_platform.domain.services.project_identifier_conflict')
 _CENTRAL_SCHEMA = PROJECT_ROOT / 'docs' / 'platform' / 'central_db_schema.v1.json'
 _MIGRATION_010 = (
     resolve_repo_artifact(__file__, 'docs/platform/migrations/010_project_directory_indexes.sql')
@@ -769,7 +769,7 @@ class TestProjectMetadataSqlAgainstDdl(unittest.TestCase):
     def test_orphan_project_without_model_row_fails_loudly(self):
         # ADR-0017 D1 위반(모델 행 없는 프로젝트)에 manufacturer 를 쓰면 0행 갱신인데
         # 200 을 답하면 **쓰지 않은 write 를 보고**하는 것 — loud 실패 + 전량 롤백.
-        from domain.ports.output.central_project_port import CentralProjectError
+        from fcc_test_platform.domain.ports.output.central_project_port import CentralProjectError
 
         self.conn.execute('DELETE FROM device_models WHERE project_id=?', ('p-a',))
         self.conn.commit()

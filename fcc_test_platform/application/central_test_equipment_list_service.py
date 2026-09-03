@@ -40,9 +40,9 @@ from typing import Callable, Optional, Sequence
 
 from fcc_test_platform.application.central_project_service import ProjectNotFoundError
 from fcc_test_kernel.application.central_contract.envelope_helpers import optional_text, require_uuid, text
-from domain.ports.output.central_project_port import CentralProjectReadPort
-from domain.ports.output.central_report_port import CentralReportReadPort
-from domain.ports.output.central_test_equipment_list_port import (
+from fcc_test_platform.domain.ports.output.central_project_port import CentralProjectReadPort
+from fcc_test_platform.domain.ports.output.central_report_port import CentralReportReadPort
+from fcc_test_platform.domain.ports.output.central_test_equipment_list_port import (
     CentralTestEquipmentListReadPort,
     CentralTestEquipmentListWritePort,
     EquipmentListConflictError,
