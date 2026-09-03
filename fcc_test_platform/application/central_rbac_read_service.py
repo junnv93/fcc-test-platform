@@ -35,13 +35,13 @@ from fcc_test_platform.application.central_rbac_read_adapter import (
     MEMBERSHIP_KEYSET,
     MEMBERSHIP_KEYSET_DOMAINS,
 )
-from application.central_contract.envelope_helpers import (
+from fcc_test_kernel.application.central_contract.envelope_helpers import (
     optional_text,
     parse_timestamp,
     require_uuid,
     text,
 )
-from application.central_contract.pagination import clamp_limit, decode_cursor, encode_cursor
+from fcc_test_kernel.application.central_contract.pagination import clamp_limit, decode_cursor, encode_cursor
 from domain.ports.output.central_rbac_read_port import CentralRbacReadPort
 
 

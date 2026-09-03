@@ -53,7 +53,7 @@ from support.central_pg_sqlite_shim import (  # noqa: E402
 )
 
 from fcc_test_contracts.common.access_policy import ApiAccessPolicy, ApiPrincipal  # noqa: E402
-from application.central_contract.api_contracts import (  # noqa: E402
+from fcc_test_kernel.application.central_contract.api_contracts import (  # noqa: E402
     PLATFORM_API_OPERATIONS,
     PLATFORM_API_PERMISSION_DESCRIPTIONS,
     PLATFORM_API_PERMISSIONS,
@@ -81,7 +81,7 @@ from fcc_test_platform.application.central_chamber_read_service import (  # noqa
 from fcc_test_platform.application.central_chamber_write_service import (  # noqa: E402
     CentralChamberWriteService,
 )
-from domain.models.chamber_node import ChamberNodeStatus, UnavailableReason  # noqa: E402
+from fcc_test_kernel.domain.models.chamber_node import ChamberNodeStatus, UnavailableReason  # noqa: E402
 from domain.ports.output.central_chamber_read_port import (  # noqa: E402
     CentralChamberReadError,
     CentralChamberReadPort,
@@ -364,7 +364,7 @@ class TestChamberWriteServiceLogic(unittest.TestCase):
         )
 
     def test_register_defaults_ttl_to_domain_constant(self):
-        from domain.models.chamber_node import DEFAULT_HEARTBEAT_TTL_SECONDS
+        from fcc_test_kernel.domain.models.chamber_node import DEFAULT_HEARTBEAT_TTL_SECONDS
         env = self.service.register(chamber_id='chA', name='A', base_url='http://a:8000')
         self.assertEqual(env['heartbeat_ttl_seconds'], DEFAULT_HEARTBEAT_TTL_SECONDS)
         self.assertTrue(env['enabled'])

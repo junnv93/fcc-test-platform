@@ -34,13 +34,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
 
-from domain.models.reference_catalog import CatalogFamily
-from domain.services.reference_entry_edit_policy import (
+from fcc_test_kernel.domain.models.reference_catalog import CatalogFamily
+from fcc_test_kernel.domain.services.reference_entry_edit_policy import (
     MAX_ENTRY_EDITS_PER_REQUEST,
     validate_entry_payload_shape,
 )
 from domain.services.reference_hashing import build_reference_entry_hash
-from domain.services.reference_ownership_policy import (
+from fcc_test_kernel.domain.services.reference_ownership_policy import (
     identity_key_for,
     projection_fields_for,
 )

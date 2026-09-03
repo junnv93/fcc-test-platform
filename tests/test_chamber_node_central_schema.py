@@ -20,6 +20,7 @@ import sys
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from tests._moved_module_source import moved_module_source  # noqa: E402
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / 'src'))
@@ -32,7 +33,7 @@ from fcc_test_contracts.common.sqlite_connection_factory import (  # noqa: E402
 from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # noqa: E402
 
 from support.central_pg_sqlite_shim import create_tables_from_schema  # noqa: E402
-from domain.models.chamber_node import (  # noqa: E402
+from fcc_test_kernel.domain.models.chamber_node import (  # noqa: E402
     DEFAULT_HEARTBEAT_TTL_SECONDS,
     MAX_LAST_ERROR_LENGTH,
     ChamberAvailability,
@@ -48,7 +49,7 @@ from domain.models.chamber_node import (  # noqa: E402
 
 SCHEMA_PATH = project_root / 'docs' / 'platform' / 'central_db_schema.v1.json'
 DDL_PATH = resolve_repo_artifact(__file__, 'docs/platform/migrations/001_initial_central_db.sql')
-MODEL_PATH = resolve_repo_artifact(__file__, 'src/domain/models/chamber_node.py')
+MODEL_PATH = moved_module_source('fcc_test_kernel.domain.models.chamber_node')
 
 
 class TestChamberSchemaTables(unittest.TestCase):

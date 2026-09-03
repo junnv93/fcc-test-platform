@@ -32,7 +32,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Iterable, Mapping, Optional, Sequence
 
-from domain.models.artifact_custody import CustodyStatus
+from fcc_test_kernel.domain.models.artifact_custody import CustodyStatus
 
 
 __all__ = [

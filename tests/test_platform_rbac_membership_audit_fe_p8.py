@@ -39,7 +39,7 @@ from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # no
 from fcc_test_contracts.common.sqlite_connection_factory import SqliteConnectionContext  # noqa: E402
 
 from fcc_test_contracts.common.access_policy import ApiAccessPolicy, ApiPrincipal  # noqa: E402
-from application.central_contract.api_contracts import (  # noqa: E402
+from fcc_test_kernel.application.central_contract.api_contracts import (  # noqa: E402
     PLATFORM_API_OPERATIONS,
 )
 from fcc_test_platform.application.central_audit_write_adapter import (  # noqa: E402

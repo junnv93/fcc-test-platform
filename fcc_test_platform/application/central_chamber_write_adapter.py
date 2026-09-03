@@ -44,7 +44,7 @@ from __future__ import annotations
 import json
 from typing import Callable, Mapping, Optional
 
-from application.central_contract.envelope_helpers import apply_flat_merge_patch
+from fcc_test_kernel.application.central_contract.envelope_helpers import apply_flat_merge_patch
 from domain.ports.output.central_chamber_write_port import (
     ChamberNotFoundError,
     ChamberWriteError,

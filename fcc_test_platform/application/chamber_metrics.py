@@ -21,8 +21,8 @@ from __future__ import annotations
 from typing import Callable
 
 from fcc_test_contracts.common.metrics_registry import GaugeFamily
-from application.central_contract.envelope_helpers import parse_timestamp
-from domain.models.chamber_node import ChamberNodeStatus
+from fcc_test_kernel.application.central_contract.envelope_helpers import parse_timestamp
+from fcc_test_kernel.domain.models.chamber_node import ChamberNodeStatus
 
 
 __all__ = [

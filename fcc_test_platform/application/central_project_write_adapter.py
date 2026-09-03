@@ -44,7 +44,7 @@ from domain.services.project_identifier_conflict import (
     PROJECT_CONFLICT_RESOURCE,
     classify_project_unique_violation,
 )
-from domain.services.project_metadata_edit import (
+from fcc_test_kernel.domain.services.project_metadata_edit import (
     DEVICE_MODEL_META_FIELDS,
     PROJECT_TABLE_META_FIELDS,
 )

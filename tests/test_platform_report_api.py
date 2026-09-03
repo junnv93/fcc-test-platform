@@ -22,7 +22,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from application.central_contract.api_contracts import (  # noqa: E402
+from fcc_test_kernel.application.central_contract.api_contracts import (  # noqa: E402
     PLATFORM_API_OPERATIONS,
     PLATFORM_API_PERMISSIONS,
     PLATFORM_API_ROUTES,

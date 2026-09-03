@@ -53,7 +53,7 @@ from fcc_test_contracts.common.metrics_registry import (
     build_route_pattern_index,
     lookup_operation as _lookup_route_operation,
 )
-from domain.models.chamber_node import (
+from fcc_test_kernel.domain.models.chamber_node import (
     ChamberNodeStatus,
     ChamberProgress,
     ChamberProgressEvent,
@@ -73,7 +73,7 @@ from fcc_test_contracts.common.operator_notice import (
     CHANNEL_PLATFORM_API,
     announce,
 )
-from application.central_contract.api_contracts import (
+from fcc_test_kernel.application.central_contract.api_contracts import (
     ARTIFACT_CUSTODY_REPORT_SCHEMA_VERSION,
     PLATFORM_API_CONTRACT_VERSION,
     PLATFORM_API_OPERATIONS,
@@ -1260,12 +1260,12 @@ class PlatformApiAdapter:
         family, scope_id = resolved if resolved else (None, None)
         project_scope = None
         if family and scope_id:
-            from domain.services.reference_scope_policy import (
+            from fcc_test_kernel.domain.services.reference_scope_policy import (
                 ReferenceScopeError,
                 ReferenceScopeKind,
                 scope_kind_for,
             )
-            from domain.models.reference_catalog import CatalogFamily
+            from fcc_test_kernel.domain.models.reference_catalog import CatalogFamily
 
             try:
                 if scope_kind_for(CatalogFamily(family)) is ReferenceScopeKind.PROJECT:

@@ -39,7 +39,7 @@ from datetime import datetime, timezone
 from typing import Callable, Optional, Sequence
 
 from fcc_test_platform.application.central_project_service import ProjectNotFoundError
-from application.central_contract.envelope_helpers import optional_text, require_uuid, text
+from fcc_test_kernel.application.central_contract.envelope_helpers import optional_text, require_uuid, text
 from domain.ports.output.central_project_port import CentralProjectReadPort
 from domain.ports.output.central_report_port import CentralReportReadPort
 from domain.ports.output.central_test_equipment_list_port import (
@@ -48,7 +48,7 @@ from domain.ports.output.central_test_equipment_list_port import (
     EquipmentListConflictError,
     EquipmentListNotFoundError,
 )
-from domain.services.test_equipment_list_policy import (
+from fcc_test_kernel.domain.services.test_equipment_list_policy import (
     TEST_ITEM_KEYS,
     ItemType,
     ListStatus,

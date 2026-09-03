@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from fcc_test_contracts.common.access_policy import ApiAccessPolicy, ApiPrincipal
-from application.central_contract.api_contracts import (
+from fcc_test_kernel.application.central_contract.api_contracts import (
     PLATFORM_API_OPERATIONS,
     PLATFORM_API_OPERATION_QUERY_OVERRIDES,
     PLATFORM_API_PERMISSIONS,

@@ -27,7 +27,7 @@ for _p in (PROJECT_ROOT, PROJECT_ROOT / 'src', PROJECT_ROOT / 'scripts'):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
-from domain.models.sample_inventory import SNAPSHOT_SCHEMA_VERSION  # noqa: E402
+from fcc_test_kernel.domain.models.sample_inventory import SNAPSHOT_SCHEMA_VERSION  # noqa: E402
 from domain.models.session_provenance import SessionOrigin  # noqa: E402
 
 # Read through the conftest quarantine rather than `os.environ`. The suite

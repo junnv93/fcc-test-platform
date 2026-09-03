@@ -26,7 +26,7 @@ from __future__ import annotations
 from typing import Mapping, Optional, Sequence
 
 from fcc_test_platform.application.central_chamber_read_service import CentralChamberReadService
-from domain.models.chamber_node import ChamberNodeStatus, ChamberProgress
+from fcc_test_kernel.domain.models.chamber_node import ChamberNodeStatus, ChamberProgress
 from domain.ports.output.central_chamber_write_port import ChamberNotFoundError
 from domain.ports.output.chamber_measurement_proxy_port import (
     ChamberBusyError,

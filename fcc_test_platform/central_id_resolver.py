@@ -5,7 +5,7 @@ The Port contract (``CentralIdResolverPort``) and its loud-fail error
 in FE-P0c WIRE (2026-05-26) — the hexagonal-correct home for a driven-port
 abstraction, alongside its sibling ``central_backend_sync_port``. They are
 re-exported here so existing callers
-(``from application.headless.central_id_resolver import CentralIdResolverPort``)
+(``from fcc_test_platform.application.headless.central_id_resolver import CentralIdResolverPort``)
 keep working unchanged.
 
 This module owns the *concrete* in-memory resolver used by fakes/tests. The

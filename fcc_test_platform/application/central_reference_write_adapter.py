@@ -43,7 +43,7 @@ from __future__ import annotations
 import json
 from typing import Callable, Mapping, Optional, Sequence
 
-from domain.models.reference_catalog import RevisionState
+from fcc_test_kernel.domain.models.reference_catalog import RevisionState
 from domain.ports.output.central_reference_port import (
     CentralReferenceError,
     ReferenceProviderNotFoundError,

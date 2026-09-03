@@ -24,7 +24,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import Callable, Mapping, Optional
 
-from application.central_contract.pagination import CursorValueDomain
+from fcc_test_kernel.application.central_contract.pagination import CursorValueDomain
 from domain.ports.output.central_sample_inventory_read_port import (
     CentralSampleInventoryReadPort,
 )

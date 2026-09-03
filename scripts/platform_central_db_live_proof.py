@@ -107,7 +107,7 @@ from fcc_test_platform.application.central_report_service import CentralReportSe
 from fcc_test_platform.application.central_report_write_adapter import (  # noqa: E402
     PostgresCentralReportWriteAdapter,
 )
-from domain.models.sample_inventory import SNAPSHOT_SCHEMA_VERSION  # noqa: E402
+from fcc_test_kernel.domain.models.sample_inventory import SNAPSHOT_SCHEMA_VERSION  # noqa: E402
 from domain.models.session_provenance import SessionOrigin  # noqa: E402
 from platform_db_migration_collect import collect_from_database  # noqa: E402
 
@@ -1707,7 +1707,7 @@ def _provision_report_equipment_lists(dsn: str, ids: dict, proof_seed: str) -> d
     relayed from the bundled equipment master verbatim — no interpretation, so
     no provider vocabulary lands here.
     """
-    from domain.services.test_equipment_list_policy import ItemType, TestItemKey
+    from fcc_test_kernel.domain.services.test_equipment_list_policy import ItemType, TestItemKey
 
     master = json.loads(EQUIPMENT_RESOURCE_PATH.read_text(encoding='utf-8'))
     equipment = list(master.get('equipment') or [])

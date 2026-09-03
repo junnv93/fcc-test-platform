@@ -36,12 +36,12 @@ from fcc_test_platform.application.central_membership_write_service import (
 from fcc_test_platform.application.central_project_read_adapter import (
     PROJECT_DIRECTORY_KEYSET_DOMAINS,
 )
-from application.central_contract.envelope_helpers import (
+from fcc_test_kernel.application.central_contract.envelope_helpers import (
     optional_text,
     require_uuid,
     text,
 )
-from application.central_contract.pagination import (
+from fcc_test_kernel.application.central_contract.pagination import (
     clamp_limit,
     decode_cursor,
     encode_cursor,
@@ -60,7 +60,7 @@ from domain.services.project_directory_query import (
     normalize_search_term,
     search_like_pattern,
 )
-from domain.services.project_metadata_edit import parse_project_metadata_update
+from fcc_test_kernel.domain.services.project_metadata_edit import parse_project_metadata_update
 
 
 __all__ = [

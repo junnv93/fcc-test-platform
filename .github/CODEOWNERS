@@ -23,7 +23,13 @@
 # 인증 — 백엔드
 # ⚠️ `oidc_principal_resolver` 는 이 레포에 없습니다 — `fcc-test-contracts` 로
 #    갔습니다. 여기 없는 경로를 적으면 아무것도 지키지 않는 줄이 됩니다.
-/application/central_contract/        @junnv93
+# ⚠️ 2026-09-03 — `/application/central_contract/` 도 같은 이유로 지웠습니다.
+#    커널 2단계가 그 최상위 이름을 통째로 놓았고(공유 31파일 →
+#    `fcc-test-contracts:packages/fcc-test-kernel`, 중앙 전용 4 →
+#    `/fcc_test_platform/application/`), 아래 줄이 그것을 나릅니다.
+#    **위 주석이 이 줄 바로 위에 있었는데도 낡았습니다** — 규칙을 적어 두는 것과
+#    적용하는 것은 다른 행위입니다.
+/fcc_test_platform/                   @junnv93
 
 # 배포·문서
 /infra/                               @junnv93

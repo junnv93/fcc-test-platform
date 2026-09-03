@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import Callable, Optional, Sequence
 
-from application.central_contract.pagination import CursorValueDomain
+from fcc_test_kernel.application.central_contract.pagination import CursorValueDomain
 from domain.ports.output.central_rbac_read_port import CentralRbacReadError
 from domain.ports.output.platform_database_port import DbConnection
 

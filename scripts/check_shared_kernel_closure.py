@@ -83,7 +83,7 @@ def _imports(source: str) -> set[str]:
         if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
             out.add(node.module)
             # ⚠️ **서브모듈 import 도 간선이다** (실측 2026-09-03).
-            # ``from application.central_contract import surface_auth, …`` 에서
+            # ``from fcc_test_kernel.application.central_contract import surface_auth, …`` 에서
             # ``node.module`` 만 담으면 그 패키지의 ``__init__.py`` 로 해소되고,
             # 그 파일이 **순수 docstring** 이면 탐색이 거기서 멈춘다. 실제로
             # 표면 9개와 ``api_operation_factory`` 가 폐포에 안 들어왔다 —

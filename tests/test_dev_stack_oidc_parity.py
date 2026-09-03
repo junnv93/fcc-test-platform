@@ -27,9 +27,9 @@ import unittest
 from pathlib import Path
 
 
-from application.headless.runtime_config import FCC_HEADLESS_AUTH_ENV_PREFIX
+from fcc_test_platform.application.headless.runtime_config import FCC_HEADLESS_AUTH_ENV_PREFIX
 from fcc_test_platform.application.runtime_config import PLATFORM_AUTH_ENV_PREFIX
-from application.session.runtime_config import FCC_SESSION_AUTH_ENV_PREFIX
+from fcc_test_platform.application.session.runtime_config import FCC_SESSION_AUTH_ENV_PREFIX
 import subprocess
 from fcc_test_contracts.common.auth_config import HttpAuthConfig  # noqa: E402
 from tests.support.parity import assert_set_equality  # noqa: E402

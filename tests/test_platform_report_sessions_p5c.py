@@ -44,7 +44,7 @@ def _central_fixture():
     return conn
 
 from fcc_test_contracts.common.access_policy import ApiAccessPolicy, ApiPrincipal  # noqa: E402
-from application.central_contract.api_contracts import (  # noqa: E402
+from fcc_test_kernel.application.central_contract.api_contracts import (  # noqa: E402
     PLATFORM_API_OPERATIONS,
     PLATFORM_API_PERMISSIONS,
     PLATFORM_API_ROUTES,

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from fcc_test_contracts.common.metrics_registry import ApiMetricsRegistry, CounterFamily
-from application.central_contract.central_sync_readiness import (
+from fcc_test_kernel.application.central_contract.central_sync_readiness import (
     CentralSyncReadiness,
     CentralSyncReadinessCode,
 )

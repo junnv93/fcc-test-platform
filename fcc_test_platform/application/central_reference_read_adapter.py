@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from typing import Callable, Optional, Sequence
 
-from domain.models.reference_catalog import RevisionState
+from fcc_test_kernel.domain.models.reference_catalog import RevisionState
 from domain.ports.output.central_reference_port import CentralReferenceError
 from domain.ports.output.platform_database_port import DbConnection
 

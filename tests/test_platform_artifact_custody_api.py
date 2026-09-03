@@ -452,7 +452,7 @@ class TestTheNodeScopedOperationsAreBoundToTheirChamber(unittest.TestCase):
 
     def _adapter(self, *, chamber_id='chamber-a', **collaborators):
         from fcc_test_contracts.common.access_policy import ApiAccessPolicy, ApiPrincipal
-        from application.central_contract.api_contracts import PLATFORM_API_OPERATIONS
+        from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_OPERATIONS
         from fcc_test_platform.api.platform_routes import PlatformApiAdapter
 
         return PlatformApiAdapter(
@@ -519,7 +519,7 @@ class TestTheNodeScopedOperationsAreBoundToTheirChamber(unittest.TestCase):
         from fcc_test_platform.application.central_artifact_custody_service import (
             CentralArtifactCustodyService,
         )
-        from application.central_contract.api_vocabulary import (
+        from fcc_test_kernel.application.central_contract.api_vocabulary import (
             ARTIFACT_CUSTODY_REPORT_SCHEMA_VERSION,
         )
 

@@ -24,6 +24,7 @@
 Owned by ``/verify-report-equipment-list-central``.
 """
 from __future__ import annotations
+from tests._moved_module_source import moved_module_source  # noqa: E402
 
 import ast
 import json
@@ -41,14 +42,14 @@ from fcc_test_contracts.common.tree_artifacts import (
 )  # noqa: E402
 
 from fcc_test_contracts.common.api_error_codes import ErrorCode  # noqa: E402
-from application.central_contract.api_contracts import (  # noqa: E402
+from fcc_test_kernel.application.central_contract.api_contracts import (  # noqa: E402
     PLATFORM_API_OPERATIONS,
     PLATFORM_API_PATH_PARAMS,
     PLATFORM_API_PERMISSIONS,
     PLATFORM_API_ROUTES,
     PLATFORM_API_SCHEMAS,
 )
-from domain.services.test_equipment_list_policy import (  # noqa: E402
+from fcc_test_kernel.domain.services.test_equipment_list_policy import (  # noqa: E402
     TEST_ITEM_KEYS,
     ItemType,
     ListStatus,
@@ -175,7 +176,7 @@ class TestVocabularyDerivesFromTheDomain(unittest.TestCase):
         self.assertEqual(set(schema["enum"]), {m.value for m in ItemType})
 
     def test_item_properties_cover_the_persisted_fields(self):
-        from domain.services.test_equipment_list_policy import ITEM_PERSISTED_FIELDS
+        from fcc_test_kernel.domain.services.test_equipment_list_policy import ITEM_PERSISTED_FIELDS
 
         props = PLATFORM_API_SCHEMAS["TestEquipmentListItem"]["properties"]
         for field in ITEM_PERSISTED_FIELDS:
@@ -204,7 +205,7 @@ class TestVocabularyDerivesFromTheDomain(unittest.TestCase):
 
     def test_no_literal_test_item_vocabulary_in_the_contract_module(self):
         """계약이 어휘를 리터럴로 재선언하면 도메인과 조용히 갈라진다."""
-        module = resolve_repo_artifact(__file__, 'src/application/central_contract/api_contracts.py')
+        module = moved_module_source('fcc_test_kernel.application.central_contract.api_contracts')
         tree = ast.parse(module.read_text(encoding="utf-8"))
         vocabulary = set(TEST_ITEM_KEYS)
         offenders: list[int] = []

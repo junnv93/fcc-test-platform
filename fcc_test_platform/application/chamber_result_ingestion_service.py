@@ -13,8 +13,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Mapping
 
-from application.central_contract.api_contracts import CHAMBER_RESULT_INGESTION_SCHEMA_VERSION
-from application.central_contract.central_sync_readiness import (
+from fcc_test_kernel.application.central_contract.api_contracts import CHAMBER_RESULT_INGESTION_SCHEMA_VERSION
+from fcc_test_kernel.application.central_contract.central_sync_readiness import (
     CentralSyncReadiness,
     CentralSyncReadinessCode,
 )

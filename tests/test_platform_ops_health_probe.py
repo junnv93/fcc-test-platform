@@ -477,7 +477,7 @@ class TestProbeEndpoints(unittest.TestCase):
 
     def test_probes_are_absent_from_the_published_openapi_contract(self):
         """Infrastructure probes are not part of the business API artifact."""
-        from application.central_contract.api_contracts import PLATFORM_API_ROUTES
+        from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_ROUTES
         declared = {path for _, path in PLATFORM_API_ROUTES.values()}
         for suffix in PROBE_PATH_SUFFIXES:
             self.assertNotIn(f'/platform{suffix}', declared)

@@ -29,8 +29,8 @@ would compare a copy against a copy. These dicts are what the routers mount.
 from __future__ import annotations
 
 from fcc_test_contracts.headless.api_contracts import HEADLESS_API_ROUTES
-from application.central_contract.api_contracts import PLATFORM_API_ROUTES
-from application.session.api_contracts import SESSION_API_ROUTES
+from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_ROUTES
+from fcc_test_kernel.application.session.api_contracts import SESSION_API_ROUTES
 
 
 #: Surface key → the route table its ASGI app mounts. The surface keys match

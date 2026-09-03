@@ -9,7 +9,7 @@ from fcc_test_contracts.common.api_error_codes import ErrorCode
 from fcc_test_platform.application.central_sample_inventory_service import (
     SampleInventoryNotFoundError,
 )
-from domain.models.sample_inventory import SampleStatus
+from fcc_test_kernel.domain.models.sample_inventory import SampleStatus
 from domain.ports.output.central_sample_inventory_read_port import (
     CentralSampleInventoryReadPort,
 )

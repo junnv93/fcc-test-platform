@@ -41,7 +41,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from fcc_test_contracts.common.outbound_http import build_outbound_traceparent_headers
-from application.session.api_contracts import SESSION_API_ROUTES
+from fcc_test_kernel.application.session.api_contracts import SESSION_API_ROUTES
 from domain.ports.output.chamber_measurement_proxy_port import (
     ChamberBusyError,
     ChamberProxyError,
