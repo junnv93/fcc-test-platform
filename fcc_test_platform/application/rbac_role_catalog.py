@@ -80,11 +80,52 @@ def _discover_schema_path() -> Path:
     names a path, rather than degrading to an empty catalog — which would 403
     every membership-based authorization check in silence.
     """
+    for root in _candidate_roots():
+        candidate = root / _SCHEMA_RELATIVE_PATH
+        if candidate.is_file():
+            return candidate
     here = Path(__file__).resolve()
-    for ancestor in here.parents:
-        if (ancestor / _SCHEMA_RELATIVE_PATH).is_file():
-            return ancestor / _SCHEMA_RELATIVE_PATH
     return here.parents[min(3, len(here.parents) - 1)] / _SCHEMA_RELATIVE_PATH
+
+
+def _candidate_roots() -> 'list[Path]':
+    """이 스키마가 있을 수 있는 트리들 — **가까운 것부터.**
+
+    ⚠️ **조상 탐색만으로는 배포 이미지에서 성립하지 않는다** (실측 2026-09-03).
+    위 docstring 이 *"where is the tree I am part of"* 를 묻는다고 적는데,
+    설치된 배포판에서는 **그 물음의 답이 없다**:
+
+        모듈   /usr/local/lib/python3.11/site-packages/fcc_test_platform/...
+        자원   /app/docs/platform/central_db_schema.v1.json
+
+    둘은 **조상 관계가 아니다.** 휠은 site-packages 로 가고 `docs/` 는 `COPY` 로
+    `/app` 에 놓이기 때문이다. 그래서 조상 탐색이 전부 헛돌고 fallback 이
+    `/usr/local/lib/python3.11/docs/...` 를 가리켜 **import 시점에 죽는다.**
+
+    ⚠️ **그 사실이 오늘까지 가려져 있었다** — compose 가
+    ``FCC_PLATFORM_SCHEMA_PATH`` 를 주기 때문이다. 즉 이 코드는
+    **환경변수 없이는 이미지에서 못 돈다**는 것을 아무 데도 적지 않은 채
+    그 변수에 전적으로 의존하고 있었다. 그것을 지우거나 오타 내면 배포가
+    import 에서 죽고, 원인은 이 파일 어디에도 안 적혀 있다.
+
+    ⚠️ **사본을 만들지 않는다.** 이 JSON 은 SSOT 이고(`docs/platform/`),
+    패키지 안으로 복사하면 두 벌이 되어 갈라진다 — 이 저장소가 오늘만
+    `benchmark_harness` 에서 같은 형태를 다뤘다. 자원은 이미 이미지에 있으므로
+    필요한 것은 **찾는 축을 하나 더 갖는 것**뿐이다.
+
+    작업 디렉터리를 후보에 넣는 이유: 배포 이미지의 `WORKDIR` 이 `/app` 이고,
+    그것이 `docs/` 가 실제로 놓인 트리다. 저장소 체크아웃에서도 참이다
+    (거기서는 조상 탐색이 이미 답을 준다 — 이 축은 그때 쓰이지 않는다).
+    """
+    here = Path(__file__).resolve()
+    roots: list[Path] = [*here.parents]
+    try:
+        cwd = Path.cwd().resolve()
+    except OSError:  # pragma: no cover — 삭제된 cwd
+        return roots
+    # ⚠️ cwd 는 **뒤에** 둔다. 앞에 두면 운영자가 우연히 다른 트리에서 실행할 때
+    # 그 트리의 스키마가 이긴다 — 「내가 속한 트리」가 먼저다.
+    return roots + [cwd, *cwd.parents]
 
 
 def _resolve_schema_path() -> Path:
