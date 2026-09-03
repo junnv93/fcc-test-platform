@@ -48,7 +48,6 @@ _FIXED_CLOCK = lambda: datetime.datetime(  # noqa: E731
 
 SCHEMA_PATH = ROOT / 'docs' / 'platform' / 'chamber_measurement_staging.schema.json'
 EVIDENCE_MODULE = resolve_repo_artifact(__file__, 'src/application/platform/chamber_measurement_staging_evidence.py')
-RUNBOOK_PATH = ROOT / 'docs' / 'operations' / 'chamber-real-measurement-staging-runbook.md'
 
 
 def _recorded_pass_manifest() -> dict:
@@ -627,13 +626,23 @@ class TestGateCli(unittest.TestCase):
         self.assertEqual(gate.main(['--template']), 2)
 
 
-class TestRunbookExists(unittest.TestCase):
-    def test_runbook_documents_no_fake_and_blocked_definition(self):
-        text = RUNBOOK_PATH.read_text(encoding='utf-8')
-        self.assertIn('No-fake rule', text)
-        self.assertIn('Blocked-by-equipment', text)
-        self.assertIn('chamber_measurement_staging_gate.py', text)
 
 
 if __name__ == '__main__':
     unittest.main()
+
+
+# ⚠️ **`TestRunbookExists` 는 2026-09-03 에 여기서 지웠다 — 중복이었다.**
+#
+# 추출(2026-08-30)이 이 파일을 두 레인에 복사했는데, 그 클래스가 읽는
+# `docs/operations/chamber-real-measurement-staging-runbook.md` 는 **provider
+# 저장소에만 있다.** 그래서 이쪽 사본은 배송 이래 red 였고 기준선이 그것을
+# 선언된 부채로 지고 있었다.
+#
+# 이관이 아니라 **중복 제거**다 — provider 저장소의
+# `tests/test_chamber_measurement_staging_evidence.py` 에 같은 클래스·같은 이름·
+# 같은 단언이 그대로 있고(교차 확인 2026-09-03), 그쪽은 대상 런북을 갖는다.
+# 게다가 그쪽 사본이 **더 강하다** — 우리가 지적한 공허성(런북이 게이트 파일
+# 이름을 «글자»로만 적으면 그 파일이 사라져도 초록)을 그쪽이 별도 검사로 받았다.
+#
+# 이 파일의 나머지 12개 클래스는 이 레인에서 의미가 있으므로 남는다.

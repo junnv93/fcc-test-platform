@@ -1,16 +1,11 @@
 {
  "lane": "fcc-test-platform",
  "baseline": [
-  "tests/test_chamber_measurement_staging_evidence.py::TestRunbookExists::test_runbook_documents_no_fake_and_blocked_definition",
   "tests/test_platform_chamber_api_p2.py::TestChamberNotFoundErrorSingleDefinition::test_exactly_one_definition_site",
   "tests/test_platform_cutover_completion_audit.py::TestPlaceholderDetectionSsotDedup::test_scripts_import_placeholder_primitives",
   "tests/test_platform_cutover_live_workflow.py::TestPlatformCutoverLiveWorkflow::test_default_suggested_commands_match_existing_cli_entrypoints",
   "tests/test_platform_cutover_readiness_cli.py::TestPlatformCutoverReadinessCli::test_cli_does_not_import_runtime_side_effect_dependencies",
   "tests/test_platform_postgres_ingestion_writer.py::TestPlatformPostgresIngestionWriter::test_conflicting_complete_snapshot_replay_is_observable",
-  "tests/test_platform_reference_composition.py::TestTheComposedRuntimeReachesTheReferenceService::test_listing_revisions_does_not_raise_the_wiring_error",
-  "tests/test_platform_reference_composition.py::TestTheComposedRuntimeReachesTheReferenceService::test_the_composed_runtime_knows_which_providers_the_screen_offers",
-  "tests/test_platform_reference_composition.py::TestTheComposedRuntimeReachesTheReferenceService::test_the_composed_runtime_wires_the_reference_resolver_registry",
-  "tests/test_platform_reference_composition.py::TestTheComposedRuntimeReachesTheReferenceService::test_the_unwired_shape_still_raises",
   "tests/test_project_result_selection_performance.py"
  ]
 }
