@@ -335,12 +335,12 @@ class TestTheDoublesSatisfyTheirPorts(unittest.TestCase):
     """
 
     def test_fake_writer_satisfies_the_writer_port(self):
-        from domain.ports.output.platform_ingestion_port import PlatformIngestionWriter
+        from fcc_test_platform.domain.ports.output.platform_ingestion_port import PlatformIngestionWriter
 
         self.assertIsInstance(FakeWriter(), PlatformIngestionWriter)
 
     def test_fake_transaction_satisfies_the_transaction_port(self):
-        from domain.ports.output.platform_ingestion_port import PlatformIngestionTransaction
+        from fcc_test_platform.domain.ports.output.platform_ingestion_port import PlatformIngestionTransaction
 
         self.assertIsInstance(FakeTransaction(FakeWriter()), PlatformIngestionTransaction)
 

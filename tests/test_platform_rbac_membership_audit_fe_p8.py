@@ -583,7 +583,7 @@ class TestAuditAtomicity(_AuthorizeFixture):
             rbac_read_service=self.rbac_service, claim_write_service=claim_service,
         )
         # Claim must fail loudly (the wrapped ClaimWriteError is the contract).
-        from domain.ports.output.central_claim_write_port import ClaimWriteError
+        from fcc_test_platform.domain.ports.output.central_claim_write_port import ClaimWriteError
         with self.assertRaises(ClaimWriteError):
             adapter.acquire_project_claim(_PROJECT_ID, {
                 'technology': 'BT', 'condition_hash': 'hY',

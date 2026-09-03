@@ -10,11 +10,11 @@ from fcc_test_platform.application.central_sample_inventory_service import (
     SampleInventoryNotFoundError,
 )
 from fcc_test_kernel.domain.models.sample_inventory import SampleStatus
-from domain.ports.output.central_sample_inventory_read_port import (
+from fcc_test_platform.domain.ports.output.central_sample_inventory_read_port import (
     CentralSampleInventoryReadPort,
 )
-from domain.ports.output.sample_inventory_export_port import SampleInventoryExportPort
-from domain.services.sample_inventory_policy import (
+from fcc_test_platform.domain.ports.output.sample_inventory_export_port import SampleInventoryExportPort
+from fcc_test_kernel.domain.services.sample_inventory_policy import (
     SampleInvalidFilter,
     normalize_status,
 )

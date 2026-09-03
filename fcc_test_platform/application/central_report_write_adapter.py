@@ -18,8 +18,8 @@ from __future__ import annotations
 
 from typing import Callable, Mapping, Optional
 
-from domain.ports.output.central_report_port import CentralReportError
-from domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.domain.ports.output.central_report_port import CentralReportError
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = [

@@ -40,7 +40,7 @@ import unittest
 from pathlib import Path
 from typing import Optional
 
-from domain.services.workbook_upload_policy import (
+from fcc_test_kernel.domain.services.workbook_upload_policy import (
     DEFAULT_MAX_WORKBOOK_UPLOAD_BYTES,
 )
 

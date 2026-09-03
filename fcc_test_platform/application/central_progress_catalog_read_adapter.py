@@ -19,13 +19,13 @@ from __future__ import annotations
 
 from typing import Callable, Optional
 
-from domain.models.enums import MeasurementType, normalize_dispatch_token
-from domain.models.progress_time_catalog import CatalogSource, StandardTimeCatalog
-from domain.ports.output.central_progress_catalog_read_port import (
+from fcc_test_kernel.domain.models.enums import MeasurementType, normalize_dispatch_token
+from fcc_test_platform.domain.models.progress_time_catalog import CatalogSource, StandardTimeCatalog
+from fcc_test_platform.domain.ports.output.central_progress_catalog_read_port import (
     CentralProgressCatalogReadError,
     CentralProgressCatalogReadPort,
 )
-from domain.ports.output.platform_database_port import DbConnection
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = ['CATALOG_READ_SQL', 'PostgresCentralProgressCatalogReadAdapter']

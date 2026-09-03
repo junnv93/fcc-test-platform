@@ -45,11 +45,11 @@ import json
 from typing import Callable, Mapping, Optional
 
 from fcc_test_kernel.application.central_contract.envelope_helpers import apply_flat_merge_patch
-from domain.ports.output.central_chamber_write_port import (
+from fcc_test_platform.domain.ports.output.central_chamber_write_port import (
     ChamberNotFoundError,
     ChamberWriteError,
 )
-from domain.ports.output.platform_database_port import DbConnection
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = [

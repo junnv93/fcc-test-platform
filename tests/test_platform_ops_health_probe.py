@@ -51,7 +51,7 @@ from fcc_test_platform.application.central_health_adapter import (  # noqa: E402
 )
 from fcc_test_platform.application.central_read_service import CentralReadService  # noqa: E402
 from fcc_test_platform.application.readiness_service import ReadinessService  # noqa: E402
-from domain.ports.output.central_read_port import CentralReadError  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_read_port import CentralReadError  # noqa: E402
 from fcc_test_contracts.common.health_probe_policy import (  # noqa: E402
     DEPENDENCY_CENTRAL_DB,
     LIVENESS_PATH_SUFFIX,

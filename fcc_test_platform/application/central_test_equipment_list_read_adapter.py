@@ -23,10 +23,10 @@ from __future__ import annotations
 
 from typing import Callable, Optional
 
-from domain.ports.output.central_test_equipment_list_port import (
+from fcc_test_platform.domain.ports.output.central_test_equipment_list_port import (
     CentralTestEquipmentListError,
 )
-from domain.ports.output.platform_database_port import DbConnection
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 from fcc_test_kernel.domain.services.test_equipment_list_policy import ITEM_PERSISTED_FIELDS
 
 

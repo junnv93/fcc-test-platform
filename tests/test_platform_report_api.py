@@ -34,7 +34,7 @@ from fcc_test_platform.application.central_report_read_adapter import (  # noqa:
 from fcc_test_platform.application.central_report_write_adapter import (  # noqa: E402
     PostgresCentralReportWriteAdapter,
 )
-from domain.ports.output.central_report_port import (  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_report_port import (  # noqa: E402
     CentralReportError,
     CentralReportReadPort,
     CentralReportWritePort,

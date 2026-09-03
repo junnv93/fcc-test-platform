@@ -8,7 +8,7 @@ import pytest
 from fcc_test_platform.application.central_project_reference_adapter import (
     PostgresCentralProjectReferenceAdapter,
 )
-from domain.models.project_result_reference import canonical_payload_hash
+from fcc_test_kernel.domain.models.project_result_reference import canonical_payload_hash
 from scripts import cross_session_result_selection_evidence as evidence
 
 

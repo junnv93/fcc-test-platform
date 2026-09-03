@@ -30,7 +30,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from domain.services.password_policy import (
+from fcc_test_platform.domain.services.password_policy import (
     BCRYPT_COST_ROUNDS,
     password_defects,
     password_hash_input,

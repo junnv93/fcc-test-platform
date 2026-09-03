@@ -20,12 +20,12 @@ from typing import Callable, Mapping, Optional, Sequence
 
 from fcc_test_kernel.application.central_contract.envelope_helpers import parse_timestamp
 from fcc_test_kernel.domain.models.artifact_custody import CustodyStatus
-from domain.models.artifact_custody_snapshot import (
+from fcc_test_kernel.domain.models.artifact_custody_snapshot import (
     CustodySessionSnapshot,
     roll_up_sessions,
     worst_status,
 )
-from domain.ports.output.central_artifact_custody_port import (
+from fcc_test_platform.domain.ports.output.central_artifact_custody_port import (
     ArtifactCustodyNotFoundError,
     CentralArtifactCustodyError,
 )

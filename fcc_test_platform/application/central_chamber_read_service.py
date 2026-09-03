@@ -32,7 +32,7 @@ from fcc_test_kernel.domain.models.chamber_node import (
     derive_unavailable_reason,
     redact_error_message,
 )
-from domain.ports.output.central_chamber_read_port import CentralChamberReadPort
+from fcc_test_platform.domain.ports.output.central_chamber_read_port import CentralChamberReadPort
 from fcc_test_kernel.domain.services.chamber_mode_policy import judge_chamber_mode
 
 

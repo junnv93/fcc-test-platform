@@ -19,8 +19,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # noqa: E402
 
-from domain.models.enums import MeasurementType  # noqa: E402
-from domain.models.progress_time_catalog import CatalogSource, StandardTimeCatalog  # noqa: E402
+from fcc_test_kernel.domain.models.enums import MeasurementType  # noqa: E402
+from fcc_test_platform.domain.models.progress_time_catalog import CatalogSource, StandardTimeCatalog  # noqa: E402
 from fcc_test_platform.application.central_progress_catalog_read_adapter import (  # noqa: E402
     PostgresCentralProgressCatalogReadAdapter,
 )

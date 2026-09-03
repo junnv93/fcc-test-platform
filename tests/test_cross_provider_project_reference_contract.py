@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from domain.services.unlicensed.project_result_reference import (
+from fcc_test_platform.domain.services.unlicensed.project_result_reference import (
     ConductedDutyReferenceAdapter,
 )
 from fcc_test_platform.provider_registry import (

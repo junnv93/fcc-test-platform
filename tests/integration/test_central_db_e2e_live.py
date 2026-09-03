@@ -28,7 +28,7 @@ for _p in (PROJECT_ROOT, PROJECT_ROOT / 'src', PROJECT_ROOT / 'scripts'):
         sys.path.insert(0, str(_p))
 
 from fcc_test_kernel.domain.models.sample_inventory import SNAPSHOT_SCHEMA_VERSION  # noqa: E402
-from domain.models.session_provenance import SessionOrigin  # noqa: E402
+from fcc_test_kernel.domain.models.session_provenance import SessionOrigin  # noqa: E402
 
 # Read through the conftest quarantine rather than `os.environ`. The suite
 # moves every `FCC_CENTRAL_*` name out of the process environment before

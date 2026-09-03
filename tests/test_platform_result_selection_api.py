@@ -13,7 +13,7 @@ from fcc_test_platform.application.central_result_selection_adapter import (
     SELECTED_SOURCE_QUERY_SQL,
     PostgresCentralResultSelectionAdapter,
 )
-from domain.ports.output.central_result_selection_port import (
+from fcc_test_platform.domain.ports.output.central_result_selection_port import (
     SelectionBackendError,
     SelectionRevisionConflictError,
 )

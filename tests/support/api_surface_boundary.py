@@ -46,9 +46,17 @@ ROUTES_MODULE_SUFFIXES = ('_routes', '_router')
 #: package -- the surface did not disappear, it moved, and a resolver that knows
 #: one prefix reads those two states as the same thing. Same reasoning as the
 #: suffixes above: notations of one rule, not a per-surface register.
+#: ⚠️ 2026-09-03(커널 3단계) — 첫 항목은 **이 저장소에서 더는 해소되지 않는다.**
+#: 최상위 `infrastructure` 가 통째로 사라졌다. 그래도 **남긴다**: 이 목록의 목적이
+#: *「같은 표면의 서로 다른 표기를 한 규칙으로 읽는 것」* 이고, provider 레인은
+#: 아직 그 표기를 쓴다. 지우면 그쪽 트리에서 이 판정이 조용히 실패한다.
+#:
+#: ⚠️ 해소되지 않는 항목이 남아도 이 resolver 는 다음 접두사로 넘어간다 —
+#: 즉 「없는 표기」와 「틀린 표기」가 구분되지 않는다. 전부 실패하면 아래 루프가
+#: 모은 오류를 함께 올린다.
 ROUTES_MODULE_PREFIXES = (
-    'infrastructure.adapters.driving.api',
-    'fcc_test_platform.api',
+    'infrastructure.adapters.driving.api',   # provider 레인 표기
+    'fcc_test_platform.api',                 # 이 레인 표기
 )
 
 

@@ -34,7 +34,7 @@ from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # no
 from support.central_pg_sqlite_shim import AdoptedQmarkConnection  # noqa: E402
 
 from fcc_test_platform.application.central_project_service import ProjectNotFoundError  # noqa: E402
-from domain.ports.output.central_report_port import CentralReportReadPort  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_report_port import CentralReportReadPort  # noqa: E402
 from fcc_test_platform.application.central_test_equipment_list_service import (  # noqa: E402
     CentralTestEquipmentListService,
 )
@@ -43,7 +43,7 @@ from fcc_test_platform.application.central_test_equipment_list_write_adapter imp
     INSERT_LIST_UNATTACHED_SQL,
     ITEM_INSERT_COLUMNS,
 )
-from domain.ports.output.central_test_equipment_list_port import (  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_test_equipment_list_port import (  # noqa: E402
     CentralTestEquipmentListReadPort,
     CentralTestEquipmentListWritePort,
     EquipmentListConflictError,
@@ -716,7 +716,7 @@ class TestEmptyListConfirmationIsAtomic(unittest.TestCase):
 
     def test_items_deleted_after_the_check_do_not_confirm(self):
         """결함 그 자체 — 판정 시점엔 항목이 있었고 UPDATE 시점엔 없다."""
-        from domain.ports.output.central_test_equipment_list_port import (
+        from fcc_test_platform.domain.ports.output.central_test_equipment_list_port import (
             EquipmentListConflictError,
         )
 
@@ -731,7 +731,7 @@ class TestEmptyListConfirmationIsAtomic(unittest.TestCase):
 
     def test_the_refusal_says_it_is_empty_not_just_draft(self):
         """상태만 말하면 시험원이 '초안인데 왜 확정이 안 되나'로 읽는다."""
-        from domain.ports.output.central_test_equipment_list_port import (
+        from fcc_test_platform.domain.ports.output.central_test_equipment_list_port import (
             EquipmentListConflictError,
         )
         from fcc_test_kernel.domain.services.test_equipment_list_policy import (
@@ -747,7 +747,7 @@ class TestEmptyListConfirmationIsAtomic(unittest.TestCase):
 
     def test_a_missing_list_is_still_not_found(self):
         """새 갈래가 옛 404 갈래를 삼키지 않았는지 본다."""
-        from domain.ports.output.central_test_equipment_list_port import (
+        from fcc_test_platform.domain.ports.output.central_test_equipment_list_port import (
             EquipmentListNotFoundError,
         )
 
@@ -755,7 +755,7 @@ class TestEmptyListConfirmationIsAtomic(unittest.TestCase):
             self._adapter().confirm_list('NOPE', confirmed_at='2026-08-08')
 
     def test_an_already_confirmed_list_still_says_confirmed(self):
-        from domain.ports.output.central_test_equipment_list_port import (
+        from fcc_test_platform.domain.ports.output.central_test_equipment_list_port import (
             EquipmentListConflictError,
         )
 
@@ -784,7 +784,7 @@ class TestEmptyListConfirmationIsAtomic(unittest.TestCase):
         시험원이 항목을 채워 재시도해도 여전히 확정본이라 같은 "비어 있음"이
         반복된다. `confirm_refusal_reason` 은 상태를 먼저 본다.
         """
-        from domain.ports.output.central_test_equipment_list_port import (
+        from fcc_test_platform.domain.ports.output.central_test_equipment_list_port import (
             EquipmentListConflictError,
         )
         from fcc_test_kernel.domain.services.test_equipment_list_policy import (

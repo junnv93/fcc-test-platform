@@ -108,7 +108,7 @@ from fcc_test_platform.application.central_report_write_adapter import (  # noqa
     PostgresCentralReportWriteAdapter,
 )
 from fcc_test_kernel.domain.models.sample_inventory import SNAPSHOT_SCHEMA_VERSION  # noqa: E402
-from domain.models.session_provenance import SessionOrigin  # noqa: E402
+from fcc_test_kernel.domain.models.session_provenance import SessionOrigin  # noqa: E402
 from platform_db_migration_collect import collect_from_database  # noqa: E402
 
 DEFAULT_SCHEMA_PATH = discover_tree_artifact(__file__, 'docs', 'platform', 'central_db_schema.v1.json')

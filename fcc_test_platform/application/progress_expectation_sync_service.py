@@ -27,11 +27,11 @@ from fcc_test_platform.application.progress_ingest_service import ProgressIngest
 from fcc_test_platform.application.published_plan_progress_glue import (
     published_conditions_from_rows,
 )
-from domain.ports.output.central_id_resolver_port import CentralIdResolverPort
-from domain.ports.output.central_progress_catalog_read_port import (
+from fcc_test_platform.domain.ports.output.central_id_resolver_port import CentralIdResolverPort
+from fcc_test_platform.domain.ports.output.central_progress_catalog_read_port import (
     CentralProgressCatalogReadPort,
 )
-from domain.ports.output.expectation_sync_state_port import ExpectationSyncStatePort
+from fcc_test_kernel.domain.ports.output.expectation_sync_state_port import ExpectationSyncStatePort
 
 
 __all__ = ['ExpectationSyncReport', 'ProgressExpectationSyncService']

@@ -41,8 +41,8 @@ from fcc_test_kernel.application.central_contract.pagination import (
     decode_cursor,
     encode_cursor,
 )
-from domain.ports.output.central_read_port import CentralReadPort
-from domain.services.central_session_identity import local_session_id_from_natural_key
+from fcc_test_platform.domain.ports.output.central_read_port import CentralReadPort
+from fcc_test_kernel.domain.services.central_session_identity import local_session_id_from_natural_key
 
 
 __all__ = ['CentralReadService', 'STALE_THRESHOLD_SECONDS']

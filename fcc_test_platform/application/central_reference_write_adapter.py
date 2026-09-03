@@ -44,14 +44,14 @@ import json
 from typing import Callable, Mapping, Optional, Sequence
 
 from fcc_test_kernel.domain.models.reference_catalog import RevisionState
-from domain.ports.output.central_reference_port import (
+from fcc_test_platform.domain.ports.output.central_reference_port import (
     CentralReferenceError,
     ReferenceProviderNotFoundError,
     ReferencePublishConflictError,
     ReferenceRevisionNotFoundError,
     ReferenceStateConflictError,
 )
-from domain.ports.output.platform_database_port import DbConnection
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = ['PostgresCentralReferenceWriteAdapter']

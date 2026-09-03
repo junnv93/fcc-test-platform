@@ -25,12 +25,12 @@ from types import MappingProxyType
 from typing import Callable, Mapping, Optional
 
 from fcc_test_kernel.application.central_contract.pagination import CursorValueDomain
-from domain.ports.output.central_sample_inventory_read_port import (
+from fcc_test_platform.domain.ports.output.central_sample_inventory_read_port import (
     CentralSampleInventoryReadPort,
 )
-from domain.ports.output.central_project_port import CentralProjectError
-from domain.ports.output.platform_database_port import DbConnection
-from domain.services.project_directory_query import (
+from fcc_test_platform.domain.ports.output.central_project_port import CentralProjectError
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.domain.services.project_directory_query import (
     PROJECT_DIRECTORY_ORDER_COLUMNS,
     PROJECT_SEARCH_COLUMNS,
     SEARCH_LIKE_ESCAPE_CHAR,

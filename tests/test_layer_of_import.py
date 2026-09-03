@@ -51,7 +51,7 @@ class TestTheLayerSurvivesAPrefix(unittest.TestCase):
 class TestImportedLayersReadsBothImportForms(unittest.TestCase):
     def test_plain_import_and_from_import_are_both_seen(self):
         source = (
-            'import infrastructure.db\n'
+            'import fcc_test_platform.infrastructure.db\n'
             'from fcc_test_kernel.infrastructure.logging import x\n'
             'from fcc_test_platform.application import svc\n'
             'import psycopg\n'

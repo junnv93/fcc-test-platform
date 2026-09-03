@@ -36,7 +36,7 @@ def _cached_read_text(path: str) -> str:
     """파일 읽기 캐시 — 동일 경로 반복 읽기 최적화 (Sprint 112 Phase 5a)."""
     return Path(path).read_text(encoding='utf-8')
 
-from domain.models.enums import MeasurementType
+from fcc_test_kernel.domain.models.enums import MeasurementType
 
 # 도메인 계층에서 금지된 외부 라이브러리 (I/O, UI, 인프라)
 _DOMAIN_FORBIDDEN = frozenset({

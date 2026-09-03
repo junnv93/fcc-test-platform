@@ -82,11 +82,11 @@ from fcc_test_platform.application.central_chamber_write_service import (  # noq
     CentralChamberWriteService,
 )
 from fcc_test_kernel.domain.models.chamber_node import ChamberNodeStatus, UnavailableReason  # noqa: E402
-from domain.ports.output.central_chamber_read_port import (  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_chamber_read_port import (  # noqa: E402
     CentralChamberReadError,
     CentralChamberReadPort,
 )
-from domain.ports.output.central_chamber_write_port import (  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_chamber_write_port import (  # noqa: E402
     CentralChamberWritePort,
     ChamberNotFoundError,
     ChamberWriteError,
@@ -1240,7 +1240,10 @@ class TestChamberNotFoundErrorSingleDefinition(unittest.TestCase):
     #: 그대로 읽는다. 커널 이관으로 최상위 이름이 또 바뀌어도 따라온다.
     REPO_ROOT = Path(__file__).resolve().parents[1]
     ERROR_NAME = 'ChamberNotFoundError'
-    OWNER = 'domain/ports/output/central_chamber_write_port.py'
+    #: ⚠️ 2026-09-03(커널 3단계) — 최상위 `domain/` 이 사라지며 이 파일이
+    #: `fcc_test_platform/` 아래로 갔다. **경로를 적지 않고 모듈에게 묻는다** —
+    #: 다음 이관에서 또 낡는 것을 막는다.
+    OWNER_MODULE = 'fcc_test_platform.domain.ports.output.central_chamber_write_port'
 
     @classmethod
     def _shipped_roots(cls) -> list[Path]:
@@ -1280,9 +1283,13 @@ class TestChamberNotFoundErrorSingleDefinition(unittest.TestCase):
         self.assertGreater(scanned, 0, '훑은 파일이 0개다 — 이 검사는 아무것도 판정하지 않는다')
 
     def test_exactly_one_definition_site(self):
+        from tests._moved_module_source import moved_module_source
+
         sites, _ = self._definition_sites()
+        owner = moved_module_source(self.OWNER_MODULE).relative_to(
+            self.REPO_ROOT).as_posix()
         self.assertEqual(
-            [self.OWNER], sites,
+            [owner], sites,
             f'{self.ERROR_NAME} 정의가 1개가 아니다: {sites}',
         )
 

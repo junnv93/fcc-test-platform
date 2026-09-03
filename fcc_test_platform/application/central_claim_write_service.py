@@ -36,7 +36,7 @@ from fcc_test_kernel.application.central_contract.envelope_helpers import (
     require_uuid,
     text,
 )
-from domain.ports.output.central_claim_write_port import CentralClaimWritePort
+from fcc_test_platform.domain.ports.output.central_claim_write_port import CentralClaimWritePort
 
 
 __all__ = [

@@ -36,12 +36,12 @@ from fcc_test_platform.application.central_rekey_ingest_adapter import (  # noqa
     PostgresCentralRekeyIngestAdapter,
     build_propagation_audit_detail,
 )
-from domain.ports.output.central_audit_write_port import AuditWriteError  # noqa: E402
-from domain.ports.output.central_rekey_ingest_port import (  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_audit_write_port import AuditWriteError  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_rekey_ingest_port import (  # noqa: E402
     RekeyIngestConflictError,
     RekeyIngestError,
 )
-from domain.services.rekey_dry_run import RekeyMappingEnvelope  # noqa: E402
+from fcc_test_platform.domain.services.rekey_dry_run import RekeyMappingEnvelope  # noqa: E402
 
 
 # ── SQLite fixture (mirrors test_platform_claim_write_fe_p3) ─────────────────

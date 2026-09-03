@@ -22,14 +22,14 @@ from __future__ import annotations
 import uuid
 from typing import Callable, Optional, Sequence
 
-from domain.models.progress_expectation import ProgressExpectationAtom
-from domain.models.progress_time_catalog import StandardTimeCatalog
-from domain.ports.output.central_progress_write_port import (
+from fcc_test_platform.domain.models.progress_expectation import ProgressExpectationAtom
+from fcc_test_platform.domain.models.progress_time_catalog import StandardTimeCatalog
+from fcc_test_platform.domain.ports.output.central_progress_write_port import (
     CentralProgressWriteError,
     CentralProgressWritePort,
     ExpectationWriteSummary,
 )
-from domain.ports.output.platform_database_port import DbConnection
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = [

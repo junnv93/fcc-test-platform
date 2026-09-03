@@ -58,13 +58,13 @@ from fcc_test_kernel.domain.models.chamber_node import (
     ChamberProgress,
     ChamberProgressEvent,
 )
-from domain.ports.output.chamber_progress_broadcast_port import (
+from fcc_test_platform.domain.ports.output.chamber_progress_broadcast_port import (
     ChamberProgressBroadcastPort,
 )
 from fcc_test_platform.application.central_artifact_custody_service import (
     ArtifactCustodyReportRejected,
 )
-from domain.ports.output.central_artifact_custody_port import (
+from fcc_test_platform.domain.ports.output.central_artifact_custody_port import (
     ArtifactCustodyNotFoundError,
     ArtifactCustodyProviderNotFoundError,
     CentralArtifactCustodyError,
@@ -138,10 +138,10 @@ from fcc_test_platform.application.sample_inventory_export_service import (
     SampleInventoryExportService,
     SampleInventoryExportTemplateError,
 )
-from domain.ports.output.central_sample_inventory_write_port import (
+from fcc_test_platform.domain.ports.output.central_sample_inventory_write_port import (
     CentralSampleInventoryWriteError,
 )
-from domain.ports.output.central_sample_inventory_read_port import (
+from fcc_test_platform.domain.ports.output.central_sample_inventory_read_port import (
     CentralSampleInventoryReadError,
 )
 from fcc_test_contracts.common.login_throttle_policy import spraying_source_key
@@ -151,13 +151,13 @@ from fcc_test_contracts.web.rate_limit_middleware import (
     RATE_LIMIT_REMAINING_HEADER,
     RETRY_AFTER_HEADER,
 )
-from domain.ports.output.central_chamber_read_port import CentralChamberReadError
-from domain.ports.output.central_chamber_write_port import ChamberWriteError
-from domain.ports.output.central_project_port import (
+from fcc_test_platform.domain.ports.output.central_chamber_read_port import CentralChamberReadError
+from fcc_test_platform.domain.ports.output.central_chamber_write_port import ChamberWriteError
+from fcc_test_platform.domain.ports.output.central_project_port import (
     CentralProjectError,
     ProjectIdentifierConflictError,
 )
-from domain.ports.output.central_reference_port import (
+from fcc_test_platform.domain.ports.output.central_reference_port import (
     CentralReferenceError,
     ReferenceCoupledPublishError,
     ReferenceProviderNotFoundError,
@@ -166,28 +166,28 @@ from domain.ports.output.central_reference_port import (
     ReferenceRevisionNotFoundError,
     ReferenceStateConflictError,
 )
-from domain.ports.output.central_report_port import (
+from fcc_test_platform.domain.ports.output.central_report_port import (
     CentralReportError,
     ReportEditionConflictError,
     ReportSessionNotFoundError,
 )
-from domain.ports.output.central_test_equipment_list_port import (
+from fcc_test_platform.domain.ports.output.central_test_equipment_list_port import (
     CentralTestEquipmentListError,
     EquipmentListConflictError,
     EquipmentListNotFoundError,
 )
-from domain.ports.output.central_claim_write_port import ClaimWriteError
-from domain.ports.output.central_membership_write_port import MembershipWriteError
-from domain.ports.output.central_rbac_read_port import CentralRbacReadError
-from domain.ports.output.central_user_write_port import UserWriteError
-from domain.ports.output.central_read_port import CentralReadError
-from domain.ports.output.central_result_selection_port import (
+from fcc_test_platform.domain.ports.output.central_claim_write_port import ClaimWriteError
+from fcc_test_platform.domain.ports.output.central_membership_write_port import MembershipWriteError
+from fcc_test_kernel.domain.ports.output.central_rbac_read_port import CentralRbacReadError
+from fcc_test_platform.domain.ports.output.central_user_write_port import UserWriteError
+from fcc_test_platform.domain.ports.output.central_read_port import CentralReadError
+from fcc_test_platform.domain.ports.output.central_result_selection_port import (
     SelectionCandidateNotFoundError,
     SelectionCrossScopeError,
     SelectionProviderNotFoundError,
     SelectionRevisionConflictError,
 )
-from domain.ports.output.central_project_reference_port import (
+from fcc_test_platform.domain.ports.output.central_project_reference_port import (
     ReferenceNotFoundError,
     ReferenceRetiredError,
     ReferenceIncompatibleError,
@@ -203,7 +203,7 @@ from fcc_test_contracts.common.health_probe_policy import (
     ReadinessSnapshot,
     liveness_payload,
 )
-from domain.ports.output.central_progress_read_port import (
+from fcc_test_platform.domain.ports.output.central_progress_read_port import (
     CentralProgressReadError,
     CentralProgressReadPort,
 )

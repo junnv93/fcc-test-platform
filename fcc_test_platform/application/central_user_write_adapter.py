@@ -4,8 +4,8 @@ from __future__ import annotations
 from typing import Callable, Mapping, Optional
 
 from fcc_test_contracts.common.identity import canonical_issuer
-from domain.ports.output.central_user_write_port import UserWriteError
-from domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.domain.ports.output.central_user_write_port import UserWriteError
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = [

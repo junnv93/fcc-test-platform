@@ -29,7 +29,7 @@ from fcc_test_contracts.common.rate_limit_config import (
     rate_limit_env_map,
 )
 from fcc_test_contracts.common.rate_limit_policy import RateLimitPolicy
-from domain.services.workbook_upload_policy import (
+from fcc_test_kernel.domain.services.workbook_upload_policy import (
     DEFAULT_MAX_WORKBOOK_UPLOAD_BYTES,
     DEFAULT_WORKBOOK_RETENTION_SECONDS,
     ENV_MAX_WORKBOOK_UPLOAD_BYTES,

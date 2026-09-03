@@ -294,7 +294,7 @@ def _progress_probe() -> list[tuple[str, tuple]]:
     from fcc_test_platform.application.central_progress_write_adapter import (
         PostgresCentralProgressWriteAdapter,
     )
-    from domain.models.progress_expectation import (
+    from fcc_test_platform.domain.models.progress_expectation import (
         PricingStatus, ProgressExpectationAtom,
     )
 
@@ -369,7 +369,7 @@ def _selection_probe() -> list[tuple[str, tuple]]:
     from fcc_test_platform.application.central_result_selection_adapter import (
         PostgresCentralResultSelectionAdapter,
     )
-    from domain.ports.output.central_result_selection_port import (
+    from fcc_test_platform.domain.ports.output.central_result_selection_port import (
         SelectionBackendError,
     )
     def responder(sql, params):

@@ -24,7 +24,7 @@ from fcc_test_contracts.common.rate_limit_config import (
     rate_limit_env_map,
 )
 from fcc_test_platform.central_db_config import CentralDbConfig
-from domain.services.chamber_proxy_policy import ChamberProxyPolicy
+from fcc_test_platform.domain.services.chamber_proxy_policy import ChamberProxyPolicy
 from fcc_test_contracts.common.rate_limit_policy import RateLimitPolicy
 
 

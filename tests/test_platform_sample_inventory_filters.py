@@ -13,7 +13,7 @@ from fcc_test_platform.application.central_sample_inventory_service import (
 from fcc_test_platform.application.central_sample_inventory_write_adapter import (
     PostgresCentralSampleInventoryWriteAdapter,
 )
-from domain.services.sample_inventory_policy import SampleInvalidFilter
+from fcc_test_kernel.domain.services.sample_inventory_policy import SampleInvalidFilter
 from tests.support.central_pg_sqlite_shim import QmarkConnection
 from tests.support.sample_inventory_central import make_central_db, seed_project
 

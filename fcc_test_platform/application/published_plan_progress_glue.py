@@ -18,9 +18,9 @@ from __future__ import annotations
 from typing import List, Sequence
 
 from fcc_test_platform.application.progress_ingest_service import PublishedConditionRow
-from domain.models.published_test_plan import PublishedTestPlan
-from domain.models.test_plan_authoring import TestPlanRow
-from domain.services.progress_publish_glue import progress_condition_tokens
+from fcc_test_kernel.domain.models.published_test_plan import PublishedTestPlan
+from fcc_test_kernel.domain.models.test_plan_authoring import TestPlanRow
+from fcc_test_kernel.domain.services.progress_publish_glue import progress_condition_tokens
 
 
 __all__ = ['published_conditions_from_plan', 'published_conditions_from_rows']

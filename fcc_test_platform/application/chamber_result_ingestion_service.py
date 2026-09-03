@@ -18,7 +18,7 @@ from fcc_test_kernel.application.central_contract.central_sync_readiness import 
     CentralSyncReadiness,
     CentralSyncReadinessCode,
 )
-from domain.ports.output.central_backend_sync_port import (
+from fcc_test_kernel.domain.ports.output.central_backend_sync_port import (
     CentralBackendSyncPort,
     ResultSyncBatchResult,
 )

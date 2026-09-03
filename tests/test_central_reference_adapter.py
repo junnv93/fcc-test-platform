@@ -50,7 +50,7 @@ from fcc_test_kernel.domain.models.reference_catalog import (  # noqa: E402
     RevisionProvenanceKind,
     RevisionState,
 )
-from domain.ports.output.central_reference_port import (  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_reference_port import (  # noqa: E402
     CentralReferenceError,
     CentralReferenceReadPort,
     CentralReferenceWritePort,

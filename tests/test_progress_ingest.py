@@ -24,12 +24,12 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # noqa: E402
 
-from domain.models.enums import MeasurementType  # noqa: E402
-from domain.models.progress_time_catalog import (  # noqa: E402
+from fcc_test_kernel.domain.models.enums import MeasurementType  # noqa: E402
+from fcc_test_platform.domain.models.progress_time_catalog import (  # noqa: E402
     CatalogSource,
     StandardTimeCatalog,
 )
-from domain.ports.output.central_progress_write_port import (  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_progress_write_port import (  # noqa: E402
     CentralProgressWriteError,
 )
 from fcc_test_platform.application.central_progress_write_adapter import (  # noqa: E402
@@ -39,7 +39,7 @@ from fcc_test_platform.application.progress_ingest_service import (  # noqa: E40
     ProgressIngestService,
     PublishedConditionRow,
 )
-from domain.services.progress_expectation import build_expectation_atom  # noqa: E402
+from fcc_test_platform.domain.services.progress_expectation import build_expectation_atom  # noqa: E402
 from fcc_test_contracts.common.sqlite_connection_factory import SqliteConnectionFactory  # noqa: E402
 from tests.support.central_pg_sqlite_shim import QmarkConnection  # noqa: E402
 

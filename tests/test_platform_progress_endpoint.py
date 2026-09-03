@@ -21,7 +21,7 @@ from fcc_test_kernel.application.central_contract.api_contracts import (  # noqa
     PLATFORM_API_ROUTES,
     PLATFORM_API_SCHEMAS,
 )
-from domain.models.progress_rollup import ProgressBucketRollup  # noqa: E402
+from fcc_test_platform.domain.models.progress_rollup import ProgressBucketRollup  # noqa: E402
 from fcc_test_platform.api.platform_routes import PlatformApiAdapter  # noqa: E402
 
 

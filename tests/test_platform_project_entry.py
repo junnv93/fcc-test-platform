@@ -32,7 +32,7 @@ from fcc_test_platform.application.rbac_role_catalog import (  # noqa: E402
     PROJECT_ADMIN_ROLE_KEY,
     is_known_role,
 )
-from domain.ports.output.central_project_port import (  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_project_port import (  # noqa: E402
     CentralProjectReadPort,
     CentralProjectWritePort,
 )

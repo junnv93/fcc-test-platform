@@ -804,13 +804,13 @@ def _run_live_proof(dsn: str, *, lane: str, run_id: str) -> dict[str, Any]:
         from fcc_test_platform.application.central_result_selection_adapter import (
             PostgresCentralResultSelectionAdapter,
         )
-        from domain.models.project_result_reference import (
+        from fcc_test_kernel.domain.models.project_result_reference import (
             REFERENCE_SESSION_SNAPSHOT_SCHEMA_VERSION,
             canonical_payload_hash,
             validate_reference_session_snapshot_json,
         )
-        from domain.ports.output.central_project_reference_port import ReferenceRetiredError
-        from domain.ports.output.central_result_selection_port import SelectionRevisionConflictError
+        from fcc_test_platform.domain.ports.output.central_project_reference_port import ReferenceRetiredError
+        from fcc_test_platform.domain.ports.output.central_result_selection_port import SelectionRevisionConflictError
 
         def connection_factory():
             return _connect(dsn)

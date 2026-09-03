@@ -39,7 +39,7 @@ from fcc_test_contracts.common.local_identity import (  # noqa: E402
     verify_token,
 )
 import fcc_test_platform.application.local_auth_service as _local_auth_service  # noqa: E402
-import domain.services.token_revocation_policy as _token_revocation_policy  # noqa: E402
+import fcc_test_platform.domain.services.token_revocation_policy as _token_revocation_policy  # noqa: E402
 from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_OPERATIONS  # noqa: E402
 from fcc_test_platform.application.local_auth_service import (  # noqa: E402
     CUSTODY_EVICTION_PHRASE,
@@ -54,7 +54,7 @@ from fcc_test_contracts.common.login_throttle_policy import (  # noqa: E402
     fold_failed_attempts,
     lock_expires_at,
 )
-from domain.services.token_revocation_policy import (  # noqa: E402
+from fcc_test_platform.domain.services.token_revocation_policy import (  # noqa: E402
     UNATTRIBUTED_CUSTODIAN,
     custodian_should_yield,
     custody_fair_share,

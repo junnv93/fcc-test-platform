@@ -19,7 +19,7 @@ import json
 import re
 from typing import Any
 
-from domain.services.central_session_identity import (
+from fcc_test_kernel.domain.services.central_session_identity import (
     measurement_target_key,
     provider_session_natural_key,
 )

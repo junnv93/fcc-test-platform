@@ -86,7 +86,7 @@ from fcc_test_platform.application.central_read_adapter import (  # noqa: E402
 from fcc_test_platform.application.central_read_service import CentralReadService  # noqa: E402
 from fcc_test_kernel.application.central_contract.envelope_helpers import parse_timestamp  # noqa: E402
 from fcc_test_kernel.application.central_contract.pagination import CursorError, encode_cursor  # noqa: E402
-from domain.ports.output.central_chamber_write_port import (  # noqa: E402
+from fcc_test_platform.domain.ports.output.central_chamber_write_port import (  # noqa: E402
     ChamberNotFoundError,
 )
 

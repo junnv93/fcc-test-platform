@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from domain.ports.output.central_id_resolver_port import (
+from fcc_test_platform.domain.ports.output.central_id_resolver_port import (
     CentralIdResolutionError,
     CentralIdResolverPort,
     ModelProjectResolution,

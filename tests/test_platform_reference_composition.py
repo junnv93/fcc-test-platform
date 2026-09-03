@@ -380,7 +380,7 @@ class TestTheComposedRuntimeReachesTheReferenceService(unittest.TestCase):
         빠뜨려도 green 이다. 여기서만 "화면이 제공하는 집합"과 "중앙 등록부"가
         같은 프로세스에서 만난다.
         """
-        from domain.ports.output.central_reference_port import (
+        from fcc_test_platform.domain.ports.output.central_reference_port import (
             ReferenceProviderNotFoundError,
             ReferenceProviderNotRegisteredError,
         )

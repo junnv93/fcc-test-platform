@@ -47,15 +47,15 @@ from fcc_test_kernel.application.central_contract.pagination import (
     encode_cursor,
 )
 from fcc_test_platform.application.rbac_role_catalog import PROJECT_ADMIN_ROLE_KEY
-from domain.ports.output.central_project_port import (
+from fcc_test_platform.domain.ports.output.central_project_port import (
     CentralProjectError,
     CentralProjectReadPort,
     CentralProjectWritePort,
     ProjectIdentifierConflictError,
 )
-from domain.ports.output.central_user_write_port import CentralUserWritePort
-from domain.services import fcc_id_policy
-from domain.services.project_directory_query import (
+from fcc_test_platform.domain.ports.output.central_user_write_port import CentralUserWritePort
+from fcc_test_platform.domain.services import fcc_id_policy
+from fcc_test_platform.domain.services.project_directory_query import (
     PROJECT_DIRECTORY_CURSOR_FIELDS,
     normalize_search_term,
     search_like_pattern,
