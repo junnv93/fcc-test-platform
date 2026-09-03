@@ -161,10 +161,17 @@ def measure(central_root: Path, provider_src: Path) -> dict:
     provider = _closure(provider_src, provider_seeds, tops)
     shared = sorted(central & provider)
 
-    #: 이 계열이 소유하는 배포판 이름. **third-party 와 구분한다** — 규칙이 제약하는
+    #: 이 계열이 소유하는 배포판인가. **third-party 와 구분한다** — 규칙이 제약하는
     #: 것은 서드파티이지 형제 레인이 아니고, 둘을 한 숫자로 합치면 「제약에 걸린다」와
     #: 「같은 계열을 쓴다」가 같은 값이 된다(실측 2026-09-03: 합치면 4, 나누면 0).
-    FIRST_PARTY = frozenset({'fcc_test_contracts', 'fcc_test_platform'})
+    #
+    #: ⚠️ **목록이 아니라 접두사다 — 목록판이 한 커밋 만에 낡았다.**
+    #: 처음엔 `{'fcc_test_contracts', 'fcc_test_platform'}` 였는데, 같은 날
+    #: `fcc_test_kernel` 이 생기자 그것이 **서드파티로 집계**됐다. 이 계열은 배포
+    #: 패키지 이름에 `fcc_test_` 접두사를 쓰고, 새 커널이 바로 그 규약을 따랐다 —
+    #: 그러므로 판정항은 「목록에 있는가」가 아니라 **「이 계열의 접두사인가」**다.
+    #: 목록이 왜 틀린 형태인지를 이 축이 스스로 증명했다.
+    FIRST_PARTY_PREFIX = 'fcc_test_'
     vocab = []
     external = {}
     lane_deps = {}
@@ -186,7 +193,7 @@ def measure(central_root: Path, provider_src: Path) -> dict:
             top = module.split('.')[0]
             if top in sys.stdlib_module_names or top in tops:
                 continue
-            bucket = lane_deps if top in FIRST_PARTY else external
+            bucket = lane_deps if top.startswith(FIRST_PARTY_PREFIX) else external
             bucket[rel] = sorted(set(bucket.get(rel, [])) | {top})
 
     return {

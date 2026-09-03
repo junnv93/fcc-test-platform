@@ -35,6 +35,17 @@ dependencies = [
     # own declared version); `TestTheSiblingPinTracksTheSiblingVersion` is what
     # keeps this copy from drifting when that version moves.
     "fcc-test-contracts @ git+https://github.com/junnv93/fcc-test-contracts@v0.1.11",
+    # 공유 커널 1단계 (ADR-0001, 2026-09-03). 형제 레인과 **같은 저장소의 다른
+    # 배포판**이라 `#subdirectory=` 가 붙는다 — 「한 저장소, 여러 배포판」은 그쪽이
+    # 이미 npm `@fcc/api-artifacts` 로 하고 있던 패턴이다.
+    #
+    # ⚠️ 이것이 계약 레인이 **아닌** 이유: `fcc-test-contracts` 는 provider 어휘를
+    # 받지 않는다(ADR-0010 D-8). 공유 폐포 53개 중 9개가 코드에 provider 어휘를
+    # 지므로 그 레인으로 승격할 수 없고, 그래서 고유 접두사를 갖는 별도 배포판이다.
+    #
+    # 형제와 같은 이유로 **DIRECT reference** 다 — 이 배포물을 담을 인덱스가 없다.
+    # 태그를 못 박는다: 움직이는 ref 는 「어느 코드가 돌았나」를 사후에 답할 수 없게 한다.
+    "fcc-test-kernel @ git+https://github.com/junnv93/fcc-test-contracts@kernel-v0.1.0#subdirectory=packages/fcc-test-kernel",
     # 상자의 런타임이 실제로 도달하는 서드파티. 실측 기준은 *도달*이지
     # 모듈 레벨 여부가 아니다 — platform 의 런타임 import 는 합성 경계에서
     # 지연되지만(fastapi 4건 · psycopg 2건이 함수 안) 그 지연은 합성 패턴이지
@@ -112,7 +123,14 @@ namespaces = true
 # `chamber_progress_broadcaster.py` 가 모듈 레벨에서 부른다. 빠지면 휠은 만들어지고
 # 설치도 되는데 **import 하는 순간 죽는다** — 바로 아래 package-data 주석이 적는
 # `decision_catalogue.json` 과 같은 계급의 결함이다.
-py-modules = ["logger_config"]
+# ⚠️ **비었다 — 그리고 그것이 이 웨이브의 결과다** (ADR-0001 1단계, 2026-09-03).
+# 여기 있던 `logger_config` 가 두 레인이 동시에 주장하던 최상위 이름 넷 중 하나였다.
+# 이제 그 모듈은 `fcc_test_kernel.logger_config` 이고, 이 배포판은 그 이름을
+# **선언하지 않는다** — `scripts/check_import_name_ownership.py` 가 그것을 본다.
+#
+# 목록을 지우지 않고 빈 채로 두는 이유: 다음 사람이 최상위 모듈을 담고 싶을 때
+# 이 자리와 그 사유를 먼저 읽게 하려는 것이다. 최상위 이름은 **다투는 자원**이다.
+py-modules = []
 
 [tool.setuptools.package-data]
 # ⚠️ **패키지 데이터는 import 가 아니다** — 이 저장소가 이미 한 번 값을 치른 계급이다.

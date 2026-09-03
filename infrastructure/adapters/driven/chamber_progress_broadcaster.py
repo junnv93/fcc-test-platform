@@ -26,7 +26,7 @@ import threading
 from typing import AsyncIterator, Optional
 
 from domain.models.chamber_node import ChamberProgressEvent
-from logger_config import get_logger
+from fcc_test_kernel.logger_config import get_logger
 
 
 __all__ = ['ChamberProgressBroadcaster', 'DEFAULT_PROGRESS_BUFFER_SIZE']

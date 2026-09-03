@@ -120,6 +120,18 @@ class TestFirstPartyIsNotThirdParty(unittest.TestCase):
     합치면 4, 나누면 서드파티 0 — 두 숫자가 다른 결정을 지지한다.
     """
 
+    def test_a_new_sibling_lane_is_recognised_without_editing_a_list(self):
+        """⚠️ 목록판이 한 커밋 만에 낡았다 — `fcc_test_kernel` 이 생기자 서드파티로
+        집계됐다. 판정은 이 계열의 접두사이지 손 목록이 아니다."""
+        with _TwoLanes() as t:
+            for base in (t.central, t.provider_src):
+                t.write(base, 'shared_pkg/m.py', 'import fcc_test_brandnewlane')
+            t.write(t.central, 'fcc_test_platform/app.py', 'import shared_pkg.m')
+            t.write(t.provider_src, 'runner.py', 'import shared_pkg.m')
+            obs = guard.measure(t.central, t.provider_src)
+            self.assertEqual(obs['third_party_dependencies'], {})
+            self.assertIn('shared_pkg/m.py', obs['sibling_lane_dependencies'])
+
     def test_sibling_lane_import_is_not_counted_as_third_party(self):
         with _TwoLanes() as t:
             for base in (t.central, t.provider_src):
