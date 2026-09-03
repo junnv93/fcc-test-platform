@@ -157,7 +157,7 @@ class PlatformApiConfig:
 
     def app_options(self) -> dict:
         """FastAPI app metadata (title/version) for the platform surface."""
-        from application.central_contract.api_contracts import PLATFORM_API_CONTRACT_VERSION
+        from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_CONTRACT_VERSION
         from fcc_test_platform.application.api_schema import PLATFORM_API_TITLE
 
         return {'title': PLATFORM_API_TITLE, 'version': PLATFORM_API_CONTRACT_VERSION}

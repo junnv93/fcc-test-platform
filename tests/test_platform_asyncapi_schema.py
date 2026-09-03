@@ -22,7 +22,7 @@ if str(_SRC_ROOT) not in sys.path:
 
 from fcc_test_contracts.common.tree_artifacts import resolve_dependency_artifact  # noqa: E402
 
-from application.central_contract.api_contracts import (  # noqa: E402
+from fcc_test_kernel.application.central_contract.api_contracts import (  # noqa: E402
     PLATFORM_API_OPERATIONS,
     PLATFORM_API_PERMISSIONS,
     PLATFORM_API_ROUTES,

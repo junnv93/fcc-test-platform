@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from domain.models.chamber_node import ChamberProgressEvent
+from fcc_test_kernel.domain.models.chamber_node import ChamberProgressEvent
 
 
 __all__ = ['ChamberProgressBroadcastPort']

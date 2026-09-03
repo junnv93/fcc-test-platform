@@ -31,7 +31,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
-from application.central_contract.envelope_helpers import (
+from fcc_test_kernel.application.central_contract.envelope_helpers import (
     optional_text,
     require_uuid,
     text,

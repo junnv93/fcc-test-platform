@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import json
 from typing import Any, Callable, Mapping, Optional
 
-from domain.models.sample_inventory import SampleStatus
+from fcc_test_kernel.domain.models.sample_inventory import SampleStatus
 from domain.ports.output.central_sample_inventory_read_port import (
     CentralSampleInventoryReadPort,
 )

@@ -57,7 +57,7 @@ from typing import Callable, Mapping, Sequence
 # 해소 SQL 은 **다시 적지 않고 빌려온다.** readiness 가 이 레인에서 «자연키 →
 # providers.id» 를 소유하는 자리이고, 여기서 같은 SELECT 를 새로 쓰면 두 벌이 되어
 # providers 의 열이 바뀔 때 한쪽만 따라간다.
-from application.central_contract.central_sync_readiness import (
+from fcc_test_kernel.application.central_contract.central_sync_readiness import (
     PROVIDER_READINESS_SQL,
 )
 from domain.ports.output.central_artifact_custody_port import (

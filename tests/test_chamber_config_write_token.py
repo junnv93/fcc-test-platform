@@ -18,7 +18,7 @@ from __future__ import annotations
 from pathlib import Path
 import unittest
 
-from application.central_contract.api_vocabulary import (  # noqa: E402
+from fcc_test_kernel.application.central_contract.api_vocabulary import (  # noqa: E402
     PLATFORM_API_PERMISSION_DESCRIPTIONS,
 )
 

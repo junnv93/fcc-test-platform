@@ -46,7 +46,7 @@ from fcc_test_contracts.common.tree_artifacts import (
 from fcc_test_contracts.common.sqlite_connection_factory import SqliteConnectionContext  # noqa: E402
 
 from fcc_test_contracts.common.access_policy import ApiAccessPolicy, ApiPrincipal  # noqa: E402
-from application.central_contract.api_contracts import (  # noqa: E402
+from fcc_test_kernel.application.central_contract.api_contracts import (  # noqa: E402
     PLATFORM_API_OPERATIONS,
     PLATFORM_API_PATH_PARAMS,
     PLATFORM_API_PERMISSIONS,
@@ -657,7 +657,7 @@ class TestClaimWriteCrossLanguageSsot(unittest.TestCase):
 # ════════════════════════════════════════════════════════════════════════════
 class TestEnvelopeHelpersSsot(unittest.TestCase):
     def test_require_uuid_canonicalizes_and_rejects(self):
-        from application.central_contract.envelope_helpers import require_uuid
+        from fcc_test_kernel.application.central_contract.envelope_helpers import require_uuid
         canon = require_uuid('11111111-1111-1111-1111-111111111111', 'project_id')
         self.assertEqual(canon, '11111111-1111-1111-1111-111111111111')
         with self.assertRaises(ValueError):
@@ -666,7 +666,7 @@ class TestEnvelopeHelpersSsot(unittest.TestCase):
             require_uuid('not-a-uuid', 'claim_id')
 
     def test_text_optional_int_helpers(self):
-        from application.central_contract.envelope_helpers import (
+        from fcc_test_kernel.application.central_contract.envelope_helpers import (
             int_or_zero, optional_int, optional_text, text,
         )
         self.assertEqual(text(None), '')
@@ -688,7 +688,7 @@ class TestEnvelopeHelpersSsot(unittest.TestCase):
             __file__, 'src/application/platform/central_claim_write_service.py',
         ).read_text(encoding='utf-8')
         for src in (read_src, write_src):
-            self.assertIn('from application.central_contract.envelope_helpers import', src)
+            self.assertIn('from fcc_test_kernel.application.central_contract.envelope_helpers import', src)
         # The uuid-validation logic lives once (envelope_helpers), not copied.
         self.assertNotIn('str(uuid.UUID(', read_src)
         self.assertNotIn('def _require_uuid', write_src)

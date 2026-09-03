@@ -522,7 +522,7 @@ class TestFeP5RemoteControl(unittest.TestCase):
         import sys
 
         sys.path.insert(0, str(project_root / "src"))
-        from application.session.api_contracts import (  # noqa: E402
+        from fcc_test_kernel.application.session.api_contracts import (  # noqa: E402
             SESSION_PERMISSION_CONTROL,
             SESSION_PERMISSION_EVENTS,
         )
@@ -726,7 +726,7 @@ class TestFeP2CoverageDashboard(unittest.TestCase):
         import sys
 
         sys.path.insert(0, str(project_root / "src"))
-        from application.central_contract.api_contracts import (  # noqa: E402
+        from fcc_test_kernel.application.central_contract.api_contracts import (  # noqa: E402
             PLATFORM_API_PERMISSIONS,
             PLATFORM_API_ROUTES,
         )
@@ -754,7 +754,7 @@ class TestFeP2CoverageDashboard(unittest.TestCase):
         import sys
 
         sys.path.insert(0, str(project_root / "src"))
-        from application.central_contract.api_contracts import PLATFORM_API_ROUTES  # noqa: E402
+        from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_ROUTES  # noqa: E402
 
         projects = self._read("src", "routes", "projects.tsx")
         client = self._read("src", "api", "platform-client.ts")
@@ -773,7 +773,7 @@ class TestFeP2CoverageDashboard(unittest.TestCase):
         import sys
 
         sys.path.insert(0, str(project_root / "src"))
-        from application.central_contract.api_contracts import (  # noqa: E402
+        from fcc_test_kernel.application.central_contract.api_contracts import (  # noqa: E402
             PLATFORM_API_OPERATION_QUERY,
             PLATFORM_API_QUERY_PARAMS,
         )
@@ -840,7 +840,7 @@ class TestFeP8MembershipRoute(unittest.TestCase):
         import sys
 
         sys.path.insert(0, str(project_root / "src"))
-        from application.central_contract.api_contracts import (  # noqa: E402
+        from fcc_test_kernel.application.central_contract.api_contracts import (  # noqa: E402
             PLATFORM_API_PERMISSIONS,
             PLATFORM_API_ROUTES,
         )

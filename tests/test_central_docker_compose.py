@@ -401,7 +401,7 @@ class TestCentralComposeContract(unittest.TestCase):
         sys.path.insert(0, str(SRC_ROOT))
         try:
             from fcc_test_platform.central_db_config import CENTRAL_DB_ENV
-            from application.headless.runtime_config import HEADLESS_API_ENV
+            from fcc_test_platform.application.headless.runtime_config import HEADLESS_API_ENV
             from fcc_test_platform.application.runtime_config import (
                 PLATFORM_AUTH_ENV_PREFIX,
             )
@@ -893,7 +893,7 @@ class TestRealmPlatformPermissionParity(unittest.TestCase):
     def _backend_platform_tokens() -> set:
         if str(SRC_ROOT) not in sys.path:
             sys.path.insert(0, str(SRC_ROOT))
-        from application.central_contract.api_contracts import PLATFORM_API_PERMISSIONS
+        from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_PERMISSIONS
         return {v for v in PLATFORM_API_PERMISSIONS.values() if v.startswith('platform:')}
 
     def test_realm_platform_permissions_match_backend_ssot(self):

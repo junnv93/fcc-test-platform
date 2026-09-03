@@ -27,7 +27,7 @@ from fcc_test_platform.application.central_read_adapter import (
     COVERAGE_KEYSET,
     COVERAGE_KEYSET_DOMAINS,
 )
-from application.central_contract.envelope_helpers import (
+from fcc_test_kernel.application.central_contract.envelope_helpers import (
     int_or_zero,
     optional_int,
     optional_text,
@@ -35,7 +35,7 @@ from application.central_contract.envelope_helpers import (
     require_uuid,
     text,
 )
-from application.central_contract.pagination import (
+from fcc_test_kernel.application.central_contract.pagination import (
     CursorValueDomain,
     clamp_limit,
     decode_cursor,

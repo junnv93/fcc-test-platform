@@ -21,6 +21,7 @@ M-2/M-3/M-4 (409 · 검색/keyset · 인덱스) 봉인은 후속 마일스톤에
 Owned by ``/verify-platform-project-entry``.
 """
 from __future__ import annotations
+from tests._moved_module_source import moved_module_source  # noqa: E402
 
 import ast
 import json
@@ -44,7 +45,7 @@ from support.central_pg_sqlite_shim import (  # noqa: E402
     QmarkCursor,
 )
 
-from application.central_contract.api_contracts import (  # noqa: E402
+from fcc_test_kernel.application.central_contract.api_contracts import (  # noqa: E402
     PLATFORM_API_OPERATION_QUERY,
     PLATFORM_API_OPERATIONS,
     PLATFORM_API_PERMISSIONS,
@@ -78,7 +79,7 @@ from fcc_test_platform.application.central_project_read_adapter import (  # noqa
     PROJECT_LIST_SQL_BY_STATUS,
     PROJECT_LIST_SQL_VARIANTS,
 )
-from application.central_contract.pagination import (  # noqa: E402
+from fcc_test_kernel.application.central_contract.pagination import (  # noqa: E402
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
     CursorError,
@@ -106,7 +107,7 @@ from domain.services.project_directory_query import (  # noqa: E402
     normalize_search_term,
     search_like_pattern,
 )
-from domain.services.project_metadata_edit import (  # noqa: E402
+from fcc_test_kernel.domain.services.project_metadata_edit import (  # noqa: E402
     DEVICE_MODEL_META_FIELDS,
     EDITABLE_PROJECT_META_FIELDS,
     IMMUTABLE_PROJECT_FIELDS,
@@ -118,7 +119,7 @@ from domain.services.project_metadata_edit import (  # noqa: E402
 )
 
 _DOMAIN_POLICY_MODULE = (
-    resolve_repo_artifact(__file__, 'src/domain/services/project_metadata_edit.py')
+    moved_module_source('fcc_test_kernel.domain.services.project_metadata_edit')
 )
 _WRITE_ADAPTER_MODULE = (
     resolve_repo_artifact(__file__, 'src/application/platform/central_project_write_adapter.py')

@@ -25,7 +25,7 @@ if str(_SRC_ROOT) not in sys.path:
 from fcc_test_platform.application.central_chamber_write_service import (  # noqa: E402
     CentralChamberWriteService,
 )
-from domain.models.chamber_node import ChamberProgressEvent  # noqa: E402
+from fcc_test_kernel.domain.models.chamber_node import ChamberProgressEvent  # noqa: E402
 from fcc_test_platform.api.platform_routes import (  # noqa: E402
     PlatformApiAdapter,
 )

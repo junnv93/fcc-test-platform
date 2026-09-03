@@ -112,7 +112,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from domain.services.project_directory_query import (  # noqa: E402
     PROJECT_SEARCH_COLUMNS,
 )
-from domain.services.project_metadata_edit import (  # noqa: E402
+from fcc_test_kernel.domain.services.project_metadata_edit import (  # noqa: E402
     EDITABLE_PROJECT_META_FIELDS,
     IMMUTABLE_PROJECT_FIELDS,
 )

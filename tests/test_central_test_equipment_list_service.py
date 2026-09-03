@@ -49,7 +49,7 @@ from domain.ports.output.central_test_equipment_list_port import (  # noqa: E402
     EquipmentListConflictError,
     EquipmentListNotFoundError,
 )
-from domain.services.test_equipment_list_policy import (  # noqa: E402
+from fcc_test_kernel.domain.services.test_equipment_list_policy import (  # noqa: E402
     EQUIPMENT_TABLE_COLUMNS,
     SOFTWARE_TABLE_COLUMNS,
     TEST_ITEM_KEYS,
@@ -457,7 +457,7 @@ class TestWriteAdapterPartialIndexTargets(unittest.TestCase):
             self.assertIn("WHERE", conflict, "partial index requires a predicate")
 
     def test_item_insert_columns_derive_from_the_domain(self):
-        from domain.services.test_equipment_list_policy import ITEM_PERSISTED_FIELDS
+        from fcc_test_kernel.domain.services.test_equipment_list_policy import ITEM_PERSISTED_FIELDS
 
         for field in ITEM_PERSISTED_FIELDS:
             self.assertIn(field, ITEM_INSERT_COLUMNS)
@@ -734,7 +734,7 @@ class TestEmptyListConfirmationIsAtomic(unittest.TestCase):
         from domain.ports.output.central_test_equipment_list_port import (
             EquipmentListConflictError,
         )
-        from domain.services.test_equipment_list_policy import (
+        from fcc_test_kernel.domain.services.test_equipment_list_policy import (
             CONFIRM_REFUSAL_EMPTY_LIST,
         )
 
@@ -787,7 +787,7 @@ class TestEmptyListConfirmationIsAtomic(unittest.TestCase):
         from domain.ports.output.central_test_equipment_list_port import (
             EquipmentListConflictError,
         )
-        from domain.services.test_equipment_list_policy import (
+        from fcc_test_kernel.domain.services.test_equipment_list_policy import (
             CONFIRM_REFUSAL_ALREADY_CONFIRMED,
             CONFIRM_REFUSAL_EMPTY_LIST,
         )

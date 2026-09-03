@@ -456,7 +456,7 @@ class TestFeP8RbacRoleGrants(unittest.TestCase):
         # platform:chamber) and non-grantable authorization classes (e.g.
         # 'authenticated' — ADR-0017 D3) are excluded — they are machine/global
         # gates, not project role grants.
-        from application.central_contract.api_contracts import PLATFORM_API_PERMISSIONS
+        from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_PERMISSIONS
 
         api_permissions = (
             set(PLATFORM_API_PERMISSIONS.values())
@@ -480,7 +480,7 @@ class TestFeP8RbacRoleGrants(unittest.TestCase):
         # project role grant (which would let a project member impersonate a
         # chamber node). Also proves the excluded token is actually declared by an
         # API operation (so the exclusion is not masking a typo'd dead token).
-        from application.central_contract.api_contracts import PLATFORM_API_PERMISSIONS
+        from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_PERMISSIONS
 
         granted: set[str] = set()
         for role_permissions in self.rbac['grants'].values():

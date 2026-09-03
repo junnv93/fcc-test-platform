@@ -6,7 +6,7 @@ import json
 from typing import Any, Callable, Mapping, Optional
 import uuid
 
-from domain.models.sample_inventory import (
+from fcc_test_kernel.domain.models.sample_inventory import (
     INTAKE_FIELDS,
     SAMPLE_EDITABLE_FIELDS,
     SampleRevisionEvent,

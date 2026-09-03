@@ -26,8 +26,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Callable, Mapping, Optional
 
-from application.central_contract.envelope_helpers import text
-from domain.models.chamber_node import (
+from fcc_test_kernel.application.central_contract.envelope_helpers import text
+from fcc_test_kernel.domain.models.chamber_node import (
     DEFAULT_HEARTBEAT_TTL_SECONDS,
     ChamberNode,
     ChamberNodeStatus,

@@ -579,7 +579,7 @@ class TestCompactIntakeReadBack(unittest.TestCase):
     def test_wire_schema_has_compact_fields_not_full_history(self):
         # The OpenAPI SampleEnvelope is the wire contract SSOT — it must carry the
         # compact latest_intake + intake_count and NOT the full-history array.
-        from application.central_contract.api_contracts import PLATFORM_API_SCHEMAS
+        from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_SCHEMAS
 
         props = PLATFORM_API_SCHEMAS['SampleEnvelope']['properties']
         self.assertNotIn('intakes', props)
@@ -869,7 +869,7 @@ class TestSamplesSqlMatchesDdl(unittest.TestCase):
     def test_sample_envelope_schema_is_compact_not_full_history(self):
         # Contract guard — the wire schema exposes latest_intake + intake_count and
         # NOT a full intakes array, so the OpenAPI/codegen surface cannot drift back.
-        from application.central_contract.api_contracts import PLATFORM_API_SCHEMAS
+        from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_SCHEMAS
 
         envelope = PLATFORM_API_SCHEMAS['SampleEnvelope']
         props = envelope['properties']
@@ -901,7 +901,7 @@ class TestSamplesSqlMatchesDdl(unittest.TestCase):
         # member), never the ``allOf + type:["null"]`` shape that openapi-typescript
         # renders as ``null & SampleIntakeEnvelope``.
         from fcc_test_contracts.common.openapi_schema_builder import build_components_schemas
-        from application.central_contract.api_contracts import PLATFORM_API_SCHEMAS
+        from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_SCHEMAS
 
         components = build_components_schemas(PLATFORM_API_SCHEMAS)
         latest = components['SampleEnvelope']['properties']['latest_intake']

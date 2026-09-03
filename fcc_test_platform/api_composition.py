@@ -39,7 +39,7 @@ from fcc_test_contracts.common.principal_resolver import (
     create_principal_resolver,
 )
 # ⚠️ **provider 저장소를 import 하지 않는다** (2026-09-03).
-# 여기 있던 ``from application.headless.provider_ui_descriptor import …`` 한 줄이
+# 여기 있던 ``from fcc_test_platform.application.headless.provider_ui_descriptor import …`` 한 줄이
 # 중앙 스택 전체가 provider 저장소를 **코드로** 요구하게 만든 유일한 자리였다
 # (실측: ``/app/src`` 를 sys.path 에서 빼면 ``create_app()`` 이 바로 그 줄에서
 # ``ModuleNotFoundError``). 그 모듈은 자기 docstring 이 «provider-owned» 라고 적고
@@ -64,7 +64,7 @@ UNLICENSED_PROVIDER_ID: str = str(DEFAULT_PROVIDER_METADATA['provider_id'])
 #: 거기서 파생한다(아래) — 이 값은 그 파생이 답을 못 낼 때만 쓰인다.
 _FALLBACK_WORKBENCH_AREA = 'unlicensed_conducted'
 from fcc_test_platform.provider_registry import ProviderReferenceResolverRegistry
-from application.central_contract.api_contracts import PLATFORM_API_OPERATIONS
+from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_OPERATIONS
 from fcc_test_platform.application.provider_ui_descriptor_registry import (
     ProviderUiDescriptorRegistry,
 )
@@ -145,7 +145,7 @@ from fcc_test_platform.application.chamber_result_ingestion_service import (
     ChamberResultIngestionService,
 )
 from fcc_test_platform.central_backend_sync_adapter import CentralBackendSyncAdapter
-from application.central_contract.central_sync_readiness import PostgresCentralSyncReadinessProbe
+from fcc_test_kernel.application.central_contract.central_sync_readiness import PostgresCentralSyncReadinessProbe
 from fcc_test_platform.application.central_sync_metrics import (
     CENTRAL_SYNC_READINESS_COUNTER,
     CentralSyncMetrics,

@@ -35,6 +35,7 @@ for _path in (str(_REPO_ROOT), str(_SRC)):
         sys.path.insert(0, _path)
 
 from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # noqa: E402
+from tests._moved_module_source import moved_module_source  # noqa: E402
 
 
 def _repo_source(rel: str) -> str:
@@ -48,6 +49,16 @@ def _repo_source(rel: str) -> str:
     """
     return resolve_repo_artifact(__file__, rel).read_text(encoding='utf-8')
 
+
+def _kernel_source(dotted: str) -> str:
+    """공유 커널로 간 모듈의 원본 — **경로가 아니라 모듈에게 묻는다.**
+
+    ⚠️ 이 저장소가 이미 한 번 지불한 판정이다(`tests/_moved_module_source.py`):
+    경로를 하드코딩한 검사는 *트리*에 대해 단언하지 검사하려는 *코드*에 대해
+    단언하지 않는다 — 레인이 갈라진 뒤 그 둘은 같은 것이기를 그만두었다.
+    """
+    return moved_module_source(dotted).read_text(encoding='utf-8')
+
 from fcc_test_platform.application.central_reference_read_adapter import (  # noqa: E402
     PostgresCentralReferenceReadAdapter,
 )
@@ -57,7 +68,7 @@ from fcc_test_platform.application.central_reference_service import (  # noqa: E
 from fcc_test_platform.application.central_reference_write_adapter import (  # noqa: E402
     PostgresCentralReferenceWriteAdapter,
 )
-from domain.models.reference_catalog import (  # noqa: E402
+from fcc_test_kernel.domain.models.reference_catalog import (  # noqa: E402
     CatalogFamily,
     RevisionProvenanceKind,
     RevisionState,
@@ -67,7 +78,7 @@ from domain.ports.output.central_reference_port import (  # noqa: E402
     ReferenceRevisionNotFoundError,
     ReferenceStateConflictError,
 )
-from domain.services.reference_entry_edit_policy import (  # noqa: E402
+from fcc_test_kernel.domain.services.reference_entry_edit_policy import (  # noqa: E402
     EntryEdit,
     ReferenceEntryEditError,
     ReferenceEntryPayloadValueError,
@@ -79,13 +90,13 @@ from domain.services.reference_hashing import (  # noqa: E402
 from domain.services.reference_row_edit_policy import (  # noqa: E402
     ReferenceRowEditError,
 )
-from domain.services.reference_ownership_policy import (  # noqa: E402
+from fcc_test_kernel.domain.services.reference_ownership_policy import (  # noqa: E402
     identity_fields_for,
     identity_key_for,
     projection_fields_for,
     projection_value_kinds_for,
 )
-from domain.services.reference_scope_policy import ReferenceScopeError  # noqa: E402
+from fcc_test_kernel.domain.services.reference_scope_policy import ReferenceScopeError  # noqa: E402
 from tests.support.central_pg_sqlite_shim import QmarkConnection  # noqa: E402
 
 _SCHEMA = _REPO_ROOT / 'docs' / 'platform' / 'central_db_schema.v1.json'
@@ -888,7 +899,7 @@ class TestTheEditPolicyRefusesWhatIsNotAnEdit(unittest.TestCase):
 
     def test_too_many_edits_in_one_request_are_refused(self) -> None:
         """한 요청이 손으로 고칠 수 있는 것보다 많은 행을 지목하면 거부한다."""
-        from domain.services.reference_entry_edit_policy import (
+        from fcc_test_kernel.domain.services.reference_entry_edit_policy import (
             MAX_ENTRY_EDITS_PER_REQUEST,
         )
 
@@ -906,7 +917,7 @@ class TestTheEditPolicyRefusesWhatIsNotAnEdit(unittest.TestCase):
         `create_candidate` 에 검사가 없어 리스트 payload 가 저장됐고, 그 뒤 **모든**
         편집이 — 그것을 고치려는 편집까지 — 읽다가 죽었다(적대적 리뷰 실증).
         """
-        from domain.services.reference_entry_edit_policy import (
+        from fcc_test_kernel.domain.services.reference_entry_edit_policy import (
             validate_entry_payload_shape,
         )
 
@@ -930,11 +941,14 @@ class TestTheEditPolicyRefusesWhatIsNotAnEdit(unittest.TestCase):
         self.assertFalse(outcome.changed)
 
     def test_the_policy_is_domain_pure(self) -> None:
-        source = _repo_source(
-            'src/domain/services/reference_entry_edit_policy.py'
-        )
+        source = _kernel_source('fcc_test_kernel.domain.services.reference_entry_edit_policy')
+        # ⚠️ **접두사 붙은 이름도 금지어에 든다** (2026-09-03).
+        # 이 모듈이 커널로 간 뒤 `'from infrastructure'` 는 `'from
+        # fcc_test_kernel.infrastructure'` 에 **걸리지 않는다** — 이관이
+        # 게이트를 조용히 약하게 만든다. 판정은 계층 이름이지 접두사가 아니다.
         for forbidden in (
             'import infrastructure', 'from infrastructure',
+            'import fcc_test_kernel.infrastructure', 'from fcc_test_kernel.infrastructure',
             'import pyvisa', 'import PySide6', 'import pandas',
         ):
             with self.subTest(forbidden=forbidden):
@@ -1223,7 +1237,7 @@ class TestAuthoringFromScratch(_CentralTestCase):
 
     def test_the_request_schema_offers_no_identity_or_provenance_field(self):
         """클라이언트가 보낼 수 있는 것이 곧 위조할 수 있는 것이다."""
-        from application.central_contract.api_contracts import PLATFORM_API_SCHEMAS
+        from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_SCHEMAS
 
         request_schema = PLATFORM_API_SCHEMAS[
             'CreateAuthoredReferenceRevisionRequest'
@@ -1480,9 +1494,7 @@ class TestRowsCanBeAddedAndRemoved(_CentralTestCase):
 
 class TestValueValidationLeavesTheEditAxisUntouched(unittest.TestCase):
     def test_apply_entry_edits_does_not_call_creation_value_validation(self):
-        source = _repo_source(
-            'src/domain/services/reference_entry_edit_policy.py'
-        )
+        source = _kernel_source('fcc_test_kernel.domain.services.reference_entry_edit_policy')
         tree = ast.parse(source)
         function = next(
             node for node in tree.body

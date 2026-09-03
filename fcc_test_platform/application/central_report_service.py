@@ -28,8 +28,8 @@ import json
 from typing import Callable, Optional
 
 from fcc_test_platform.application.central_project_service import ProjectNotFoundError
-from application.central_contract.envelope_helpers import optional_text, require_uuid, text
-from domain.models.sample_inventory import SNAPSHOT_SCHEMA_VERSION
+from fcc_test_kernel.application.central_contract.envelope_helpers import optional_text, require_uuid, text
+from fcc_test_kernel.domain.models.sample_inventory import SNAPSHOT_SCHEMA_VERSION
 from domain.models.session_provenance import SessionOrigin
 from domain.ports.output.central_project_port import CentralProjectReadPort
 from domain.ports.output.central_report_port import (

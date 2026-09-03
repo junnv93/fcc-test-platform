@@ -22,8 +22,8 @@ import json
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
-from application.central_contract.envelope_helpers import optional_text, parse_timestamp, text
-from domain.models.chamber_node import (
+from fcc_test_kernel.application.central_contract.envelope_helpers import optional_text, parse_timestamp, text
+from fcc_test_kernel.domain.models.chamber_node import (
     ChamberAvailability,
     ChamberNodeStatus,
     ChamberProgress,
@@ -33,7 +33,7 @@ from domain.models.chamber_node import (
     redact_error_message,
 )
 from domain.ports.output.central_chamber_read_port import CentralChamberReadPort
-from domain.services.chamber_mode_policy import judge_chamber_mode
+from fcc_test_kernel.domain.services.chamber_mode_policy import judge_chamber_mode
 
 
 __all__ = ['CentralChamberReadService']

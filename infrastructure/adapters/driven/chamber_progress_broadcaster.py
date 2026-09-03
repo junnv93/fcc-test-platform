@@ -25,7 +25,7 @@ import asyncio
 import threading
 from typing import AsyncIterator, Optional
 
-from domain.models.chamber_node import ChamberProgressEvent
+from fcc_test_kernel.domain.models.chamber_node import ChamberProgressEvent
 from fcc_test_kernel.logger_config import get_logger
 
 

@@ -499,7 +499,7 @@ class TestChamberHeartbeatTtlMirrorParity(unittest.TestCase):
     """
 
     #: Backend owner of the value the frontend mirrors.
-    CHAMBER_NODE_MODEL = moved_module_source('domain.models.chamber_node')
+    CHAMBER_NODE_MODEL = moved_module_source('fcc_test_kernel.domain.models.chamber_node')
 
     BACKEND_TTL = re.compile(
         r"^DEFAULT_HEARTBEAT_TTL_SECONDS\s*=\s*(\d+)", re.MULTILINE
@@ -538,7 +538,7 @@ class TestChamberHeartbeatTtlMirrorParity(unittest.TestCase):
             backend,
             "apps/web/src/api/query-config.ts::"
             f"CHAMBER_HEARTBEAT_TTL_SECONDS_DEFAULT ({frontend}) has drifted from "
-            f"src/domain/models/chamber_node.py::DEFAULT_HEARTBEAT_TTL_SECONDS "
+            f"fcc_test_kernel/domain/models/chamber_node.py::DEFAULT_HEARTBEAT_TTL_SECONDS "
             f"({backend}). The chamber availability poll cadence is derived from "
             "this mirror, so the drift silently mis-sizes the poll.",
         )

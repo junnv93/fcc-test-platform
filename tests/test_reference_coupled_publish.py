@@ -42,13 +42,13 @@ from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # no
 from fcc_test_platform.application.central_reference_service import (  # noqa: E402
     CentralReferenceService,
 )
-from domain.models.reference_catalog import CatalogFamily, RevisionState  # noqa: E402
+from fcc_test_kernel.domain.models.reference_catalog import CatalogFamily, RevisionState  # noqa: E402
 from domain.ports.output.central_reference_port import (  # noqa: E402
     ReferenceCoupledPublishError,
     ReferenceRevisionNotFoundError,
 )
 from _ast_string_finder import find_string_literals_anywhere  # noqa: E402
-from domain.services.reference_ownership_policy import (  # noqa: E402
+from fcc_test_kernel.domain.services.reference_ownership_policy import (  # noqa: E402
     COUPLED_FAMILY_GROUPS,
     projection_fields_for,
 )
@@ -401,7 +401,7 @@ class TestWhoMayWriteReferenceData(unittest.TestCase):
 
     def _adapter(self, principal, *, read=None, write=None, rbac=None):
         from fcc_test_contracts.common.access_policy import ApiAccessPolicy
-        from application.central_contract.api_contracts import PLATFORM_API_OPERATIONS
+        from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_OPERATIONS
         from fcc_test_platform.api.platform_routes import (
             PlatformApiAdapter,
         )

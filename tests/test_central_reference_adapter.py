@@ -46,7 +46,7 @@ from fcc_test_platform.application.central_reference_read_adapter import (  # no
 from fcc_test_platform.application.central_reference_write_adapter import (  # noqa: E402
     PostgresCentralReferenceWriteAdapter,
 )
-from domain.models.reference_catalog import (  # noqa: E402
+from fcc_test_kernel.domain.models.reference_catalog import (  # noqa: E402
     RevisionProvenanceKind,
     RevisionState,
 )

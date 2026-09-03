@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Callable, Mapping, Optional
 
-from application.central_contract.pagination import (
+from fcc_test_kernel.application.central_contract.pagination import (
     CursorError,
     CursorValueDomain,
     decode_cursor,

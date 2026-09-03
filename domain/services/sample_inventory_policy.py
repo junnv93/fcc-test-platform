@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import json
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
-from domain.models.sample_inventory import (
+from fcc_test_kernel.domain.models.sample_inventory import (
     INTAKE_FIELDS,
     REVISION_SNAPSHOT_FIELDS,
     SAMPLE_EDITABLE_FIELDS,

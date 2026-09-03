@@ -90,7 +90,12 @@ RUN apt-get update \
 # 끊은 뒤 실측: FCC 트리 0으로 `create_app()` 성공, OpenAPI 64경로가 도는 서비스와 동일.
 COPY pyproject.toml README.md ./
 COPY fcc_test_platform/ ./fcc_test_platform/
-COPY application/ ./application/
+# ⚠️ **여기 있던 `COPY application/ ./application/` 는 2026-09-03 에 지웠다** —
+# 그 최상위 이름이 이 상자에서 통째로 사라졌다(커널 2단계). 공유 31파일은
+# `fcc_test_kernel.application.*` 이 되었고 중앙 전용 4파일은
+# `fcc_test_platform/application/` 아래로 갔다(위 줄이 나른다).
+# 1단계에서 `COPY logger_config.py` 를 안 지워 빌드가 죽었다 — 같은 자리다.
+# 봉인: `tests/test_dockerfile_copy_paths.py`
 COPY domain/ ./domain/
 COPY infrastructure/ ./infrastructure/
 # ⚠️ **여기 있던 `COPY logger_config.py ./` 는 2026-09-03 에 지웠다** — 그 모듈이

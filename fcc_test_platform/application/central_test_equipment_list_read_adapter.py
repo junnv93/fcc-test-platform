@@ -27,7 +27,7 @@ from domain.ports.output.central_test_equipment_list_port import (
     CentralTestEquipmentListError,
 )
 from domain.ports.output.platform_database_port import DbConnection
-from domain.services.test_equipment_list_policy import ITEM_PERSISTED_FIELDS
+from fcc_test_kernel.domain.services.test_equipment_list_policy import ITEM_PERSISTED_FIELDS
 
 
 __all__ = [

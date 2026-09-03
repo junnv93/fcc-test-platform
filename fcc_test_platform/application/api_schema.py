@@ -27,7 +27,7 @@ from fcc_test_contracts.common.openapi_schema_builder import (
     problem_error_response,
 )
 from fcc_test_contracts.common.ws_subprotocol_auth import WS_BEARER_SUBPROTOCOL
-from application.central_contract.api_contracts import (
+from fcc_test_kernel.application.central_contract.api_contracts import (
     PLATFORM_API_COMPATIBILITY_MAJOR,
     PLATFORM_API_CONTRACT_VERSION,
     PLATFORM_API_OPERATIONS,

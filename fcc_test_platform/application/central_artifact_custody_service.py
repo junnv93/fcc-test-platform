@@ -18,8 +18,8 @@ import json
 from datetime import datetime, timezone
 from typing import Callable, Mapping, Optional, Sequence
 
-from application.central_contract.envelope_helpers import parse_timestamp
-from domain.models.artifact_custody import CustodyStatus
+from fcc_test_kernel.application.central_contract.envelope_helpers import parse_timestamp
+from fcc_test_kernel.domain.models.artifact_custody import CustodyStatus
 from domain.models.artifact_custody_snapshot import (
     CustodySessionSnapshot,
     roll_up_sessions,

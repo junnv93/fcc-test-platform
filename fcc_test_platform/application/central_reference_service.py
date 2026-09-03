@@ -40,12 +40,12 @@ import json
 from typing import Any, Callable, Mapping, Optional, Sequence
 
 from fcc_test_contracts.common.logging_channel import get_logger
-from application.central_contract.pagination import (
+from fcc_test_kernel.application.central_contract.pagination import (
     CursorValueDomain,
     decode_cursor,
     encode_cursor,
 )
-from domain.models.reference_catalog import (
+from fcc_test_kernel.domain.models.reference_catalog import (
     CatalogFamily,
     RevisionProvenanceKind,
     RevisionState,
@@ -62,7 +62,7 @@ from domain.services.provider_identity_policy import (
     ProviderIdentityStatus,
     classify_provider_identity,
 )
-from domain.services.reference_entry_edit_policy import (
+from fcc_test_kernel.domain.services.reference_entry_edit_policy import (
     EntryEdit,
     ReferenceEntryEditError,
     apply_entry_edits,
@@ -75,13 +75,13 @@ from domain.services.reference_row_edit_policy import (
 )
 from domain.services.reference_hashing import build_reference_entry_hash
 from domain.services.reference_hashing import canonical_semantic_hash
-from domain.services.reference_ownership_policy import (
+from fcc_test_kernel.domain.services.reference_ownership_policy import (
     COUPLED_FAMILY_GROUPS,
     DEFAULT_REFERENCE_PROFILE_ID,
     identity_fields_for,
     projection_fields_for,
 )
-from domain.services.reference_scope_policy import (
+from fcc_test_kernel.domain.services.reference_scope_policy import (
     ReferenceScopeError,
     ReferenceScopeKind,
     scope_kind_for,
