@@ -87,5 +87,5 @@ fcc-test-contracts @ git+https://github.com/junnv93/fcc-test-contracts@v0.1.11
 # 공유 커널 (ADR-0001 1단계, 2026-09-03). 같은 저장소의 다른 배포판이라
 # `#subdirectory=` 가 붙는다. ⚠️ 이 줄이 필요한 이유: Dockerfile 이 레인을
 # `--no-deps` 로 설치하므로 전이 의존으로는 오지 않는다. 선언이 곧 설치다.
-fcc-test-kernel @ git+https://github.com/junnv93/fcc-test-contracts@kernel-v0.1.0#subdirectory=packages/fcc-test-kernel
+fcc-test-kernel @ git+https://github.com/junnv93/fcc-test-contracts@kernel-v0.2.0#subdirectory=packages/fcc-test-kernel
 fcc-test-platform @ git+https://github.com/junnv93/fcc-test-platform@v0.1.8
