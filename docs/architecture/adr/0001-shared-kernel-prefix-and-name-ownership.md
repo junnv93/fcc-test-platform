@@ -92,12 +92,29 @@ npm `@fcc/api-artifacts`(`packages/api-artifacts/package.json`). 「한 저장�
 보고했고 그것은 **그 세션이 복사한 집합**이었다. 폐포로 재니:
 
 ```
-중앙만 도달    47   → platform 소유로 충분
-provider만    282   → provider 소유로 충분
-양쪽 도달      53   ← 진짜 공유 커널
+중앙만 도달    49   → platform 소유로 충분
+provider만    291   → provider 소유로 충분
+양쪽 도달      64   ← 진짜 공유 커널
 ```
 
-서드파티 의존 **0**(4건은 전부 `fcc_test_contracts` — first-party 다).
+서드파티 의존 **0**(형제 레인 의존 6건은 전부 `fcc_test_contracts` — first-party 다).
+
+> ⚠️ **이 표는 2026-09-03 에 정정됐다. 처음 적힌 수는 47 · 282 · 53 이었다.**
+> 폐포 워커가 `from <패키지> import <서브모듈>` 형식을 간선으로 세지 않아
+> **11개를 놓쳤다** — `node.module`(= 패키지)만 담았고, 그 패키지의
+> `__init__.py` 가 순수 docstring 이라 탐색이 거기서 멈췄다.
+> 놓친 것: `central_contract` 의 표면 9개 + `api_operation_factory` +
+> `domain/services/reference_entry_edit_policy.py`.
+>
+> **AST 축에서 「import 안 함」과 「서브모듈로 import 함」이 같은 값이었다** —
+> 그리고 틀리는 방향이 나쁜 쪽이다. 이 문서의 완료 오라클이 *「공유 폐포 0」*
+> 인데, 과소계수하는 워커는 **아직 공유 중인데도 0** 을 낸다.
+>
+> 정정이 코드 회귀가 아님의 증거: 그 커밋이 만진 파일은 워커와 그 봉인 둘뿐이고
+> `application/`·`domain/`·`infrastructure/` 변경 **0건**이다. 새 11개는 전부
+> 새로 도달된 표면에서 직접(9) 또는 추이적으로(2) 도달한다.
+> 봉인: `tests/test_shared_kernel_closure.py::TestSubmoduleImportsAreEdgesToo`
+> (과잉계수 방지 팔을 함께 갖는다 — 속성 import 를 모듈로 오인하면 red).
 
 ## 단계 — 각 단계가 독립으로 검증된다
 
@@ -129,21 +146,56 @@ infrastructure/logging/session_log_custody.py
 | platform 테스트가 import 하나 | **아니오** (문자열 언급 1건뿐) |
 
 완료 판정: platform 이 `logger_config` 를 최상위로 **선언하지 않는다**
-(`check_import_name_ownership.py` 가 본다) · 공유 폐포가 53 → 43
-(`check_shared_kernel_closure.py` 가 본다).
+(`check_import_name_ownership.py` 가 본다) · 공유 폐포가 64 → 54
+(`check_shared_kernel_closure.py` 가 본다. ⚠️ 처음 적힌 53 → 43 은 위 워커 결함
+때문의 과소계수였다 — 옮긴 파일 수 10 은 변하지 않는다).
 
 ⚠️ **1단계 실행의 선행 조건** — 계약 저장소 로컬 체크아웃이 `origin/main` 보다 **11 커밋
 뒤**이고 자기 pre-push 레인 게이트가 막는다(실측 2026-09-03). 낡은 트리 위에서 시작하면
 안 된다. 그 저장소를 먼저 최신화하고 게이트를 통과시킨 뒤 시작한다.
 
-### 2단계 이후 — 남은 43개
+### 2단계 이후 — 남은 54개
 
-`application`(24파일 · import 95건) → `infrastructure`(15 · 11) → `domain`(91 · 359)
-순으로, 각 단계마다 폐포로 다시 재서 닫힌 클러스터를 고른다.
+실측 2026-09-03 (정정된 워커로):
 
-⚠️ **이름을 완전히 놓으려면 중앙 전용 47개도 `fcc_test_platform.*` 아래로 가야 한다.**
+```
+공유 54  =  application 20 · domain 32 · infrastructure 2
+```
+
+⚠️ **남은 폐포는 1단계와 달리 거의 평평하다.** 43개 시점에 하향 폐포를 재니
+**25개가 크기 1**(홀로 옮길 수 있다)이고 최대가 18이었다. 즉 이후 단계는
+「덩어리」가 아니라 **어느 최상위 이름을 통째로 놓느냐**로 갈린다 — 파일 하나가
+`domain/` 에 남으면 platform 은 그 이름을 계속 주장하기 때문이다.
+
+가장 작은 완결 단계는 **`application` 이름 전체를 놓는 것**이다:
+
+| | 파일 | 행선지 |
+|---|---|---|
+| 공유 | 20 | `fcc_test_kernel.application.*` |
+| 중앙 전용 | 4 | `fcc_test_platform.application.*` |
+
+중앙 레인 재작성 실측 **102건** — 술어는 *「`application` 을 언급하는 import 줄」*이다.
+
+⚠️ **술어를 함께 적는 이유**: 같은 대상을 «모듈별 import 건수의 합» 으로 세면
+**198** 이 나온다. 한 줄이 `application.central_contract` 와
+`application.central_contract.api_contracts` 양쪽 패턴에 걸려 중복 계수되기
+때문이다. **두 수 모두 정확하고 서로 다른 질문의 답이다.** 재작성 작업량은
+줄 수이므로 102 가 그 답이다.
+
+provider 쪽은 **고치지 않는다** — 그 저장소는 자기 `src/` 를 그대로 둔다(§결과 첫 줄).
+
+⚠️ 이 단계는 커널 배포판 갱신을 요구하므로 **태그 push 승인 지점**이다.
+
+⚠️ **이름을 완전히 놓으려면 중앙 전용 49개도 `fcc_test_platform.*` 아래로 가야 한다.**
 `domain/` 에 파일이 하나라도 남으면 platform 은 그 이름을 계속 주장한다.
-platform 쪽 총 규모: 약 100파일 · import 약 470건.
+platform 쪽 총 규모 실측 2026-09-03 (같은 술어 — 이름을 언급하는 import 줄):
+
+```
+domain          87 파일 · 348 줄
+application     24 파일 · 102 줄
+infrastructure  10 파일 ·   7 줄
+합계           121 파일 · 457 줄
+```
 
 ## 완료 판정 — 숫자가 아니라 게이트
 

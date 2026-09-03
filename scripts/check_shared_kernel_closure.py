@@ -82,6 +82,20 @@ def _imports(source: str) -> set[str]:
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
             out.add(node.module)
+            # ⚠️ **서브모듈 import 도 간선이다** (실측 2026-09-03).
+            # ``from application.central_contract import surface_auth, …`` 에서
+            # ``node.module`` 만 담으면 그 패키지의 ``__init__.py`` 로 해소되고,
+            # 그 파일이 **순수 docstring** 이면 탐색이 거기서 멈춘다. 실제로
+            # 표면 9개와 ``api_operation_factory`` 가 폐포에 안 들어왔다 —
+            # AST 축에서 「import 안 함」과 「서브모듈로 import 함」이 같은 값이었다.
+            #
+            # 틀리는 방향이 나쁜 쪽이다: 완료 오라클이 「공유 폐포 0」인데,
+            # 과소계수하는 워커는 **아직 공유 중인데도 0** 을 낸다.
+            #
+            # 속성 import(``from m import SOME_CONST``)를 모듈로 오인하지 않는 것은
+            # ``_resolve`` 가 맡는다 — 그런 이름은 파일이 없어 해소되지 않는다.
+            # 판정이 이름 모양이 아니라 **파일 존재**인 이유가 그것이다.
+            out.update(f'{node.module}.{alias.name}' for alias in node.names)
         elif isinstance(node, ast.Import):
             out.update(alias.name for alias in node.names)
     return out
