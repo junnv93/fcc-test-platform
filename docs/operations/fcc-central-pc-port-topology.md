@@ -1,14 +1,14 @@
 # FCC 중앙 PC 운영 포트·기동 기준
 
 > 🟡 **참조 문서 — 포트 기준.**
-> 챔버 PC 절차는 [`chamber-pc-operational-verification-runbook.md`](chamber-pc-operational-verification-runbook.md) §1 표를 보십시오.
+> 챔버 PC 절차는 [`chamber-pc-operational-verification-runbook.md`](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-pc-operational-verification-runbook.md) §1 표를 보십시오.
 > ⚠️ **포트 숫자의 권위는 문서가 아니라 코드입니다** — 챔버 노드는 `session_node_entry.py --print-config` 의 `node_port`, 중앙은 `infra/docker-compose.central.yml`. 문서와 다르면 코드가 옳습니다.
 
 상태: 운영 전환 기준안
 
 이 문서는 현재 중앙 PC에서 운영 중인 EMS와 FCC를 함께 운용하기 위한 FCC의
 네트워크·기동 기준이다. EMS의 운영 방식은
-`/home/devuser/equipment_management_system/docs/operations/fcc-central-pc-reboot-ops-guide.md`
+`/home/devuser/equipment_management_system/docs/operations/central-pc-reboot-ops-guide.md`
 를 참고한다.
 
 ## 1. 운영 주소
@@ -243,8 +243,8 @@ Test-NetConnection <NODE_IP> -Port 9000
 
 관련 문서:
 
-- [챔버 Session Node 운영 런북](./chamber-session-node-operations.md)
+- [챔버 Session Node 운영 런북](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-session-node-operations.md)
 - [중앙 PC 일상 검증](./central-pc-fcc-platform-verification-guide.md)
 - [중앙 PC 최초 전환 런북](./central-pc-operational-validation-runbook.md)
-- [챔버 토큰·RBAC 런북](./chamber-token-rbac-runbook.md)
-- [시험원 핸드북](../education/fcc-operator-handbook.html)
+- [챔버 토큰·RBAC 런북](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-token-rbac-runbook.md)
+- [시험원 핸드북](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/education/fcc-operator-handbook.html)

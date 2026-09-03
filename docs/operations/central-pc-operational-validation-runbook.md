@@ -1,7 +1,7 @@
 # 중앙 PC 실운영 전환 검증 런북 (S0 → S6)
 
 > 🔴 **필독 — 중앙 PC 최초 구축·전환 전용.**
-> **챔버 PC 절차는 여기 없습니다** → [`chamber-pc-operational-verification-runbook.md`](chamber-pc-operational-verification-runbook.md).
+> **챔버 PC 절차는 여기 없습니다** → [`chamber-pc-operational-verification-runbook.md`](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-pc-operational-verification-runbook.md).
 > ⚠️ 최종 갱신 2026-08-05 이후 착지한 챔버 승인 축(`PATCH /platform/chambers/{chamber_id}/web-session-approval`)과 워크북 업로드 경로가 이 문서에 **없습니다**.
 
 이 문서는 **중앙 PC를 데모/개발 상태에서 실운영 상태로 전환하고, 측정 1건이 중앙
@@ -1105,5 +1105,5 @@ docker compose -f infra/docker-compose.central.yml exec -T postgres \
 
 - 일상 점검: [`central-pc-fcc-platform-verification-guide.md`](./central-pc-fcc-platform-verification-guide.md)
 - 설치·구성 SSOT: [`ONPREM_DEPLOYMENT.md`](../../infra/central/ONPREM_DEPLOYMENT.md)
-- 챔버 토큰·권한: [`chamber-token-rbac-runbook.md`](./chamber-token-rbac-runbook.md)
-- 챔버 실측 스테이징: [`chamber-real-measurement-staging-runbook.md`](./chamber-real-measurement-staging-runbook.md)
+- 챔버 토큰·권한: [`chamber-token-rbac-runbook.md`](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-token-rbac-runbook.md)
+- 챔버 실측 스테이징: [`chamber-real-measurement-staging-runbook.md`](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-real-measurement-staging-runbook.md)
