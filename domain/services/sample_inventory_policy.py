@@ -250,6 +250,44 @@ def canonical_snapshot(
     )
 
 
+def snapshot_measurement_identity(
+    snapshot: Optional[SampleSnapshot | Mapping[str, Any]],
+) -> tuple[str, str]:
+    """스냅샷이 말하는 측정 대상 정체성 ``(Model Number, Sample No)``.
+
+    스냅샷의 **형태를 아는 자리는 이 모듈 하나**여야 한다 — ``canonical_snapshot`` 이
+    그것을 만들었으므로 그것을 읽는 규칙도 여기 산다. 측정 러너가 ``snapshot['project']
+    ['model_name']`` 을 직접 파면, 스냅샷 스키마가 바뀌는 날 그 자리가 조용히 빈
+    문자열을 돌려준다(그리고 빈 정체성은 서로 다른 두 시료의 결과 DB 를 한 파일로
+    합친다 — ``MeasurementTargetIdentity`` 가 존재하는 바로 그 결함).
+
+    - ``Model Number`` ← ``project.model_name`` (프로젝트의 device model).
+    - ``Sample No`` ← ``sample.sample_number``, 비어 있으면 ``sample.sample_code``.
+      중앙 스키마는 번호 없는 시료를 허용하는데, 번호가 비면 정체성의 절반이 사라져
+      같은 모델의 두 시료가 한 DB 로 붕괴한다. ``sample_code`` 는 시험원이 화면에서
+      보는 라벨이라 그 자리를 메우는 유일하게 정직한 값이다.
+
+    모르는 값은 ``''`` 다 — ``None`` 이 아니다. 호출자는 이것을 Save Data 칸에 넣고,
+    그 칸의 "모름"은 빈 문자열이기 때문이다. 순수 — stdlib only, I/O 0.
+    """
+    if snapshot is None:
+        return ('', '')
+    value = snapshot.as_dict() if isinstance(snapshot, SampleSnapshot) else snapshot
+    project = value.get('project') or {}
+    sample = value.get('sample') or {}
+    model_number = _snapshot_text(project.get('model_name'))
+    sample_no = (
+        _snapshot_text(sample.get('sample_number'))
+        or _snapshot_text(sample.get('sample_code'))
+    )
+    return (model_number, sample_no)
+
+
+def _snapshot_text(value: Any) -> str:
+    """스냅샷 칸 → 다듬은 문자열. ``None``/공백은 ``''``."""
+    return str(value or '').strip()
+
+
 def snapshot_json(snapshot: SampleSnapshot | Mapping[str, Any]) -> str:
     value = snapshot.as_dict() if isinstance(snapshot, SampleSnapshot) else snapshot
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
@@ -347,6 +385,7 @@ __all__ = [
     'normalize_status',
     'sample_projection',
     'snapshot_json',
+    'snapshot_measurement_identity',
     'transition_status',
     'utc_now_iso',
     'validate_expected_version',

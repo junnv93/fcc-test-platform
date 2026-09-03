@@ -27,6 +27,40 @@
 | 멤버십 issuer 해소 (platform-api) | **중앙 PC** | 권한 부여가 404 |
 | `test_sessions` 부모행 upsert (`test_runner_init` 합성) | **측정 PC** | 첫 sync 가 `session_id` FK 위반 |
 
+### 중앙 PC
+
+```bash
+cd /path/to/fcc-test-platform            # ⚠️ 중앙 PC 는 FCC 저장소를 두지 않는다
+git status --short                        # 로컬 수정이 있으면 먼저 정리/보존
+git pull --ff-only origin main
+git log --oneline -1                      # 45d7e1f9 이상이어야 한다
+ls docs/platform/migrations/011_ingestion_owned_defaults.sql   # 존재해야 한다
+ls docs/platform/migrations/012_report_run_ingestion_parent.sql # report parent default
+```
+
+`git pull` 이 거부되면 로컬에 커밋되지 않은 수정이 있다는 뜻이다. 그 내용을 확인해
+보존할지 버릴지 정한 뒤 진행한다(임의로 `checkout --` 하지 않는다).
+
+`central.env` 는 gitignore 대상이라 pull 로 덮이지 않는다.
+
+### 측정 PC (챔버 노드)
+
+세션 부모행을 만드는 코드는 **측정 PC 쪽 러너**에 있다. 중앙만 갱신하면 이 단계가 빠진다.
+
+```bat
+cd C:\FCC_mobile_test_automation
+git pull --ff-only origin main
+python build_nuitka.py                    REM .exe 로 배포해 쓰는 경우에만
+```
+
+판정: 측정 PC 에서 아래가 비어 있지 않아야 한다(부모행 upsert 배선 존재 확인).
+
+```bat
+findstr /C:"provider_session_id" src\application\headless\central_backend_sync_adapter.py
+```
+
+---
+
 ## ⚠️ 저장소 배치 (2026-09-03 변경)
 
 **중앙 PC 에는 `fcc-test-platform` 하나만 둔다. `FCC_mobile_test_automation` 을 두지
@@ -51,6 +85,35 @@
 `config/provider-ui/*.json` 에 놓고 platform 이 기동 시 읽는다(몇 개를 어디서 읽었는지
 매 기동 로그로 말한다). 담으면 provider 소유 내용의 두 번째 사본이 되고 사본은
 갈라진다 — 2026-09-01 에 실측된 그대로다.
+
+### 저장소는 셋인데, 한 PC 에 두는 것은 하나다
+
+> 이 표는 2026-09-02 에 provider 저장소 쪽 런북에서 만들어졌고 2026-09-03 이관에서
+> 새 배치로 갱신됐다. 그 전까지 전제는 *"repo 가 배치돼 있다"* 한 줄이었고,
+> **어느 repo 인지 · 공유 레인도 클론해야 하는지 · 이미지는 어디서 오는지**가 문서
+> 어디에도 없었다. 답은 저장소 안에 흩어져 있었다 — **흩어진 답은 이 문서만 읽는
+> 사람에게는 없는 답과 같다.**
+
+| 저장소 | 중앙 PC | 챔버 PC | 어떻게 도착하나 |
+|---|---|---|---|
+| `fcc-test-platform` | **둔다** | 두지 않는다 | `git clone` / `git pull` |
+| `FCC_mobile_test_automation` | 두지 않는다 | **둔다** | `git clone` / `git pull` |
+| `fcc-test-contracts` | 두지 않는다 | 두지 않는다 | 이미지 빌드 때 `pip` 가 태그로 가져온다 |
+
+**계약 레인은 클론하지 않는다.** `requirements-central.txt` 가 그것을 커밋 태그로
+고정해 두었고 `docker compose build` 가 받아서 이미지 안에 설치한다.
+**클론하면 정본이 두 벌이 되고, 두 벌은 갈라진다** — 이 문서가 이관되던 그날
+같은 형태가 실측으로 확인됐다(같은 설정 폴더 19개 중 7개가 이미 서로 다른 내용이었다).
+
+```bash
+# 지금 고정된 값 확인 (중앙 PC 에서)
+grep 'git+https' requirements-central.txt
+```
+
+⚠️ **`fcc-test-platform` 은 이 표에서 두 자리를 갖는다** — 중앙 PC 에는 **클론**으로
+있고(그 저장소가 중앙 이미지를 빌드하므로), 챔버 PC 에는 **pip 설치본**으로 있다
+(headless 표면이 그 레인의 일부를 부른다). 같은 이름이 두 형태로 존재하는 것이
+`scripts/check_import_name_ownership.py` 가 보는 축이다.
 
 ### 중앙 PC
 
@@ -547,10 +610,22 @@ permissions/roles 만 시드한다). 지금까지 있던 provider 행은 개발�
 만든 것이므로, **볼륨을 삭제하면 사라진다.**
 
 `measurement_results.provider_id` · `measurement_attempts.provider_id` ·
-`standard_time_catalog.provider_id` 는 모두 **`providers(id)` 를 참조하는 uuid FK** 이고,
-동기화 어댑터는 `FCC_CENTRAL_PROVIDER_ID` 값을 **그대로 레코드에 넣는다**. 따라서
-provider 행이 없거나 env 에 UUID 가 아닌 문자열을 넣으면 첫 동기화가
-`invalid input syntax for type uuid` 또는 FK 위반으로 실패한다.
+`standard_time_catalog.provider_id` 는 모두 **`providers(id)` 를 참조하는 uuid FK** 다.
+**그러나 env 에 넣는 값은 UUID 가 아니라 provider registry 의 자연키(provider code)
+`fcc-unlicensed-conducted` 다.** 동기화 어댑터가 platform readiness 로 그 코드에서
+`providers.id` 를 해소해 레코드에 넣는다 — `CentralBackendSyncAdapter.sync_result_events`
+가 `provider_uuid` 를 받고, config 값은 그것이 없을 때의 폴백이자
+**중앙 세션 uuid 파생 네임스페이스**로만 쓰인다.
+
+> ⚠️ **정정 2026-09-02.** 이 자리는 2026-09-02 까지 *"동기화 어댑터는 그 값을 그대로
+> 레코드에 넣는다 … 반드시 UUID 를 넣는다"* 라고 적고 있었다. 그 문장은 readiness 해소
+> 단계가 생기기 **전**의 어댑터를 서술한 것이고, **운영자가 그것을 따라 측정 PC 에 UUID 를
+> 넣었다**(실측: 중앙 셋은 자연키로 일치하는데 노드만 UUID). 증상은 인입 시점
+> `provider_id does not match central configuration` **HTTP 400** 이고, 앞선 두 층
+> (챔버 토큰 바인딩 · 기계 신분증)을 통과한 뒤라 **인증 문제처럼 읽힌다**.
+> 짝을 검사하는 것이 없어서 늦게 드러났다 — 지금은 있다(아래 S5 참조).
+
+provider 행이 **없으면** 첫 동기화가 FK 위반으로 실패하는 것은 그대로다.
 
 ```bash
 docker compose -f infra/docker-compose.central.yml exec -T postgres \
@@ -569,7 +644,8 @@ docker compose -f infra/docker-compose.central.yml exec -T postgres \
    ON CONFLICT (provider_id) DO NOTHING;"
 ```
 
-등록 후 **UUID 를 확보해 둔다** — S4(b) 시드와 S5 측정 PC env 양쪽에 같은 값을 쓴다:
+등록 후 **UUID 를 확보해 둔다** — 이것은 **S4(b) 진행률 catalog 시드의 직접 SQL 에만**
+쓴다. 측정 PC env 에는 쓰지 않는다:
 
 ```bash
 docker compose -f infra/docker-compose.central.yml exec -T postgres \
@@ -577,8 +653,16 @@ docker compose -f infra/docker-compose.central.yml exec -T postgres \
   "select id from providers where provider_id='fcc-unlicensed-conducted';"
 ```
 
-> ⚠ `central.env.example` 의 `FCC_CENTRAL_PROVIDER_ID=unlicensed` 는 **자연키처럼 보이는
-> 예시값**이다. 측정 PC 에는 반드시 위에서 조회한 **UUID** 를 넣는다.
+> ⚠ **측정 PC env 에는 이 UUID 가 아니라 자연키 `fcc-unlicensed-conducted` 를 넣는다.**
+> 중앙 env·compose 기본값·계약 SSOT(`DEFAULT_PROVIDER_METADATA`)가 모두 그 값이고,
+> 넷이 같아야 인입이 문 앞에서 거절되지 않는다. 넣은 뒤 반드시 확인한다:
+>
+> ```bash
+> python3 scripts/check_central_provider_id_pairing.py \
+>   --central-env infra/central/central.env --node-value '<측정 PC 에 넣은 값>'
+> ```
+>
+> 종료 코드 0 일치 · 1 불일치 · **2 판정 불가**(읽지 못함 — 통과가 아니다).
 
 ### (b) 진행률 catalog 시드
 
@@ -735,6 +819,60 @@ curl -X POST "http://<CENTRAL_IP>:8080/platform/chambers" \
 판정: `GET /platform/chambers` 또는 `chamber_nodes` 조회에 행이 생긴다. 등록 없이는
 heartbeat 도 참조 대상이 없어 실패한다.
 
+### (a2) 그 챔버 **전용** 머신 신분증을 발급한다 ⚠ (2026-09-01 신설)
+
+⚠️ **이 단계 없이 (b) 로 넘어가면 heartbeat 는 되는데 참조 복제가 영영 안 된다.**
+공용 `fcc-chamber-node` client 는 `platform:chamber` 는 갖지만 `chamber_id` **클레임이
+없다**. heartbeat 경계는 클레임 없는 토큰을 통과시키지만(`require_binding=False`),
+참조 번들 경계는 **거부**한다(`require_binding=True`) — 실측된 본문은
+
+```text
+403 {"detail":"result ingestion requires a chamber-bound token","code":"FORBIDDEN"}
+```
+
+이고, 노드 로그에는 `reference replica sync failed (... HTTP Error 403: Forbidden)` 로
+남는다. **비대칭은 의도된 것이다** — heartbeat 는 자기 신고라 다른 방법으로도 귀속되지만,
+참조 번들은 *다른 방의 케이블 손실*을 건네준다. 공용 토큰으로 그것을 읽으면 측정은
+정상 완료되고 판정도 나오며 **숫자만 그 방 차이만큼 조용히 틀린다.**
+
+챔버마다 한 번씩, 저장소의 발급 도구로:
+
+```bash
+FCC_KEYCLOAK_BASE_URL=http://<CENTRAL_IP>:8081 \
+KEYCLOAK_ADMIN=<admin> KEYCLOAK_ADMIN_PASSWORD=<password> \
+python scripts/platform_chamber_token_evidence.py --live \
+  --chamber-id chamber-a --action provision \
+  --actor 'ops:<redacted>' --realm fcc-dev \
+  --output artifacts/chamber-token-chamber-a.json
+```
+
+⚠️ `--action` 을 생략하면 provision 뿐 아니라 **rotate·revoke 까지** 돈다. 발급만
+할 때는 반드시 `--action provision` 을 준다.
+
+생성되는 client id 는 `fcc-chamber-<chamber_id>` 이고 `chamber_id` 클레임이 그 챔버로
+**하드코딩**된다. 비밀값은 도구가 절대 출력·기록하지 않으므로(증거 파일에는
+`***REDACTED***` 만 남는다) Keycloak 관리 API 에서 한 번 읽어 (b) 의
+`FCC_CENTRAL_CLIENT_SECRET` 에 넣는다:
+
+```bash
+curl -s -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>" \
+  "http://<CENTRAL_IP>:8081/admin/realms/fcc-dev/clients?clientId=fcc-chamber-chamber-a"
+# 위에서 얻은 uuid 로:
+curl -s -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>" \
+  "http://<CENTRAL_IP>:8081/admin/realms/fcc-dev/clients/<uuid>/client-secret"
+```
+
+판정(둘 다 확인한다 — 하나만 보면 바인딩이 아니라 권한만 증명한 것이 된다):
+
+```bash
+# 자기 방: 200
+curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer <CHAMBER_TOKEN>" \
+  "http://<CENTRAL_IP>:8080/platform/chambers/chamber-a/reference-bundle?limit=1"
+# 남의 방: 403 (이쪽이 200 이면 바인딩이 안 걸린 것이다)
+curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer <CHAMBER_TOKEN>" \
+  "http://<CENTRAL_IP>:8080/platform/chambers/chamber-b/reference-bundle?limit=1"
+```
+
 ### (b) 측정 PC 환경변수
 
 측정 PC 는 컨테이너가 아니라 네이티브 `.exe` 다. `.env` 자동 로딩이 없으므로 **프로세스
@@ -746,15 +884,21 @@ set FCC_CENTRAL_BASE_URL=http://<CENTRAL_IP>:8080
 set FCC_CENTRAL_CHAMBER_ID=chamber-a
 set FCC_CENTRAL_NODE_NAME=1번 챔버
 set FCC_CENTRAL_NODE_BASE_URL=http://<NODE_IP>:9000
-set FCC_CENTRAL_OIDC_TOKEN_URL=http://<CENTRAL_IP>:8081/realms/fcc-chamber-node/protocol/openid-connect/token
-set FCC_CENTRAL_CLIENT_ID=fcc-chamber-node
-set FCC_CENTRAL_CLIENT_SECRET=<FCC_CHAMBER_CLIENT_SECRET 와 동일한 값>
+REM ⚠ realm 자리에는 realm 이름(fcc-dev)이 온다. 여기에 client id 를 적으면
+REM    Keycloak 이 404 Realm does not exist 를 답하는데, 자기등록 실패가 non-fatal
+REM    WARNING 으로 흡수되므로 증상이 「연결 실패」가 아니라 **heartbeat 부재**로
+REM    나타난다 (실측 2026-09-01).
+set FCC_CENTRAL_OIDC_TOKEN_URL=http://<CENTRAL_IP>:8081/realms/fcc-dev/protocol/openid-connect/token
+REM ⚠ 공용 fcc-chamber-node 가 아니라 S5(a2) 에서 이 챔버에 발급한 전용 client 다.
+REM    공용 client 로도 heartbeat 는 되지만 참조 복제가 403 으로 막힌다.
+set FCC_CENTRAL_CLIENT_ID=fcc-chamber-chamber-a
+set FCC_CENTRAL_CLIENT_SECRET=<S5(a2) 에서 읽은 값>
 set FCC_CENTRAL_HEARTBEAT_INTERVAL_SECONDS=30
 
 REM 측정 결과 동기화 (중앙 DB 직결)
-REM ⚠ PROVIDER_ID 는 providers.id 의 UUID — S4(a) 에서 조회한 값 (자연키 문자열 아님)
+REM ⚠ PROVIDER_ID 는 provider registry 의 자연키(provider code)다 — UUID 아님 (정정 2026-09-02)
 set FCC_CENTRAL_DB_URL=postgresql://fcc:<POSTGRES_PASSWORD>@<CENTRAL_IP>:5432/fcc_central
-set FCC_CENTRAL_PROVIDER_ID=<PROVIDER_UUID>
+set FCC_CENTRAL_PROVIDER_ID=fcc-unlicensed-conducted
 set FCC_CENTRAL_SYNC_POLL_INTERVAL_SECONDS=300
 
 main_entry.exe
@@ -767,10 +911,20 @@ main_entry.exe
 - `FCC_CENTRAL_DB_URL` 이 비어 있으면 측정 결과 동기화도 **조용히 꺼진다**. 측정은
   정상 동작하므로 "중앙에 안 올라온다" 는 증상만 나타난다 — S6 에서 이 두 개를 각각
   판정한다.
-- ⚠ **`FCC_CENTRAL_PROVIDER_ID` 는 `providers.id` UUID 이며, 한 번 정하면 절대 바꾸지
-  않는다.** 이 값은 두 곳에 동시에 쓰인다 — (1) 레코드의 `provider_id` FK 값,
-  (2) 중앙 세션 uuid 파생 `uuid5(namespace, "{provider_id}:{로컬 세션번호}")`. 바꾸면
-  같은 측정이 **다른 세션으로 중복 유입**된다. 모든 측정 PC 가 같은 값을 쓴다.
+- ⚠ **`FCC_CENTRAL_PROVIDER_ID` 는 provider registry 의 자연키(provider code)이며,
+  한 번 정하면 절대 바꾸지 않는다.** 이 값은 두 곳에 쓰인다 — (1) 중앙과의 **문 앞 대조**
+  (다르면 인입 배치가 통째로 `provider_id does not match central configuration` 으로
+  거절된다), (2) 중앙 세션 uuid 파생 `uuid5(namespace, "{provider_id}:{로컬 세션번호}")`.
+  (2) 때문에 **측정이 인입된 뒤에 바꾸면 같은 측정이 다른 세션으로 중복 유입**된다 —
+  그러므로 **첫 측정 전에** 맞춘다. 모든 측정 PC 가 같은 값을 쓴다.
+  레코드의 `provider_id` FK 값은 이 값이 아니라 어댑터가 해소한 `providers.id` 다.
+
+  짝 검사(선택이 아니라 절차의 일부):
+
+  ```bash
+  python3 scripts/check_central_provider_id_pairing.py \
+    --central-env infra/central/central.env --node-value '<측정 PC 값>'
+  ```
 
 판정: 웹의 **시험 챔버** 메뉴에 노드가 보이고 온라인 표시. DB 로도 확인 가능
 (등록은 `chamber_nodes`, 살아있음은 `chamber_heartbeat_events` 로 각각 본다):

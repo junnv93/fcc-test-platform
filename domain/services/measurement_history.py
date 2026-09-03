@@ -13,6 +13,8 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+from domain.services.central_session_identity import measurement_target_key
+
 
 def normalize_condition_value(value: Any) -> str | None:
     """Normalize a condition value for stable hashing."""
@@ -247,11 +249,38 @@ def compute_attempt_idempotency_key(
     attempt_number: int,
     context: dict | None = None,
 ) -> str:
-    """Return a stable idempotency key for one measurement attempt."""
+    """Return a stable idempotency key for one measurement attempt.
+
+    **측정 대상이 스코프에 있어야 하는 이유 (F-4, 2026-09-02).** §DB Identity
+    Keying SSOT 는 측정 대상마다 DB 를 가르고(``{model}__{sample}.fcc.db``) 각
+    DB 는 세션을 1 부터 센다. 그러므로 ``session_id`` 는 **한 DB 안에서만**
+    유일하다 — 같은 모델의 시료 A 와 시료 B 는 둘 다 1 에서 시작한다. 그리고
+    ``condition_hash`` 의 field-set 14열에는 model/sample 이 **0건**이라 같은
+    계획 행을 재면 해시가 같다. 대상 축이 없으면 두 시료의 키가 **byte-identical**
+    이 되고, 중앙 ``ux_measurement_attempts_idempotency_key`` (전역 UNIQUE)가
+    두 번째 시료를 영구 거절한다.
+
+    **그 거절은 정상 재시도와 구분되지 않는다** — 둘 다 "이미 있는 키"로 보인다.
+    노드는 outbox 를 비우고 아무것도 실패하지 않으므로, 유실은 성적서를 뽑을
+    때에야 드러난다. 그때는 챔버 시간과 시료를 이미 썼다.
+
+    형제 축 둘(중앙 세션 자연키 · 보관 발행)이 같은 결함을 이미
+    ``measurement_target_key`` 로 갚았다. 여기서도 같은 어휘에 위임한다 —
+    정규화 규칙이 둘이 되면 조용히 갈라진다.
+
+    **대상이 불완전하면 옛 키를 그대로 낸다.** 부분 키는 두 기기를 가르지 못하므로
+    가른 척만 하고, 새 정보가 없는데 이름을 바꾸면 이미 인입된 중앙 행과 갈라질
+    뿐이다. 이 함수는 write 시점에 **한 번** 불려 값이
+    ``measurement_attempts.idempotency_key`` 에 영속되므로, 이 변경은 앞으로
+    생길 키만 움직인다 — 저장된 outbox 행도 마이그레이션도 건드리지 않는다.
+    """
     ctx = context or {}
     run_id = normalize_condition_value(ctx.get('run_id'))
     test_pc_id = normalize_condition_value(ctx.get('test_pc_id') or ctx.get('test_pc_code'))
+    target = measurement_target_key(ctx.get('model_number'), ctx.get('sample_code'))
     scope = f"run:{run_id}" if run_id else f"local-session:{int(session_id)}"
+    if target:
+        scope = f"{scope}:target:{target}"
     if test_pc_id:
         scope = f"{scope}:pc:{test_pc_id}"
     raw = f"{scope}:condition:{condition_hash}:attempt:{int(attempt_number)}"
