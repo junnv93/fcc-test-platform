@@ -1,10 +1,10 @@
 # 중앙 PC 재부팅 후 FCC 운영 가이드
 
 > 🔴 **필독 — 중앙 PC 재부팅 후/매일 기동.**
-> 챔버 PC 기동은 [`chamber-pc-operational-verification-runbook.md`](chamber-pc-operational-verification-runbook.md) **C4** 입니다.
+> 챔버 PC 기동은 [`chamber-pc-operational-verification-runbook.md`](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-pc-operational-verification-runbook.md) **C4** 입니다.
 > ⚠️ 최종 갱신 2026-08-06. 챔버 승인 축(`mode_verdict`) 확인이 이 문서에 없습니다 — 그 절차는 챔버 런북 **C5-3** 에 있습니다.
 
-EMS의 [중앙 PC 재부팅 운영 가이드](../../../equipment_management_system/docs/operations/fcc-central-pc-reboot-ops-guide.md)와 같은 형식으로, 중앙 PC가 재부팅된 뒤 FCC를 수동으로 확인·기동하는 절차를 정리한 문서다.
+EMS의 [중앙 PC 재부팅 운영 가이드](../../../equipment_management_system/docs/operations/central-pc-reboot-ops-guide.md)와 같은 형식으로, 중앙 PC가 재부팅된 뒤 FCC를 수동으로 확인·기동하는 절차를 정리한 문서다.
 
 대상 운영 주소:
 
@@ -158,7 +158,7 @@ Windows 서비스 자동시작은 보안 승인 전까지 사용하지 않는다
 
 Session API 실행 파일/런처 패키징은 **완료됐다** — `fcc-session-node.exe` +
 `run-session-node.ps1` + 배포 정책 JSON 이 하나의 operator package 로 배포된다. 설치·기동
-절차는 [챔버 Session Node 운영 런북](./chamber-session-node-operations.md) 소관이다.
+절차는 [챔버 Session Node 운영 런북](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-session-node-operations.md) 소관이다.
 
 다만 **원격 측정 운영을 PASS 로 판정하는 기준은 여전히 실장비 측정 1건**이다. 패키징
 완료는 그 전제조건이지 인수 자체가 아니다.
@@ -168,4 +168,4 @@ Session API 실행 파일/런처 패키징은 **완료됐다** — `fcc-session-
 - [FCC 중앙 포트·토폴로지 기준](./fcc-central-pc-port-topology.md)
 - [중앙 PC 일상 플랫폼 검증](./central-pc-fcc-platform-verification-guide.md)
 - [중앙 PC 최초 전환 런북](./central-pc-operational-validation-runbook.md)
-- [챔버 토큰·RBAC 런북](./chamber-token-rbac-runbook.md)
+- [챔버 토큰·RBAC 런북](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-token-rbac-runbook.md)

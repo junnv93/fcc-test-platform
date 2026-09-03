@@ -23,8 +23,8 @@
 - 중앙 PC를 **처음 구축**하고 실운영으로 전환: [central-pc-operational-validation-runbook.md](./central-pc-operational-validation-runbook.md)
 - 중앙 PC **재부팅 후 단순 기동**: [fcc-central-pc-reboot-ops-guide.md](./fcc-central-pc-reboot-ops-guide.md)
 - 배포 모델·env 항목의 의미: [../../infra/central/ONPREM_DEPLOYMENT.md](../../infra/central/ONPREM_DEPLOYMENT.md)
-- 챔버 PC에서 웹 경로가 도는지 검증: [chamber-pc-operational-verification-runbook.md](./chamber-pc-operational-verification-runbook.md)
-- Session Node operator package 설치·기동: [chamber-session-node-operations.md](./chamber-session-node-operations.md)
+- 챔버 PC에서 웹 경로가 도는지 검증: [chamber-pc-operational-verification-runbook.md](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-pc-operational-verification-runbook.md)
+- Session Node operator package 설치·기동: [chamber-session-node-operations.md](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-session-node-operations.md)
 
 ---
 
@@ -398,7 +398,7 @@ docker compose -f infra/docker-compose.central.yml \
 러너가 `MigrationDriftError` 로 거부하는 것이 설계다. 마이그레이션은 append-only 이므로
 변경은 새 `NNN_*.sql` 로 와야 한다. 예외는 exporter 가 재렌더하는 bootstrap `001` 뿐이고
 그것만 `reconcile` 서브커맨드로 해소한다 — 상세는
-[../development/central-db-migrations.md](../development/central-db-migrations.md).
+[../development/central-db-migrations.md](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/development/central-db-migrations.md).
 
 ---
 
@@ -502,7 +502,7 @@ python3 scripts/check_deployment_drift.py \
 > 깨진다(2026-07-30 에 실제로 그렇게 나뉘어 들어갔다).
 
 챔버 PC 는 둘 중 하나이며 갱신 대상물이 다르다
-([운영 문서 지도 §3](./README.md)):
+([운영 문서 지도 §3](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/README.md)):
 
 | | 웹 PC (포트 승인됨) | 로컬 PC (미승인) |
 |---|---|---|
@@ -529,7 +529,7 @@ Get-Content .\package-manifest.json | ConvertFrom-Json
 ```
 
 hash 가 맞지 않으면 **실행하지 말고** 배포 담당자에게 재배포를 요청한다. 설치·기동·방화벽
-절차는 [chamber-session-node-operations.md](./chamber-session-node-operations.md) 소관이다.
+절차는 [chamber-session-node-operations.md](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-session-node-operations.md) 소관이다.
 
 > ⚠️ **두 프로그램을 같은 PC 에서 동시에 띄우지 않는다.** 계측기는 공유 자원이고 두
 > 프로세스가 같은 분석기를 열면 SCPI 가 섞인다 — 실해는 측정 실패가 아니라 **조용히 틀린
@@ -606,7 +606,7 @@ docker compose -f infra/docker-compose.central.yml \
 | 중앙 PC 를 **처음** 구축한다 | [central-pc-operational-validation-runbook.md](./central-pc-operational-validation-runbook.md) |
 | 마이그레이션이 포함됐다 | §4 백업 먼저 → §5 기동(자동 적용) → **§6 으로 확인** |
 | `pending` 이 비지 않는다 | §5 를 `--build` 와 함께 재실행 |
-| `drift` 가 나온다 | 재적용 금지. [central-db-migrations.md](../development/central-db-migrations.md) 의 `reconcile` |
+| `drift` 가 나온다 | 재적용 금지. [central-db-migrations.md](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/development/central-db-migrations.md) 의 `reconcile` |
 | 새 env 키가 필요해졌다 | §3 |
 | 소스를 갱신했는데 화면이 그대로다 | §5 `--build` 누락 또는 `web` 컨테이너 미재생성(§7) |
 | 측정 결과가 중앙에 안 들어온다 | §10 — 측정 PC 갱신 |
@@ -623,7 +623,7 @@ docker compose -f infra/docker-compose.central.yml \
 | 1 | **드리프트 게이트는 중앙 축만 본다** | §9 의 여섯 축은 전부 **중앙 PC** 를 묻는다. 측정 PC(§10)가 같은 리비전인지 대조하는 축은 없다 — 노드는 컨테이너가 아니라 Windows exe 라 라벨을 읽을 자리가 다르다 |
 | 2 | **리비전 축은 배포 명령에 의존한다** | `GIT_REVISION` 을 붙이지 않은 빌드는 라벨이 비고, 게이트는 `UNKNOWN`(exit 2) 을 답한다. 조용히 통과하지는 않지만 **그 축을 강제하지도 못한다** — compose 는 빌드 인자를 필수로 만들 수 없다 |
 | 3 | **`infra/central/ONPREM_DEPLOYMENT.md` §4 의 기동 명령에는 아직 `GIT_REVISION` 이 없다** | 그 문서를 따라 부팅하면 리비전 축이 `UNKNOWN` 이 된다. 그 파일은 다른 작업 축이 소유 중이라 이번에 손대지 않았다 |
-| 4 | **배포 후 기능 스모크가 curl 3발이다** | §8 은 *스택이 응답하는가* 까지만 답한다. 측정 경로가 실제로 도는지는 [챔버 PC 검증 런북](./chamber-pc-operational-verification-runbook.md) 이 소관이고, 그것은 별도 실행이다 |
+| 4 | **배포 후 기능 스모크가 curl 3발이다** | §8 은 *스택이 응답하는가* 까지만 답한다. 측정 경로가 실제로 도는지는 [챔버 PC 검증 런북](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-pc-operational-verification-runbook.md) 이 소관이고, 그것은 별도 실행이다 |
 | 5 | **Windows 실환경 갱신 이력이 없다** | §10 의 챔버 갱신 절차는 실제 챔버 PC 에서 갱신 사이클로 검증된 적이 없다(CI 러너가 Linux 뿐) |
 | 6 | **이 문서의 명령은 실 배포로 재검증되지 않았다** | 근거는 저장소의 compose/Dockerfile/스크립트와 기존 런북의 실측 기록이다. §9 의 게이트는 판정 로직이 봉인돼 있고 라벨 왕복도 실 docker 로 확인했으나, **여섯 축이 함께 도는 실행은 실 배포에서만 처음 일어난다.** 처음 이 절차를 도는 세션은 어긋난 지점을 이 문서에 되적어 주기 바란다 |
 

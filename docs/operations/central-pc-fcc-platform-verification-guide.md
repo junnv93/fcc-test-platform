@@ -1,7 +1,7 @@
 # 중앙 PC FCC 플랫폼 검증 가이드 — 시험원용
 
 > 🟡 **참조 문서 — 시험원 화면 워크스루.**
-> 챔버 PC 의 기술 검증은 [`chamber-pc-operational-verification-runbook.md`](chamber-pc-operational-verification-runbook.md) 입니다.
+> 챔버 PC 의 기술 검증은 [`chamber-pc-operational-verification-runbook.md`](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-pc-operational-verification-runbook.md) 입니다.
 > ⚠️ 최종 갱신 2026-08-05. 워크북 업로드·챔버 승인 축은 이 문서에 없습니다.
 
 이 문서는 **중앙 PC**에서 **FCC 플랫폼(웹/API/DB/로그인)이 정상 동작하는지 확인**하는
@@ -213,7 +213,7 @@ http://<CENTRAL_IP>:8080
   일치하는지.
 
 > 챔버 토큰/권한(`platform:chamber` — heartbeat 전용, 데이터 읽기 불가)의 상세 운영은
-> [`chamber-token-rbac-runbook.md`](./chamber-token-rbac-runbook.md)를 본다. 시험원은 보통
+> [`chamber-token-rbac-runbook.md`](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-token-rbac-runbook.md)를 본다. 시험원은 보통
 > "노드가 보이는지"만 확인하면 된다.
 
 ---
@@ -329,8 +329,8 @@ http://<CENTRAL_IP>:8080
 - **배포(설치·구성·시크릿·realm)**: [`infra/central/ONPREM_DEPLOYMENT.md`](../../infra/central/ONPREM_DEPLOYMENT.md)
 - **개발 PC에서 localhost로 띄우기**: [`infra/central/LOCAL_DEVELOPMENT.md`](../../infra/central/LOCAL_DEVELOPMENT.md)
 - **중앙 스택 구성 SSOT(포트/서비스/게이트웨이)**: [`infra/README.md`](../../infra/README.md)
-- **챔버 머신 토큰·권한 운영**: [`chamber-token-rbac-runbook.md`](./chamber-token-rbac-runbook.md)
-- **챔버 실측 스테이징 런북**: [`chamber-real-measurement-staging-runbook.md`](./chamber-real-measurement-staging-runbook.md)
-- **챔버 관측 대시보드**: [`chamber-observability-dashboard.md`](./chamber-observability-dashboard.md)
+- **챔버 머신 토큰·권한 운영**: [`chamber-token-rbac-runbook.md`](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-token-rbac-runbook.md)
+- **챔버 실측 스테이징 런북**: [`chamber-real-measurement-staging-runbook.md`](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-real-measurement-staging-runbook.md)
+- **챔버 관측 대시보드**: [`chamber-observability-dashboard.md`](https://github.com/junnv93/FCC_mobile_test_automation/blob/main/docs/operations/chamber-observability-dashboard.md)
 - **API 관측 런북 / 경보 규칙 / SLO**: [`runbook-api-observability.md`](./runbook-api-observability.md),
   [`prometheus-alert-rules.md`](./prometheus-alert-rules.md), [`slo.md`](./slo.md)
