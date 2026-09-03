@@ -1,6 +1,6 @@
 # ADR-0001 — 공유 커널의 접두사와 최상위 이름 소유권
 
-Status: Accepted — 1단계 실행 대기
+Status: Accepted — **1·2단계 완료, 3단계 실측 완료·실행 대기** (2026-09-03)
 Date: 2026-09-03
 
 > 이 저장소의 첫 ADR 이다. 앞선 결정들은 provider 저장소의 `docs/adr/` 에 있고,
@@ -154,48 +154,61 @@ infrastructure/logging/session_log_custody.py
 뒤**이고 자기 pre-push 레인 게이트가 막는다(실측 2026-09-03). 낡은 트리 위에서 시작하면
 안 된다. 그 저장소를 먼저 최신화하고 게이트를 통과시킨 뒤 시작한다.
 
-### 2단계 이후 — 남은 54개
+### 2단계 — 완료 (2026-09-03)
 
-실측 2026-09-03 (정정된 워커로):
+`application` 공유 20에서 출발해 고정점까지 확장하니 **31에서 닫혔다**
+(`application` 20 + `domain` 11). 그 31이 `fcc-test-kernel 0.2.0` 으로 갔고
+중앙 전용 4는 `fcc_test_platform/application/` 아래로 갔다.
 
-```
-공유 54  =  application 20 · domain 32 · infrastructure 2
-```
+**최상위 이름 `application` 을 놓았다.** 공유 폐포 54 → 24.
 
-⚠️ **남은 폐포는 1단계와 달리 거의 평평하다.** 43개 시점에 하향 폐포를 재니
-**25개가 크기 1**(홀로 옮길 수 있다)이고 최대가 18이었다. 즉 이후 단계는
-「덩어리」가 아니라 **어느 최상위 이름을 통째로 놓느냐**로 갈린다 — 파일 하나가
-`domain/` 에 남으면 platform 은 그 이름을 계속 주장하기 때문이다.
+⚠️ 폐포가 31 줄었는데 **1이 늘었다**(`domain/services/reference_hashing.py`).
+회귀가 아니라 이름을 놓은 것의 직접적 귀결이다 — 게이트의 provider 씨앗은
+*「최상위가 공유 이름이 아닌 파일」* 이라, `application` 이 공유 이름에서 빠지자
+provider 의 `application/**` 이 **씨앗으로 승격**해 그것에 도달한다.
 
-가장 작은 완결 단계는 **`application` 이름 전체를 놓는 것**이다:
+### 3단계 — 실측 완료, 실행 대기 (2026-09-03)
 
-| | 파일 | 행선지 |
-|---|---|---|
-| 공유 | 20 | `fcc_test_kernel.application.*` |
-| 중앙 전용 | 4 | `fcc_test_platform.application.*` |
+남은 공유 폐포 24 = `domain` 22 · `infrastructure` 2.
+**두 이름의 클러스터가 각각 이미 닫혀 있다(유출 0)** — 즉 서로 독립이고,
+2단계처럼 한쪽이 다른 쪽을 끌어오지 않는다. 순서를 자유롭게 고를 수 있다.
 
-중앙 레인 재작성 실측 **102건** — 술어는 *「`application` 을 언급하는 import 줄」*이다.
+#### 3a — `infrastructure` (10파일). **작다**
 
-⚠️ **술어를 함께 적는 이유**: 같은 대상을 «모듈별 import 건수의 합» 으로 세면
-**198** 이 나온다. 한 줄이 `application.central_contract` 와
-`application.central_contract.api_contracts` 양쪽 패턴에 걸려 중복 계수되기
-때문이다. **두 수 모두 정확하고 서로 다른 질문의 답이다.** 재작성 작업량은
-줄 수이므로 102 가 그 답이다.
+| 판정항 | 값 |
+|---|---|
+| 총 파일 | **10** |
+| 공유 → `fcc_test_kernel.infrastructure.*` | **2** |
+| 중앙 전용 → `fcc_test_platform.infrastructure.*` | **8** |
+| 폐포 유출 | **0** |
+| provider 어휘 | **0** |
+| 클러스터 밖 의존 | `fcc_test_contracts` 1 · `fcc_test_kernel` 1 |
+| 중앙 재작성 | **5파일 · 8줄** |
 
-provider 쪽은 **고치지 않는다** — 그 저장소는 자기 `src/` 를 그대로 둔다(§결과 첫 줄).
+#### 3b — `domain` (76파일)
 
-⚠️ 이 단계는 커널 배포판 갱신을 요구하므로 **태그 push 승인 지점**이다.
+| 판정항 | 값 |
+|---|---|
+| 총 파일 | **76** |
+| 공유 → `fcc_test_kernel.domain.*` | **22** |
+| 중앙 전용 → `fcc_test_platform.domain.*` | **54** |
+| 폐포 유출 | **0** |
+| provider 어휘 | **5** |
+| 클러스터 밖 의존 | `fcc_test_kernel` 2 |
+| 중앙 재작성 | **132파일 · 276줄** |
 
-⚠️ **이름을 완전히 놓으려면 중앙 전용 49개도 `fcc_test_platform.*` 아래로 가야 한다.**
-`domain/` 에 파일이 하나라도 남으면 platform 은 그 이름을 계속 주장한다.
-platform 쪽 총 규모 실측 2026-09-03 (같은 술어 — 이름을 언급하는 import 줄):
+⚠️ **재작성 술어를 함께 적는다** — *「그 이름을 언급하는 import 줄」* 이다.
+모듈별 건수의 합으로 세면 한 줄이 여러 패턴에 걸려 중복 계수된다(2단계 실측:
+같은 대상이 술어에 따라 102 와 198).
 
-```
-domain          87 파일 · 348 줄
-application     24 파일 · 102 줄
-infrastructure  10 파일 ·   7 줄
-합계           121 파일 · 457 줄
-```
+#### 3단계의 선행 조건 둘
+
+1. **태그 push 승인** — 커널 배포판이 갱신된다.
+2. ⚠️ **순수성 가드가 계층 축이어야 한다.** 문자열 축(`'from infrastructure'`)도
+   AST **최상위** 축(`node.module.split('.')[0]`)도 접두사에 눈이 먼다 —
+   `fcc_test_kernel.infrastructure` 는 둘 다 통과한다. 즉 **이관 당일에 조용히
+   약해지는** 자리다. 이 레인은 `tests/_layer_of_import.py` 로 옮겼고(2026-09-03),
+   provider 레인도 같은 조건을 걸었다.
 
 ## 완료 판정 — 숫자가 아니라 게이트
 
@@ -212,8 +225,16 @@ infrastructure  10 파일 ·   7 줄
 
 - provider 저장소는 자기 `src/` 를 그대로 두어도 된다. platform 이 그 이름을 주장하지
   않게 되는 순간 충돌이 사라지므로, **이 결정의 실행은 platform 쪽에서 시작할 수 있다.**
-- 배포 크기가 준다 — 지금 platform 휠은 도달하지 않는 모듈 **31개**를 싣는다
-  (`domain` 79/91 · `application` 10/24 · `infrastructure` 10/15).
+- 배포 크기가 준다. 실측 2026-09-03(2단계 후):
+
+  ```
+  domain           싣는다 76 · 도달 67 · 도달 안 함  9
+  infrastructure   싣는다 10 · 도달  5 · 도달 안 함  5
+  ```
+
+  ⚠️ 처음 이 자리에 적힌 것은 「**31개** (`domain` 79/91 · `application` 10/24 ·
+  `infrastructure` 10/15)」였고, 그 수는 1단계 이전 것이다. `application` 은
+  2단계에서 통째로 사라졌으므로 이 표에 없다.
 - PEP 420 경로 스캔 비용이 없다(접두사는 정규 패키지 하나다).
 - ⚠️ 소비는 계속 pip 직접 참조(`@ git+https://…@tag`)다. resolver 도움이 없으므로
   **선언↔설치 대조가 「어느 코드가 돌았나」의 유일한 답**으로 남는다.
@@ -222,5 +243,13 @@ infrastructure  10 파일 ·   7 줄
 
 - `packaging.python.org` — *Packaging namespace packages* · *src layout vs flat layout*
 - `.claude/rules/repository-split.md` §Contracts Lane Dependency-Free · §Shared Kernel Delivery
-- `.claude/rules/check-axis-blindness.md` — 이 웨이브에서 세 번 발화했다
-- 실측 전량: `docs/platform/shared_kernel_closure.baseline.json` · PR #29 · #32 · #33
+- `.claude/rules/check-axis-blindness.md` — **이 결정의 실행에서 여덟 번 발화했다.**
+  폐포 워커가 `from pkg import submodule` 을 놓친 것(11개 과소계수) · 폐포가
+  패키지 데이터를 못 본 것(커널 15모듈 사망) · `src/` 를 훑는데 그 디렉터리가
+  없어 **한 파일도 안 본** 검사 · 배선을 재면서 배포 내용에 걸린 검사 ·
+  접두사가 붙자 안 걸리게 된 순수성 금지어(문자열 축 **과 AST 최상위 축 둘 다**) ·
+  기준선을 0 으로 만들자 「전부 통과」와 「0건 수집」이 같은 값이 된 것.
+- 실측 전량: `docs/platform/shared_kernel_closure.baseline.json`
+  · PR #29 #32 #33 (게이트 신설) · #38 (워커 결함) · #39 (2단계) · #44 (계층 축)
+  · 계약 레인 #16 #17 (커널 1·2단계)
+  · `.claude/evaluations/2026-09-03-*.md` (여섯 편)
