@@ -268,6 +268,17 @@ def judge_public_host(public_host: str | None, host_addresses: Sequence[str] | N
     if not host_addresses:
         return AxisResult('public-host', VERDICT_UNKNOWN, '이 PC 의 주소 목록을 읽지 못했다')
     if public_host not in host_addresses:
+        # ⚠️ WSL 인데 Windows 주소를 못 읽었으면 **DRIFT 가 아니라 판정 불가**다.
+        # 그 경우 「설정이 틀렸다」와 「축이 볼 수 없다」가 같은 값이 되고,
+        # 중앙 PC 가 WSL 이므로 그것은 영원한 오탐이 된다.
+        if is_wsl() and not any(_is_windows_host_candidate(a) for a in host_addresses):
+            return AxisResult(
+                'public-host',
+                VERDICT_UNKNOWN,
+                f'PUBLIC_HOST={public_host} 가 WSL VM 주소 {list(host_addresses)} 에 '
+                '없고, Windows 호스트 주소를 읽지 못했다 — 이 축이 판정할 수 없다. '
+                '(LAN 이 보는 주소는 Windows 쪽이고 WSL2 가 포워딩한다.)',
+            )
         return AxisResult(
             'public-host',
             VERDICT_DRIFT,
@@ -473,11 +484,71 @@ def collect_auth_pairing_exit(
     return None if result.returncode == 127 else result.returncode
 
 
+#: WSL VM 이 자기에게 주는 사설 대역. **이 밖의 주소가 목록에 있으면**
+#: Windows 쪽을 실제로 읽었다는 뜻이다 — 「읽었는데 없다」와 「못 읽었다」를 가른다.
+_WSL_PRIVATE_PREFIXES = ('172.', '10.255.', '127.')
+
+
+def _is_windows_host_candidate(address: str) -> bool:
+    return not address.startswith(_WSL_PRIVATE_PREFIXES)
+
+
+def is_wsl() -> bool:
+    """이 프로세스가 WSL 안에서 도는가.
+
+    ``/proc/version`` 에 ``microsoft`` 가 있으면 WSL 이다 — 커널 자신이 답하므로
+    환경변수(``WSL_DISTRO_NAME``)보다 지우기 어렵다.
+    """
+    try:
+        return 'microsoft' in Path('/proc/version').read_text(encoding='utf-8').lower()
+    except OSError:
+        return False
+
+
+def collect_windows_host_addresses(runner: Runner) -> list[str] | None:
+    """Windows 호스트의 IPv4 주소. **WSL 에서만 의미가 있다.**
+
+    ⚠️ **이 함수가 없던 동안 이 축은 중앙 PC 에서 영원히 DRIFT 였다** (실측 2026-09-03).
+
+    중앙 PC 는 WSL 이고, LAN 이 보는 주소(`PUBLIC_HOST`)는 **Windows 호스트**의
+    것이다. WSL VM 은 `172.x` 만 갖고 그 주소를 **자기 인터페이스로 갖지 않는다** —
+    WSL2 가 포워딩할 뿐이다. 그래서 `hostname -I` 만 보면
+    *「PUBLIC_HOST 가 이 PC 주소에 없다」* 가 **항상** 참이 된다.
+
+    실측: 중앙 PC 에서 `PUBLIC_HOST=10.206.34.233` 이 DRIFT 로 나왔고,
+    `powershell.exe Get-NetIPAddress` 로 물으니 **그 주소가 거기 있었다.**
+    설정은 옳았고 **축이 볼 수 없었다.**
+
+    > 그리고 오탐을 내는 게이트는 삭제된다 — 이 저장소가 반복해서 낸 결론이다.
+
+    ⚠️ 실패는 **조용히 None** 이다(예외 아님). powershell 이 없거나 느린 것은
+    *「Windows 주소가 없다」* 가 아니라 *「물어보지 못했다」* 이고, 호출자가 그 둘을
+    가른다.
+    """
+    result = runner([
+        'powershell.exe', '-NoProfile', '-NonInteractive', '-Command',
+        'Get-NetIPAddress -AddressFamily IPv4 | Select-Object -ExpandProperty IPAddress',
+    ])
+    if not result.ok:
+        return None
+    addresses = [
+        line.strip() for line in result.stdout.splitlines()
+        if _looks_like_ipv4(line.strip())
+    ]
+    return addresses or None
+
+
 def collect_host_addresses(runner: Runner) -> list[str] | None:
     result = runner(['hostname', '-I'])
     if not result.ok:
         return None
     addresses = result.stdout.split()
+    if is_wsl():
+        # ⚠️ **합친다, 대체하지 않는다.** WSL VM 주소도 여전히 유효한 답이다
+        # (컨테이너끼리는 그쪽으로 통신한다). 대체하면 그 경우를 잃는다.
+        windows = collect_windows_host_addresses(runner)
+        if windows is not None:
+            addresses = addresses + [a for a in windows if a not in addresses]
     return addresses or None
 
 
