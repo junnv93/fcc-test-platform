@@ -139,6 +139,70 @@ class TestItAsksTheContractRatherThanCarryingAValue(unittest.TestCase):
         self.assertIn('계약 SSOT 와 다르다', out)
 
 
+class TestItRunsOnTheCentralPcWhereNothingIsPipInstalled(unittest.TestCase):
+    """⚠️ **첫 판이 중앙 PC 에서 못 돌았다** (실측 2026-09-03).
+
+    계약 레인 import 실패를 **거부**로 처리했는데, 중앙 PC 는 호스트에 파이썬
+    의존성을 설치하지 않는다 — 배포 런북이 *"호스트에서 의존성을 설치하는 단계는
+    없다"* 고 명시한다. 그 기계의 역할이 Docker 뿐인데 호스트 import 를 요구한 것이
+    설계 결함이었고, **개발 PC 에서는 통과했다** — 거기엔 설치돼 있으니까.
+
+    > 「내 검증 조건이 대상이 실제로 도는 조건과 같은가」를 안 물은 자리다.
+    """
+
+    @staticmethod
+    @contextlib.contextmanager
+    def _without_contracts():
+        import builtins
+
+        real = builtins.__import__
+
+        def blocked(name, *a, **k):
+            if name.startswith('fcc_test_contracts'):
+                raise ImportError(f"No module named {name!r}")
+            return real(name, *a, **k)
+
+        builtins.__import__ = blocked
+        try:
+            yield
+        finally:
+            builtins.__import__ = real
+
+    def test_a_clean_example_lets_it_proceed_on_the_weaker_axis(self):
+        with self._without_contracts(), _Target() as t:
+            code, wrote, out = t.run('--public-host', '10.206.34.233')
+        self.assertEqual(0, code, out)
+        self.assertTrue(wrote)
+        self.assertIn('약한 축', out, '축이 약해진 것을 말하지 않았다')
+
+    def test_the_axis_it_used_is_named_in_the_output(self):
+        """⚠️ 약한 축으로 통과한 것을 강한 축으로 읽으면 안 된다."""
+        with _Target() as t:
+            _, _, strong = t.run('--public-host', '10.206.34.233')
+        with self._without_contracts(), _Target() as t:
+            _, _, weak = t.run('--public-host', '10.206.34.233')
+        self.assertIn('계약 레인에 직접 물어', strong)
+        self.assertNotIn('약한 축', strong)
+        self.assertIn('약한 축', weak)
+
+    def test_a_locally_modified_example_is_refused_on_the_weaker_axis(self):
+        """대체 축이 **아무거나 통과시키지 않는다** — 그 팔이 없으면 대체가 면제다."""
+        with _Target() as t:
+            drifted = maker.TARGET.parent / 'drifted.env.example'
+            drifted.write_text(
+                maker.EXAMPLE.read_text(encoding='utf-8'), encoding='utf-8')
+            saved, maker.EXAMPLE = maker.EXAMPLE, drifted
+            try:
+                with self._without_contracts():
+                    code, wrote, out = t.run('--public-host', '10.206.34.233')
+            finally:
+                maker.EXAMPLE = saved
+        # ⚠️ git 이 추적하지 않는 경로라 `git diff` 가 비교할 대상이 없다 —
+        # 그것도 「대조할 수 없다」이므로 거부가 맞다.
+        self.assertEqual(2, code, out)
+        self.assertFalse(wrote)
+
+
 class TestSecretsAreGeneratedAndNeverPrinted(unittest.TestCase):
     def test_every_demo_secret_is_replaced(self):
         with _Target() as t:

@@ -68,11 +68,67 @@ OPERATOR_KEYS = ('PUBLIC_HOST',)
 CONTRACT_KEYS = ('FCC_CENTRAL_PROVIDER_ID',)
 
 
-def _contract_provider_id() -> str:
-    """계약 SSOT 의 provider_id. ⚠️ 문자열로 적지 않고 **묻는다.**"""
-    from fcc_test_contracts.headless.api_contracts import DEFAULT_PROVIDER_METADATA
+#: 대조가 어느 축에서 이뤄졌는지. **출력에 이름으로 나온다** — 약한 축으로
+#: 통과한 것을 강한 축으로 통과한 것처럼 읽으면 안 된다.
+AXIS_CONTRACT = 'contract'   # 계약 레인에 직접 물었다 (가장 강하다)
+AXIS_SEALED_EXAMPLE = 'sealed-example'   # example 이 git 과 동일하다 (게이트가 보증)
 
-    return str(DEFAULT_PROVIDER_METADATA['provider_id'])
+
+def _contract_provider_id() -> tuple[str, str]:
+    """계약 SSOT 의 provider_id 와 **어느 축으로 얻었는지.**
+
+    ⚠️ **첫 판은 계약 레인 import 실패를 거부로 처리했고, 그것이 중앙 PC 에서
+    이 스크립트를 못 돌게 만들었다** (실측 2026-09-03).
+
+    중앙 PC 는 **호스트에 파이썬 의존성을 설치하지 않는다** — 배포 런북이
+    *"호스트에서 의존성을 설치하는 단계는 없다. Python 의존성은
+    `requirements-central.txt` 가 `Dockerfile.api` 안에서 설치된다"* 고 명시한다.
+    그 기계의 역할이 Docker 뿐인데 호스트 import 를 요구한 것이 설계 결함이었다.
+
+    **대체 축**: `central.env.example` 이 git 과 **동일한가.** 그 파일의
+    `FCC_CENTRAL_PROVIDER_ID` 는 `tests/test_central_provider_id_pairing.py`
+    (`TestProviderIdentityValue`)가 계약 SSOT 와 대조하고, 그 검사는 `lane_check`
+    에 있어 **`main` 에 드리프트가 착지할 수 없다.** 즉 「손대지 않은 example」은
+    이미 보증된 값이다.
+
+    ⚠️ **그러나 이것은 더 약한 축이다** — 로컬에서 그 파일을 고치고 커밋하지
+    않았다면 잡지만, 고쳐서 커밋까지 했다면 못 잡는다(계약 축은 잡는다).
+    그래서 어느 축이었는지 **출력이 말한다.**
+    """
+    try:
+        from fcc_test_contracts.headless.api_contracts import DEFAULT_PROVIDER_METADATA
+    except ImportError:
+        pass
+    else:
+        return str(DEFAULT_PROVIDER_METADATA['provider_id']), AXIS_CONTRACT
+
+    import subprocess
+
+    # ⚠️ example 이 저장소 밖이면 git 이 비교할 대상이 없다 — 그것도 「대조할 수
+    # 없다」이므로 거부한다. (봉인이 이 경로를 시험한다.)
+    try:
+        rel = EXAMPLE.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        raise RuntimeError(
+            f'계약 레인을 import 하지 못했고, {EXAMPLE} 이 저장소 밖이라 '
+            'git 으로도 대조할 수 없다.'
+        ) from None
+
+    result = subprocess.run(
+        ['git', 'diff', '--quiet', 'HEAD', '--', rel],
+        cwd=REPO_ROOT, capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f'계약 레인을 import 하지 못했고, {EXAMPLE.name} 이 git 과 다르다 — '
+            'provider_id 를 어느 축으로도 대조할 수 없다.\n'
+            '   그 파일을 되돌리거나(`git checkout -- <경로>`), 계약 레인을 설치한 '
+            '환경에서 실행하라.'
+        )
+    value = _read_value(EXAMPLE.read_text(encoding='utf-8'), 'FCC_CENTRAL_PROVIDER_ID')
+    if not value:
+        raise RuntimeError(f'{EXAMPLE.name} 에 FCC_CENTRAL_PROVIDER_ID 가 없다')
+    return value, AXIS_SEALED_EXAMPLE
 
 
 def _read_value(text: str, key: str) -> str | None:
@@ -132,7 +188,7 @@ def build(public_host: str, *, client_ranges: str | None) -> tuple[str, list[str
         text = _set_value(text, key, _new_secret())
 
     # ── ① 계약 SSOT 대조. ⚠️ 값을 나르지 않고 **묻는다.**
-    expected = _contract_provider_id()
+    expected, axis = _contract_provider_id()
     actual = _read_value(text, 'FCC_CENTRAL_PROVIDER_ID')
     if actual != expected:
         problems.append(
@@ -150,7 +206,7 @@ def build(public_host: str, *, client_ranges: str | None) -> tuple[str, list[str
         if value is None or not value.strip():
             problems.append(f'{key} 가 비었다')
 
-    return text, problems
+    return text, problems, axis
 
 
 def main(argv: 'list[str] | None' = None) -> int:
@@ -180,16 +236,12 @@ def main(argv: 'list[str] | None' = None) -> int:
         return 2
 
     try:
-        text, problems = build(args.public_host, client_ranges=args.client_ranges)
+        text, problems, axis = build(args.public_host, client_ranges=args.client_ranges)
     except KeyError as exc:
         print(f'❌ {exc}', file=sys.stderr)
         return 2
-    except ImportError as exc:
-        print(
-            f'❌ 계약 레인을 import 하지 못했다 ({exc}) — provider_id 를 대조할 수 없다.\n'
-            '   대조 없이 쓰지 않는다. `pip install -e .` 후 다시 실행하라.',
-            file=sys.stderr,
-        )
+    except RuntimeError as exc:
+        print(f'❌ {exc}', file=sys.stderr)
         return 2
 
     if problems:
@@ -203,7 +255,15 @@ def main(argv: 'list[str] | None' = None) -> int:
 
     print(f'✅ 작성: {TARGET}  (권한 600)')
     print(f'   PUBLIC_HOST            {args.public_host}')
-    print(f'   FCC_CENTRAL_PROVIDER_ID {_read_value(text, "FCC_CENTRAL_PROVIDER_ID")}  ← 계약 SSOT 와 일치')
+    if axis == AXIS_CONTRACT:
+        note = '← 계약 레인에 직접 물어 일치 확인'
+    else:
+        note = ('← ⚠️ **약한 축**: 계약 레인이 없어 「example 이 git 과 동일한가」로 '
+                '대체했다. 그 파일의 값은 lane_check 의 TestProviderIdentityValue 가 '
+                '계약 SSOT 와 대조하므로 main 에서는 보증되지만, 고쳐서 커밋한 '
+                '경우는 이 축이 잡지 못한다.')
+    print(f'   FCC_CENTRAL_PROVIDER_ID {_read_value(text, "FCC_CENTRAL_PROVIDER_ID")}')
+    print(f'     {note}')
     print(f'   FCC_CENTRAL_CLIENT_RANGES {_read_value(text, "FCC_CENTRAL_CLIENT_RANGES")}')
     print('   생성된 시크릿 (값은 출력하지 않는다):')
     for key in SECRETS:
