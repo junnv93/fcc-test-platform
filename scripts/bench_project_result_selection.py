@@ -43,14 +43,18 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-# The sibling benchmark harness lives beside this file, so ask for *this*
-# directory rather than counting up to the repository root and back down into a
-# directory named 'scripts' — in the delivered platform box the scripts tree is
-# not reached from a fixed depth, and the answer "where am I" is true in both.
+# ⚠️ **2026-09-03 — 여기 있던 주석이 틀렸다.** *"The sibling benchmark harness
+# lives beside this file"* 라고 적혀 있었는데 **이 저장소에는 그런 적이 없다.**
+# 모노레포에서는 참이었고 추출(2026-08-30)이 그것을 데려오지 않았다 — 그래서
+# `tests/test_project_result_selection_performance.py` 가 배송 이래 수집 오류였고
+# 기준선이 그것을 선언된 부채로 지고 있었다.
+#
+# 지금은 계약 레인이 그 모듈을 **배포한다**(v0.1.12). 형제 파일이 아니라
+# 설치된 배포판에서 온다 — 세 레인이 같은 하나를 쓴다.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(REPO_ROOT / 'src'))
 
-from benchmark_harness import (  # noqa: E402
+from fcc_test_contracts.common.benchmark_harness import (  # noqa: E402
     LatencyBudget,
     measure_latency_us_robust,
 )
