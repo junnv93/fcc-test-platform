@@ -1,10 +1,4 @@
 {
  "lane": "fcc-test-platform",
- "baseline": [
-  "tests/test_platform_chamber_api_p2.py::TestChamberNotFoundErrorSingleDefinition::test_exactly_one_definition_site",
-  "tests/test_platform_cutover_completion_audit.py::TestPlaceholderDetectionSsotDedup::test_scripts_import_placeholder_primitives",
-  "tests/test_platform_cutover_live_workflow.py::TestPlatformCutoverLiveWorkflow::test_default_suggested_commands_match_existing_cli_entrypoints",
-  "tests/test_platform_cutover_readiness_cli.py::TestPlatformCutoverReadinessCli::test_cli_does_not_import_runtime_side_effect_dependencies",
-  "tests/test_platform_postgres_ingestion_writer.py::TestPlatformPostgresIngestionWriter::test_conflicting_complete_snapshot_replay_is_observable"
- ]
+ "baseline": []
 }

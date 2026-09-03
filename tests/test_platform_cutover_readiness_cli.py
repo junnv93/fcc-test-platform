@@ -1,3 +1,4 @@
+import ast
 import json
 import subprocess
 import sys
@@ -173,11 +174,35 @@ class TestPlatformCutoverReadinessCli(unittest.TestCase):
     def test_cli_does_not_import_runtime_side_effect_dependencies(self):
         text = (project_root / 'scripts' / 'platform_cutover_readiness.py').read_text(encoding='utf-8')
 
-        self.assertIn('platform_cutover_readiness', text)
         self.assertNotIn('FastAPI', text)
         self.assertNotIn('uvicorn', text)
         self.assertNotIn('sqlite3', text)
         self.assertNotIn('subprocess', text)
+
+    def test_the_cli_delegates_to_the_packaged_module(self):
+        """CLI 가 판정을 **배포판에 위임**하는가 — 스스로 다시 구현하지 않는가.
+
+        ⚠️ **여기 있던 술어는 `assertIn('platform_cutover_readiness', text)` 였고
+        2026-09-03 에 낡았다.** 추출이 그 모듈을 `fcc_test_platform.cutover_readiness`
+        로 개명하면서 그 문자열이 파일에서 사라졌다.
+
+        리터럴을 새 이름으로 갈아 끼우면 **다음 개명에 또 낡는다.** 그래서 축을
+        올렸다 — *「이 배포판의 어떤 모듈에서 가져오는가」* 다. 개명은 이 판정을
+        움직이지 않고, 스크립트가 판정 로직을 자기 안에 복사하면 red 다.
+        """
+        tree = ast.parse(
+            (project_root / 'scripts' / 'platform_cutover_readiness.py')
+            .read_text(encoding='utf-8'))
+        imported = {
+            node.module for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module
+        }
+        self.assertTrue(imported, '스크립트에 import 가 하나도 없다 — 이 검사가 공허하다')
+        self.assertTrue(
+            any(module.startswith('fcc_test_platform.') for module in imported),
+            'CLI 가 이 배포판의 모듈에서 아무것도 가져오지 않는다 — 판정을 '
+            f'스스로 다시 구현했을 수 있다. 가져오는 것: {sorted(imported)}',
+        )
 
 
 def _run_cli(bundle_path: Path, *extra: str) -> subprocess.CompletedProcess:

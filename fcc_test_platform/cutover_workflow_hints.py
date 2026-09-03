@@ -265,6 +265,59 @@ def default_workflow_hint(
     }
 
 
+#: 각 증거 단계를 **어느 기계에서 돌리는가.**
+#:
+#: ⚠️ **2026-09-03 에 이 선언이 생겼다. 그전에는 그 사실이 아무 데도 없었다.**
+#: 중앙 PC 의 컷오버 힌트가 `scripts/headless_hardware_smoke_evidence.py` 같은
+#: **챔버 PC 스크립트 넷**을 지목하고 있었고, 운영자에게는 「이 저장소에 그 파일이
+#: 없다」로만 보였다. 실측: 힌트 14개 중 **중앙 10 · 챔버 4.**
+#:
+#: ⚠️ **이름으로 판정하지 않는다.** 중앙은 `platform_*`, 챔버는
+#: `headless_*`/`unlicensed_*`/`provider_*` 라 이름과 레인이 지금은 일치하지만,
+#: 그것은 판정의 **결과**와 우연히 같을 뿐 판정의 **근거**가 아니다. 이름을 축으로
+#: 쓰면 규칙을 벗어난 스크립트 하나가 조용히 잘못 분류된다.
+#:
+#: ⚠️ 그리고 이것은 **운영 사실**이지 테스트 편의가 아니다 — 챔버 단계는 계측기와
+#: 단말이 붙은 기계에서만 돌 수 있고, 중앙 PC 에서 실행하면 실패가 아니라
+#: **거짓 증거**가 된다.
+RUNS_ON_CENTRAL = 'central'
+RUNS_ON_CHAMBER = 'chamber'
+
+EVIDENCE_RUNS_ON: dict[str, str] = {
+    'artifact_sync': RUNS_ON_CENTRAL,
+    'backup_restore_drill': RUNS_ON_CENTRAL,
+    'db_migration': RUNS_ON_CENTRAL,
+    'extraction_package': RUNS_ON_CENTRAL,
+    'frontend_browser_qa': RUNS_ON_CENTRAL,
+    'frontend_deployment': RUNS_ON_CENTRAL,
+    'identity_policy': RUNS_ON_CENTRAL,
+    'idp_deployment': RUNS_ON_CENTRAL,
+    'ingestion_execution': RUNS_ON_CENTRAL,
+    'rbac_assignment': RUNS_ON_CENTRAL,
+    # ── 챔버 PC — 계측기·단말이 붙은 기계에서만 참인 증거 ──────────────────
+    'db_only_report_reconstruction': RUNS_ON_CHAMBER,
+    'hardware_smoke': RUNS_ON_CHAMBER,
+    'performance_smoke': RUNS_ON_CHAMBER,
+    'service_deployment': RUNS_ON_CHAMBER,
+}
+
+
+def runs_on(evidence_key: str) -> str:
+    """이 증거 단계를 돌리는 기계.
+
+    ⚠️ 모르는 키에 기본값을 주지 않는다 — 새 단계가 분류 없이 들어오면
+    운영자가 **어느 기계인지 모른 채** 그것을 돌리게 된다. 조용한 기본값은
+    「중앙에서 돌려도 된다」는 거짓 답이 될 수 있다.
+    """
+    try:
+        return EVIDENCE_RUNS_ON[evidence_key]
+    except KeyError:
+        raise KeyError(
+            f'{evidence_key!r} 이 EVIDENCE_RUNS_ON 에 분류되지 않았다 — '
+            '어느 기계에서 돌리는지 선언하라. 기본값은 두지 않는다.'
+        ) from None
+
+
 def suggested_command(evidence_key: str, output_path: str) -> list[str]:
     catalog_entry(evidence_key)
     if evidence_key == 'hardware_smoke':

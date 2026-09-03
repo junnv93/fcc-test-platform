@@ -107,7 +107,23 @@ def observe(root: Path) -> set[str]:
                 'pytest 가 실패 집합을 남기지 않았다 — 플러그인이 붙지 않았거나 '
                 'pytest 가 시작조차 못했다. 위 출력을 보라.'
             )
-        return set(json.loads(out.read_text(encoding='utf-8')))
+        payload = json.loads(out.read_text(encoding='utf-8'))
+        # 옛 판은 리스트였다 — 낡은 플러그인과 새 러너가 섞여도 조용히 통과하지
+        # 않도록, 리스트가 오면 **수집 개수를 알 수 없다**고 말한다.
+        if isinstance(payload, list):
+            raise RuntimeError(
+                '플러그인이 옛 모양(리스트)으로 답했다 — 수집 개수를 알 수 없다. '
+                '그러면 「전부 통과」와 「0건 수집」이 구분되지 않는다. '
+                'scripts/lane_check_plugin.py 를 최신으로 맞춰라.'
+            )
+        collected = int(payload.get('collected', 0))
+        if collected <= 0:
+            raise RuntimeError(
+                f'pytest 가 테스트를 {collected}건 수집했다 — 이것은 통과가 아니다. '
+                '「실패 0건」과 「0건 실행」은 이 축에서 같은 값이고, 기준선이 비어 '
+                '있으면 후자가 초록으로 지나간다.'
+            )
+        return set(payload['failed'])
 
 
 def _warn_if_hooks_are_not_wired(root: 'Path') -> None:

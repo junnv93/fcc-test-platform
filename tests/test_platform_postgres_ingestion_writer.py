@@ -9,11 +9,20 @@ from fcc_test_platform.postgres_ingestion_writer import (
     build_postgres_upsert,
 )
 
+from tests._moved_module_source import moved_module_source
 from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact
 
 
 project_root = Path(__file__).parent.parent
-MODULE_PATH = resolve_repo_artifact(__file__, 'src/application/headless/platform_postgres_ingestion_writer.py')
+#: ⚠️ **경로도 로거 이름도 모듈에게 묻는다** (2026-09-03).
+#: 추출(2026-08-30)이 이 모듈을 `fcc_test_platform/postgres_ingestion_writer.py` 로
+#: 옮겼는데 이 파일은 모노레포 시절의 경로와 **로거 이름**을 들고 있었다.
+#: 코드는 `logging.getLogger(__name__)` 을 쓰므로 로거 이름은 모듈의 dotted name 이다 —
+#: 그것을 여기 리터럴로 적으면 이관 때마다 두 번째 SSOT 가 낡는다.
+_WRITER_MODULE = 'fcc_test_platform.postgres_ingestion_writer'
+MODULE_PATH = moved_module_source(_WRITER_MODULE)
+#: 로거 이름 = 모듈의 dotted name. 파생이지 리터럴이 아니다.
+WRITER_LOGGER = _WRITER_MODULE
 
 
 class FakeCursor:
@@ -195,7 +204,7 @@ class TestPlatformPostgresIngestionWriter(unittest.TestCase):
         }
 
         with self.assertLogs(
-            'application.headless.platform_postgres_ingestion_writer',
+            WRITER_LOGGER,
             level='WARNING',
         ) as logs:
             affected = transaction.upsert(

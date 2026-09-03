@@ -25,6 +25,16 @@ def _local_function_names(module_path: Path) -> set[str]:
     }
 
 
+def _primitives_module_name() -> str:
+    """placeholder 원시연산 모듈의 **dotted name** — 모듈에게 묻는다.
+
+    ``__name__`` 은 개명을 따라오고, 이 파일의 리터럴은 따라오지 않는다.
+    """
+    from fcc_test_platform import evidence_primitives
+
+    return evidence_primitives.__name__
+
+
 def _imports_from(module_path: Path, target_module: str) -> bool:
     tree = ast.parse(module_path.read_text(encoding='utf-8'))
     return any(
@@ -38,7 +48,14 @@ class TestPlaceholderDetectionSsotDedup(unittest.TestCase):
     src/application/headless/platform_evidence_primitives.py; the two cutover
     scripts must delegate, not redefine it."""
 
-    PRIMITIVES = 'platform_evidence_primitives'
+    #: ⚠️ **이름을 여기 리터럴로 적지 않는다** (2026-09-03).
+    #: 여기 있던 값은 `'platform_evidence_primitives'` 였고, 추출이 그 모듈을
+    #: `fcc_test_platform.evidence_primitives` 로 개명하면서 **낡았다** — 두
+    #: 스크립트는 계속 위임하고 있었는데 이 검사만 red 였다(선언된 부채).
+    #:
+    #: 새 이름을 갈아 끼우면 다음 개명에 또 낡는다. 그래서 **모듈 객체에게 묻는다** —
+    #: 같은 파일의 형제 검사가 이미 그것을 import 하므로 SSOT 가 하나다.
+    PRIMITIVES = _primitives_module_name()
     #: ⚠️ 2026-08-31 — hints 는 `scripts/` 에서 **패키지로** 옮겼다(휠이 나르지
     #: 못하는 자리였고, 그래서 모노레포의 컷오버 판정 도구가 죽어 있었다).
     #: 위임 명제는 그대로다 — 어디에 살든 원시연산을 재정의하면 안 된다.

@@ -135,13 +135,66 @@ class TestPlatformCutoverLiveWorkflow(unittest.TestCase):
                 '--require-valid',
             },
         }
+        from fcc_test_platform.cutover_workflow_hints import (
+            RUNS_ON_CENTRAL, runs_on,
+        )
+
         for evidence_key, filename in EVIDENCE_FILENAMES.items():
             with self.subTest(evidence_key=evidence_key):
                 command = suggested_command(evidence_key, f'artifacts/cutover/evidence/{filename}')
                 self.assertEqual(command[0], 'python')
-                self.assertTrue((project_root / command[1]).is_file(), command)
                 self.assertIn(f'artifacts/cutover/evidence/{filename}', command)
                 self.assertTrue(required_flags[evidence_key].issubset(set(command)))
+
+                # ⚠️ **존재 판정은 레인마다 방향이 반대다** (2026-09-03).
+                #
+                # 여기 있던 것은 `assertTrue((project_root / command[1]).is_file())`
+                # 하나였고, 힌트 14개 중 **넷이 챔버 PC 스크립트**라 red 였다.
+                # 그 넷은 계측기·단말이 붙은 기계에서만 참인 증거를 만든다 —
+                # 중앙 PC 에 그 파일이 **없는 것이 정상**이다.
+                #
+                # 그래서 두 방향을 각각 붙잡는다. 챔버 쪽을 그냥 면제하면
+                # **사본이 몰래 돌아와도 아무것도 붉지 않는다.**
+                script = project_root / command[1]
+                if runs_on(evidence_key) == RUNS_ON_CENTRAL:
+                    self.assertTrue(
+                        script.is_file(),
+                        f'{evidence_key} 는 중앙에서 도는데 그 스크립트가 없다: {command}',
+                    )
+                else:
+                    self.assertFalse(
+                        script.is_file(),
+                        f'{evidence_key} 는 챔버 PC 단계인데 중앙에 사본이 있다: '
+                        f'{command[1]} — 사본은 갈라지고, 중앙에서 돌면 실패가 아니라 '
+                        '거짓 증거가 된다.',
+                    )
+
+    def test_every_evidence_step_declares_which_machine_runs_it(self):
+        """⚠️ 비-공허성 · 완전성 — 새 단계가 **분류 없이** 들어오면 red.
+
+        분류가 없으면 위 검사가 그 키에서 `KeyError` 로 죽는 것이 아니라
+        (…실제로 죽지만) 운영자가 **어느 기계인지 모른 채** 그것을 돌리게 된다.
+        여기서 그 사실을 이름으로 붙잡는다.
+        """
+        from fcc_test_platform.cutover_workflow_hints import (
+            EVIDENCE_RUNS_ON, RUNS_ON_CENTRAL, RUNS_ON_CHAMBER,
+        )
+
+        self.assertTrue(EVIDENCE_FILENAMES, '증거 단계가 0개다 — 이 검사가 공허하다')
+        self.assertEqual(
+            set(EVIDENCE_FILENAMES), set(EVIDENCE_RUNS_ON),
+            '증거 단계와 기계 선언이 어긋난다 — 한쪽에만 있는 키가 있다',
+        )
+        lanes = set(EVIDENCE_RUNS_ON.values())
+        self.assertEqual({RUNS_ON_CENTRAL, RUNS_ON_CHAMBER}, lanes,
+                         '선언에 알 수 없는 레인이 있거나 한쪽이 비었다')
+        # 양쪽이 비어 있지 않아야 위 검사의 두 방향이 모두 시험된다.
+        for lane in (RUNS_ON_CENTRAL, RUNS_ON_CHAMBER):
+            with self.subTest(lane=lane):
+                self.assertTrue(
+                    [k for k, v in EVIDENCE_RUNS_ON.items() if v == lane],
+                    f'{lane} 레인 단계가 0개다 — 그 방향의 판정이 시험되지 않는다',
+                )
 
     def test_checked_in_workflow_example_uses_current_suggested_commands(self):
         example = json.loads(

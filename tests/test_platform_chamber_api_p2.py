@@ -1228,23 +1228,61 @@ class TestChamberNotFoundErrorSingleDefinition(unittest.TestCase):
     re-export / 문자열 언급은 세지 않는다).
     """
 
-    SRC = Path(__file__).parent.parent / 'src'
+    #: ⚠️ **훑는 트리를 `pyproject.toml` 에서 파생한다** (2026-09-03).
+    #:
+    #: 여기 있던 것은 `SRC = <repo>/src` 였고 **그 디렉터리는 이 레인에 없다**
+    #: (추출 2026-08-30). `rglob` 이 빈 목록을 돌려주니 이 검사는 **아무것도 훑지
+    #: 않았다.** 기대값이 비어 있지 않아 red 였을 뿐, 만약 `[]` 를 기대했다면
+    #: **한 파일도 안 보고 초록**이었을 것이다 — 「실패 0건」과 「실행 0건」이
+    #: 같은 모양인 그 계급이다(`.claude/rules/check-axis-blindness.md`).
+    #:
+    #: 그래서 목록을 손으로 고치지 않고, **이 상자가 싣는다고 선언한 것**을
+    #: 그대로 읽는다. 커널 이관으로 최상위 이름이 또 바뀌어도 따라온다.
+    REPO_ROOT = Path(__file__).resolve().parents[1]
     ERROR_NAME = 'ChamberNotFoundError'
-    OWNER = ('domain', 'ports', 'output', 'central_chamber_write_port.py')
+    OWNER = 'domain/ports/output/central_chamber_write_port.py'
+
+    @classmethod
+    def _shipped_roots(cls) -> list[Path]:
+        """`[tool.setuptools.packages.find] include` 가 지목하는 최상위 트리."""
+        import tomllib
+
+        config = tomllib.loads(
+            (cls.REPO_ROOT / 'pyproject.toml').read_text(encoding='utf-8'))
+        patterns = (
+            config['tool']['setuptools']['packages']['find']['include'])
+        roots = []
+        for pattern in patterns:
+            top = pattern.split('*')[0].split('.')[0].rstrip('.')
+            candidate = cls.REPO_ROOT / top
+            if candidate.is_dir() and candidate not in roots:
+                roots.append(candidate)
+        return roots
 
     def _definition_sites(self):
-        sites = []
-        for path in sorted(self.SRC.rglob('*.py')):
-            tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
-            for node in ast.walk(tree):
-                if isinstance(node, ast.ClassDef) and node.name == self.ERROR_NAME:
-                    sites.append(path.relative_to(self.SRC).as_posix())
-        return sites
+        sites, scanned = [], 0
+        for root in self._shipped_roots():
+            for path in sorted(root.rglob('*.py')):
+                if '__pycache__' in path.parts:
+                    continue
+                scanned += 1
+                tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.ClassDef) and node.name == self.ERROR_NAME:
+                        sites.append(path.relative_to(self.REPO_ROOT).as_posix())
+        return sorted(sites), scanned
+
+    def test_the_scan_actually_visits_files(self):
+        """⚠️ 비-공허성 — 이 팔이 없어서 위 검사가 아무것도 안 훑고 있었다."""
+        roots = self._shipped_roots()
+        self.assertTrue(roots, 'pyproject 의 include 에서 트리를 하나도 못 찾았다')
+        _, scanned = self._definition_sites()
+        self.assertGreater(scanned, 0, '훑은 파일이 0개다 — 이 검사는 아무것도 판정하지 않는다')
 
     def test_exactly_one_definition_site(self):
-        sites = self._definition_sites()
+        sites, _ = self._definition_sites()
         self.assertEqual(
-            ['/'.join(self.OWNER)], sites,
+            [self.OWNER], sites,
             f'{self.ERROR_NAME} 정의가 1개가 아니다: {sites}',
         )
 
