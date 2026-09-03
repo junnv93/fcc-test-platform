@@ -21,7 +21,8 @@ M-2/M-3/M-4 (409 · 검색/keyset · 인덱스) 봉인은 후속 마일스톤에
 Owned by ``/verify-platform-project-entry``.
 """
 from __future__ import annotations
-from tests._moved_module_source import moved_module_source  # noqa: E402
+from tests._moved_module_source import moved_module_source
+from tests._layer_of_import import imported_layers  # noqa: E402
 
 import ast
 import json
@@ -1930,14 +1931,21 @@ class TestDirectoryDomainPurity(unittest.TestCase):
     )
 
     def _imported_roots(self, path):
-        tree = ast.parse(path.read_text(encoding='utf-8'))
-        roots = set()
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                roots.update(alias.name.split('.')[0] for alias in node.names)
-            elif isinstance(node, ast.ImportFrom) and node.module:
-                roots.add(node.module.split('.')[0])
-        return roots
+        """⚠️ **최상위가 아니라 계층으로 판정한다** (2026-09-03).
+
+        여기 있던 것은 `node.module.split('.')[0]` — **최상위 이름**이었다.
+        커널 이관이 모듈에 `fcc_test_kernel.` 접두사를 붙이면 최상위가
+        `fcc_test_kernel` 이 되어, `'infrastructure'` 금지가 **이관 당일에
+        조용히 통과**한다.
+
+        「AST 로 하면 된다」가 답이 아니었다 — AST 로 뽑은 최상위도 같은
+        맹점을 갖는다. 판정 단위가 **계층 절**이어야 한다:
+        `tests/_layer_of_import.py`.
+
+        이름은 그대로 둔다 — 호출부 셋이 이 이름을 쓰고, 이름을 바꾸는 것은
+        이 정정의 축이 아니다.
+        """
+        return imported_layers(path)
 
     def test_directory_query_policy_is_pure(self):
         self.assertFalse(
