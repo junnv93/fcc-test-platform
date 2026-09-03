@@ -602,9 +602,53 @@ def run_all_axes(
     return results
 
 
-def format_report(results: Sequence[AxisResult]) -> str:
+def describe_measuring_host(runner: Runner) -> str:
+    """**어느 기계에서 쟀는지** 한 줄. 축이 아니라 머리말이다.
+
+    ⚠️ **오늘 이 자리에 네 번 걸렸다** (실측 2026-09-03).
+
+    이 계열은 개발 PC 와 중앙 PC 에서 **같은 이름의 컨테이너**를 돌린다
+    (`fcc-central-platform-api` · `fcc-central-keycloak` · …). 그래서
+    `docker compose ps` · `docker inspect` · 이 게이트의 출력이 **두 기계에서
+    완전히 같은 모양**이고, 그 출력을 복사해 옮기면 **기계 축이 사라진다.**
+
+    실측된 네 건: 한 세션이 개발 PC 관측으로 「중앙이 서비스 가능하다」를 두 번
+    보고했고, 다른 세션이 개발 PC 의 Keycloak 을 중앙으로 읽었으며, 세 번째가
+    그 보고를 근거로 운영자에게 전달했다. **매번 사람이 「여기는 개발 PC야」라고
+    알려줘서** 정정됐다.
+
+    가른 것은 결국 **도달성**이었다 — `curl 10.206.34.233:8081` 이 닿느냐.
+    이름·포트·컨테이너 목록은 어느 것도 그 축을 갖지 않았다.
+
+    > **어느 기계인지는 이름이 아니라 도달성으로 판정한다.**
+
+    그러므로 처방은 「더 주의하자」가 아니라 **관측이 스스로 기계를 말하게 하는
+    것**이다. 이 한 줄이 있었으면 네 건 중 셋은 복사하는 순간 드러났다.
+
+    ⚠️ 못 읽는 값은 **비워 두지 않고 `?` 로 적는다** — 빈 자리는 「없다」와
+    「못 읽었다」를 같은 값으로 만든다.
+    """
+    hostname = runner(['hostname'])
+    addresses = runner(['hostname', '-I'])
+    host = hostname.stdout.strip() if hostname.ok else '?'
+    addrs = addresses.stdout.split() if addresses.ok else []
+    label = f'측정 기계: {host}'
+    if addrs:
+        label += f'  [{" ".join(addrs[:4])}{" …" if len(addrs) > 4 else ""}]'
+    else:
+        label += '  [주소 ?]'
+    if is_wsl():
+        label += '  (WSL — LAN 주소는 Windows 호스트 쪽이다)'
+    return label
+
+
+def format_report(results: Sequence[AxisResult], *, header: str | None = None) -> str:
     width = max((len(r.axis) for r in results), default=0)
     lines = [f'{r.axis.ljust(width)}  {r.verdict:<7} {r.detail}' for r in results]
+    if header:
+        # ⚠️ 머리말을 **맨 위**에 둔다. 꼬리에 두면 `| tail` 로 잘려 나가고,
+        # 출력을 잘라 붙이는 것이 정확히 이 결함이 퍼지는 경로다.
+        lines = [header, ''] + lines
     return '\n'.join(lines)
 
 
@@ -632,10 +676,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     code = overall_exit_code(results)
 
+    measuring_host = describe_measuring_host(subprocess_runner)
+
     if args.json:
         print(json.dumps(
             {
                 'exit_code': code,
+                # ⚠️ JSON 에도 넣는다 — 기계 축이 사람용 출력에만 있으면
+                # 자동화가 그것을 잃는다.
+                'measuring_host': measuring_host,
                 'axes': [
                     {'axis': r.axis, 'verdict': r.verdict, 'detail': r.detail}
                     for r in results
@@ -645,7 +694,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             indent=2,
         ))
     else:
-        print(format_report(results))
+        print(format_report(results, header=measuring_host))
         if code == EXIT_DRIFT:
             print('\nDRIFT — 도는 배포가 이 저장소의 현재 상태와 다르다.')
         elif code == EXIT_UNKNOWN:

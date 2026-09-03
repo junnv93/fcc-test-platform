@@ -1467,6 +1467,77 @@ class TestDeploymentRevisionLabelWiring(unittest.TestCase, _DriftGateMixin):
                 )
 
 
+class TestTheReportNamesTheMachineItMeasured(unittest.TestCase, _DriftGateMixin):
+    """⚠️ **오늘 이 자리에 네 번 걸렸다** (실측 2026-09-03).
+
+    이 계열은 개발 PC 와 중앙 PC 에서 **같은 이름의 컨테이너**를 돌린다
+    (`fcc-central-platform-api` · `fcc-central-keycloak` · …). 그래서
+    `docker compose ps` · `docker inspect` · 이 게이트의 출력이 **두 기계에서
+    완전히 같은 모양**이고, 그 출력을 복사해 옮기면 **기계 축이 사라진다.**
+
+    실측된 네 건: 한 세션이 개발 PC 관측으로 「중앙이 서비스 가능하다」를 두 번
+    보고했고, 다른 세션이 개발 PC 의 Keycloak 을 중앙으로 읽었으며, 세 번째가 그
+    보고를 근거로 운영자에게 전달했다. **매번 사람이 알려줘서** 정정됐다.
+
+    가른 것은 결국 **도달성**이었다 — `curl <중앙IP>:8081` 이 닿느냐.
+    이름·포트·컨테이너 목록은 어느 것도 그 축을 갖지 않았다.
+
+    처방은 「더 주의하자」가 아니라 **관측이 스스로 기계를 말하게 하는 것**이다.
+    """
+
+    class _R:
+        def __init__(self, ok, stdout=''):
+            self.ok, self.stdout = ok, stdout
+
+    def _runner(self, *, host='central-pc', addrs='10.0.0.5 172.17.0.1'):
+        def run(cmd):
+            if cmd == ['hostname']:
+                return self._R(True, host + '\n')
+            if cmd == ['hostname', '-I']:
+                return self._R(True, addrs)
+            return self._R(False)
+        return run
+
+    def test_the_header_names_the_host_and_its_addresses(self):
+        gate = self._gate_module()
+        line = gate.describe_measuring_host(self._runner())
+        self.assertIn('central-pc', line)
+        self.assertIn('10.0.0.5', line)
+
+    def test_an_unreadable_value_is_a_question_mark_not_a_blank(self):
+        """⚠️ 빈 자리는 「없다」와 「못 읽었다」를 같은 값으로 만든다."""
+        gate = self._gate_module()
+
+        def broken(cmd):
+            return self._R(False)
+
+        line = gate.describe_measuring_host(broken)
+        self.assertIn('?', line)
+
+    def test_the_header_is_the_first_line_not_the_last(self):
+        """⚠️ 꼬리에 두면 `| tail` 로 잘려 나간다 — 출력을 잘라 붙이는 것이
+        정확히 이 결함이 퍼지는 경로다."""
+        gate = self._gate_module()
+        results = [gate.AxisResult('x', gate.VERDICT_PASS, 'ok')]
+        report = gate.format_report(results, header='측정 기계: central-pc')
+        self.assertTrue(report.startswith('측정 기계: central-pc'), report)
+
+    def test_the_report_without_a_header_is_unchanged(self):
+        """머리말은 선택이다 — 기존 호출부를 깨지 않는다."""
+        gate = self._gate_module()
+        results = [gate.AxisResult('x', gate.VERDICT_PASS, 'ok')]
+        self.assertNotIn('측정 기계', gate.format_report(results))
+
+    def test_wsl_is_named_because_its_lan_address_lives_elsewhere(self):
+        gate = self._gate_module()
+        with mock.patch.object(gate, 'is_wsl', lambda: True):
+            line = gate.describe_measuring_host(self._runner())
+        self.assertIn('WSL', line)
+        with mock.patch.object(gate, 'is_wsl', lambda: False):
+            line = gate.describe_measuring_host(self._runner())
+        self.assertNotIn('WSL', line)
+
+
 class TestThePublicHostAxisCanSeeTheWslHost(unittest.TestCase, _DriftGateMixin):
     """⚠️ **이 축이 중앙 PC 에서 영원히 DRIFT 였다** (실측 2026-09-03).
 
