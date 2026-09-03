@@ -90,6 +90,66 @@ class TestTheClosureIsComputedNotListed(unittest.TestCase):
             self.assertIn('extra_pkg', tops)
 
 
+class TestSubmoduleImportsAreEdgesToo(unittest.TestCase):
+    """``from <패키지> import <서브모듈>`` 도 간선이다.
+
+    ⚠️ **실측 2026-09-03 — 이 팔이 없던 동안 게이트가 과소계수하고 있었다.**
+    `application/central_contract/api_surfaces.py` 가 표면 9개를 이 형식으로
+    부르는데, 워커는 `node.module`(= 패키지) 만 담았다. 그 패키지의
+    `__init__.py` 는 **순수 docstring** 이라 거기서 탐색이 멈췄고,
+    표면 9개와 `api_operation_factory` 가 폐포에 영영 들어오지 않았다.
+
+    **축 맹점이다** — AST 축에서 「import 안 함」과 「서브모듈로 import 함」이
+    같은 값이다. 그리고 틀리는 방향이 나쁜 쪽이다: 완료 오라클이 *「공유 폐포 0」*
+    인데, 이 워커로는 **모듈이 아직 공유 중인데도 0** 이 나올 수 있다.
+
+    ⚠️ 속성 import(`from m import SOME_CONST`)를 모듈로 오인하지 않는 것은
+    `_resolve` 가 담당한다 — 파일이 없으면 해소되지 않는다. 그래서 판정은
+    이름 모양이 아니라 **파일 존재**다.
+    """
+
+    def _both_lanes_reach(self, t, pkg_init_body):
+        for base in (t.central, t.provider_src):
+            t.write(base, 'shared_pkg/pkg/__init__.py', pkg_init_body)
+            t.write(base, 'shared_pkg/pkg/leaf.py', 'X = 1')
+            t.write(base, 'shared_pkg/facade.py',
+                    'from shared_pkg.pkg import leaf')
+        t.write(t.central, 'fcc_test_platform/app.py', 'import shared_pkg.facade')
+        t.write(t.provider_src, 'runner.py', 'import shared_pkg.facade')
+        return guard.measure(t.central, t.provider_src)
+
+    def test_a_submodule_imported_from_its_package_is_in_the_closure(self):
+        """패키지 `__init__` 이 비어 있어도 잎에 도달해야 한다.
+
+        비어 있는 `__init__` 이 이 결함의 조건이었다 — 그것이 무언가를 재수출했다면
+        그 import 문이 우연히 간선을 만들어 결함이 가려졌을 것이다.
+        """
+        with _TwoLanes() as t:
+            obs = self._both_lanes_reach(t, '')
+            self.assertIn('shared_pkg/pkg/leaf.py', obs['shared'])
+
+    def test_an_attribute_import_is_not_mistaken_for_a_submodule(self):
+        """⚠️ 반대 방향 — 고치면서 과잉계수하지 않았음을 잰다.
+
+        이 팔이 없으면 「간선을 더 담아라」가 「아무 이름이나 담아라」로 퇴화하고,
+        그때 폐포가 부풀어 완료 오라클이 영영 0 이 되지 않는다.
+        """
+        with _TwoLanes() as t:
+            for base in (t.central, t.provider_src):
+                t.write(base, 'shared_pkg/consts.py', 'NAME = 1')
+                t.write(base, 'shared_pkg/user.py',
+                        'from shared_pkg.consts import NAME')
+            t.write(t.central, 'fcc_test_platform/app.py', 'import shared_pkg.user')
+            t.write(t.provider_src, 'runner.py', 'import shared_pkg.user')
+            obs = guard.measure(t.central, t.provider_src)
+            self.assertIn('shared_pkg/consts.py', obs['shared'])
+            self.assertNotIn('shared_pkg/consts/NAME.py', obs['shared'])
+            self.assertEqual(
+                [], [m for m in obs['shared'] if m.endswith('/NAME.py')],
+                '속성 이름이 모듈로 해소됐다 — 과잉계수다',
+            )
+
+
 class TestVocabularyIsJudgedOnCodeNotProse(unittest.TestCase):
     """어휘는 타입이 지는 것이고 산문이 언급하는 것이 아니다.
 
