@@ -21,19 +21,46 @@ EMS:          http://10.206.34.233:8090  (기존 서비스, FCC와 무관)
 ```bash
 cd /path/to/fcc-test-platform    # ⚠️ 중앙 PC 는 FCC 저장소를 두지 않는다 (2026-09-03)
 
-hostname -I
+# ⚠️ WSL 안에서 `hostname -I` 로 판정하지 마라 — 아래 §1.1 을 먼저 읽어라.
+powershell.exe -NoProfile -Command "hostname; (Get-NetIPAddress -AddressFamily IPv4).IPAddress"
 grep -E '^PUBLIC_HOST=|^WEB_PORT=|^KEYCLOAK_PORT=' infra/central/central.env
 ```
 
 정상 기준:
 
-- `hostname -I`에 `10.206.34.233`이 포함된다.
+- 위 PowerShell 출력의 호스트 이름이 `SUW0521PC1WNBRE` 이고 IPv4 목록에
+  `10.206.34.233` 이 있다.
 - `PUBLIC_HOST=10.206.34.233`
 - `WEB_PORT=8080`
 - `KEYCLOAK_PORT=8081`
 
 IP가 다르면 로그인 origin과 토큰 issuer가 어긋날 수 있으므로 먼저 운영 담당자에게
-확인한다. `central.env`의 비밀번호·시크릿은 화면이나 로그에 출력하지 않는다.
+확인한다.
+
+### 1.1 ⚠️ `hostname -I` 는 이 기계에서 **원리적으로** 틀린 판정자다
+
+이 절은 오래 *「`hostname -I` 에 `10.206.34.233` 이 포함된다」* 를 정상 기준으로 적었다.
+**중앙 PC 의 WSL 은 NAT 모드라 그 문장은 참이 될 수 없다** — 실측 2026-09-04:
+`172.25.63.61` 과 도커 브리지 대역만 나오고 LAN 주소는 나오지 않는다.
+
+⚠️ **틀리는 방향이 나쁘다.** 이 저장소가 이름 붙인 함정은 *「개발 PC 를 중앙으로 오인」*
+이었는데(드리프트 게이트가 보고 맨 위에 측정 기계를 적는 이유), 이 문장은 반대로
+**「중앙을 중앙이 아니라고 오판」** 하게 만든다. 2026-09-04 에 운영자와 세션이 실제로
+그 직전까지 갔다.
+
+뿌리는 두 기계의 **WSL 네트워킹 모드가 다르다**는 것이다:
+
+| 기계 | WSL 모드 | `hostname -I` 가 보여주는 것 |
+|---|---|---|
+| 개발 PC | mirrored | LAN IP — 그래서 이 문장이 **거기서는 참이었다** |
+| 중앙 PC (`SUW0521PC1WNBRE`) | NAT | `172.25.x` + 도커 브리지뿐 |
+
+즉 이 기준은 **개발 PC 에서 쓰여 중앙 PC 문서에 실린 것**이다. 같은 명령이 두 기계에서
+다른 것을 답하는데 문서는 한쪽만 봤다.
+
+**판정은 Windows 호스트에게 물어라.** WSL 의 인터페이스는 그 기계의 LAN 소속을 답하는
+축이 아니다 — `ps` 의 argv 가 프로세스의 `cwd` 소속을 답하는 축이 아닌 것과 같은 형태다
+(`.claude/rules/check-axis-blindness.md` §증거 4). `central.env`의 비밀번호·시크릿은 화면이나 로그에 출력하지 않는다.
 
 ## 2. Docker 상태 확인 및 기동
 
