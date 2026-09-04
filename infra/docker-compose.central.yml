@@ -358,7 +358,7 @@ services:
       - "0.0.0.0"
       - --port
       - "8002"
-    environment:
+    environment: &platform_api_env
       FCC_PLATFORM_AUTH_MODE: ${FCC_PLATFORM_AUTH_MODE:-oidc_jwt}
       # ⚠️ REQUIRED, not a tuning knob. `fcc_test_platform.application.
       # rbac_role_catalog` reads the central DB schema JSON AT IMPORT TIME and
@@ -498,6 +498,109 @@ services:
     networks:
       # BRIDGES both tiers: data-network to reach postgres (DSN), app-network to
       # reach keycloak JWKS and be reverse-proxied by web.
+      - data-network
+      - app-network
+
+  # ── 챔버 노드 전용 API 인스턴스 (HTTP 잠정 운영, 2026-09-04) ──────────────
+  # ⚠️ 같은 이미지·같은 코드·같은 DB 다. **다른 것은 인증 모드 하나뿐이다.**
+  #
+  # 왜 인스턴스가 둘이어야 하는가 — `FCC_PLATFORM_AUTH_MODE` 는 프로세스당 하나인데,
+  # 평문 HTTP 에서 브라우저와 챔버 노드가 요구하는 값이 서로 반대다:
+  #   * 브라우저 — PKCE 가 쓰는 `crypto.subtle` 은 보안 컨텍스트(https/localhost)
+  #     전용이라 `http://<IP>:8080` 에서는 OIDC 로그인이 **원리적으로 불가능**하다.
+  #     화면이 뜨려면 `local_jwt` 여야 한다(서버가 발행·검증, 브라우저는 암호 연산 0).
+  #   * 챔버 노드 — Keycloak 머신 토큰(RS256)을 보낸다. `oidc_jwt` 여야 검증된다.
+  #
+  # 실측 2026-09-04: 단일 인스턴스에서 `local_jwt` 일 때 `POST /platform/chambers/
+  # heartbeat` 가 30초마다 401 이었고, `oidc_jwt` 로 바꾸자 즉시 200 이 됐으나 이번에는
+  # SPA 가 부팅을 거부했다(`runtime.ts` D-6). 한 프로세스로는 둘 중 하나가 반드시 막힌다.
+  #
+  # ⚠️ 브라우저 정책(`OverrideSecurityRestrictionsOnInsecureOrigin`)으로 오리진을
+  # 보안 컨텍스트로 만드는 흔한 우회는 **이 앱에서 통하지 않는다.** crypto.subtle 은
+  # 살아나지만 D-6 이 `oidc + insecureTransportAllowed=true` 조합 자체를 거부한다.
+  # 그 우회를 먼저 시도하면 「crypto 는 됐는데 화면이 안 뜬다」에서 멈춘다.
+  #
+  # ⚠️ 이것은 HTTPS 가 서지 못하는 동안의 **잠정 형상**이다(인증서는 사내 검증·인정
+  # 이후에 발급된다 — HTTPS 는 결과이지 전제가 아니다). 발급되면 이 서비스와 nginx 의
+  # 노드 경로 블록을 지우고 단일 `oidc_jwt` 로 되돌린다. 되돌리는 것이 정상 형상이다.
+  platform-api-node:
+    # ⚠️ `build:` 가 없는 것은 누락이 아니다 — 위 `platform-api` 가 이 이미지를 만든다.
+    # 두 번째 `build:` 를 두면 같은 컨텍스트를 두 번 빌드한다.
+    image: fcc-central-platform-api:latest
+    container_name: fcc-central-platform-api-node
+    restart: unless-stopped
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - uvicorn
+      - --factory
+      - fcc_test_platform.api_app:create_app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8002"
+    environment:
+      # ⚠️ 앵커 병합이다 — 값을 복사하지 않는다. 두 벌이 되면 갈라지고, 이 저장소는
+      # 이미 web 의 compose 사본에서 그 사고를 겪었다(2026-09-01 실측).
+      <<: *platform_api_env
+      # ⚠️ 의도적으로 리터럴이고 env 노브가 아니다. 이 인스턴스가 존재하는 이유가
+      # 「노드의 Keycloak 토큰을 검증한다」 하나뿐인데, central.env 로 바꿀 수 있게
+      # 두면 브라우저 인스턴스와 같은 값이 되어 이 분리가 **조용히 무의미**해진다.
+      FCC_PLATFORM_AUTH_MODE: oidc_jwt
+      # ⚠️ **부트스트랩 관리자를 이 인스턴스에 넘기지 않는다 — 경합 방지다.**
+      # `api_composition.py:798` 의 `_bootstrap_local_admin_from_env` 는 합성에서
+      # **무조건** 호출되고 인증 모드에 걸리지 않는다. 「로컬 사용자가 하나도 없을
+      # 때만」 생성하지만, 빈 users 표에서 두 인스턴스가 동시에 뜨면 **둘 다 「없다」를
+      # 보고 둘 다 넣는다.** 같은 파일 :934 가 `if not email or not password: return`
+      # 이므로, 값을 비우면 경합이 **구조적으로** 사라진다. 노드 인스턴스는 로컬
+      # 사용자가 필요 없다(Keycloak 토큰만 검증한다).
+      FCC_PLATFORM_BOOTSTRAP_ADMIN_EMAIL: ""
+      FCC_PLATFORM_BOOTSTRAP_ADMIN_PASSWORD: ""
+    # ⚠️ **앵커가 아니라 복제다 — 일부러 그렇다.** `tests/test_platform_ops_health_probe.py`
+    # 의 `TestComposeHealthcheckWiring` 이 compose **원문을 정규식으로** 읽어
+    # `healthcheck:\n … test:\n` 을 찾는다. `healthcheck: &anchor` 로 쓰면 그 계약
+    # 가드가 platform-api 의 healthcheck 를 못 찾아 침묵한다. 내 형식 때문에 가드를
+    # 느슨하게 만들지 않는다.
+    # ⚠️ 그러므로 위 platform-api 의 healthcheck 를 고치면 **여기도 함께 고쳐라.**
+    healthcheck:
+      # Probes the dedicated READINESS endpoint (2026-07-20), not liveness and no
+      # longer /platform/metrics. Rationale:
+      #   * /platform/metrics only proved the process answers HTTP — a container
+      #     that could not reach postgres still reported healthy, so `web` could
+      #     start routing to an API that 503s every request. Borrowing the scrape
+      #     endpoint as a health probe was a workaround for having no probe.
+      #   * /platform/health (liveness) is dependency-free ON PURPOSE, so it has
+      #     the same blind spot by design.
+      #   * /platform/ready returns 503 while the central DB is unreachable, which
+      #     is exactly the signal an orchestrator needs. Compose does NOT restart
+      #     on unhealthy (restart: unless-stopped reacts to exit, not health), so
+      #     a DB blip degrades this container's status without restart-storming it.
+      # The readiness verdict is TTL-cached in-process, so this 15 s poll cannot
+      # turn into per-request load on postgres. Auth-exempt like the metrics
+      # endpoint; stdlib urllib so the image needs no extra deps. urlopen raises
+      # HTTPError on 503 → non-zero exit → unhealthy.
+      test:
+        - CMD-SHELL
+        - "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8002/platform/ready', timeout=3).status==200 else 1)\""
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    # ⚠️ `depends_on` 은 앵커 병합에 포함되지 않으므로 **반드시 다시 적는다.**
+    # 빠뜨리면 fresh 스택에서 이 인스턴스가 마이그레이션보다 먼저 뜬다.
+    # (마이그레이션은 별도 one-shot `central-migrate` 가 돌린다 — API 는 돌리지
+    #  않으므로 인스턴스가 둘이어도 마이그레이션 충돌은 없다.)
+    depends_on:
+      postgres:
+        condition: service_healthy
+      central-migrate:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_started
+    volumes:
+      - ../config/provider-ui:/app/config/provider-ui:ro
+    networks:
       - data-network
       - app-network
 
