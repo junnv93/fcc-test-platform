@@ -99,7 +99,14 @@ _READ_ADAPTER_MODULE = resolve_repo_artifact(__file__, 'src/application/platform
 _WRITE_ADAPTER_MODULE = resolve_repo_artifact(__file__, 'src/application/platform/central_chamber_write_adapter.py')
 _READ_SERVICE_MODULE = resolve_repo_artifact(__file__, 'src/application/platform/central_chamber_read_service.py')
 _WRITE_SERVICE_MODULE = resolve_repo_artifact(__file__, 'src/application/platform/central_chamber_write_service.py')
-_ARTIFACT = resolve_dependency_artifact('docs/api/platform-api.openapi.json')
+_ARTIFACT = resolve_repo_artifact(__file__, 'docs/api/platform-api.openapi.json')  # noqa: E501
+#: ⚠️ **이 문서는 이 상자가 저작한다** — 조립기가
+#: ``fcc_test_platform.application.api_schema.build_platform_openapi_schema`` 다.
+#: 첫 판은 ``resolve_dependency_artifact`` 로 물었는데, 그것은 *「나를 배송한
+#: **의존** 레인이 이걸 어디 뒀나」* 를 묻는다. 계약 패키지가 이 문서의 사본을
+#: 나르므로 그 물음도 답을 얻지만, **답하는 트리가 틀렸다** — 이 검사는 자기가
+#: 방금 만든 문서를 남의 사본과 비교하고 있었다(실측 2026-09-04: 그 사본이 낡아
+#: 있어 red 였고, 원인은 이 상자의 아티팩트가 아니었다).
 
 _FORBIDDEN_IMPORT_PREFIXES = (
     'infrastructure', 'fastapi', 'sqlalchemy', 'psycopg', 'pyvisa', 'PySide6',
@@ -706,7 +713,7 @@ class TestChamberContractAndArtifact(unittest.TestCase):
         built = _canonical_text(build_platform_openapi_schema(None))
         self.assertEqual(on_disk, built,
                          'platform-api.openapi.json drifted — run '
-                         'python scripts/export_session_api_schemas.py')
+                         'python3 scripts/export_platform_openapi.py')
 
     def test_heartbeat_request_status_enum_excludes_offline(self):
         enum = PLATFORM_API_SCHEMAS['ChamberHeartbeatRequest']['properties']['reported_status']['enum']

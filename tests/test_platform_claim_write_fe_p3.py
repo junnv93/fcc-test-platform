@@ -85,7 +85,14 @@ _PLATFORM_PKG = resolve_repo_artifact(__file__, 'src/application/platform')
 # ⚠️ **경로가 아니라 모듈에게 묻는다** (2026-09-03) — `tests/_moved_module_source.py`.
 _WRITE_ADAPTER_MODULE = moved_module_source(
     'fcc_test_platform.application.central_claim_write_adapter')
-_ARTIFACT = resolve_dependency_artifact('docs/api/platform-api.openapi.json')
+_ARTIFACT = resolve_repo_artifact(__file__, 'docs/api/platform-api.openapi.json')  # noqa: E501
+#: ⚠️ **이 문서는 이 상자가 저작한다** — 조립기가
+#: ``fcc_test_platform.application.api_schema.build_platform_openapi_schema`` 다.
+#: 첫 판은 ``resolve_dependency_artifact`` 로 물었는데, 그것은 *「나를 배송한
+#: **의존** 레인이 이걸 어디 뒀나」* 를 묻는다. 계약 패키지가 이 문서의 사본을
+#: 나르므로 그 물음도 답을 얻지만, **답하는 트리가 틀렸다** — 이 검사는 자기가
+#: 방금 만든 문서를 남의 사본과 비교하고 있었다(실측 2026-09-04: 그 사본이 낡아
+#: 있어 red 였고, 원인은 이 상자의 아티팩트가 아니었다).
 
 
 def _schema() -> dict:
@@ -469,7 +476,7 @@ class TestClaimWriteOpenApi(unittest.TestCase):
         self.assertEqual(
             _ARTIFACT.read_text(encoding='utf-8'), _canonical_text(self.schema),
             'platform-api.openapi.json drifted — run '
-            'python scripts/export_session_api_schemas.py',
+            'python3 scripts/export_platform_openapi.py',
         )
 
 
