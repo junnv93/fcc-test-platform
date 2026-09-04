@@ -78,6 +78,24 @@ test = [
     "httpx>=0.28.1",
     "jsonschema>=4.0.0",
     "PyJWT[crypto]>=2.8.0",
+    # ⚠️ 2026-09-04 — 같은 결함이 세 번째로 났다. `test_central_docker_compose.py` 가
+    # compose 를 파싱하려고 `yaml` 을 부르는데 선언에 없었고, 그 결과 **중앙 저장소의
+    # lane-check CI 가 24건 빨간 채로 굳어 있었다**(run 33858657216). 빨간 것이 기본이
+    # 되면 새 회귀가 그 소음에 묻힌다 — 직전 배송은 자기 회귀가 0건임을 증명하려고
+    # main 의 실패 집합과 손으로 대조해야 했다.
+    #
+    # ⭐ 이번에는 주석으로 끝내지 않았다. `tests/test_supply_closure_axis.py` 가 이
+    # 목록과 실제 import 를 **파생해서 대조**한다. 다음 누락은 사람이 아니라 게이트가
+    # 이름을 대고 멈춘다.
+    "PyYAML>=6.0",
+]
+# 브라우저 QA 도구(`scripts/platform_frontend_browser_qa.py`)만 쓰는 것. 중앙 이미지의
+# 의존성 집합(`requirements-central.txt`)에는 **의도적으로 없다** — Dockerfile 주석이
+# 그 사실을 적는다(desktop/chamber 패키지 제거). 그래도 이 상자가 그 스크립트를 싣는
+# 이상 무엇이 필요한지는 선언돼야 한다. 선언하지 않으면 「돌려보니 죽더라」가 유일한
+# 발견 경로가 된다.
+browser-qa = [
+    "selenium>=4.0.0",
 ]
 
 # ⚠️ selenium(scripts/platform_frontend_browser_qa.py) 과 psycopg2 폴백

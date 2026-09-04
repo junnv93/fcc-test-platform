@@ -24,6 +24,22 @@ spot):
 """
 from __future__ import annotations
 
+# ⚠️ 2026-09-04 — 여기 있던 네 개의 지역 `import yaml` 중 셋은 `except: skipTest` 가드를
+# 달고 있었다. 그 가드는 **컨테이너 보안 불변식(네트워크 격리 · 권한 드롭 · 신뢰 홉 ·
+# 빌드 대상 파생)을 스스로 꺼버리는** 장치였다 — PyYAML 이 없으면 검사가 실패하는 대신
+# 조용히 통과한다. 이 저장소의 `lane_check` 이 같은 형태를 이미 이름 붙여 거부한다:
+# *"기준선을 관측값으로 덮어써서 초록을 만들지 마라 — 그것은 검사를 끄는 것이다."*
+#
+# 나머지 하나(`_load_compose`)는 가드가 없어서 **중앙 저장소 CI 를 24건 빨갛게** 만들고
+# 있었다(run 33858657216). 같은 파일이 같은 의존성을 두 가지 방식으로 동시에 잘못 다루고
+# 있었던 셈이다 — 한쪽은 검사를 끄고, 다른 쪽은 러너를 세운다.
+#
+# 답은 가드를 늘리는 것이 아니라 **선언을 채우는 것**이다. PyYAML 은 이제
+# `[project.optional-dependencies].test` 에 있고 `tests/test_supply_closure_axis.py` 가
+# 그 선언과 이 import 를 파생 대조한다. PyYAML 이 없으면 이 파일은 **실패한다** —
+# 그것이 옳다. 검사할 수 없는 상태는 통과가 아니다.
+import yaml
+
 import ast
 import json
 import re
@@ -346,10 +362,6 @@ class TestCentralComposeContract(unittest.TestCase):
     }
 
     def _compose(self) -> dict:
-        try:
-            import yaml  # type: ignore
-        except Exception:  # pragma: no cover
-            self.skipTest('PyYAML unavailable for compose parsing')
         return yaml.safe_load(COMPOSE_PATH.read_text(encoding='utf-8'))
 
     def test_compose_file_exists(self):
@@ -592,7 +604,6 @@ def _central_web_origin() -> str:
 
 
 def _load_compose() -> dict:
-    import yaml  # type: ignore
     return yaml.safe_load(COMPOSE_PATH.read_text(encoding='utf-8'))
 
 
@@ -1391,10 +1402,6 @@ class TestDeploymentRevisionLabelWiring(unittest.TestCase, _DriftGateMixin):
     """
 
     def _compose(self) -> dict:
-        try:
-            import yaml  # type: ignore
-        except Exception:  # pragma: no cover
-            self.skipTest('PyYAML unavailable for compose parsing')
         return yaml.safe_load(COMPOSE_PATH.read_text(encoding='utf-8'))
 
     def _building_services(self) -> dict:
@@ -1853,10 +1860,6 @@ class TestDeploymentDriftGateVerdicts(unittest.TestCase, _DriftGateMixin):
 
     def test_build_targets_derive_from_the_real_compose_file(self):
         """게이트가 검사할 대상 집합이 실제 compose 에서 나온다(손 목록 0)."""
-        try:
-            import yaml  # type: ignore
-        except Exception:  # pragma: no cover
-            self.skipTest('PyYAML unavailable for compose parsing')
         m = self._gate_module()
         doc = yaml.safe_load(COMPOSE_PATH.read_text(encoding='utf-8'))
         targets = m.build_targets(doc)
