@@ -101,3 +101,122 @@ exit 2 + 한 줄로 내고 `ImportError` 는 catch 0건이다. 즉 **traceback �
 
 내 목록은 *「무엇일 수 있나」* 였고 그쪽은 *「관측이 무엇을 배제하나」* 였다.
 후자가 판정이다.
+
+---
+
+# ⚠️ 정정 — 2026-09-04 (`fcc-delivery-final-6c`, 개발 PC)
+
+이 인계문을 이어받은 세션이 **위 본문의 두 곳을 정정**한다. 원문을 지우지 않고 아래에
+둔다 — 무엇이 왜 틀렸는지가 다음 사람에게 본문만큼 중요하기 때문이다.
+
+## 1. `JWKS_URI` — 「미대조」가 아니라 **잴 값이 아니었다**
+
+본문 마지막 줄이 *「`JWKS_URI` 만 well-known 필드를 직접 안 읽고 관례로 적었다 —
+아직 대조 안 됐다」* 고 적었고, 그 처방으로 다음 한 줄이 유통됐다:
+
+```bash
+# ⛔ 이 한 줄을 쓰지 마라
+curl -s http://localhost:8081/realms/fcc-dev/.well-known/openid-configuration \
+  | python3 -c "...['jwks_uri']"
+```
+
+⚠️ **이 명령은 중앙 PC 에서 돌려도 챔버에 넣으면 안 되는 값을 낸다.**
+
+`infra/docker-compose.central.yml`(**fcc-test-platform 레포**) 이 SSOT 이고, 구조는
+의도된 split-horizon 이다:
+
+```
+:115      KC_HOSTNAME                       http://${PUBLIC_HOST}:${KEYCLOAK_PORT}   ← 고정
+:116      KC_HOSTNAME_BACKCHANNEL_DYNAMIC   true                                    ← 동적
+:189,:393 FCC_*_OIDC_ISSUER    http://${PUBLIC_HOST}:${KEYCLOAK_PORT}/realms/fcc-dev
+:190,:394 FCC_*_OIDC_JWKS_URI  http://keycloak:8080/realms/fcc-dev/.../certs        ← 내부 이름
+```
+
+`:108-114` 주석이 2026-06-20 에 이유를 적어 뒀다 — 토큰 `iss` 는 단일값이어야 하므로
+issuer 를 `PUBLIC_HOST` 로 고정하고, backchannel 만 dynamic 으로 열어 내부
+(`keycloak:8080`)·127 접근을 호환한다.
+
+**그래서 well-known 의 `jwks_uri` 는 「측정되는 값」이 아니라 「물어본 주소의 메아리」다.**
+개발 PC 실측(2026-09-04): 같은 문서에서 `issuer` 는 고정값을, `jwks_uri` 는 질의 주소를
+답한다 — `localhost` 로 물으면 `localhost` 가, LAN IP 로 물으면 LAN IP 가 나온다.
+
+⚠️ **챔버 노드는 이 키를 필수로 요구한다.** `-3b` 실측:
+`src/session_node_entry.py:103` `_OPERATIONAL_REQUIRED_KEYS` 에
+`FCC_SESSION_OIDC_JWKS_URI` 가 있고 `--check-config` 가 부재를 거부한다. 즉 이 값은
+실제로 챔버 설정 파일에 들어간다.
+
+```
+챔버 노드용  http://10.206.34.233:8081/realms/fcc-dev/protocol/openid-connect/certs
+⛔ 금지      http://keycloak:8080/...    compose 내부 이름 — 챔버에서 해소 불가
+⛔ 금지      http://localhost:8081/...   노드가 자기 자신에게 JWKS 를 요청한다
+```
+
+⚠️ 참고: `docs/platform/identity_policy.v1.json:9` 이 *「jwks_uri 는 HTTPS 여야 하고
+localhost 를 쓰면 안 된다」* 를 명문화한다 — 위 한 줄이 만들어내는 바로 그 값이다.
+
+**본문의 `FCC_SESSION_OIDC_ISSUER` 는 그대로 맞다.** `KC_HOSTNAME` 이 `PUBLIC_HOST`
+파생이므로 중앙에서 `PUBLIC_HOST=10.206.34.233` 이면 본문 값이 유도된다. 확인할 것이
+있다면 well-known 이 아니라 **`grep -E '^PUBLIC_HOST=' central.env` 한 줄**이다.
+
+## 2. 이미지 신선도 — 4단계(`up -d headless-api web`) 전에 물어야 한다
+
+본문 머리말이 중앙 상태를 *`fcc-test-platform 0.1.8 · fcc-test-kernel 0.3.0 ·
+fcc-test-contracts 0.1.12`* 로 적었다. **개발 PC 의 같은 이름 컨테이너를 재 보니 다르다**
+(2026-09-04, `fcc-central-platform-api:latest`, created `2026-09-03T02:02:24Z`):
+
+```
+컨테이너 안:  fcc-test-kernel 0.1.0 · fcc-test-contracts 0.1.11 · fcc-test-platform 0.1.8
+docker exec … python -c "import fcc_test_kernel.domain.models.enums"
+  → ModuleNotFoundError
+설치된 fcc_test_platform 중 fcc_test_kernel.domain 을 부르는 파일:  0건
+소스 트리의 fcc_test_platform 중 fcc_test_kernel 을 부르는 곳:   137건
+```
+
+즉 그 이미지는 **커널 이관 전 코드**다(02:02 는 2·3단계 착지 전). 낡은 코드와 낡은
+커널이 서로 정합해서 컨테이너는 **healthy** 다 — 아무것도 안 걸린다.
+
+⚠️ **`fcc-test-platform 0.1.8` 은 이관 전/후를 구별하지 못한다.** 낡은 이미지도 0.1.8,
+지금 트리도 0.1.8 이다. 버전이 안 올랐으므로 *「0.1.8 이 설치됐다」* 는 커널 이관 코드가
+들어왔는지에 대해 **아무 말도 하지 않는다.**
+
+**중앙 PC 에서 확인할 세 줄** (이 세션도 `-3b` 도 `10.206.34.233` 에 안 닿는다 —
+운영자 경유여야 한다):
+
+```bash
+docker exec fcc-central-platform-api pip list | grep -i fcc-test
+docker exec fcc-central-platform-api python -c "import fcc_test_kernel.domain.models.enums as m; print(m.__file__)"
+docker inspect fcc-central-platform-api --format '{{.Created}}'
+```
+
+중앙 이미지도 02:02 산이면 중앙 역시 이관 전 코드다. 재빌드 자체는 안전하다 —
+`requirements-central.txt:90`(**fcc-test-platform 레포**)이 커널을 `kernel-v0.3.0` 으로
+핀하고 `infra/central/Dockerfile.api:74-79`(**같은 레포**)의 git+ 분리가 그것을 레인 쪽으로
+떨어뜨린다. 커널 0.3.0 이 선언하는 의존성은 `fcc-test-contracts` 하나뿐(서드파티 0건)이라
+`--no-deps` 도 아무것도 안 빠뜨린다.
+
+⚠️ **다만 `--build` 를 빼면** 본문 「절대 하지 말 것」의 경고대로 `:latest` 캐시가 조용히
+재사용돼 낡은 쌍이 그대로 남는다.
+
+⚠️ **인용에는 레포를 붙였다** — `requirements-central.txt` 와 `infra/central/` 은 FCC
+모노레포에도 **같은 이름으로** 있고 두 벌이 갈렸다(`-3b` 실측: FCC 사본에는 커널 줄이
+없고 Dockerfile 도 필터 없는 2-way split 이다). 중앙을 지배하는 것은 platform 레포
+사본이다. 오늘 라운드가 반복한 *「이름이 아니라 도달성으로 판정한다」* 의 파일 판이다.
+
+## 3. 새로 세운 red 하나 — 레지스트리 아티팩트 교차 레인 검사
+
+`tests/test_provider_registry_artifacts_resolve_cross_lane.py` (신규).
+
+platform 작업트리의 `config/headless_provider_registry.json` 에 `kc-unlicensed-headless`
+가 **미커밋으로** 추가돼 있는데, 가리키는 아티팩트가 어느 트리에도 없다. 계약 레인 체커를
+손으로 물려야만 보였다(exit 2 · `providers: []` — 새 항목 하나가 아니라 **레지스트리
+전체가 로드 실패**). 두 레인의 pytest 는 전부 초록이었다. 그 침묵을 red 로 만들었다.
+
+⚠️ **미커밋 변경 자체는 손대지 않았다** — KC 레인 세션(현재 offline)의 것으로 보인다.
+그리고 **눈에 보이는 수리가 함정이다**: 아티팩트를 계약 트리나 레지스트리 옆에 만들어
+넣으면 `_resolve_artifact_path` 폴백으로 코드 변경 0에 초록이 되는데, 그것이 운영자가
+2026-08-31 에 기각한 안 「다」다(`fcc-test-contracts/docs/OPEN-QUESTIONS.md` §1,
+판정은 안 「나」 — 발행처가 검사하고 중앙은 결과만 수신).
+
+⚠️ **이 배송 트리에는 pytest 도 `fcc_test_contracts` 도 없다.** 검증은 스크래치패드에
+세운 venv 셋으로 했고(트리/휠/부재 × 깨짐/깨끗 = 5조합 전부 의도대로), **전체 스위트는
+돌리지 못했다** — 기준선을 건드리지 않았는지는 확인되지 않았다.
