@@ -443,13 +443,35 @@ class TestTheGuardWouldNoticeAMismatch(unittest.TestCase):
 
 
 #: 평문 LAN 로컬 로그인 배포가 실제로 정합인 설정 — 런북 §S0-L 이 지시해야 하는 것.
+#: ⚠️ **첫 판은 모드 다섯만 담았고, 그것은 「짝은 맞지만 부팅은 못 하는」 env 였다.**
+#:
+#: `local_jwt` 는 `issuer`·`audience`·`secret`(HS256 최소 길이) 없이 부팅을 거부한다
+#: (`LocalJwtConfig.validate`). 그런데 이 픽스처를 「통과」라고 부르는 검사들이 있었고,
+#: 그래서 사전점검 도구가 그 상태에 `OK` 를 내도 아무도 몰랐다 — 실측 2026-09-04
+#: (중앙 PC 최초 구축): 운영자가 `OK` 를 받은 뒤에 `LOCAL_JWT_ISSUER` 가 양쪽 다 빈 것을
+#: 따로 발견했고, 그대로 재기동했으면 부팅 거부였다.
+#:
+#: 즉 **「정합」의 정의가 좁았다.** 모드가 맞는 것과 그 배포가 뜨는 것은 다른 축이고,
+#: 운영자에게는 후자가 질문이다. 값을 여기 담는 것이 그 정정이다.
 _COHERENT_LOCAL = (
     'FCC_PLATFORM_AUTH_MODE=local_jwt\n'
     'WEB_AUTH_MODE=local\n'
     'FCC_HEADLESS_AUTH_MODE=local_jwt\n'
     'ALLOW_INSECURE_TRANSPORT=true\n'
     'PUBLIC_HOST=10.206.34.233\n'
+    # 두 표면은 **같은 토큰**을 검증하므로 값이 같아야 한다.
+    f'FCC_PLATFORM_LOCAL_JWT_SECRET={"s" * 40}\n'
+    f'FCC_HEADLESS_LOCAL_JWT_SECRET={"s" * 40}\n'
+    'FCC_PLATFORM_LOCAL_JWT_ISSUER=http://10.206.34.233:8080/local\n'
+    'FCC_HEADLESS_LOCAL_JWT_ISSUER=http://10.206.34.233:8080/local\n'
+    'FCC_PLATFORM_LOCAL_JWT_AUDIENCE=fcc-platform\n'
+    'FCC_HEADLESS_LOCAL_JWT_AUDIENCE=fcc-platform\n'
 )
+
+#: ⚠️ 위 픽스처에서 **부팅 필수값 하나만** 뺀 것. 이것이 「짝은 맞는데 안 뜬다」 상태이고,
+#: 사전점검이 그것을 `OK` 로 읽던 자리다.
+_COHERENT_PAIR_BUT_UNBOOTABLE = _COHERENT_LOCAL.replace(
+    'FCC_PLATFORM_LOCAL_JWT_ISSUER=http://10.206.34.233:8080/local\n', '')
 
 
 class TestTheOperatorPreflight(unittest.TestCase):
@@ -494,6 +516,40 @@ class TestTheOperatorPreflight(unittest.TestCase):
     def test_a_paired_env_can_be_streamed_without_an_env_file(self):
         result = self._run('--env-stdin', input=_COHERENT_LOCAL)
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_local_jwt_values_that_were_never_declared_are_not_a_pass(self):
+        """⚠️ **이 결함의 재현.** 모드 짝은 맞는데 `local_jwt` 필수값이 없다.
+
+        실측 2026-09-04(중앙 PC): 이 상태에서 도구가 **`OK`** 를 냈다. 운영자는 그 뒤에
+        `LOCAL_JWT_ISSUER` 가 비어 있는 것을 따로 발견했고, 그대로 재기동했으면
+        `ValueError: local_jwt auth requires local_jwt_issuer` 로 부팅 거부 —
+        **도는 배포가 안 뜨는 배포로 바뀐다.**
+
+        ⚠️ 기대는 **2(판정 불가)** 이지 1 이 아니다. 이 파서는 ``KEY=`` 를 compose 와
+        같게 *미설정* 으로 읽으므로(`read_env_text` 주석 3) 「선언했는데 빈 값」이라는
+        상태가 이 층에는 없다. 요점은 **통과가 아니라는 것**이고, 미선언 축을 통과로
+        접지 않는 것이 이 스크립트의 규율이다.
+        """
+        result = self._run('--env-file', self._env(_COHERENT_PAIR_BUT_UNBOOTABLE))
+        self.assertEqual(result.returncode, 2, result.stdout or result.stderr)
+        # 무엇을 넣어야 하는지 이름으로 대야 한다.
+        self.assertIn('FCC_PLATFORM_LOCAL_JWT_ISSUER', result.stderr)
+
+    def test_declared_local_jwt_values_that_cannot_boot_fail(self):
+        """⚠️ **부팅 검증이 실제로 도는가** — 위 검사만으로는 못 가른다.
+
+        위는 「선언 안 됨」 경로라, 값을 읽고 `LocalJwtConfig.validate` 를 부르는 코드가
+        통째로 죽어 있어도 통과한다. 여기서는 여섯 값을 **전부 선언**하되 시크릿을
+        HS256 최소 길이 미만으로 둔다 — 그러면 미선언 경로는 지나가고 **검증만이**
+        이것을 잡을 수 있다.
+
+        ⚠️ 사유를 이 검사가 다시 쓰지 않는다. 부팅이 내는 문장을 그대로 확인한다.
+        """
+        result = self._run('--env-file', self._env(
+            _COHERENT_LOCAL.replace('s' * 40, 'short')))
+        self.assertEqual(result.returncode, 1, result.stdout or result.stderr)
+        self.assertIn('is not bootable', result.stderr)
+        self.assertIn('local_jwt_secret of at least', result.stderr)
 
     def test_a_mismatched_env_fails_and_names_the_fix(self):
         result = self._run('--env-file', self._env(
@@ -569,6 +625,22 @@ class TestTheOperatorPreflight(unittest.TestCase):
                         public_host='localhost',
                     )
                     result = self._run('--env-file', self._env(body))
+                    if mode == AUTH_MODE_LOCAL_JWT and expected_defects == ():
+                        # ⚠️ **이 body 는 `local_jwt` 필수값을 선언하지 않는다.**
+                        # 스크립트는 술어보다 축을 하나 더 묻는다(부팅 검증), 그리고
+                        # 선언되지 않은 축은 이 스크립트의 규율상 **판정 불가(2)** 다 —
+                        # 「통과」가 아니라는 것이 요점이고, 위임 등가성은 술어에게 준
+                        # 축들에 대해서만 성립한다. 술어를 여기서 다시 부르지 않는 이유:
+                        # 같은 술어로 기대값을 만들면 양변이 함께 움직여 무엇도 못 잡는다
+                        # (이 클래스의 H-3 주석이 적은 형태).
+                        #
+                        # ⚠️ **술어가 이미 결함을 낸 경우는 여기 오지 않는다** —
+                        # `local_jwt` + `oidc` 전략은 짝 불일치라 스크립트가 그것을
+                        # 먼저 `FAIL` 로 낸다. 첫 판은 분기를 `local_jwt` 전체로 잡아
+                        # 그 경우까지 2 로 기대했고, 그것은 짝 검사를 가리는 것이었다.
+                        self.assertEqual(result.returncode, 2, result.stderr)
+                        self.assertIn('LOCAL_JWT_ISSUER', result.stderr)
+                        continue
                     self.assertEqual(
                         result.returncode == 0, expected_defects == (),
                         f'the script and the predicate disagree for '

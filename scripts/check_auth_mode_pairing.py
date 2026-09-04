@@ -81,6 +81,17 @@ ENV_ALLOW_INSECURE = 'ALLOW_INSECURE_TRANSPORT'
 ENV_PUBLIC_HOST = 'PUBLIC_HOST'
 ENV_PLATFORM_SECRET = 'FCC_PLATFORM_LOCAL_JWT_SECRET'
 ENV_HEADLESS_SECRET = 'FCC_HEADLESS_LOCAL_JWT_SECRET'
+#: ⚠️ 시크릿만으로는 부족하다 — `issuer`·`audience` 가 비어도 부팅은 거부된다.
+#: 어느 필드가 필수인지는 이 파일이 정하지 않는다. `LocalJwtConfig.validate` 가
+#: 소유하고, 이 스크립트는 **그 검증을 재기동 전에 돌릴 뿐**이다.
+_LOCAL_JWT_ENV = {
+    'FCC_PLATFORM_LOCAL_JWT_*': ('FCC_PLATFORM_LOCAL_JWT_SECRET',
+                                 'FCC_PLATFORM_LOCAL_JWT_ISSUER',
+                                 'FCC_PLATFORM_LOCAL_JWT_AUDIENCE'),
+    'FCC_HEADLESS_LOCAL_JWT_*': ('FCC_HEADLESS_LOCAL_JWT_SECRET',
+                                 'FCC_HEADLESS_LOCAL_JWT_ISSUER',
+                                 'FCC_HEADLESS_LOCAL_JWT_AUDIENCE'),
+}
 
 #: 브라우저가 실제로 받는 파일 안의 키. 템플릿이 ``authMode: '${WEB_AUTH_MODE}'`` 로
 #: 만들므로, 이 값이 곧 *"SPA 가 무엇을 하기로 했는가"* 의 최종 답이다.
@@ -209,6 +220,7 @@ def main(argv=None) -> int:
     allow_insecure = None
     public_host = None
     local_jwt_secrets = None
+    local_jwt_configs = None
     if args.env_file is not None or args.env_stdin:
         if args.env_file is not None and args.env_stdin:
             parser.error('--env-file and --env-stdin are mutually exclusive')
@@ -229,6 +241,38 @@ def main(argv=None) -> int:
         headless_secret = env.get(ENV_HEADLESS_SECRET)
         if platform_secret is not None or headless_secret is not None:
             local_jwt_secrets = (platform_secret or '', headless_secret or '')
+        # ⚠️ **「도달했으나 비었음」을 여기서 잡는다** (실측 2026-09-04, 중앙 PC).
+        # 짝 축은 platform 과 headless 를 상등으로만 보므로 `'' == ''` 가 「일치」로
+        # 통과하고, compose 는 `${…:-}` 로 넘기므로 「컨테이너에 도달하는가」 봉인도
+        # 만족된다. 두 축 사이에 살아 있던 상태가 이것이고, 그때 재기동은
+        # `ValueError: local_jwt auth requires local_jwt_issuer` 로 부팅 거부다.
+        if str(auth_mode or '').strip().lower() == 'local_jwt':
+            try:
+                from fcc_test_contracts.common.local_identity import LocalJwtConfig
+            except Exception:                                   # noqa: BLE001
+                local_jwt_configs = None    # 판정 불가 — 아래 `unasked` 가 잡는다
+            else:
+                # ⚠️ **`None`(선언 안 됨)과 `''`(선언했는데 빔)을 뭉개지 마라.**
+                # 이 스크립트 전체가 그 구분 위에 서 있다 — 안 물은 축은
+                # `UNDETERMINED`(2)이고 어긋난 축은 `FAIL`(1)이다. 첫 판은 `or ''` 로
+                # 둘을 합쳤고, 그러자 「PUBLIC_HOST 를 안 물었다」를 검증하던 검사가
+                # 2 대신 1 을 받았다 — 규율을 고치는 커밋이 같은 규율을 깼다.
+                #
+                # 키 하나라도 없으면 **판정하지 않는다**(아래 `unasked` 가 잡는다).
+                # 전부 선언됐는데 값이 비었으면 그것은 부팅 불가이고 `FAIL` 이다 —
+                # 중앙 PC 에서 실제로 일어난 것이 후자다.
+                read = {
+                    label: tuple(env.get(key) for key in keys)
+                    for label, keys in _LOCAL_JWT_ENV.items()
+                }
+                if any(value is None for values in read.values() for value in values):
+                    local_jwt_configs = None
+                else:
+                    local_jwt_configs = [
+                        (label, LocalJwtConfig(secret=secret, issuer=issuer,
+                                               audience=audience))
+                        for label, (secret, issuer, audience) in read.items()
+                    ]
 
     if not auth_mode:
         print(
@@ -256,6 +300,7 @@ def main(argv=None) -> int:
         web_auth_mode=web_auth_mode,
         headless_auth_mode=headless_auth_mode,
         local_jwt_secrets=local_jwt_secrets,
+        local_jwt_configs=local_jwt_configs,
         insecure_transport_allowed=allow_insecure,
         public_host=public_host,
     )
@@ -277,6 +322,15 @@ def main(argv=None) -> int:
             # ⚠️ 첫 판은 이 축을 빠뜨려, 값이 없으면 전송 판정을 **건너뛰고 통과**시켰다 —
             # 바로 위 주석이 하지 말라고 적은 그것이다(적대 평가 2라운드 M-4).
             (ENV_PUBLIC_HOST, public_host),
+            # ⚠️ `local_jwt` 인데 부팅 검증을 못 돌렸으면 **통과가 아니다.** 계약
+            # 패키지가 없는 인터프리터에서 조용히 건너뛰면, 이 스크립트가 처음
+            # 거절당한 이유(축 일부만 보고 초록)를 그대로 반복한다.
+            # ⚠️ 이름에 **넣어야 할 키**를 담는다. 「boot validation 을 못 했다」만
+            # 적으면 운영자가 무엇을 고칠지 모른다 — 이 스크립트가 `fix:` 줄을 내는
+            # 이유와 같다.
+            (' · '.join(k for keys in _LOCAL_JWT_ENV.values() for k in keys),
+             local_jwt_configs
+             if str(auth_mode or '').strip().lower() == 'local_jwt' else ''),
         ) if value is None
     ]
     if unasked:
