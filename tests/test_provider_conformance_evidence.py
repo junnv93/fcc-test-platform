@@ -200,6 +200,37 @@ class TestConformanceEvidence(unittest.TestCase):
             bad, [], '증거가 적합을 증명하지 못한다:\n' + '\n'.join(bad))
 
 
+class TestEvidenceOrphans(unittest.TestCase):
+    """⚠️ 등재가 사라진 이름의 증거가 남아도 아무것도 말하지 않았다.
+
+    실측 2026-09-04 — provider 레인이 *「지금 증거를 내면 (d) 가 되나」* 라고 물어와서
+    답을 확인하다 드러났다. 답은 **(d) 가 아니라 무음**이었다: 위 검사들은
+    **레지스트리를 돌면서 증거를 찾지** 그 반대가 아니므로, 등재되지 않은 이름의 증거
+    파일은 **아무도 열지 않는다.**
+
+    등재 전이라면 그것이 옳다(아직 admit 되지 않은 provider 다). 문제는 **등재가
+    사라진 뒤**다 — 그때 증거는 *「검사받았다」* 고 말하는 낡은 기록인데 그것을 읽는
+    축이 없다. `TestGrandfatherRatchet` 이 예외 목록에 대해 갖는 고아 검사를 증거
+    파일은 갖고 있지 않았다. 같은 계급의 비대칭이다.
+    """
+
+    def test_every_evidence_document_names_a_registered_provider(self):
+        if not EVIDENCE_DIR.is_dir():
+            return   # 아직 아무도 증거를 내지 않았다 — 고아도 없다
+        registered = {p.get('provider_id') for p in _load_registry()}
+        orphans = sorted(
+            path.name for path in EVIDENCE_DIR.glob('*.json')
+            if path.stem not in registered
+        )
+        self.assertEqual(
+            orphans, [],
+            f'레지스트리에 없는 이름의 증거가 남아 있다: {orphans}\n'
+            '⚠️ 등재를 되돌렸다면 증거도 함께 지워라. 남겨 두면 「검사받았다」고 '
+            '말하는 낡은 기록이 아무도 읽지 않는 채로 산다 — 이 축이 끝내려던 '
+            '침묵과 같은 모양이다.',
+        )
+
+
 class TestGrandfatherRatchet(unittest.TestCase):
     """⚠️ 예외 목록은 **줄어들기만** 해야 한다."""
 
