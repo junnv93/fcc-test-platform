@@ -156,8 +156,8 @@
         "updated_at": {"type": "timestamp", "required": true}
       },
       "indexes": [
-        {"name": "idx_sample_custody_events_sample_created", "columns": ["sample_id", "created_at", "id"]},
-        {"name": "idx_sample_custody_events_project_cert", "columns": ["project_id", "intake_cert_number"]}
+        {"name": "idx_sample_custody_events_sample_created", "columns": ["sample_id", "created_at", "id"], "orders": {"created_at": "DESC", "id": "DESC"}},
+        {"name": "idx_sample_custody_events_project_cert", "columns": ["project_id", "intake_cert_number"], "where": "\"intake_cert_number\" IS NOT NULL"}
       ]
     },
     "sample_inventory_revisions": {
@@ -403,7 +403,7 @@
         {"name": "idx_measurement_attempts_session_measured_at", "columns": ["session_id", "measured_at"]},
         {"name": "idx_measurement_attempts_result", "columns": ["measurement_result_id"]},
         {"name": "idx_measurement_attempts_is_latest", "columns": ["project_id", "provider_id", "condition_hash", "is_latest"]},
-        {"name": "idx_measurement_attempts_project_provider_condition_recency", "columns": ["project_id", "provider_id", "condition_hash", "measured_at", "created_at", "id"], "orders": {"measured_at": "DESC NULLS LAST", "created_at": "DESC", "id": "DESC"}, "where": "status = 'completed'", "purpose": "Candidate seek covering index; the exact project/provider/condition identity precedes deterministic recency."},
+        {"name": "idx_measurement_attempts_project_provider_condition_recency", "columns": ["project_id", "provider_id", "condition_hash", "measured_at", "created_at", "id"], "orders": {"measured_at": "DESC NULLS LAST", "created_at": "DESC", "id": "DESC"}, "where": "\"status\" = 'completed'", "purpose": "Candidate seek covering index; the exact project/provider/condition identity precedes deterministic recency."},
         {"name": "idx_measurement_attempts_progress_join", "columns": ["project_id", "provider_id", "condition_hash", "is_latest"]},
         {"name": "idx_measurement_attempts_operator", "columns": ["operator"]}
       ]

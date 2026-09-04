@@ -653,8 +653,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS "ux_samples_project_sample_number" ON "samples
 CREATE INDEX IF NOT EXISTS "idx_sample_intakes_sample" ON "sample_intakes" ("sample_id");
 
 -- Indexes: sample_custody_events
-CREATE INDEX IF NOT EXISTS "idx_sample_custody_events_sample_created" ON "sample_custody_events" ("sample_id", "created_at", "id");
-CREATE INDEX IF NOT EXISTS "idx_sample_custody_events_project_cert" ON "sample_custody_events" ("project_id", "intake_cert_number");
+CREATE INDEX IF NOT EXISTS "idx_sample_custody_events_sample_created" ON "sample_custody_events" ("sample_id", "created_at" DESC, "id" DESC);
+CREATE INDEX IF NOT EXISTS "idx_sample_custody_events_project_cert" ON "sample_custody_events" ("project_id", "intake_cert_number") WHERE "intake_cert_number" IS NOT NULL;
 
 -- Indexes: sample_inventory_revisions
 CREATE UNIQUE INDEX IF NOT EXISTS "ux_sample_inventory_revisions_sample_revision" ON "sample_inventory_revisions" ("sample_id", "revision_number");
@@ -711,7 +711,7 @@ CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_project_provider_condition_
 CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_session_measured_at" ON "measurement_attempts" ("session_id", "measured_at");
 CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_result" ON "measurement_attempts" ("measurement_result_id");
 CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_is_latest" ON "measurement_attempts" ("project_id", "provider_id", "condition_hash", "is_latest");
-CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_project_provider_condition_recency" ON "measurement_attempts" ("project_id", "provider_id", "condition_hash", "measured_at" DESC NULLS LAST, "created_at" DESC, "id" DESC) WHERE status = 'completed';
+CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_project_provider_condition_recency" ON "measurement_attempts" ("project_id", "provider_id", "condition_hash", "measured_at" DESC NULLS LAST, "created_at" DESC, "id" DESC) WHERE "status" = 'completed';
 CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_progress_join" ON "measurement_attempts" ("project_id", "provider_id", "condition_hash", "is_latest");
 CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_operator" ON "measurement_attempts" ("operator");
 
