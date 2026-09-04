@@ -1,6 +1,11 @@
 # ADR-0002: Frontend stack selection
 
-**Status**: Proposed
+**Status**: Accepted — 구현됨
+
+> ⚠️ **상태 갱신 2026-09-05** — 원문은 `Proposed` 였으나 **이 결정은 이미 구현돼 있다.**
+> `package.json` 실측: react 18.3.1 · vite 5.4.10 · typescript 5.6.3 · @tanstack/react-query 5.59.20 · vitest 2.1.4 · @playwright/test 1.48.2.
+> 재구현하지 말 것. 현황은 `docs/architecture/2026-09-04-플랫폼-리팩토링-설계서.md` 참조.
+
 **Date**: 2026-05-23
 **Deciders**: shared web/platform maintainers + user
 **Depends on**: ADR-0001 (frontend repo location)

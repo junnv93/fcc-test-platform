@@ -1,6 +1,22 @@
 # External audit roadmap (Sprint S2-EXT)
 
 **Status**: Recommended (Sprint S2-δ W.1 — 2026-05-24)
+
+> ⚠️ **진행 현황 갱신 2026-09-05** — 이 로드맵의 항목 상당수가 **이미 착지했다.**
+> 재도입하지 말 것.
+>
+> | 항목 | 현황 |
+> |---|---|
+> | 1. axe-core (a11y) | ✅ **완료** — `tests/e2e/a11y.spec.ts`, CI 의 `playwright e2e (incl. axe-core a11y)` |
+> | 2. Semgrep (SAST) | ✅ **완료** — `.semgrep.yml` + `.github/workflows/semgrep.yml` |
+> | 3. Panva OIDC conformance | ⏳ 미확인 |
+> | 4. OWASP ZAP (DAST) | 🔸 부분 — `infra/docker-compose.zap.yml` 존재, CI 게이트 여부 미확인 |
+> | 5. Peer review (human) | ⏳ 미확인 |
+> | Lighthouse CI | ✅ **완료** — `apps/web/lighthouserc.json` |
+>
+> **이 로드맵은 프론트/보안 도구 축이다.** 파이썬 정적 분석(ruff · mypy ·
+> import-linter)은 여기 없으며 별도 축으로
+> [`../2026-09-04-플랫폼-리팩토링-설계서.md`](../2026-09-04-플랫폼-리팩토링-설계서.md) §5 가 다룬다. 둘은 충돌하지 않는다.
 **Sequenced**: After Sprint S2-δ closure, before Sprint S3 (PostgreSQL central DB)
 
 The self-audit chain (S2 → S2-α → S2-β → S2-γ → S2-δ) exhausted the

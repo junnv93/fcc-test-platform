@@ -1,6 +1,11 @@
 # ADR-0004: Distributed tracing frontend SDK
 
-**Status**: Proposed
+**Status**: Accepted — 구현됨
+
+> ⚠️ **상태 갱신 2026-09-05** — 원문은 `Proposed` 였으나 **이 결정은 이미 구현돼 있다.**
+> `@opentelemetry/sdk-trace-web` · `instrumentation-fetch` · `instrumentation-xml-http-request` · `exporter-trace-otlp-http` 실재. 서버 측은 `fcc_test_contracts/common/correlation.py` 가 W3C Trace Context 를 구현하므로 **양단이 이어진다**.
+> 재구현하지 말 것. 현황은 `docs/architecture/2026-09-04-플랫폼-리팩토링-설계서.md` 참조.
+
 **Date**: 2026-05-23
 **Deciders**: shared web/platform maintainers + user
 **Depends on**: ADR-0002 (stack)

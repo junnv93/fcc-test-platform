@@ -1,6 +1,11 @@
 # ADR-0003: OpenAPI → TypeScript client generator
 
-**Status**: Proposed
+**Status**: Accepted — 구현됨
+
+> ⚠️ **상태 갱신 2026-09-05** — 원문은 `Proposed` 였으나 **이 결정은 이미 구현돼 있다.**
+> `openapi-typescript` + `openapi-fetch` 실재. CI 가 `codegen` → `codegen:check` 드리프트 게이트로 강제(`.github/workflows/frontend.yml`).
+> 재구현하지 말 것. 현황은 `docs/architecture/2026-09-04-플랫폼-리팩토링-설계서.md` 참조.
+
 **Date**: 2026-05-23
 **Deciders**: shared web/platform maintainers + user
 **Depends on**: ADR-0002 (stack selection — TanStack Query + Zod)
