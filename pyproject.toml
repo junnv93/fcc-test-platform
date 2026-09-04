@@ -78,6 +78,21 @@ test = [
     "httpx>=0.28.1",
     "jsonschema>=4.0.0",
     "PyJWT[crypto]>=2.8.0",
+    # ⚠️ **선택 의존성이 아니다.** compose 계약 가드(`test_central_docker_compose.py`)
+    # 와 auth-mode pairing 가드(`test_auth_mode_pairing.py`)가 compose 를 **YAML 로**
+    # 읽는다 — compose 가 읽는 것이 YAML 이므로 그것을 읽는 것이 유일하게 옳은 판정이다
+    # (정규식으로 읽던 시절의 실패가 그 파일 docstring 에 실측으로 남아 있다).
+    # 이것이 빠져 있던 동안 CI(`pip install -e '.[test]'`)에서 그 가드 **21건이 조용히
+    # skip** 되고 24건이 ModuleNotFoundError 로 죽었다(실측 2026-09-05). 조용한 쪽이 더
+    # 나빴다 — 계약이 돌지 않는데 초록으로 보고됐다.
+    # 재발은 `tests/test_test_dependency_declaration_axis.py` 가 막는다.
+    "PyYAML>=6.0",
+    # ⚠️ `tests/test_test_dependency_declaration_axis.py` 가 이름 정규화(PEP 503)와
+    # 요구사항 파싱에 쓴다. pytest 가 이미 끌어오므로 **설치는 늘 돼 있지만**, 그
+    # 「우연히 있음」에 기대는 것이 이 축이 막으려는 바로 그 상태다 — 실제로 이 축이
+    # 자기 자신의 미선언을 먼저 잡았다(2026-09-05). 손수 정규화를 다시 짜지 않는 이유는
+    # PEP 503/508 의 SSOT 가 PyPA 의 이 라이브러리이기 때문이다.
+    "packaging>=23.0",
 ]
 
 # ⚠️ selenium(scripts/platform_frontend_browser_qa.py) 과 psycopg2 폴백

@@ -23,6 +23,10 @@ from __future__ import annotations
 import re
 import sys
 import unittest
+
+# ⚠️ 선언된 의존성이다(`pyproject.toml` `[test]`). 부재를 skip 으로 접지
+#    않는다 — 그러면 이 파일의 pairing 가드가 꺼진 채 초록이 된다.
+import yaml
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -69,10 +73,6 @@ def _compose_environment(case: unittest.TestCase, service: str) -> dict:
     made a legitimate refactor fail with a message naming the wrong cause. YAML is
     the thing compose reads; read that.
     """
-    try:
-        import yaml  # type: ignore
-    except ImportError:
-        case.skipTest('PyYAML not installed in this shard')
     document = yaml.safe_load(_require(case, _COMPOSE))
     raw = document['services'][service].get('environment') or {}
     if isinstance(raw, dict):

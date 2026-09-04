@@ -24,6 +24,13 @@ spot):
 """
 from __future__ import annotations
 
+# ⚠️ 모듈 최상단 import 다 — 옛 `try/except → skipTest` 가 아니다.
+#    PyYAML 은 `[test]` 에 **선언된** 의존성이므로 그 부재는 「이 환경에서는
+#    검사하지 않는다」가 아니라 **환경 결함**이다. skip 으로 접으면 compose
+#    계약이 돌지 않는데 초록으로 보고된다(실측 2026-09-05: 21건이 그렇게
+#    꺼져 있었다).
+import yaml
+
 import ast
 import json
 import re
@@ -346,10 +353,6 @@ class TestCentralComposeContract(unittest.TestCase):
     }
 
     def _compose(self) -> dict:
-        try:
-            import yaml  # type: ignore
-        except Exception:  # pragma: no cover
-            self.skipTest('PyYAML unavailable for compose parsing')
         return yaml.safe_load(COMPOSE_PATH.read_text(encoding='utf-8'))
 
     def test_compose_file_exists(self):
@@ -592,7 +595,6 @@ def _central_web_origin() -> str:
 
 
 def _load_compose() -> dict:
-    import yaml  # type: ignore
     return yaml.safe_load(COMPOSE_PATH.read_text(encoding='utf-8'))
 
 
@@ -1391,10 +1393,6 @@ class TestDeploymentRevisionLabelWiring(unittest.TestCase, _DriftGateMixin):
     """
 
     def _compose(self) -> dict:
-        try:
-            import yaml  # type: ignore
-        except Exception:  # pragma: no cover
-            self.skipTest('PyYAML unavailable for compose parsing')
         return yaml.safe_load(COMPOSE_PATH.read_text(encoding='utf-8'))
 
     def _building_services(self) -> dict:
@@ -1853,10 +1851,6 @@ class TestDeploymentDriftGateVerdicts(unittest.TestCase, _DriftGateMixin):
 
     def test_build_targets_derive_from_the_real_compose_file(self):
         """게이트가 검사할 대상 집합이 실제 compose 에서 나온다(손 목록 0)."""
-        try:
-            import yaml  # type: ignore
-        except Exception:  # pragma: no cover
-            self.skipTest('PyYAML unavailable for compose parsing')
         m = self._gate_module()
         doc = yaml.safe_load(COMPOSE_PATH.read_text(encoding='utf-8'))
         targets = m.build_targets(doc)
