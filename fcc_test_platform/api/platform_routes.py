@@ -2006,6 +2006,35 @@ class PlatformApiAdapter:
             project_id, sample_id, after=after, limit=limit,
         )
 
+    def list_sample_intakes(self, project_id: str, sample_id: str) -> dict:
+        self.authorize('list_sample_intakes', project_id=project_id)
+        return self._require_sample_inventory_service('list_sample_intakes').list_intakes(
+            project_id, sample_id,
+        )
+
+    def list_sample_custody_events(self, project_id: str, sample_id: str) -> dict:
+        self.authorize('list_sample_custody_events', project_id=project_id)
+        return self._require_sample_inventory_service(
+            'list_sample_custody_events').list_custody_events(project_id, sample_id)
+
+    def append_sample_custody_event(self, project_id: str, sample_id: str,
+                                    body: Optional[dict] = None) -> dict:
+        self.authorize('append_sample_custody_event', project_id=project_id)
+        return self._require_sample_inventory_service(
+            'append_sample_custody_event').append_custody_event(
+            project_id, sample_id, body or {},
+            actor_subject=self._require_authenticated_actor(),
+        )
+
+    def delete_sample_custody_event(self, project_id: str, sample_id: str,
+                                    event_id: str) -> dict:
+        self.authorize('delete_sample_custody_event', project_id=project_id)
+        return self._require_sample_inventory_service(
+            'delete_sample_custody_event').delete_custody_event(
+            project_id, sample_id, event_id,
+            actor_subject=self._require_authenticated_actor(),
+        )
+
     def export_sample_inventory(
         self, project_id: str, template: str, *, team: Optional[str] = None,
         status: Optional[str] = None, as_of: Optional[str] = None,
@@ -3045,6 +3074,25 @@ def create_platform_router(
             project_id, sample_id, after=after or None, limit=limit,
         )
 
+    def list_sample_intakes(project_id: str, sample_id: str, request: Request):
+        return request_adapter(request).list_sample_intakes(project_id, sample_id)
+
+    def list_sample_custody_events(project_id: str, sample_id: str, request: Request):
+        return request_adapter(request).list_sample_custody_events(project_id, sample_id)
+
+    def append_sample_custody_event(project_id: str, sample_id: str, request: Request,
+                                    body: Optional[dict] = None):
+        request, body = _normalize_request_body_args(request, body)
+        return request_adapter(request).append_sample_custody_event(
+            project_id, sample_id, body,
+        )
+
+    def delete_sample_custody_event(project_id: str, sample_id: str, event_id: str,
+                                    request: Request):
+        return request_adapter(request).delete_sample_custody_event(
+            project_id, sample_id, event_id,
+        )
+
     def export_sample_inventory(
         project_id: str, template: str, request: Request,
         response: Response, team: str = '', status: str = '', as_of: str = '',
@@ -3109,6 +3157,10 @@ def create_platform_router(
         'delete_sample': delete_sample,
         'hard_delete_sample': hard_delete_sample,
         'list_sample_history': list_sample_history,
+        'list_sample_intakes': list_sample_intakes,
+        'list_sample_custody_events': list_sample_custody_events,
+        'append_sample_custody_event': append_sample_custody_event,
+        'delete_sample_custody_event': delete_sample_custody_event,
         'export_sample_inventory': export_sample_inventory,
         'list_reports': list_reports,
         'create_report': create_report,

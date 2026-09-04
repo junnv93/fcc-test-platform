@@ -3734,6 +3734,7 @@ pre {
 }
 
 .sample-editor__grid,
+.sample-custody__grid,
 .sample-inventory-filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -3741,9 +3742,95 @@ pre {
 }
 
 .sample-editor input,
+.sample-editor select,
+.sample-editor textarea,
+.sample-custody input,
+.sample-custody select,
 .sample-inventory-filters input,
 .sample-inventory-filters select {
   width: 100%;
+}
+
+/* ── 시료 등록 버튼 · custody · 입고 이력 (ADR-0002) ───────────────────────── */
+
+/* 등록 폼이 사이드에 늘 펼쳐져 있던 것을 목록 옆 버튼이 여는 형태로 바꿨다. */
+.sample-inventory-list__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.sample-inventory-list__header .section-band {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sample-editor__legacy-hint,
+.sample-custody__description,
+.sample-intake-history__description {
+  margin: 0 0 var(--space-3);
+  color: var(--fg-muted);
+}
+
+.sample-custody__list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sample-custody__item {
+  display: grid;
+  grid-template-columns:
+    auto minmax(90px, auto) minmax(80px, 1fr) minmax(120px, 1fr)
+    minmax(120px, 2fr) minmax(100px, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+}
+
+/* 반입과 반출을 색이 아니라 굵기·테두리로도 가른다 — 색만으로 구분하면
+   색각 이상에게는 두 줄이 같은 줄로 보인다. */
+.sample-custody__type {
+  padding: 0 var(--space-2);
+  border: 1px solid currentcolor;
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.sample-custody__type[data-event-type='released'] {
+  border-style: dashed;
+  color: var(--status-stale-fg);
+}
+
+.sample-custody__actor {
+  color: var(--fg-muted);
+  font-size: 0.875em;
+}
+
+/* 넓은 표는 페이지가 아니라 표 자신이 가로로 스크롤한다. */
+.sample-intake-history__scroll {
+  overflow-x: auto;
+}
+
+.sample-intake-history__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sample-intake-history__table th,
+.sample-intake-history__table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--surface-border);
+  text-align: left;
+  white-space: nowrap;
 }
 
 .sample-inventory-filters {
@@ -3779,7 +3866,8 @@ pre {
 
 .sample-inventory-list__item {
   display: grid;
-  grid-template-columns: minmax(100px, 1fr) minmax(80px, 1fr) auto auto;
+  /* 시료번호 · 팀 · 상태 · 보유 상태 · 버전 (보유 상태는 ADR-0002 에서 늘었다). */
+  grid-template-columns: minmax(100px, 1fr) minmax(80px, 1fr) auto auto auto;
   gap: var(--space-3);
   width: 100%;
   padding: var(--space-3);

@@ -12,28 +12,39 @@ from typing import Callable, Optional
 from fcc_test_platform.domain.ports.output.central_sample_inventory_read_port import (
     CentralSampleInventoryReadError,
 )
+from fcc_test_kernel.domain.models.sample_inventory import custody_state
 from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 SAMPLE_COLUMNS: tuple[str, ...] = (
-    'sample_id', 'project_id', 'model_id', 'sample_number', 'sample_code', 'test_category',
+    'sample_id', 'project_id', 'model_id', 'sample_number', 'sample_code',
+    'sample_kind', 'sample_description', 'test_category',
     'label_number', 'smsn', 'serial_number', 'intake_cert', 'assigned_team',
     'sender', 'receiver', 'received_date', 'released_date', 'note', 'status',
     'row_version', 'deleted_at', 'deleted_by', 'created_at', 'updated_at',
     'latest_intake_id', 'intake_date', 'bl', 'ap', 'cp', 'csc', 'rf_cal',
     'hw_rev', 'intake_note', 'tech_group', 'intake_count',
+    'latest_custody_event_type', 'latest_custody_occurred_on', 'custody_event_count',
 )
 
 CURRENT_SAMPLE_SQL = (
     'SELECT s."id" AS "sample_id", s."project_id", s."model_id", s."sample_number", '
-    's."sample_code", s."test_category", s."label_number", s."smsn", '
+    's."sample_code", s."sample_kind", s."sample_description", '
+    's."test_category", s."label_number", s."smsn", '
     's."serial_number", s."intake_cert", s."assigned_team", s."sender", '
     's."receiver", s."received_date", s."released_date", s."note", '
     's."status", s."row_version", s."deleted_at", s."deleted_by", '
     's."created_at", s."updated_at", i."id" AS "latest_intake_id", '
     'i."intake_date", i."bl", i."ap", i."cp", i."csc", i."rf_cal", '
     'i."hw_rev", i."note" AS "intake_note", i."tech_group", '
-    'COALESCE(c."intake_count", 0) AS "intake_count" '
+    'COALESCE(c."intake_count", 0) AS "intake_count", '
+    # PM 축 요약: 가장 최근 custody 사건과 총 건수. 목록에서 '지금 보유 중인가'를
+    # 보이려면 이 두 값이면 충분하다 — 사건 전체는 상세에서 따로 읽는다.
+    # ⚠️ SQL 은 '가장 최근 사건'을 고르기만 한다. 그 event_type 이 보유 상태로
+    # 번역되는 규칙은 커널의 custody_state() 한 자리에만 산다.
+    'ce."event_type" AS "latest_custody_event_type", '
+    'ce."occurred_on" AS "latest_custody_occurred_on", '
+    'COALESCE(cc."custody_event_count", 0) AS "custody_event_count" '
     'FROM "samples" s '
     'LEFT JOIN (SELECT ranked.* FROM (SELECT i.*, ROW_NUMBER() OVER '
     '(PARTITION BY i."sample_id" ORDER BY i."created_at" DESC, i."id" DESC) AS "rn" '
@@ -42,6 +53,26 @@ CURRENT_SAMPLE_SQL = (
     'LEFT JOIN (SELECT "sample_id", COUNT(*) AS "intake_count" '
     'FROM "sample_intakes" GROUP BY "sample_id") c '
     'ON c."sample_id" = s."id" '
+    'LEFT JOIN (SELECT ranked.* FROM (SELECT ce.*, ROW_NUMBER() OVER '
+    '(PARTITION BY ce."sample_id" ORDER BY ce."created_at" DESC, ce."id" DESC) AS "rn" '
+    'FROM "sample_custody_events" ce) ranked WHERE ranked."rn" = 1) ce '
+    'ON ce."sample_id" = s."id" '
+    'LEFT JOIN (SELECT "sample_id", COUNT(*) AS "custody_event_count" '
+    'FROM "sample_custody_events" GROUP BY "sample_id") cc '
+    'ON cc."sample_id" = s."id" '
+)
+
+CUSTODY_HISTORY_SQL = (
+    'SELECT e."id" AS "custody_event_id", e."sample_id", e."project_id", '
+    'e."event_type", e."occurred_on", e."counterparty", e."intake_cert_number", '
+    'e."reason", e."note", e."actor_subject", e."created_at", e."updated_at" '
+    'FROM "sample_custody_events" e '
+    'WHERE e."project_id" = %s AND e."sample_id" = ANY(%s) '
+)
+CUSTODY_COLUMNS = (
+    'custody_event_id', 'sample_id', 'project_id', 'event_type', 'occurred_on',
+    'counterparty', 'intake_cert_number', 'reason', 'note', 'actor_subject',
+    'created_at', 'updated_at',
 )
 
 HISTORY_SAMPLE_SQL = (
@@ -213,6 +244,25 @@ class PostgresCentralSampleInventoryReadAdapter:
             params.append(as_of)
         statement += ' ORDER BY i."sample_id" ASC, i."created_at" ASC, i."id" ASC'
         return self._query(statement, tuple(params), columns=INTAKE_COLUMNS)
+
+    def list_custody_events(self, project_id: str, sample_ids: list[str], *,
+                            as_of: Optional[str] = None) -> list[dict]:
+        """Read 반입/반출 사건 for the given samples, oldest first.
+
+        `list_intakes` 와 같은 형태다 — PostgreSQL 의 배열 ``ANY`` 대신 스칼라
+        placeholder 로 펴서, 운영 드라이버와 테스트의 SQLite shim 이 같은 술어를
+        지나가게 한다.
+        """
+        if not sample_ids:
+            return []
+        placeholders = ', '.join('%s' for _ in sample_ids)
+        statement = CUSTODY_HISTORY_SQL.replace('= ANY(%s)', f'IN ({placeholders})')
+        params: list = [project_id, *sample_ids]
+        if as_of:
+            statement += ' AND e."created_at" <= %s'
+            params.append(as_of)
+        statement += ' ORDER BY e."sample_id" ASC, e."created_at" ASC, e."id" ASC'
+        return self._query(statement, tuple(params), columns=CUSTODY_COLUMNS)
 
     def get_project(self, project_id: str) -> Optional[dict]:
         rows = self._query(PROJECT_SQL, (project_id,), columns=PROJECT_COLUMNS)
@@ -418,6 +468,15 @@ def _sample_envelope(row: dict) -> dict:
         }
     result = dict(row)
     result['latest_intake'] = latest
+    # 원시 컬럼은 내보내지 않는다 — 클라이언트가 event_type 을 직접 해석하기
+    # 시작하면 보유 상태 규칙이 두 곳에 살게 된다.
+    result['custody_state'] = custody_state(
+        {'event_type': row['latest_custody_event_type']}
+        if row.get('latest_custody_event_type') is not None else None
+    )
+    result['latest_custody_occurred_on'] = row.get('latest_custody_occurred_on')
+    result['custody_event_count'] = int(row.get('custody_event_count') or 0)
+    result.pop('latest_custody_event_type', None)
     result.pop('latest_intake_id', None)
     result.pop('intake_date', None)
     result.pop('bl', None); result.pop('ap', None); result.pop('cp', None)
@@ -438,6 +497,7 @@ def _revision_envelope(row: dict) -> dict:
 __all__ = [
     'AS_OF_SAMPLE_SQL',
     'CURRENT_SAMPLE_SQL',
+    'CUSTODY_HISTORY_SQL',
     'HISTORY_SAMPLE_SQL',
     'PROJECT_SQL',
     'PUBLISHED_PLAN_PROJECT_SQL',

@@ -92,6 +92,8 @@
         "sample_code": {"type": "text", "required": true},
         "serial_number": {"type": "text", "required": false},
         "sample_number": {"type": "text", "required": false},
+        "sample_kind": {"type": "text", "required": false},
+        "sample_description": {"type": "text", "required": false},
         "test_category": {"type": "text", "required": false},
         "label_number": {"type": "text", "required": false},
         "smsn": {"type": "text", "required": false},
@@ -135,6 +137,27 @@
       },
       "indexes": [
         {"name": "idx_sample_intakes_sample", "columns": ["sample_id"]}
+      ]
+    },
+    "sample_custody_events": {
+      "purpose": "PM 축의 반입/반출 사건 (1:N to samples, ADR-0002). 시험 실무자 축인 sample_intakes 와 대칭이다. intake_cert_number 는 시료가 아니라 이 사건의 속성이다 — 반입증은 고객사가 한 번의 납품에 한 장 발행하고 그 납품에 실린 시료 여럿(12대 단위)이 같은 번호를 공유하므로, 배치는 (project_id, intake_cert_number) 로 묶어 복원한다. occurred_on 이 text 인 것은 의도다: 이 도메인의 날짜는 전부 사람이 적는 자유 텍스트다. 현재 보유 상태는 가장 최근 사건의 event_type 이며 그 규칙은 커널의 custody_state() 한 자리에만 산다.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "sample_id": {"type": "uuid", "required": true, "references": "samples.id"},
+        "project_id": {"type": "uuid", "required": true, "references": "projects.id"},
+        "event_type": {"type": "text", "required": true, "allowed_values": ["received", "released"]},
+        "occurred_on": {"type": "text", "required": false},
+        "counterparty": {"type": "text", "required": false},
+        "intake_cert_number": {"type": "text", "required": false},
+        "reason": {"type": "text", "required": false},
+        "note": {"type": "text", "required": false},
+        "actor_subject": {"type": "text", "required": true},
+        "created_at": {"type": "timestamp", "required": true},
+        "updated_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "idx_sample_custody_events_sample_created", "columns": ["sample_id", "created_at", "id"]},
+        {"name": "idx_sample_custody_events_project_cert", "columns": ["project_id", "intake_cert_number"]}
       ]
     },
     "sample_inventory_revisions": {

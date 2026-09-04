@@ -578,6 +578,22 @@ _OPERATION_SUMMARIES: dict[str, str] = {
         'measurement sessions and their snapshots remain preserved.'
     ),
     'list_sample_history': 'Read append-only full sample revisions with keyset pagination.',
+    'list_sample_intakes': (
+        'Read the complete 1:N intake history (시험원 입고 칸) for one sample, oldest '
+        'first; a sample re-entering after release adds another observation.'
+    ),
+    'list_sample_custody_events': (
+        'Read the complete 반입/반출 history (PM 칸) for one sample. The most recent '
+        'event is what determines whether the lab currently holds the sample.'
+    ),
+    'append_sample_custody_event': (
+        'Append one 반입 or 반출 event. 반입증 belongs to the event, not the sample: '
+        'one customer delivery document covers every sample in that shipment.'
+    ),
+    'delete_sample_custody_event': (
+        'Remove one wrongly recorded custody event. Correction is delete-and-re-enter '
+        'rather than edit, so a rewritten past is visible instead of silent.'
+    ),
     'export_sample_inventory': (
         'Export the same filtered inventory revision set as one of the two sanitized '
         'PM-status or RF-data XLSX template shapes.'

@@ -3648,6 +3648,18 @@
               "null"
             ]
           },
+          "sample_description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sample_kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "sample_number": {
             "type": [
               "string",
@@ -3681,6 +3693,162 @@
         },
         "required": [
           "sample_number"
+        ],
+        "type": "object"
+      },
+      "SampleCustodyEventDeleteReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "custody_event_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "deleted": {
+            "const": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "custody_event_id",
+          "deleted"
+        ],
+        "type": "object"
+      },
+      "SampleCustodyEventEnvelope": {
+        "additionalProperties": false,
+        "properties": {
+          "actor_subject": {
+            "type": "string"
+          },
+          "counterparty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "custody_event_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "event_type": {
+            "enum": [
+              "received",
+              "released"
+            ],
+            "type": "string"
+          },
+          "intake_cert_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurred_on": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "project_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sample_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "custody_event_id",
+          "sample_id",
+          "project_id",
+          "event_type",
+          "actor_subject"
+        ],
+        "type": "object"
+      },
+      "SampleCustodyEventList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SampleCustodyEventEnvelope"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "SampleCustodyEventRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "counterparty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "event_type": {
+            "enum": [
+              "received",
+              "released"
+            ],
+            "type": "string"
+          },
+          "intake_cert_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurred_on": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "event_type"
         ],
         "type": "object"
       },
@@ -3869,6 +4037,110 @@
         ],
         "type": "object"
       },
+      "SampleIntakeHistoryEnvelope": {
+        "additionalProperties": false,
+        "properties": {
+          "ap": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "csc": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hw_rev": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "intake_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "intake_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "project_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "rf_cal": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sample_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "tech_group": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "intake_id",
+          "sample_id",
+          "project_id"
+        ],
+        "type": "object"
+      },
+      "SampleIntakeHistoryList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SampleIntakeHistoryEnvelope"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
       "SampleInventoryExport": {
         "description": "An XLSX workbook in the requested PM or RF template shape.",
         "format": "binary",
@@ -3884,6 +4156,21 @@
             ]
           },
           "created_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "custody_event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "custody_state": {
+            "enum": [
+              "in_custody",
+              "released",
+              null
+            ],
             "type": [
               "string",
               "null"
@@ -3912,6 +4199,12 @@
             "type": "integer"
           },
           "label_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "latest_custody_occurred_on": {
             "type": [
               "string",
               "null"
@@ -4034,9 +4327,21 @@
               "null"
             ]
           },
+          "sample_description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "sample_id": {
             "format": "uuid",
             "type": "string"
+          },
+          "sample_kind": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "sample_number": {
             "type": [
@@ -4235,6 +4540,18 @@
             ]
           },
           "sample_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sample_description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sample_kind": {
             "type": [
               "string",
               "null"
@@ -10089,6 +10406,276 @@
         "x-fcc-permission": "platform:sample-write"
       }
     },
+    "/platform/projects/{project_id}/samples/{sample_id}/custody-events": {
+      "get": {
+        "operationId": "list_sample_custody_events",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sample_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleCustodyEventList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid project_id (not a valid uuid) or malformed cursor."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Sample not found in this project."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Central backend unavailable (CentralReadError / ClaimWriteError)."
+          }
+        },
+        "summary": "Read the complete 반입/반출 history (PM 칸) for one sample. The most recent event is what determines whether the lab currently holds the sample.",
+        "tags": [
+          "platform"
+        ],
+        "x-fcc-permission": "platform:read"
+      },
+      "post": {
+        "operationId": "append_sample_custody_event",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sample_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SampleCustodyEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleCustodyEventEnvelope"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The custody event is invalid (event_type is required)."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Sample not found in this project."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Central backend unavailable (CentralReadError / ClaimWriteError)."
+          }
+        },
+        "summary": "Append one 반입 or 반출 event. 반입증 belongs to the event, not the sample: one customer delivery document covers every sample in that shipment.",
+        "tags": [
+          "platform"
+        ],
+        "x-fcc-permission": "platform:sample-write"
+      }
+    },
+    "/platform/projects/{project_id}/samples/{sample_id}/custody-events/{event_id}": {
+      "delete": {
+        "operationId": "delete_sample_custody_event",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sample_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleCustodyEventDeleteReceipt"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid project_id (not a valid uuid) or malformed cursor."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Custody event not found for this sample."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Central backend unavailable (CentralReadError / ClaimWriteError)."
+          }
+        },
+        "summary": "Remove one wrongly recorded custody event. Correction is delete-and-re-enter rather than edit, so a rewritten past is visible instead of silent.",
+        "tags": [
+          "platform"
+        ],
+        "x-fcc-permission": "platform:sample-write"
+      }
+    },
     "/platform/projects/{project_id}/samples/{sample_id}/history": {
       "get": {
         "operationId": "list_sample_history",
@@ -10185,6 +10772,90 @@
           }
         },
         "summary": "Read append-only full sample revisions with keyset pagination.",
+        "tags": [
+          "platform"
+        ],
+        "x-fcc-permission": "platform:read"
+      }
+    },
+    "/platform/projects/{project_id}/samples/{sample_id}/intakes": {
+      "get": {
+        "operationId": "list_sample_intakes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sample_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleIntakeHistoryList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid project_id (not a valid uuid) or malformed cursor."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Sample not found in this project."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Central backend unavailable (CentralReadError / ClaimWriteError)."
+          }
+        },
+        "summary": "Read the complete 1:N intake history (시험원 입고 칸) for one sample, oldest first; a sample re-entering after release adds another observation.",
         "tags": [
           "platform"
         ],
