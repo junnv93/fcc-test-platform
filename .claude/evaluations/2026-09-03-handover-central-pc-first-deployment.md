@@ -220,3 +220,45 @@ platform 작업트리의 `config/headless_provider_registry.json` 에 `kc-unlice
 ⚠️ **이 배송 트리에는 pytest 도 `fcc_test_contracts` 도 없다.** 검증은 스크래치패드에
 세운 venv 셋으로 했고(트리/휠/부재 × 깨짐/깨끗 = 5조합 전부 의도대로), **전체 스위트는
 돌리지 못했다** — 기준선을 건드리지 않았는지는 확인되지 않았다.
+
+---
+
+## ✅ 정정 §2 의 미확인이 닫혔다 (2026-09-04, 운영자 실측 · `fcc-delivery-final-29` 경유)
+
+정정 §2 가 *「중앙 이미지도 02:02 산이면 중앙 역시 이관 전 코드다」* 를 미확인으로 남겼다.
+**답: 중앙은 이관 후 코드다.** 개발 PC 와 다르다.
+
+```
+                    개발 PC                     중앙 PC (10.206.34.233)
+Created             2026-09-03T02:02:24Z        2026-09-03T07:17:52Z
+fcc-test-kernel     0.1.0                       0.3.0
+import fcc_test_kernel.domain.models.enums
+                    ModuleNotFoundError         POST-MIGRATION OK
+fcc-test-platform   0.1.8                       0.1.8      ← 같다
+```
+
+⚠️ **`pip list` 만 봤으면 오판했다.** 두 기계 모두 `fcc-test-platform 0.1.8` 이다 —
+정정 §2 가 *「0.1.8 은 이관 전/후를 구별하지 못한다」* 고 적은 그대로이고, 갈라 준 것은
+`import fcc_test_kernel.domain.models.enums` 한 줄이다. **같은 이름, 다른 개체**였다.
+
+### 그리고 `:8080` 이 열렸다
+
+```
+fcc-central-headless-api  Up (healthy)   ← 이관한 이미지 (revision 9f85c7a5…, 라벨 대조 통과)
+fcc-central-web           Up
+curl -i :8080/health → 200, Server: nginx/1.27.5
+platform-api 는 건드리지 않았다 (uptime 유지)
+```
+
+### ⚠️ 남은 차단 요인은 인계문에 없던 것이다 — D 는 「행 하나 INSERT」가 아니다
+
+`POST /platform/chambers` 는 `platform:admin` 을 요구하는데 그것은 realm 의 `admins`
+그룹(사용자 `admin`)만 갖는다. 서비스 계정 client 중 보유자가 없고
+`fcc-platform-frontend` 는 `directAccessGrantsEnabled=false` 라 비밀번호 그랜트도 막힌다.
+그래서 브라우저 로그인이 필요한데 **평문 HTTP 에서는 원리적으로 불가능하다** — PKCE 의
+`crypto.subtle` 이 보안 컨텍스트에서만 제공되고 SPA 가 그 조합을 부팅에서 거부한다.
+
+정공은 `FCC_PLATFORM_AUTH_MODE=local_jwt` + `WEB_AUTH_MODE=local` 이고, ⚠️ **두 값이
+아니라 12개**다 — `FCC_HEADLESS_LOCAL_JWT_*` 를 platform 과 동일 값으로 맞추지 않으면
+로그인은 되는데 headless 가 전부 401 이다. `scripts/check_auth_mode_pairing.py` 가
+재기동 전에 판정한다.
