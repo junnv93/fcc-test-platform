@@ -1218,7 +1218,7 @@
       "readNetwork": "중앙 서버에 연결할 수 없습니다.",
       "readFailed": "챔버 가용성을 불러오지 못했습니다.",
       "emptyTitle": "등록된 시험 챔버가 없습니다.",
-      "emptyDescription": "관리자가 시험 챔버(독립 측정 PC)를 등록하면 여기에 표시됩니다. 등록은 [설정]에서 관리자가 합니다.",
+      "emptyDescription": "관리자가 시험 챔버(독립 측정 PC)를 등록하면 여기에 표시됩니다. 등록은 이 화면 아래 [첫 챔버 등록]에서 합니다.",
       "tableCaption": "시험 챔버 가용성 목록",
       "colName": "챔버",
       "colStatus": "상태",

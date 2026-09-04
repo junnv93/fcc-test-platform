@@ -78,6 +78,35 @@ docker compose -f infra/docker-compose.central.yml \
   --env-file infra/central/central.env up -d
 ```
 
+### ⚠️ `up -d` 는 이미지가 있으면 **재빌드하지 않는다**
+
+`web` 서비스는 compose 에서 `build:` 와 `image:` 를 **둘 다** 갖는다. 그래서 태그가
+이미 존재하면 `up -d` 는 소스가 아무리 앞서 있어도 **옛 이미지를 그대로 띄운다.**
+
+실측 2026-09-04(중앙 PC): `fcc-central-web:latest` 가 **2026-08-24T15:26 산**이었다 —
+11일 낡았다. 그 빌드는 챔버 등록 폼을 「설정」 화면에 두는데 현재 `main` 은 챔버 페이지에
+인라인으로 둔다. 운영자가 폼을 찾지 못했고, **현재 소스만 본 세션은 「스크롤을 내리세요」
+라고 잘못 안내했다.** 화면과 소스가 갈렸는데 둘 다 자기 안에서는 정합이었다.
+
+**그래서 기동 전에 이미지 날짜를 먼저 본다:**
+
+```bash
+docker images --format '{{.Repository}}:{{.Tag}}\t{{.CreatedAt}}' | grep fcc-central
+docker inspect fcc-central-web --format '{{index .Config.Labels "org.opencontainers.image.revision"}}'
+```
+
+소스보다 낡았으면 `up -d` 가 아니라 **재빌드**다:
+
+```bash
+docker compose -f infra/docker-compose.central.yml \
+  --env-file infra/central/central.env build --build-arg GIT_REVISION=$(git rev-parse HEAD) web
+```
+
+⚠️ 이것은 인계문 「절대 하지 말 것」의 *「`--build` 생략 → 같은 `:latest` 태그의 캐시가
+조용히 재사용된다」* 와 **같은 축이고, 증상이 UI 에 나타나는 판**이다. 컨테이너는 healthy
+이고 로그도 깨끗한데 **화면만 과거**다.
+
+
 다시 상태를 확인한다.
 
 ```bash
