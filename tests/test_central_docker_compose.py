@@ -335,8 +335,14 @@ class TestCentralComposeContract(unittest.TestCase):
     """The compose + env file stay consistent with the env-name SSOT and carry
     no hardcoded ports."""
 
+    # ⚠️ `platform-api-node` 는 장치 서비스가 아니라 **같은 이미지의 두 번째 인스턴스**다
+    # (2026-09-04, 평문 HTTP 잠정 형상). 인증 모드가 프로세스당 하나라서 브라우저용
+    # `local_jwt` 와 노드용 `oidc_jwt` 를 한 프로세스에 담을 수 없다. 인증서가
+    # 발급되면 이 항목과 그 서비스를 함께 지운다 — 「챔버 노드는 네이티브로 남는다」는
+    # 원칙은 그대로다.
     EXPECTED_SERVICES = {
-        'postgres', 'keycloak', 'central-migrate', 'headless-api', 'platform-api', 'web',
+        'postgres', 'keycloak', 'central-migrate', 'headless-api', 'platform-api',
+        'platform-api-node', 'web',
     }
 
     def _compose(self) -> dict:
@@ -1163,7 +1169,9 @@ class TestTheTrustedHopIsOneDeclaredAddress(unittest.TestCase):
 
     def test_the_service_census_is_derived_and_not_a_hand_list(self):
         """비-공허성 — 파생이 실제로 알려진 두 표면을 집는다."""
-        self.assertEqual(['headless-api', 'platform-api'], self._api_services())
+        self.assertEqual(
+            ['headless-api', 'platform-api', 'platform-api-node'], self._api_services(),
+        )
 
     def _proxy_expression(self) -> str:
         networks = self._compose()['services']['web']['networks']
