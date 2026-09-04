@@ -262,3 +262,84 @@ platform-api 는 건드리지 않았다 (uptime 유지)
 아니라 12개**다 — `FCC_HEADLESS_LOCAL_JWT_*` 를 platform 과 동일 값으로 맞추지 않으면
 로그인은 되는데 headless 가 전부 401 이다. `scripts/check_auth_mode_pairing.py` 가
 재기동 전에 판정한다.
+
+---
+
+# ✅ 완료 — 두 축이 동시에 초록 (2026-09-04 06:15 UTC, 운영자 실측)
+
+인계문의 완료 조건이 충족됐다. **오늘 처음으로 브라우저 화면과 노드 heartbeat 가
+동시에 성립한다.**
+
+```
+노드 축     fcc-central-platform-api-node   POST /platform/chambers/heartbeat → 200 OK ×4
+            fcc-central-platform-api        heartbeat 0건        ⭐ 경로 분기 성공
+            chamber_heartbeat_events        30초 주기, 재기동 후 새 행
+브라우저 축  http://10.206.34.233:8080       로그인 성공 · 챔버 목록에 chamber-01 표시
+컨테이너     web · platform-api · platform-api-node · headless-api   전부 (healthy)
+```
+
+⚠️ **두 로그의 대비가 증명이다.** heartbeat 가 노드 인스턴스에만 찍히고 브라우저
+인스턴스에는 **한 줄도 없다** — `location = /platform/chambers/heartbeat` 가 접두사
+`/platform/` 보다 먼저 매치됐다는 **관측**이지 추론이 아니다. 그리고 브라우저에서 챔버
+목록이 보이는 것은 두 인스턴스가 **한 DB 상태를 공유**한다는 확인이기도 하다.
+
+## ⚠️ 이것이 「정상」이다 — `oidc_jwt` 로 「고치려」 들지 마라
+
+```
+central.env   FCC_PLATFORM_AUTH_MODE=local_jwt · FCC_HEADLESS_AUTH_MODE=local_jwt
+              WEB_AUTH_MODE=local · ALLOW_INSECURE_TRANSPORT=true
+              + LOCAL_JWT SECRET/ISSUER/AUDIENCE/TTL   (platform·headless 동일값)
+              + BOOTSTRAP_ADMIN  — platform-api 에만. 노드 인스턴스는 빈 값이어야 한다
+```
+
+⚠️ **노드 인스턴스에 `FCC_PLATFORM_BOOTSTRAP_ADMIN_*` 를 주지 마라.** 그 부트스트랩은
+합성에서 **무조건** 호출되고 인증 모드에 걸리지 않는다(`api_composition.py:798`). 「로컬
+사용자가 없을 때만」이라 멱등이지만, 빈 users 테이블에서 **두 인스턴스가 동시에 뜨면 둘 다
+「없다」를 보고 둘 다 넣는다.** 환경변수를 안 주면 즉시 반환한다(`:934`) — 경합이
+**구조적으로** 사라진다.
+
+## ⚠️ 평문 HTTP 에서 두 축은 원래 **동시에 성립하지 않는다**
+
+```
+oidc_jwt    노드 heartbeat 200 ✅   SPA 부팅 거부 ⛔
+local_jwt   SPA 로그인 동작 ✅      노드 heartbeat 401 ⛔
+```
+
+PKCE 의 `crypto.subtle` 이 보안 컨텍스트 전용이라 평문 HTTP + OIDC 로그인은 원리적으로
+불가능하고, `local_jwt` 로 우회하면 platform-api 가 자기 HS 키로만 검증해 노드의 Keycloak
+RS256 토큰이 401 이다.
+
+⚠️ **브라우저 정책 우회(`OverrideSecurityRestrictionsOnInsecureOrigin`)로는 못 푼다** —
+`crypto.subtle` 은 살아나지만 `runtime.ts` 의 D-6 규칙이 `oidc + insecureTransportAllowed`
+조합 자체를 **부팅에서 거부**한다. 다음 사람이 이것을 먼저 시도하고 `crypto.subtle` 이
+사는 것을 보고 「됐다」로 읽은 뒤 SPA 부팅 거부에서 막힌다.
+
+그래서 배포 계층에서 끝냈다 — `platform-api` 를 인증 모드별로 **둘로 나누고** nginx 가
+노드 경로를 선점한다(PR #57). **앱 코드 변경 0.**
+
+## 🔴 되돌리는 것이 정상 형상이다 — 이 이중 인스턴스는 **임시**다
+
+운영자 판단: *「당분간 HTTP 로 운영해야 한다. 실제로 운영하고 검증받고 인정을 받아야
+사내에서 인증서 발급이 가능하다.」* 즉 **HTTPS 는 결과이지 전제가 아니다.**
+
+⚠️ 그러므로 인증서가 발급되면 **되돌린다**:
+
+```
+지운다   platform-api-node 서비스 · nginx 의 노드 경로 블록 ·
+         EXPECTED_SERVICES/census 등재
+남긴다   단일 platform-api (oidc_jwt)
+```
+
+**이 문장이 없으면 다음 사람이 이중 인스턴스를 영구 구조로 읽고 늘린다.** 그것은 인증
+모드가 둘인 배포를 영구화하는 것이고, 두 인스턴스가 갈라지는 날 그것을 말해 주는 축이 없다.
+
+## 관측 불가로 남은 것 — 어느 쪽 증거로도 쓰지 않는다
+
+**챔버 등록 폼(빈 상태 화면)은 지금 검증할 수 없다.** web 을 재빌드했고 브라우저도
+정상이지만, 챔버 목록이 더 이상 비어 있지 않다 — `ChamberAdminPanel` 의 부트스트랩 폼은
+**목록이 비었을 때만** 뜨는 갈래다. PR #56 이 고친 빈 상태 문구는 지금 **도달할 수 없는
+화면**이다.
+
+⚠️ 그러므로 답은 「보인다」도 「안 보인다」도 아니라 **「확인 못 했다」**다. 검증하려면 빈
+DB 가 필요하고, 중앙에서 행을 지워 재현하지 **않는다** — 그 행은 지금
+`chamber_heartbeat_events` 의 FK 대상이다.
