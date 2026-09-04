@@ -65,6 +65,8 @@ CREATE TABLE IF NOT EXISTS "samples" (
     "sample_code" TEXT NOT NULL,
     "serial_number" TEXT,
     "sample_number" TEXT,
+    "sample_kind" TEXT,
+    "sample_description" TEXT,
     "test_category" TEXT,
     "label_number" TEXT,
     "smsn" TEXT,
@@ -97,6 +99,22 @@ CREATE TABLE IF NOT EXISTS "sample_intakes" (
     "hw_rev" TEXT,
     "note" TEXT,
     "tech_group" TEXT,
+    "created_at" TIMESTAMPTZ NOT NULL,
+    "updated_at" TIMESTAMPTZ NOT NULL
+);
+
+-- PM 축의 반입/반출 사건 (1:N to samples, ADR-0002). 시험 실무자 축인 sample_intakes 와 대칭이다. intake_cert_number 는 시료가 아니라 이 사건의 속성이다 — 반입증은 고객사가 한 번의 납품에 한 장 발행하고 그 납품에 실린 시료 여럿(12대 단위)이 같은 번호를 공유하므로, 배치는 (project_id, intake_cert_number) 로 묶어 복원한다. occurred_on 이 text 인 것은 의도다: 이 도메인의 날짜는 전부 사람이 적는 자유 텍스트다. 현재 보유 상태는 가장 최근 사건의 event_type 이며 그 규칙은 커널의 custody_state() 한 자리에만 산다.
+CREATE TABLE IF NOT EXISTS "sample_custody_events" (
+    "id" UUID PRIMARY KEY,
+    "sample_id" UUID NOT NULL REFERENCES "samples"("id"),
+    "project_id" UUID NOT NULL REFERENCES "projects"("id"),
+    "event_type" TEXT NOT NULL CONSTRAINT "ck_sample_custody_events_event_type" CHECK ("event_type" IN ('received', 'released')),
+    "occurred_on" TEXT,
+    "counterparty" TEXT,
+    "intake_cert_number" TEXT,
+    "reason" TEXT,
+    "note" TEXT,
+    "actor_subject" TEXT NOT NULL,
     "created_at" TIMESTAMPTZ NOT NULL,
     "updated_at" TIMESTAMPTZ NOT NULL
 );
@@ -633,6 +651,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS "ux_samples_project_sample_number" ON "samples
 
 -- Indexes: sample_intakes
 CREATE INDEX IF NOT EXISTS "idx_sample_intakes_sample" ON "sample_intakes" ("sample_id");
+
+-- Indexes: sample_custody_events
+CREATE INDEX IF NOT EXISTS "idx_sample_custody_events_sample_created" ON "sample_custody_events" ("sample_id", "created_at", "id");
+CREATE INDEX IF NOT EXISTS "idx_sample_custody_events_project_cert" ON "sample_custody_events" ("project_id", "intake_cert_number");
 
 -- Indexes: sample_inventory_revisions
 CREATE UNIQUE INDEX IF NOT EXISTS "ux_sample_inventory_revisions_sample_revision" ON "sample_inventory_revisions" ("sample_id", "revision_number");

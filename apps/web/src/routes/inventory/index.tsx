@@ -34,9 +34,11 @@ import {
   SectionBand,
 } from '@/ui';
 
+import SampleCustodyPanel from './SampleCustodyPanel';
 import SampleEditor from './SampleEditor';
 import SampleExportActions from './SampleExportActions';
 import SampleHistory from './SampleHistory';
+import SampleIntakeHistory from './SampleIntakeHistory';
 
 const VALID_STATUSES: readonly SampleInventoryStatusFilter[] = ['active', 'deleted', 'all'];
 
@@ -52,6 +54,20 @@ function asOfInputValue(value: string | undefined): string {
   if (Number.isNaN(parsed.getTime())) return '';
   const local = new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
+}
+
+/** 보유 상태 라벨 — 규칙 자체는 서버(커널 `custody_state`)가 정한다.
+ *
+ * ⚠️ 여기서 `event_type` 을 보고 판단하지 않는다. 그러면 같은 규칙이 SQL · 커널 ·
+ * 화면 세 곳에 살게 되고, 서로 다르게 틀릴 수 있다. 화면은 결과를 옮겨 적을 뿐이다.
+ */
+function custodyStateLabel(
+  t: (key: string) => string,
+  state: SampleInventoryItem['custody_state'],
+): string {
+  if (state === 'in_custody') return t('routes.sampleInventory.custodyStateInCustody');
+  if (state === 'released') return t('routes.sampleInventory.custodyStateReleased');
+  return t('routes.sampleInventory.custodyStateUnknown');
 }
 
 export function InventoryRoute(): JSX.Element {
@@ -82,6 +98,10 @@ function SampleInventoryWorkbench(): JSX.Element {
   const status = readStatus(searchParams.get('status'));
   const asOf = searchParams.get('as_of')?.trim() ?? undefined;
   const includeDeleted = searchParams.get('include_deleted') === 'true';
+  // 등록 모드를 URL 에 두는 이유: 이 화면의 다른 상태(프로젝트·필터·선택)가 전부
+  // 거기 있고, 새로고침이나 링크 공유로 폼이 조용히 닫히면 입력 중이던 사람이
+  // 무엇을 잃었는지 알 수 없다.
+  const creating = searchParams.get('create') === '1';
   const historical = asOf !== undefined;
   const isAuthenticated = auth.kind === 'authenticated';
   const canWrite =
@@ -254,10 +274,29 @@ function SampleInventoryWorkbench(): JSX.Element {
       </section>
 
       <section className="inventory-workbench-panel" aria-labelledby="inventory-list-heading">
-        <SectionBand
-          title={t('routes.sampleInventory.listSection')}
-          titleId="inventory-list-heading"
-        />
+        <div className="sample-inventory-list__header">
+          <SectionBand
+            title={t('routes.sampleInventory.listSection')}
+            titleId="inventory-list-heading"
+          />
+          {/* 등록 폼은 사이드에 늘 펼쳐져 있지 않고 이 버튼이 연다 (운영자 요구,
+              2026-09-04). 열면 목록 선택은 해제된다 — 편집과 등록이 동시에 열려
+              있으면 어느 폼에 적고 있는지 화면이 말해주지 못한다. */}
+          {isValidProjectId(projectId) && !historical && canWrite && (
+            <Button
+              type="button"
+              variant={creating ? 'secondary' : 'primary'}
+              onClick={() =>
+                updateSearch(creating ? { create: null } : { create: '1', sample: null })
+              }
+              data-testid="inventory-create-toggle"
+            >
+              {creating
+                ? t('routes.sampleInventory.closeCreate')
+                : t('routes.sampleInventory.openCreate')}
+            </Button>
+          )}
+        </div>
         {!isValidProjectId(projectId) && (
           <EmptyState
             testId="inventory-project-empty"
@@ -297,6 +336,14 @@ function SampleInventoryWorkbench(): JSX.Element {
                   <strong>{item.sample_number ?? item.sample_id}</strong>
                   <span>{item.assigned_team ?? t('routes.sampleInventory.noTeam')}</span>
                   <span data-status={item.status}>{item.status}</span>
+                  {/* 「지금 우리가 갖고 있나」 — 이 질문에 답할 수 없던 것이
+                      custody 사건 표를 만든 이유다. */}
+                  <span
+                    data-custody-state={item.custody_state ?? 'unknown'}
+                    data-testid={`inventory-custody-${item.sample_number ?? item.sample_id}`}
+                  >
+                    {custodyStateLabel(t, item.custody_state)}
+                  </span>
                   <span>{t('routes.sampleInventory.version', { version: item.row_version })}</span>
                 </button>
               </li>
@@ -319,11 +366,14 @@ function SampleInventoryWorkbench(): JSX.Element {
         )}
       </section>
 
-      {isValidProjectId(projectId) && !historical && canWrite && sampleId === '' && (
+      {isValidProjectId(projectId) && !historical && canWrite && creating && (
         <SampleEditor
           projectId={projectId}
           readOnly={false}
-          onSaved={(updated) => void invalidateSample(updated)}
+          onSaved={(updated) => {
+            updateSearch({ create: null });
+            void invalidateSample(updated);
+          }}
         />
       )}
 
@@ -357,6 +407,17 @@ function SampleInventoryWorkbench(): JSX.Element {
               hardDeleteMutation={hardDeleteMutation}
             />
           )}
+          {/* PM 축과 시험 실무자 축을 나란히 둔다. 아래 SampleHistory 는 이 둘이
+              아니라 감사 리비전(sample_inventory_revisions)이다 — 이름이 비슷하니
+              읽는 사람이 헷갈리지 않도록 순서로 구분해 둔다. */}
+          {!historical && (
+            <SampleCustodyPanel
+              projectId={projectId}
+              sampleId={editorSample.sample_id}
+              canWrite={canWrite}
+            />
+          )}
+          <SampleIntakeHistory projectId={projectId} sampleId={editorSample.sample_id} />
           <SampleHistory projectId={projectId} sampleId={editorSample.sample_id} />
         </>
       )}

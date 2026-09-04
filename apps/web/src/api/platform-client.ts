@@ -896,6 +896,15 @@ export type SamplePatchRequest = components['schemas']['SamplePatchRequest'];
 export type SampleStatusRequest = components['schemas']['SampleStatusRequest'];
 export type SampleVersionRequest = components['schemas']['SampleVersionRequest'];
 export type SampleHistoryPage = components['schemas']['SampleHistoryPage'];
+export type SampleIntakeHistoryEnvelope =
+  components['schemas']['SampleIntakeHistoryEnvelope'];
+export type SampleIntakeHistoryList = components['schemas']['SampleIntakeHistoryList'];
+export type SampleCustodyEventEnvelope =
+  components['schemas']['SampleCustodyEventEnvelope'];
+export type SampleCustodyEventList = components['schemas']['SampleCustodyEventList'];
+export type SampleCustodyEventRequest =
+  components['schemas']['SampleCustodyEventRequest'];
+export type SampleCustodyEventType = SampleCustodyEventRequest['event_type'];
 export type SampleRevisionEnvelope = components['schemas']['SampleRevisionEnvelope'];
 export type HardDeleteReceipt = components['schemas']['HardDeleteReceipt'];
 
@@ -1093,6 +1102,67 @@ export async function fetchSampleHistory(
     throw apiErrorFromResponse('sample history lookup failed', { error, response });
   }
   return data;
+}
+
+export async function fetchSampleIntakes(
+  projectId: string,
+  sampleId: string,
+): Promise<SampleIntakeHistoryList> {
+  const { data, error, response } = await platformClient.GET(
+    '/platform/projects/{project_id}/samples/{sample_id}/intakes',
+    { params: { path: { project_id: projectId, sample_id: sampleId } } },
+  );
+  if (error || data === undefined) {
+    throw apiErrorFromResponse('sample intake history lookup failed', { error, response });
+  }
+  return data;
+}
+
+export async function fetchSampleCustodyEvents(
+  projectId: string,
+  sampleId: string,
+): Promise<SampleCustodyEventList> {
+  const { data, error, response } = await platformClient.GET(
+    '/platform/projects/{project_id}/samples/{sample_id}/custody-events',
+    { params: { path: { project_id: projectId, sample_id: sampleId } } },
+  );
+  if (error || data === undefined) {
+    throw apiErrorFromResponse('sample custody lookup failed', { error, response });
+  }
+  return data;
+}
+
+export async function appendSampleCustodyEvent(
+  projectId: string,
+  sampleId: string,
+  body: SampleCustodyEventRequest,
+): Promise<SampleCustodyEventEnvelope> {
+  const { data, error, response } = await platformClient.POST(
+    '/platform/projects/{project_id}/samples/{sample_id}/custody-events',
+    { params: { path: { project_id: projectId, sample_id: sampleId } }, body },
+  );
+  if (error || data === undefined) {
+    throw apiErrorFromResponse('custody event append failed', { error, response });
+  }
+  return data;
+}
+
+export async function deleteSampleCustodyEvent(
+  projectId: string,
+  sampleId: string,
+  eventId: string,
+): Promise<void> {
+  const { error, response } = await platformClient.DELETE(
+    '/platform/projects/{project_id}/samples/{sample_id}/custody-events/{event_id}',
+    {
+      params: {
+        path: { project_id: projectId, sample_id: sampleId, event_id: eventId },
+      },
+    },
+  );
+  if (error) {
+    throw apiErrorFromResponse('custody event delete failed', { error, response });
+  }
 }
 
 export async function exportSampleInventory(

@@ -34,7 +34,7 @@ dependencies = [
     # The URL and the tag are DERIVED (manifest `delivery_remote` + the sibling's
     # own declared version); `TestTheSiblingPinTracksTheSiblingVersion` is what
     # keeps this copy from drifting when that version moves.
-    "fcc-test-contracts @ git+https://github.com/junnv93/fcc-test-contracts@v0.1.15",
+    "fcc-test-contracts @ git+https://github.com/junnv93/fcc-test-contracts@v0.1.16",
     # 공유 커널 1단계 (ADR-0001, 2026-09-03). 형제 레인과 **같은 저장소의 다른
     # 배포판**이라 `#subdirectory=` 가 붙는다 — 「한 저장소, 여러 배포판」은 그쪽이
     # 이미 npm `@fcc/api-artifacts` 로 하고 있던 패턴이다.
@@ -45,7 +45,7 @@ dependencies = [
     #
     # 형제와 같은 이유로 **DIRECT reference** 다 — 이 배포물을 담을 인덱스가 없다.
     # 태그를 못 박는다: 움직이는 ref 는 「어느 코드가 돌았나」를 사후에 답할 수 없게 한다.
-    "fcc-test-kernel @ git+https://github.com/junnv93/fcc-test-contracts@kernel-v0.3.0#subdirectory=packages/fcc-test-kernel",
+    "fcc-test-kernel @ git+https://github.com/junnv93/fcc-test-contracts@kernel-v0.4.0#subdirectory=packages/fcc-test-kernel",
     # 상자의 런타임이 실제로 도달하는 서드파티. 실측 기준은 *도달*이지
     # 모듈 레벨 여부가 아니다 — platform 의 런타임 import 는 합성 경계에서
     # 지연되지만(fastapi 4건 · psycopg 2건이 함수 안) 그 지연은 합성 패턴이지
@@ -159,6 +159,20 @@ py-modules = []
 # (새 확장자가 생기는 날 그 봉인이 red 로 이름을 댄다 — 선언을 넓게 적어두는 쪽은
 # 아무것도 검사하지 않으면서 검사한 것처럼 읽힌다).
 "*" = ["*.json"]
+# PM/RF 엑셀 내보내기 템플릿 (2026-09-04). 2026-09-04 이전에는 이 둘이
+# `tests/fixtures/` 에 있었고 렌더러가 `parents[3]` 로 걸어 나가 읽었다 — 개발
+# 트리에서만 성립하는 형태다. 이미지는 `tests/` 를 COPY 하지도 않고 휠은
+# `fcc_test_platform*` 만 실으므로 컨테이너에서 내보내기는 **구조적으로** 불가능했다.
+# 위 `*.json` 과 정확히 같은 계급의 결함이고, 같은 답을 준다: 코드가 읽는 비-.py 는
+# 코드와 함께 실린다.
+#
+# ⚠️ 봉인은 `tests/test_sample_inventory_exporter.py` 다 — 자원이 패키지 경계 **안에서**
+# 해소되는지와 이 선언이 파일 집합을 덮는지를 본다. 바로 위 `*.json` 주석이 참조하는
+# `tests/test_repo_split_packaging_axis.py` 는 **이 상자에 없다**(모노레포 잔여, 실측
+# 2026-09-04). 즉 「실제로 휠을 빌드해 전량성을 재는」 축은 이 레인에 아직 없고,
+# 그 자리는 지금 사람이 손으로 메운다: 2026-09-04 에 휠을 빌드해 두 xlsx 가 실린 것과,
+# 소스 트리 없이 설치된 휠만으로 PM/RF 내보내기가 도는 것을 확인했다.
+"fcc_test_platform.infrastructure.excel" = ["templates/*.xlsx"]
 
 # ⚠️ 사본이다 — TOML 에는 include 가 없다. 그래서 루트 pyproject.toml 의
 #    testpaths/markers/addopts 와 **상등 파리티 게이트**를 함께 세운다

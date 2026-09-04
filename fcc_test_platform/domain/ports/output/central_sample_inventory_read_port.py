@@ -22,6 +22,11 @@ class CentralSampleInventoryReadPort(Protocol):
     def list_intakes(self, project_id: str, sample_ids: list[str], *,
                      as_of: Optional[str] = None) -> list[dict]: ...
 
+    def list_custody_events(self, project_id: str, sample_ids: list[str], *,
+                            as_of: Optional[str] = None) -> list[dict]:
+        """Return 반입/반출 사건 for the given samples, oldest first (ADR-0002)."""
+        ...
+
     def get_project(self, project_id: str) -> Optional[dict]: ...
 
     def get_published_plan_project_id(self, plan_id: str) -> Optional[str]:

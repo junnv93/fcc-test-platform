@@ -37,7 +37,7 @@ __all__ = [
 # drift past the CRUD tests.
 CENTRAL_SAMPLE_TABLES = (
     'projects', 'device_models', 'samples', 'sample_intakes',
-    'sample_inventory_revisions', 'audit_events',
+    'sample_custody_events', 'sample_inventory_revisions', 'audit_events',
 )
 CENTRAL_SAMPLE_DDL = 'derived from docs/platform/central_db_schema.v1.json'
 

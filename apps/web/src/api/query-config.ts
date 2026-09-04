@@ -355,6 +355,12 @@ export const queryKeys = {
       ['sample-inventory', 'detail', projectId, sampleId, asOf ?? null] as const,
     history: (projectId: string, sampleId: string, after?: string, limit?: number) =>
       ['sample-inventory', 'history', projectId, sampleId, after ?? null, limit ?? null] as const,
+    /** 시험 실무자 축의 1:N 입고 이력 — `detail` 이 싣는 최신 1건과 다른 축이다. */
+    intakes: (projectId: string, sampleId: string) =>
+      ['sample-inventory', 'intakes', projectId, sampleId] as const,
+    /** PM 축의 반입/반출 사건 (ADR-0002). */
+    custody: (projectId: string, sampleId: string) =>
+      ['sample-inventory', 'custody', projectId, sampleId] as const,
   },
   /**
    * 참조 카탈로그 (2026-08-08). 프로젝트가 아니라 **provider** 스코프다 —
