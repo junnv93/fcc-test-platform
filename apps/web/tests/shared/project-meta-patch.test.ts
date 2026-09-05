@@ -26,7 +26,7 @@ import type { ProjectEnvelope } from '@/api/platform-client';
  *   `toStrictEqual(...)` + `Object.keys(...)`
  *
  * `toEqual`/`toHaveBeenCalledWith` 는 **값이 `undefined` 인 실존 키를 통과시킨다**
- * (실측 기록: `tests/platform-client.test.ts` W3-B M1 블록). `{customer: undefined}`
+ * (실측 기록: `tests/platform-client.test.ts` W3-B M1 블록). `{applicant_address: undefined}`
  * 는 `toEqual({})` 를 통과하지만 와이어에는 키가 실존한다 — 그게 정확히 봉인해야
  * 하는 결함이므로 느슨한 매처로는 공허해진다.
  */
@@ -50,7 +50,6 @@ function project(over: Partial<ProjectEnvelope> = {}): ProjectEnvelope {
     status: 'active',
     fcc_id: 'A3LSMS921U',
     management_number: '4792232056',
-    customer: 'ACME',
     applicant_name: 'ACME Corp.',
     applicant_address: '1 Main St',
     manufacturer: 'ACME Mfg.',
@@ -160,13 +159,13 @@ describe('projectMetaDraftFrom — 목록 행에서 스냅샷 (N+1 없음)', () 
   it('maps every editable column onto a string draft', () => {
     const draft = projectMetaDraftFrom(project());
     expect(Object.keys(draft).sort()).toStrictEqual([...EDITABLE_PROJECT_FIELDS].sort());
-    expect(draft.customer).toBe('ACME');
+    expect(draft.applicant_address).toBe('1 Main St');
     expect(draft.fcc_grantee_code).toBe('A3L');
   });
 
   it('folds explicit null (미기재) to the empty string', () => {
-    const draft = projectMetaDraftFrom(project({ customer: null, management_number: null }));
-    expect(draft.customer).toBe('');
+    const draft = projectMetaDraftFrom(project({ applicant_address: null, management_number: null }));
+    expect(draft.applicant_address).toBe('');
     expect(draft.management_number).toBe('');
   });
 
@@ -190,14 +189,14 @@ describe('projectMetaDraftFrom — 목록 행에서 스냅샷 (N+1 없음)', () 
 describe('S1 — 미변경 필드는 키 자체가 붙지 않는다', () => {
   it('sends ONLY the changed key, verbatim', () => {
     const baseline = projectMetaDraftFrom(project());
-    const patch = buildProjectMetaPatch(baseline, withField(baseline, 'customer', 'ACME2'));
+    const patch = buildProjectMetaPatch(baseline, withField(baseline, 'applicant_address', 'ACME2'));
 
     // 2겹 1 — 값 동등.
-    expect(patch).toStrictEqual({ customer: 'ACME2' });
-    // 2겹 2 — 키 집합. `{customer:'ACME2', manufacturer: undefined}` 는 위 단정을
+    expect(patch).toStrictEqual({ applicant_address: 'ACME2' });
+    // 2겹 2 — 키 집합. `{applicant_address:'ACME2', manufacturer: undefined}` 는 위 단정을
     // 통과할 수 있지만 와이어에 `manufacturer` 키가 실존한다(= 서버가 그 칸을
     // 건드릴 수 있는 명령).
-    expect(Object.keys(patch)).toStrictEqual(['customer']);
+    expect(Object.keys(patch)).toStrictEqual(['applicant_address']);
     expect(Object.keys(patch)).toHaveLength(1);
   });
 
@@ -210,22 +209,22 @@ describe('S1 — 미변경 필드는 키 자체가 붙지 않는다', () => {
 
   it('treats a whitespace-only edit as no change (no key)', () => {
     const baseline = projectMetaDraftFrom(project());
-    const patch = buildProjectMetaPatch(baseline, withField(baseline, 'customer', '  ACME  '));
+    const patch = buildProjectMetaPatch(baseline, withField(baseline, 'applicant_address', '  1 Main St  '));
     expect(Object.keys(patch)).toStrictEqual([]);
   });
 
   it('trims the transmitted value', () => {
     const baseline = projectMetaDraftFrom(project());
-    const patch = buildProjectMetaPatch(baseline, withField(baseline, 'customer', '  ACME2  '));
-    expect(patch).toStrictEqual({ customer: 'ACME2' });
+    const patch = buildProjectMetaPatch(baseline, withField(baseline, 'applicant_address', '  ACME2  '));
+    expect(patch).toStrictEqual({ applicant_address: 'ACME2' });
   });
 
   it('is a fixpoint: applying the patch then re-diffing yields {}', () => {
     // 멱등 — 저장 후 서버가 돌려준 값으로 baseline 을 다시 뜨면 diff 가 빈다.
     const baseline = projectMetaDraftFrom(project());
-    const draft = withField(baseline, 'customer', 'ACME2');
-    const saved = projectMetaDraftFrom(project({ customer: 'ACME2' }));
-    expect(buildProjectMetaPatch(baseline, draft)).toStrictEqual({ customer: 'ACME2' });
+    const draft = withField(baseline, 'applicant_address', 'ACME2');
+    const saved = projectMetaDraftFrom(project({ applicant_address: 'ACME2' }));
+    expect(buildProjectMetaPatch(baseline, draft)).toStrictEqual({ applicant_address: 'ACME2' });
     expect(buildProjectMetaPatch(saved, saved)).toStrictEqual({});
   });
 
@@ -259,10 +258,10 @@ describe('S2 — 값이 있었는데 비운 필드만 null, 나머지 키는 부
     const patch = buildProjectMetaPatch(baseline, {
       ...baseline,
       applicant_name: '',
-      customer: 'ACME2',
+      applicant_address: 'ACME2',
     });
-    expect(patch).toStrictEqual({ applicant_name: null, customer: 'ACME2' });
-    expect(Object.keys(patch).sort()).toStrictEqual(['applicant_name', 'customer']);
+    expect(patch).toStrictEqual({ applicant_name: null, applicant_address: 'ACME2' });
+    expect(Object.keys(patch).sort()).toStrictEqual(['applicant_address', 'applicant_name']);
   });
 
   it('does NOT send null for a field that was already empty on the server', () => {
@@ -275,7 +274,7 @@ describe('S2 — 값이 있었는데 비운 필드만 null, 나머지 키는 부
 
   it('whitespace-only input clears a populated field (trim ⇒ empty ⇒ null)', () => {
     const baseline = projectMetaDraftFrom(project());
-    const patch = buildProjectMetaPatch(baseline, withField(baseline, 'customer', '   '));
-    expect(patch).toStrictEqual({ customer: null });
+    const patch = buildProjectMetaPatch(baseline, withField(baseline, 'applicant_address', '   '));
+    expect(patch).toStrictEqual({ applicant_address: null });
   });
 });

@@ -37,6 +37,38 @@ from fcc_test_platform.domain.ports.output.central_project_port import (  # noqa
     CentralProjectWritePort,
 )
 from fcc_test_platform.application.central_user_write_adapter import UPSERT_USER_SQL  # noqa: E402
+from fcc_test_kernel.domain.services.project_metadata_edit import (  # noqa: E402
+    APPLICANT_SUGGESTION_FIELDS,
+    CREATE_PROJECT_REQUIRED_FIELDS,
+    EDITABLE_PROJECT_META_FIELDS,
+)
+
+
+def _create_body(model_name: str, **overrides) -> dict:
+    """생성 요청 본문 — 필수 칸이 채워진 최소 형태.
+
+    테스트는 "이 프로젝트가 어떤 값을 갖는가"만 말하고 **무엇이 필수인지는 말하지
+    않는다**: 그 판정은 도메인 SSOT ``CREATE_PROJECT_REQUIRED_FIELDS`` 소관이고,
+    아래 assertion 이 이 헬퍼가 실제로 그 집합을 덮고 있는지 검사한다. 필수 칸이
+    늘면 이 한 곳이 red 가 되고, 개별 테스트 수십 개가 각각 깨지지 않는다.
+
+    관리번호는 모델명에서 파생한다 — UNIQUE 컬럼이라 테스트마다 서로 달라야 하고,
+    상수로 두면 두 번째 프로젝트를 만드는 순간 의도치 않은 409 가 난다.
+    """
+    body = {
+        'model_name': model_name,
+        'management_number': f'MGMT-{model_name}',
+        'applicant_name': 'ACME Corp',
+    }
+    body.update(overrides)
+    return {key: value for key, value in body.items() if value is not None}
+
+
+# 헬퍼가 필수 집합을 덮는지 import 시점에 확인한다(테스트 실행 전에 red).
+assert set(CREATE_PROJECT_REQUIRED_FIELDS) <= set(_create_body('X')), (
+    '_create_body 가 도메인 필수 칸을 전부 채우지 못한다 — 필수 집합이 늘었다면 '
+    '여기 기본값을 더하라'
+)
 
 
 class _InMemoryCentral:
@@ -72,15 +104,14 @@ class _FakeProjectReadPort:
                 'project_id': detail['project_id'],
                 'project_code': detail['project_code'],
                 'model_name': detail['model_name'],
-                'customer': detail.get('customer'),
-                'manufacturer': detail.get('manufacturer'),
-                'management_number': detail.get('management_number'),
                 'status': detail.get('status'),
-                'fcc_grantee_code': detail.get('fcc_grantee_code'),
-                'applicant_name': detail.get('applicant_name'),
-                'applicant_address': detail.get('applicant_address'),
-                'eut_description': detail.get('eut_description'),
-                'test_standard': detail.get('test_standard'),
+                # 메타 칸은 도메인 SSOT 에서 파생한다 — 페이크가 목록을 손으로 들면
+                # 필드가 늘어난 날 이 페이크만 조용히 옛 모양을 돌려주고, 테스트는
+                # "서비스가 새 필드를 잃어버린다"고 잘못 말한다.
+                **{
+                    field: detail.get(field)
+                    for field in EDITABLE_PROJECT_META_FIELDS
+                },
                 'sample_count': len(detail.get('samples') or []),
             })
         return rows
@@ -88,6 +119,33 @@ class _FakeProjectReadPort:
     def read_project_detail(self, project_id):
         detail = self._c.projects.get(project_id)
         return dict(detail) if detail is not None else None
+
+    def list_applicant_suggestions(self, *, q=None, limit):
+        # 신청자당 최신 한 행 — 실제 어댑터의 윈도우 함수와 같은 판정을 파이썬으로
+        # 옮긴 것이다(그룹 키는 정규화된 이름, 최신이 이긴다). 검색 패턴은 서비스가
+        # 이미 LIKE 로 만들어 넘기므로 여기서는 '%' 를 벗겨 부분일치로 본다.
+        needle = q.strip('%').replace('\\', '') if q is not None else None
+        newest: dict[str, dict] = {}
+        counts: dict[str, int] = {}
+        for detail in self._c.projects.values():
+            name = (detail.get('applicant_name') or '').strip()
+            if not name:
+                continue
+            key = name.lower()
+            if needle is not None and needle.lower() not in key:
+                continue
+            counts[key] = counts.get(key, 0) + 1
+            newest[key] = detail          # 삽입 순 = 생성 순이므로 마지막이 최신
+        rows = []
+        for key, detail in newest.items():
+            rows.append({
+                **{
+                    field: detail.get(field)
+                    for field in APPLICANT_SUGGESTION_FIELDS
+                },
+                'project_count': counts[key],
+            })
+        return list(reversed(rows))[:limit]
 
 
 class _FakeProjectWritePort:
@@ -222,7 +280,7 @@ class TestAdminRoleKeyIsSchemaDerived(unittest.TestCase):
 class TestCreateProject(unittest.TestCase):
     def test_create_returns_detail_with_model_and_empty_samples(self):
         service, _central, _m = _make_service()
-        detail = service.create_project(actor_issuer='urn:fcc:identity:legacy', model_name='SM-S921U', actor_subject='alice')
+        detail = service.create_project(_create_body('SM-S921U'), actor_issuer='urn:fcc:identity:legacy', actor_subject='alice')
         self.assertEqual(detail['model_name'], 'SM-S921U')
         # D1 — project_code == model name.
         self.assertEqual(detail['project_code'], 'SM-S921U')
@@ -231,7 +289,7 @@ class TestCreateProject(unittest.TestCase):
 
     def test_create_grants_creator_project_admin(self):
         service, central, _membership = _make_service()
-        service.create_project(actor_issuer='urn:fcc:identity:legacy', model_name='SM-S921U', actor_subject='alice')
+        service.create_project(_create_body('SM-S921U'), actor_issuer='urn:fcc:identity:legacy', actor_subject='alice')
         # D3 — exactly one auto-admin grant to the creator, with the schema role.
         self.assertEqual(len(central.memberships), 1)
         grant = central.memberships[0]
@@ -239,23 +297,53 @@ class TestCreateProject(unittest.TestCase):
         self.assertEqual(grant['user_subject'], 'alice')
         self.assertEqual(central.audit_events[0]['actor_subject'], 'alice')
 
-    def test_create_defaults_status_active_and_optional_management_number(self):
-        # Phase A — status defaults to the 'active' token on create; the
-        # PM-assigned management_number is optional (None when not given).
+    def test_create_defaults_status_active(self):
+        # Phase A — status defaults to the 'active' token on create (the client
+        # never supplies it; transitions own their action sub-resources).
         service, _central, _m = _make_service()
-        detail = service.create_project(actor_issuer='urn:fcc:identity:legacy', model_name='SM-S921U', actor_subject='alice')
+        detail = service.create_project(_create_body('SM-S921U'), actor_issuer='urn:fcc:identity:legacy', actor_subject='alice')
         self.assertEqual(detail['status'], 'active')
-        self.assertIsNone(detail['management_number'])
+
+    def test_create_refuses_a_project_without_the_required_intake_fields(self):
+        """2026-09-04 — 관리번호·신청자는 **선택이 아니다**.
+
+        예전 계약은 ``model_name`` 하나만 필수여서 번호도 신청자도 없는 프로젝트가
+        만들어졌고, 그런 프로젝트는 성적서 번호를 만들 수 없으며(관리번호가 유일한
+        재료다) 이름 말고는 검색으로 찾을 방법도 없었다 — 만들 수는 있지만 워크플로우가
+        이어지지 않는 상태다. 필수 집합은 도메인 SSOT 이므로 여기서 목록을 다시 적지
+        않고 **한 칸씩 빼 보며** 판정한다: 집합이 늘면 이 테스트가 자동으로 늘어난다.
+        """
+        service, _central, _m = _make_service()
+        complete = _create_body('SM-S921U')
+        for missing in CREATE_PROJECT_REQUIRED_FIELDS:
+            partial = {k: v for k, v in complete.items() if k != missing}
+            with self.subTest(missing=missing):
+                with self.assertRaises(ValueError) as caught:
+                    service.create_project(partial, actor_subject='alice')
+                # 어느 칸이 비었는지 메시지가 이름으로 말한다 — 클라이언트가 그 칸을
+                # 강조할 수 있어야 하고, "본문이 잘못됐다"만으로는 고칠 수 없다.
+                self.assertIn(missing, str(caught.exception))
+
+    def test_create_refuses_the_retired_customer_field_by_name(self):
+        """폐기된 ``customer`` 는 'unknown field' 가 아니라 **옮겨 간 칸**으로 거절된다.
+
+        원인이 다르면 고치는 방법도 다르다: 오타는 철자를 고치고, 폐기는 다른 칸에
+        적어야 한다. 후자를 전자처럼 말하면 호출자는 없는 철자를 찾아 헤맨다.
+        """
+        service, _central, _m = _make_service()
+        with self.assertRaises(ValueError) as caught:
+            service.create_project(
+                _create_body('SM-S921U', customer='ACME'), actor_subject='alice',
+            )
+        message = str(caught.exception)
+        self.assertIn('customer', message)
+        self.assertIn('applicant_name', message)
 
     def test_create_persists_management_number_when_supplied(self):
         # The PM-assigned management number round-trips through create → detail
         # (UNIQUE/nullable; Report Number 생성근간 S-{management_number}-…).
         service, _central, _m = _make_service()
-        detail = service.create_project(
-            actor_issuer='urn:fcc:identity:legacy',
-            model_name='SM-S921U', actor_subject='alice',
-            management_number='4792232056',
-        )
+        detail = service.create_project(_create_body('SM-S921U', management_number='4792232056'), actor_issuer='urn:fcc:identity:legacy', actor_subject='alice')
         self.assertEqual(detail['management_number'], '4792232056')
         # and it surfaces on the list envelope too.
         listed = service.list_projects()['items']
@@ -266,13 +354,7 @@ class TestCreateProject(unittest.TestCase):
         # Phase B — the 5 성적서 표지 메타 fields round-trip create → detail/list,
         # and fcc_id is DERIVED (grantee + product_code(model_name)), not stored.
         service, _central, _m = _make_service()
-        detail = service.create_project(
-            actor_issuer='urn:fcc:identity:legacy',
-            model_name='SM-X940', actor_subject='alice',
-            fcc_grantee_code='A3L', applicant_name='Samsung',
-            applicant_address='Suwon, KR', eut_description='Tablet',
-            test_standard='FCC Part 15',
-        )
+        detail = service.create_project(_create_body('SM-X940', fcc_grantee_code='A3L', applicant_name='Samsung', applicant_address='Suwon, KR', eut_description='Tablet', test_standard='FCC Part 15'), actor_issuer='urn:fcc:identity:legacy', actor_subject='alice')
         self.assertEqual(detail['fcc_grantee_code'], 'A3L')
         self.assertEqual(detail['applicant_name'], 'Samsung')
         self.assertEqual(detail['applicant_address'], 'Suwon, KR')
@@ -287,19 +369,19 @@ class TestCreateProject(unittest.TestCase):
     def test_fcc_id_is_none_without_grantee_code(self):
         # No grantee code ⇒ FCC ID cannot be formed (None), even with a model.
         service, _central, _m = _make_service()
-        detail = service.create_project(actor_issuer='urn:fcc:identity:legacy', model_name='SM-X940', actor_subject='alice')
+        detail = service.create_project(_create_body('SM-X940'), actor_issuer='urn:fcc:identity:legacy', actor_subject='alice')
         self.assertIsNone(detail['fcc_grantee_code'])
         self.assertIsNone(detail['fcc_id'])
 
     def test_empty_model_name_is_rejected(self):
         service, _central, _m = _make_service()
         with self.assertRaises(ValueError):
-            service.create_project(actor_issuer='urn:fcc:identity:legacy', model_name='   ', actor_subject='alice')
+            service.create_project(_create_body('   '), actor_issuer='urn:fcc:identity:legacy', actor_subject='alice')
 
     def test_missing_actor_is_rejected(self):
         service, _central, _m = _make_service()
         with self.assertRaises(ValueError):
-            service.create_project(actor_issuer='urn:fcc:identity:legacy', model_name='SM-S921U', actor_subject='')
+            service.create_project(_create_body('SM-S921U'), actor_issuer='urn:fcc:identity:legacy', actor_subject='')
 
     def test_missing_actor_issuer_falls_back_to_legacy(self):
         # A blank actor_issuer (non-OIDC / trusted-header / claim-less principal)
@@ -307,7 +389,7 @@ class TestCreateProject(unittest.TestCase):
         # by (issuer, subject) — onboarding never requires the caller to know the
         # issuer URL. (OIDC principals carry their real validated issuer.)
         service, central, _m = _make_service()
-        service.create_project(model_name='SM-S921U', actor_subject='alice')
+        service.create_project(_create_body('SM-S921U'), actor_subject='alice')
         self.assertEqual(central.memberships[0]['user_issuer'], 'urn:fcc:identity:legacy')
 
     def test_user_upsert_preserves_disabled_actor_state(self):
@@ -322,8 +404,8 @@ class TestCreateProject(unittest.TestCase):
 class TestSameModelReuseIdempotent(unittest.TestCase):
     def test_same_model_returns_same_project_no_duplicate(self):
         service, central, _membership = _make_service()
-        first = service.create_project(actor_issuer='urn:fcc:identity:legacy', model_name='SM-S921U', actor_subject='alice')
-        second = service.create_project(actor_issuer='urn:fcc:identity:legacy', model_name='SM-S921U', actor_subject='bob')
+        first = service.create_project(_create_body('SM-S921U'), actor_issuer='urn:fcc:identity:legacy', actor_subject='alice')
+        second = service.create_project(_create_body('SM-S921U'), actor_issuer='urn:fcc:identity:legacy', actor_subject='bob')
         # D1 — same model name reuses the existing project (idempotent).
         self.assertEqual(first['project_id'], second['project_id'])
         # exactly one underlying create + one auto-admin grant (no duplicate work).
@@ -334,7 +416,7 @@ class TestSameModelReuseIdempotent(unittest.TestCase):
 class TestListAndDetail(unittest.TestCase):
     def test_create_then_list_then_detail_roundtrip(self):
         service, _central, _m = _make_service()
-        created = service.create_project(model_name='SM-S921U', actor_subject='alice')
+        created = service.create_project(_create_body('SM-S921U'), actor_subject='alice')
         listed = service.list_projects()['items']
         self.assertEqual([p['project_id'] for p in listed], [created['project_id']])
         self.assertEqual(listed[0]['model_name'], 'SM-S921U')
@@ -358,7 +440,7 @@ class TestProjectStatusLifecycle(unittest.TestCase):
 
     def test_complete_then_reopen_round_trips_status(self):
         service, _central, _m = _make_service()
-        created = service.create_project(model_name='SM-S921U', actor_subject='alice')
+        created = service.create_project(_create_body('SM-S921U'), actor_subject='alice')
         pid = created['project_id']
         self.assertEqual(created['status'], 'active')
 
@@ -386,7 +468,7 @@ class TestProjectStatusLifecycle(unittest.TestCase):
         # Completing an already-completed project is a no-op success (the write
         # overwrites status unconditionally — no spurious 409).
         service, _central, _m = _make_service()
-        pid = service.create_project(model_name='SM-S921U', actor_subject='alice')[
+        pid = service.create_project(_create_body('SM-S921U'), actor_subject='alice')[
             'project_id'
         ]
         service.complete_project(pid)
@@ -402,7 +484,7 @@ class TestProjectStatusLifecycle(unittest.TestCase):
 
     def test_status_all_is_accepted(self):
         service, _central, _m = _make_service()
-        service.create_project(model_name='SM-S921U', actor_subject='alice')
+        service.create_project(_create_body('SM-S921U'), actor_subject='alice')
         # 'all' is a valid sentinel (the read adapter returns every project).
         self.assertEqual(len(service.list_projects(status='all')['items']), 1)
 
@@ -483,7 +565,7 @@ class TestSampleInventoryFields(unittest.TestCase):
 
     def test_sample_pm_fields_surface_in_detail_envelope(self):
         service, central, _m = _make_service()
-        created = service.create_project(actor_issuer='urn:fcc:identity:legacy', model_name='SM-S921U', actor_subject='alice')
+        created = service.create_project(_create_body('SM-S921U'), actor_issuer='urn:fcc:identity:legacy', actor_subject='alice')
         # Seed a sample carrying the new PM inventory columns directly into the
         # store (registration write lands in Phase E; C exposes read only).
         central.projects[created['project_id']]['samples'] = [{
@@ -517,7 +599,7 @@ class TestSampleInventoryFields(unittest.TestCase):
 
     def test_missing_pm_fields_are_none(self):
         service, central, _m = _make_service()
-        created = service.create_project(actor_issuer='urn:fcc:identity:legacy', model_name='SM-S921U', actor_subject='alice')
+        created = service.create_project(_create_body('SM-S921U'), actor_issuer='urn:fcc:identity:legacy', actor_subject='alice')
         central.projects[created['project_id']]['samples'] = [{
             'sample_id': 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
             'sample_code': 'SM-S921U-1',
@@ -542,7 +624,7 @@ class TestCompactIntakeReadBack(unittest.TestCase):
 
     def test_latest_intake_and_count_surface_compactly(self):
         service, central, _m = _make_service()
-        created = service.create_project(actor_issuer='urn:fcc:identity:legacy', model_name='SM-S921U', actor_subject='alice')
+        created = service.create_project(_create_body('SM-S921U'), actor_issuer='urn:fcc:identity:legacy', actor_subject='alice')
         # Adapter output shape: a sample carries a single pre-selected latest
         # intake + the total history count (NOT an intakes array).
         self._seed_sample(central, created['project_id'], {
@@ -566,7 +648,7 @@ class TestCompactIntakeReadBack(unittest.TestCase):
 
     def test_no_intake_yields_null_latest_and_zero_count(self):
         service, central, _m = _make_service()
-        created = service.create_project(actor_issuer='urn:fcc:identity:legacy', model_name='SM-S921U', actor_subject='alice')
+        created = service.create_project(_create_body('SM-S921U'), actor_issuer='urn:fcc:identity:legacy', actor_subject='alice')
         self._seed_sample(central, created['project_id'], {
             'sample_id': 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
             'sample_code': 'SM-S921U-1',
@@ -766,7 +848,7 @@ class TestSamplesSqlMatchesDdl(unittest.TestCase):
         # history array. A future change that restores ``intakes`` as the required
         # UI path fails here.
         service, central, _m = _make_service()
-        created = service.create_project(actor_issuer='urn:fcc:identity:legacy', model_name='SM-S921U', actor_subject='alice')
+        created = service.create_project(_create_body('SM-S921U'), actor_issuer='urn:fcc:identity:legacy', actor_subject='alice')
         central.projects[created['project_id']]['samples'] = [{
             'sample_id': 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
             'sample_code': 'SM-S921U-1',
@@ -785,7 +867,7 @@ class TestSamplesSqlMatchesDdl(unittest.TestCase):
 
     def test_detail_sample_with_no_history_has_null_latest_and_zero_count(self):
         service, central, _m = _make_service()
-        created = service.create_project(actor_issuer='urn:fcc:identity:legacy', model_name='SM-S921U', actor_subject='alice')
+        created = service.create_project(_create_body('SM-S921U'), actor_issuer='urn:fcc:identity:legacy', actor_subject='alice')
         central.projects[created['project_id']]['samples'] = [{
             'sample_id': 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
             'sample_code': 'SM-S921U-1',

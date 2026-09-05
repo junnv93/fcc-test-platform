@@ -66,18 +66,20 @@ __all__ = [
 ]
 
 
+# INSERT 컬럼 = 구조 컬럼 + **정책 SSOT 가 정한 메타 컬럼** (2026-09-04 파생화).
+#
+# 메타 컬럼을 여기 손으로 적으면 세 곳(도메인 튜플 / INSERT 목록 / UPDATE SET 조각)
+# 중 하나만 바뀌는 상태가 만들어진다. UPDATE 쪽은 이미 ``PROJECT_TABLE_META_FIELDS``
+# 파생이었는데 INSERT 만 리터럴이었고, 그래서 ``customer`` 폐기 때 INSERT 목록만
+# 옛 컬럼을 들고 남을 수 있었다 — 그 상태의 증상은 "생성만 실패하는 프로젝트"다.
+#
+# 서비스가 만드는 레코드 dict 도 같은 튜플로 조립하므로 (``central_project_service``),
+# 컬럼 순서와 값 추출 순서가 한 원천에서 함께 나온다.
 PROJECT_INSERT_COLUMNS: tuple[str, ...] = (
     'id',
     'project_code',
-    'name',
-    'customer',
-    'management_number',
     'status',
-    'fcc_grantee_code',
-    'applicant_name',
-    'applicant_address',
-    'eut_description',
-    'test_standard',
+) + PROJECT_TABLE_META_FIELDS + (
     'created_at',
     'updated_at',
 )
@@ -85,8 +87,7 @@ DEVICE_MODEL_INSERT_COLUMNS: tuple[str, ...] = (
     'id',
     'project_id',
     'model_name',
-    'manufacturer',
-    'metadata_json',
+) + DEVICE_MODEL_META_FIELDS + (
     'created_at',
     'updated_at',
 )

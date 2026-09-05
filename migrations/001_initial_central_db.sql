@@ -29,12 +29,10 @@ CREATE TABLE IF NOT EXISTS "providers" (
     "updated_at" TIMESTAMPTZ NOT NULL
 );
 
--- Customer/project-level grouping for test campaigns.
+-- Project-level grouping for test campaigns. The requesting party is ONE column (applicant_name); the former customer column was retired 2026-09-04 and its values merged into applicant_name (migration 032) — two columns for one party split the same company across both, and the search axis only ever indexed one of them.
 CREATE TABLE IF NOT EXISTS "projects" (
     "id" UUID PRIMARY KEY,
     "project_code" TEXT NOT NULL UNIQUE,
-    "name" TEXT NOT NULL,
-    "customer" TEXT,
     "management_number" TEXT UNIQUE,
     "status" TEXT CONSTRAINT "ck_projects_status" CHECK ("status" IN ('active', 'completed')),
     "fcc_grantee_code" TEXT,
@@ -46,13 +44,12 @@ CREATE TABLE IF NOT EXISTS "projects" (
     "updated_at" TIMESTAMPTZ NOT NULL
 );
 
--- Device model metadata shared across providers.
+-- Device model metadata shared across providers. One model per project (ADR-0017 D1 1:1 overlay); model_name IS the project identity, so the project row does not repeat it.
 CREATE TABLE IF NOT EXISTS "device_models" (
     "id" UUID PRIMARY KEY,
     "project_id" UUID NOT NULL REFERENCES "projects"("id"),
     "model_name" TEXT NOT NULL,
     "manufacturer" TEXT,
-    "metadata_json" JSONB,
     "created_at" TIMESTAMPTZ NOT NULL,
     "updated_at" TIMESTAMPTZ NOT NULL
 );
@@ -639,7 +636,8 @@ CREATE INDEX IF NOT EXISTS "idx_projects_directory" ON "projects" ("created_at",
 CREATE INDEX IF NOT EXISTS "idx_projects_status_directory" ON "projects" ("status", "created_at", "id");
 CREATE INDEX IF NOT EXISTS "idx_projects_search_management_number" ON "projects" USING gin (lower(management_number) gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS "idx_projects_search_project_code" ON "projects" USING gin (lower(project_code) gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS "idx_projects_search_customer" ON "projects" USING gin (lower(customer) gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS "idx_projects_search_applicant_name" ON "projects" USING gin (lower(applicant_name) gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS "idx_projects_applicant_directory" ON "projects" (lower(applicant_name), "created_at" DESC, "id" DESC) WHERE applicant_name IS NOT NULL;
 
 -- Indexes: device_models
 CREATE INDEX IF NOT EXISTS "idx_device_models_project" ON "device_models" ("project_id");

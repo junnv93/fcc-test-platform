@@ -604,13 +604,13 @@ describe('W3-B M1 — updateProject partial-update wire contract', () => {
       response: { status: 200, headers: new Headers() },
     } as never);
 
-    await updateProject(PROJECT_ID, { applicant_name: null, customer: 'ACME' });
+    await updateProject(PROJECT_ID, { applicant_name: null, applicant_address: 'ACME' });
 
     // `null` = delete, key-absent = unchanged. The client must not collapse the
     // two (e.g. by stripping nullish values before sending).
     expect(patchBodyOfCall(patch.mock.calls, 1)).toStrictEqual({
       applicant_name: null,
-      customer: 'ACME',
+      applicant_address: 'ACME',
     });
   });
 
@@ -646,7 +646,7 @@ describe('W3-B M1 — updateProject partial-update wire contract', () => {
       error: { code: 'NOT_FOUND', detail: 'unknown project_id' },
       response: { status: 404, headers: new Headers() },
     } as never);
-    await expect(updateProject(PROJECT_ID, { customer: 'ACME' })).rejects.toMatchObject({
+    await expect(updateProject(PROJECT_ID, { applicant_address: 'ACME' })).rejects.toMatchObject({
       status: 404,
     });
   });

@@ -440,6 +440,10 @@ export type CreateProjectRequest = components['schemas']['CreateProjectRequest']
 /** Partial 표지 메타 update body (W3-B M1) — every field optional and nullable:
  *  an omitted key leaves the column unchanged, an explicit `null` clears it. */
 export type UpdateProjectRequest = components['schemas']['UpdateProjectRequest'];
+/** 신청자 제안 한 건 — 생성 폼 자동 채움의 단위. 프로젝트 행에서 파생된 값이라
+ *  식별자가 없다(신청자 마스터 테이블은 존재하지 않는다). */
+export type ApplicantSuggestionEnvelope = components['schemas']['ApplicantSuggestionEnvelope'];
+export type ApplicantSuggestionList = components['schemas']['ApplicantSuggestionList'];
 
 /** Project directory status filter (project-status-visibility) — derived from the
  *  generated OpenAPI query enum (SSOT, no hand-maintained union drift). Omitted ⇒
@@ -582,6 +586,39 @@ export async function fetchProjectDetail(projectId: string): Promise<ProjectDeta
   });
   if (error || data === undefined) {
     throw apiErrorFromResponse('project detail lookup failed', { error, response });
+  }
+  return data;
+}
+
+/**
+ * Fetch applicant suggestions for the create form's auto-fill (2026-09-04).
+ *
+ * **Not a master record.** The backend derives one entry per distinct applicant
+ * from the project rows, carrying that applicant's MOST RECENT address /
+ * manufacturer. Selecting one pre-fills those fields, where they stay editable —
+ * a suggestion is a starting point, not a constraint.
+ *
+ * `management_number` is deliberately absent from a suggestion: it is UNIQUE per
+ * project, so inheriting it would be an immediate 409. That exclusion is derived
+ * on the backend from the uniqueness constraint, not from a hand-picked list.
+ *
+ * There is no cursor — an autocomplete's top N is the whole answer. `limit`
+ * bounds the read; the backend clamps it to the pagination SSOT.
+ */
+export async function fetchApplicantSuggestions(
+  term: string | undefined,
+  limit: number,
+): Promise<ApplicantSuggestionList> {
+  // An empty box means "no filter", not "match the empty string" — omit the key
+  // entirely (the same regime as the project directory's `q`).
+  const query: { q?: string; limit: number } = { limit };
+  const trimmed = term?.trim();
+  if (trimmed !== undefined && trimmed !== '') query.q = trimmed;
+  const { data, error, response } = await platformClient.GET('/platform/applicants', {
+    params: { query },
+  });
+  if (error || data === undefined) {
+    throw apiErrorFromResponse('applicant directory lookup failed', { error, response });
   }
   return data;
 }

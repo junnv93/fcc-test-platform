@@ -7,6 +7,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERMISSION_PLATFORM_ADMIN } from '@/api/permissions';
 import { applyTokenSet, CLAIM_PERMISSIONS, __resetAuthStateForTests } from '@/auth/session';
 import { MyProjectsRoute } from '@/routes/my-projects';
+import {
+  EDITABLE_PROJECT_FIELDS,
+  REPORT_META_FIELDS,
+} from '@/shared/project-meta-patch';
 import { SEARCH_DEBOUNCE_MS } from '@/shared/search-debounce';
 
 import type { ReactElement } from 'react';
@@ -31,6 +35,9 @@ const platformApi = vi.hoisted(() => ({
   completeProject: vi.fn(),
   reopenProject: vi.fn(),
   updateProject: vi.fn(),
+  // 신청자 자동완성 — 기본은 빈 목록이라, 제안을 쓰지 않는 케이스는 아무것도
+  // 배선하지 않아도 된다(폼을 열면 이 읽기가 반드시 한 번 일어난다).
+  fetchApplicantSuggestions: vi.fn().mockResolvedValue([]),
 }));
 vi.mock('@/api/platform-client', () => platformApi);
 
@@ -58,7 +65,6 @@ function project(over: Record<string, unknown>): Record<string, unknown> {
     project_id: PROJECT_ID,
     project_code: 'SM-S921U',
     model_name: 'SM-S921U',
-    customer: null,
     manufacturer: null,
     management_number: null,
     status: 'active',
@@ -197,6 +203,17 @@ describe('MyProjectsRoute', () => {
     expect(screen.getByTestId('project-card-status')).toHaveTextContent('완료');
   });
 
+  /**
+   * 생성 폼을 편다 — 2026-09-04 부터 기본은 **접힘**이다.
+   *
+   * 접어 둔 이유가 곧 이 헬퍼가 필요한 이유다: 이 화면의 주된 일은 "고르기"이고
+   * 만들기는 가끔이라, 폼이 항상 펼쳐져 있으면 목록이 그만큼 아래로 밀린다.
+   */
+  async function openCreateForm(): Promise<void> {
+    await userEvent.click(await screen.findByTestId('new-project-toggle'));
+    await screen.findByTestId('new-project-submit');
+  }
+
   it('passes the management number to createProject when supplied (Phase A)', async () => {
     // W3-B M2 — the dedicated `new-project-mgmt` input was replaced by inputs
     // generated from `EDITABLE_PROJECT_FIELDS` (one SSOT shared with the edit
@@ -205,21 +222,25 @@ describe('MyProjectsRoute', () => {
     platformApi.createProject.mockResolvedValue(project({ model_name: 'SM-S921U' }));
     renderRoute();
 
-    await screen.findByTestId('new-project-submit');
+    await openCreateForm();
     await userEvent.type(screen.getByTestId('new-project-model'), 'SM-S921U');
     await userEvent.type(screen.getByTestId('new-project-management_number'), '4792232056');
+    await userEvent.type(screen.getByTestId('new-project-applicant_name'), 'ACME Corp.');
     await userEvent.click(screen.getByTestId('new-project-submit'));
 
     // 2겹 단정. `toHaveBeenCalledWith` 는 값이 `undefined` 인 **실존 키**를
-    // 통과시키므로(W3-B M1 실측) 빈 칸이 `customer: undefined` 로 실려도 green 이
+    // 통과시키므로(W3-B M1 실측) 빈 칸이 `applicant_address: undefined` 로 실려도 green 이
     // 된다 — 그게 정확히 막아야 하는 것이다.
     await waitFor(() => expect(platformApi.createProject).toHaveBeenCalledTimes(1));
     const [body] = platformApi.createProject.mock.calls[0] as [Record<string, unknown>];
     expect(body).toStrictEqual({
       model_name: 'SM-S921U',
       management_number: '4792232056',
+      applicant_name: 'ACME Corp.',
     });
-    expect(Object.keys(body).sort()).toStrictEqual(['management_number', 'model_name']);
+    expect(Object.keys(body).sort()).toStrictEqual([
+      'applicant_name', 'management_number', 'model_name',
+    ]);
   });
 
   it('shows an empty state with a description when the tester has no projects', async () => {
@@ -244,23 +265,111 @@ describe('MyProjectsRoute', () => {
     platformApi.createProject.mockResolvedValue(project({ model_name: 'SM-S921U' }));
     renderRoute();
 
-    await screen.findByTestId('new-project-submit');
+    await openCreateForm();
     await userEvent.type(screen.getByTestId('new-project-model'), 'SM-S921U');
+    await userEvent.type(screen.getByTestId('new-project-management_number'), 'MGMT-1');
+    await userEvent.type(screen.getByTestId('new-project-applicant_name'), 'ACME Corp.');
     await userEvent.click(screen.getByTestId('new-project-submit'));
 
-    // S4 — blank 표지 메타 칸은 **키 자체가 붙지 않는다**(백엔드는 `''` 와 NULL 을
-    // 구분한다). 키 집합 단정이 그것을 증명하는 유일한 방법이다.
+    // S4 — blank **선택** 칸은 키 자체가 붙지 않는다(백엔드는 `''` 와 NULL 을
+    // 구분한다). 키 집합 단정이 그것을 증명하는 유일한 방법이다 — 필수 3칸만 있고
+    // 손대지 않은 주소/제조사는 나타나지 않아야 한다.
     await waitFor(() => expect(platformApi.createProject).toHaveBeenCalledTimes(1));
     const [body] = platformApi.createProject.mock.calls[0] as [Record<string, unknown>];
-    expect(body).toStrictEqual({ model_name: 'SM-S921U' });
-    expect(Object.keys(body)).toStrictEqual(['model_name']);
+    expect(body).toStrictEqual({
+      model_name: 'SM-S921U',
+      management_number: 'MGMT-1',
+      applicant_name: 'ACME Corp.',
+    });
+    expect(Object.keys(body).sort()).toStrictEqual([
+      'applicant_name', 'management_number', 'model_name',
+    ]);
     expect(await screen.findByTestId('new-project-success')).toBeInTheDocument();
   });
 
-  it('disables create until a model name is entered', async () => {
+  it('keeps create disabled until EVERY required field is filled', async () => {
+    // 필수 집합은 계약 파생(`REQUIRED_CREATE_FIELDS` ← OpenAPI required)이다.
+    // 한 칸씩 채워 가며, **마지막 칸을 채우기 전까지는** 제출이 막혀 있음을 본다 —
+    // 버튼이 열리는 시점이 곧 서버가 받아들이는 시점이어야 하고, 그 둘이 갈라지면
+    // "눌리는데 400" 이 된다.
     platformApi.fetchProjectsPage.mockResolvedValue(page([]));
     renderRoute();
-    expect(await screen.findByTestId('new-project-submit')).toBeDisabled();
+    await openCreateForm();
+
+    expect(screen.getByTestId('new-project-submit')).toBeDisabled();
+    await userEvent.type(screen.getByTestId('new-project-model'), 'SM-S921U');
+    expect(screen.getByTestId('new-project-submit')).toBeDisabled();
+    await userEvent.type(screen.getByTestId('new-project-management_number'), 'MGMT-1');
+    expect(screen.getByTestId('new-project-submit')).toBeDisabled();
+    await userEvent.type(screen.getByTestId('new-project-applicant_name'), 'ACME Corp.');
+    expect(screen.getByTestId('new-project-submit')).toBeEnabled();
+  });
+
+  it('fills the applicant\u2019s other fields and ANNOUNCES that it did', async () => {
+    // 자동 채움은 사용자가 건드리지 않은 칸의 값을 바꾼다 — 화면을 보는 사람만
+    // 알아채는 변화는 스크린리더 사용자에게는 일어나지 않은 것과 같다.
+    platformApi.fetchProjectsPage.mockResolvedValue(page([]));
+    platformApi.fetchApplicantSuggestions.mockResolvedValue([
+      {
+        applicant_name: 'ACME Corp.',
+        applicant_address: '1 Main St',
+        manufacturer: 'ACME Mfg.',
+        project_count: 3,
+      },
+    ]);
+    renderRoute();
+    await openCreateForm();
+    await waitFor(() => expect(platformApi.fetchApplicantSuggestions).toHaveBeenCalled());
+
+    await userEvent.type(screen.getByTestId('new-project-applicant_name'), 'ACME Corp.');
+
+    // 선택 칸이 그 신청자의 최신 값으로 채워진다.
+    const optional = await screen.findByTestId('new-project-applicant_address');
+    await waitFor(() => expect(optional).toHaveValue('1 Main St'));
+    expect(screen.getByTestId('new-project-manufacturer')).toHaveValue('ACME Mfg.');
+
+    // 그리고 그 사실이 **통지된다**(polite live region).
+    const notice = await screen.findByTestId('new-project-autofilled');
+    expect(notice).toHaveTextContent('ACME Corp.');
+    expect(notice).toHaveAttribute('aria-live', 'polite');
+  });
+
+  it('never inherits a UNIQUE field from a suggestion', async () => {
+    // 관리번호를 물려받으면 그 자리에서 409 다. 제안 envelope 에 그 칸이 없다는
+    // 계약을 화면 쪽에서도 확인한다 — 서버가 실수로 실어 보내도 화면이 쓰지 않는다.
+    platformApi.fetchProjectsPage.mockResolvedValue(page([]));
+    platformApi.fetchApplicantSuggestions.mockResolvedValue([
+      {
+        applicant_name: 'ACME Corp.',
+        applicant_address: '1 Main St',
+        manufacturer: 'ACME Mfg.',
+        project_count: 3,
+        // 계약에 없는 칸을 서버가 보냈다고 가정한다.
+        management_number: 'SHOULD-NOT-BE-USED',
+      } as never,
+    ]);
+    renderRoute();
+    await openCreateForm();
+    await waitFor(() => expect(platformApi.fetchApplicantSuggestions).toHaveBeenCalled());
+
+    await userEvent.type(screen.getByTestId('new-project-applicant_name'), 'ACME Corp.');
+    await waitFor(() =>
+      expect(screen.getByTestId('new-project-applicant_address')).toHaveValue('1 Main St'),
+    );
+    expect(screen.getByTestId('new-project-management_number')).toHaveValue('');
+  });
+
+  it('does not ask for the report-stage fields, and says where they moved', async () => {
+    // 그 칸들이 사라진 게 아니라 성적서 화면으로 옮겨갔다는 사실을 화면이 밝혀야
+    // 한다 — 밝히지 않으면 "입력란이 없어졌다"로 읽힌다.
+    platformApi.fetchProjectsPage.mockResolvedValue(page([]));
+    renderRoute();
+    await openCreateForm();
+
+    for (const field of REPORT_META_FIELDS) {
+      expect(screen.queryByTestId(`new-project-${field}`)).toBeNull();
+    }
+    expect(screen.getByTestId('new-project-report-stage-hint')).toBeInTheDocument();
   });
 });
 
@@ -535,20 +644,13 @@ describe('MyProjectsRoute 표지 메타 편집 (W3-B M2)', () => {
     return screen.findByTestId('project-meta-form');
   }
 
-  it('S3 — binds ONLY the eight editable cover fields (no identity/lifecycle input)', async () => {
+  it('S3 — binds EVERY editable cover field, and no identity/lifecycle input', async () => {
     await renderEditableCard();
 
-    // 있어야 하는 칸: 편집 가능한 8개.
-    for (const field of [
-      'management_number',
-      'customer',
-      'applicant_name',
-      'applicant_address',
-      'manufacturer',
-      'fcc_grantee_code',
-      'eut_description',
-      'test_standard',
-    ]) {
+    // 있어야 하는 칸 = **편집 필드 전부**. 목록을 손으로 적으면 그것이 사본이 되고,
+    // 필드가 늘어난 날 이 테스트만 조용히 옛 집합을 검사한다(카드 편집기는 스테이지와
+    // 무관하게 전 칸을 편집할 수 있어야 한다 — 사후 수정이 그 존재 이유다).
+    for (const field of EDITABLE_PROJECT_FIELDS) {
       expect(screen.getByTestId(`project-meta-${field}`)).toBeInTheDocument();
     }
 
@@ -567,18 +669,18 @@ describe('MyProjectsRoute 표지 메타 편집 (W3-B M2)', () => {
 
   it('S4 — PATCHes ONLY the dirty field and invalidates the list + detail reads', async () => {
     await renderEditableCard();
-    platformApi.updateProject.mockResolvedValue(project({ customer: 'ACME2' }));
+    platformApi.updateProject.mockResolvedValue(project({ applicant_address: 'ACME2' }));
     const listReadsBeforeSave = platformApi.fetchProjectsPage.mock.calls.length;
 
-    await userEvent.type(screen.getByTestId('project-meta-customer'), 'ACME2');
+    await userEvent.type(screen.getByTestId('project-meta-applicant_address'), 'ACME2');
     await userEvent.click(screen.getByTestId('project-meta-save'));
 
     await waitFor(() => expect(platformApi.updateProject).toHaveBeenCalledTimes(1));
     const call = platformApi.updateProject.mock.calls[0] as [string, Record<string, unknown>];
     expect(call[0]).toBe(PROJECT_ID);
-    // 2겹 — 값 + 키 집합. 나머지 7칸의 키가 실리면 그 칸들이 lost-update 표면이 된다.
-    expect(call[1]).toStrictEqual({ customer: 'ACME2' });
-    expect(Object.keys(call[1])).toStrictEqual(['customer']);
+    // 2겹 — 값 + 키 집합. 나머지 칸의 키가 실리면 그 칸들이 lost-update 표면이 된다.
+    expect(call[1]).toStrictEqual({ applicant_address: 'ACME2' });
+    expect(Object.keys(call[1])).toStrictEqual(['applicant_address']);
 
     // 성공 후 로컬 편집이 버려지고 행이 다시 서버를 따라간다 → 목록 재조회.
     // 절대 횟수가 아니라 **증가**를 본다: 포커스/윈도 refetch 전략이 바뀌면 절대
@@ -605,14 +707,14 @@ describe('MyProjectsRoute 표지 메타 편집 (W3-B M2)', () => {
   });
 
   it('S5 — save is disabled while pristine and never sends an empty body (400)', async () => {
-    await renderEditableCard({ customer: 'ACME' });
+    await renderEditableCard({ applicant_address: 'ACME' });
 
     // 백엔드는 편집 가능한 키가 하나도 없는 body 를 no-op 이 아니라 400 으로
     // 거절한다 → dirty 0 게이트는 UX 취향이 아니라 계약이다.
     expect(screen.getByTestId('project-meta-save')).toBeDisabled();
     expect(screen.getByTestId('project-meta-discard')).toBeDisabled();
 
-    await userEvent.type(screen.getByTestId('project-meta-customer'), '2');
+    await userEvent.type(screen.getByTestId('project-meta-applicant_address'), '2');
     expect(screen.getByTestId('project-meta-save')).toBeEnabled();
     expect(screen.getByTestId('project-meta-unsaved')).toBeInTheDocument();
 
@@ -623,8 +725,8 @@ describe('MyProjectsRoute 표지 메타 편집 (W3-B M2)', () => {
   });
 
   it('S5 — a whitespace-only edit does not enable save (trim ⇒ no change)', async () => {
-    await renderEditableCard({ customer: 'ACME' });
-    await userEvent.type(screen.getByTestId('project-meta-customer'), '   ');
+    await renderEditableCard({ applicant_address: 'ACME' });
+    await userEvent.type(screen.getByTestId('project-meta-applicant_address'), '   ');
     expect(screen.getByTestId('project-meta-save')).toBeDisabled();
   });
 
@@ -637,8 +739,8 @@ describe('MyProjectsRoute 표지 메타 편집 (W3-B M2)', () => {
     //
     // 아래 "최종 값 1회 전송" 케이스만으로는 이 결함을 못 잡는다: baseline 이
     // 움직여도 마지막 문자가 다르므로 patch 값 자체는 동일하게 나온다.
-    await renderEditableCard({ customer: 'ACME' });
-    const input = screen.getByTestId('project-meta-customer');
+    await renderEditableCard({ applicant_address: 'ACME' });
+    const input = screen.getByTestId('project-meta-applicant_address');
 
     await userEvent.type(input, '2');
     expect(screen.getByTestId('project-meta-save')).toBeEnabled();
@@ -650,26 +752,26 @@ describe('MyProjectsRoute 표지 메타 편집 (W3-B M2)', () => {
   });
 
   it('S6 — the baseline is captured ONCE, at the first keystroke', async () => {
-    await renderEditableCard({ customer: 'ACME' });
-    platformApi.updateProject.mockResolvedValue(project({ customer: 'ACMEXYZ' }));
+    await renderEditableCard({ applicant_address: 'ACME' });
+    platformApi.updateProject.mockResolvedValue(project({ applicant_address: 'ACMEXYZ' }));
 
     // 세 번의 키스트로크. baseline 이 키스트로크마다 다시 포획되면 diff 는 매번
     // 자기 자신과 비교되어 비고, 저장 버튼은 영원히 비활성으로 남는다.
-    await userEvent.type(screen.getByTestId('project-meta-customer'), 'XYZ');
+    await userEvent.type(screen.getByTestId('project-meta-applicant_address'), 'XYZ');
     expect(screen.getByTestId('project-meta-save')).toBeEnabled();
 
     await userEvent.click(screen.getByTestId('project-meta-save'));
     await waitFor(() => expect(platformApi.updateProject).toHaveBeenCalledTimes(1));
     const [, body] = platformApi.updateProject.mock.calls[0] as [string, Record<string, unknown>];
     // 최종 값 1회 전송 — 중간 상태('ACMEX'/'ACMEXY')가 아니라 마지막 값.
-    expect(body).toStrictEqual({ customer: 'ACMEXYZ' });
+    expect(body).toStrictEqual({ applicant_address: 'ACMEXYZ' });
   });
 
   it('S6 — an untouched card reads straight from the server (no state mirror)', async () => {
-    await renderEditableCard({ customer: 'ACME', manufacturer: 'ACME Mfg.' });
+    await renderEditableCard({ applicant_address: 'ACME', manufacturer: 'ACME Mfg.' });
     // 편집 상태는 **건드린 프로젝트만** 담는다. 미편집 칸은 매 렌더 서버 값을
     // 파생하므로 동기화 effect 가 필요 없다(있으면 폴링이 타이핑을 지운다).
-    expect(screen.getByTestId('project-meta-customer')).toHaveValue('ACME');
+    expect(screen.getByTestId('project-meta-applicant_address')).toHaveValue('ACME');
     expect(screen.getByTestId('project-meta-manufacturer')).toHaveValue('ACME Mfg.');
     expect(screen.getByTestId('project-meta-applicant_name')).toHaveValue('');
   });
@@ -684,8 +786,8 @@ describe('MyProjectsRoute 표지 메타 편집 (W3-B M2)', () => {
     // 목록(=카드, =편집 폼)이 언마운트된다. 편집 draft 가 살아남는 것은 `edits`
     // 상태가 **라우트**에 있고 `projectId` 로 키잉돼 있기 때문이다 — 카드 안의
     // `useState` 였다면 검색 한 번에 미저장 편집이 사라진다.
-    await renderEditableCard({ customer: 'ACME' });
-    await userEvent.type(screen.getByTestId('project-meta-customer'), '2');
+    await renderEditableCard({ applicant_address: 'ACME' });
+    await userEvent.type(screen.getByTestId('project-meta-applicant_address'), '2');
     expect(screen.getByTestId('project-meta-save')).toBeEnabled();
 
     const readsBefore = platformApi.fetchProjectsPage.mock.calls.length;
@@ -695,7 +797,7 @@ describe('MyProjectsRoute 표지 메타 편집 (W3-B M2)', () => {
     );
 
     // 새 페이지가 착지해 카드가 다시 마운트된 뒤에도 draft 가 그대로다.
-    await waitFor(() => expect(screen.getByTestId('project-meta-customer')).toHaveValue('ACME2'));
+    await waitFor(() => expect(screen.getByTestId('project-meta-applicant_address')).toHaveValue('ACME2'));
     expect(screen.getByTestId('project-meta-save')).toBeEnabled();
   });
 
@@ -719,7 +821,7 @@ describe('MyProjectsRoute 표지 메타 편집 (W3-B M2)', () => {
       ),
     );
     // 다른 칸에는 붙지 않는다 — 붙으면 사용자가 엉뚱한 칸을 고친다.
-    expect(screen.getByTestId('project-meta-customer')).not.toHaveAttribute('aria-invalid');
+    expect(screen.getByTestId('project-meta-applicant_address')).not.toHaveAttribute('aria-invalid');
     expect(screen.getByTestId('project-meta-error')).toBeInTheDocument();
   });
 
@@ -727,7 +829,7 @@ describe('MyProjectsRoute 표지 메타 편집 (W3-B M2)', () => {
     // `PROJECT_IDENTIFIER_CONFLICT` 는 폼에 없는 `project_code` 충돌로도 발생한다.
     // 그 이름을 억지로 어딘가에 붙이면 안 되고, 일반 충돌 문구로 폴백해야 한다.
     // (이 케이스가 있어야 S7 의 allowlist 가 비-공허해진다.)
-    await renderEditableCard({ customer: 'ACME' });
+    await renderEditableCard({ applicant_address: 'ACME' });
     platformApi.updateProject.mockRejectedValue(
       Object.assign(new Error('conflict'), {
         status: 409,
@@ -736,27 +838,27 @@ describe('MyProjectsRoute 표지 메타 편집 (W3-B M2)', () => {
       }),
     );
 
-    await userEvent.type(screen.getByTestId('project-meta-customer'), '2');
+    await userEvent.type(screen.getByTestId('project-meta-applicant_address'), '2');
     await userEvent.click(screen.getByTestId('project-meta-save'));
 
     const error = await screen.findByTestId('project-meta-error');
     expect(error).toHaveTextContent('같은 번호를 쓰는 프로젝트가 이미 있습니다.');
-    for (const field of ['management_number', 'customer', 'fcc_grantee_code']) {
+    for (const field of ['management_number', 'applicant_address', 'fcc_grantee_code']) {
       expect(screen.getByTestId(`project-meta-${field}`)).not.toHaveAttribute('aria-invalid');
     }
   });
 
   it('S7 — a 409 WITHOUT params falls back too (params is optional on the wire)', async () => {
-    await renderEditableCard({ customer: 'ACME' });
+    await renderEditableCard({ applicant_address: 'ACME' });
     platformApi.updateProject.mockRejectedValue(
       Object.assign(new Error('conflict'), { status: 409 }),
     );
 
-    await userEvent.type(screen.getByTestId('project-meta-customer'), '2');
+    await userEvent.type(screen.getByTestId('project-meta-applicant_address'), '2');
     await userEvent.click(screen.getByTestId('project-meta-save'));
 
     expect(await screen.findByTestId('project-meta-error')).toBeInTheDocument();
-    expect(screen.getByTestId('project-meta-customer')).not.toHaveAttribute('aria-invalid');
+    expect(screen.getByTestId('project-meta-applicant_address')).not.toHaveAttribute('aria-invalid');
   });
 
   it('hides the edit form from an unauthenticated visitor', async () => {

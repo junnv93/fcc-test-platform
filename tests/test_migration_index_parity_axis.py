@@ -108,6 +108,52 @@ def _incremental_index_statements() -> list[tuple[str, str, str]]:
     return found
 
 
+_DROP_COLUMN = re.compile(
+    r'ALTER\s+TABLE\s+"(?P<table>\w+)"\s+DROP\s+COLUMN\s+(?:IF\s+EXISTS\s+)?"(?P<column>\w+)"',
+    re.IGNORECASE,
+)
+_INDEX_TARGET = re.compile(r'\bON\s+"(?P<table>\w+)"(?P<body>.*)$', re.IGNORECASE | re.DOTALL)
+
+
+def _dropped_columns() -> dict[str, set[str]]:
+    """증분 마이그레이션이 **삭제하는** 칸 → ``{표: {칸, …}}``.
+
+    주석을 먼저 지운다: ``--rollback`` 안내는 되돌리기 지시이지 이 원장이 적용하는
+    문이 아니다(같은 이유로 :func:`_incremental_index_statements` 도 지운다).
+    """
+    dropped: dict[str, set[str]] = {}
+    for path in sorted(MIGRATIONS.glob('*.sql')):
+        if path.name == _GENERATED:
+            continue
+        sql = _LINE_COMMENT.sub('', path.read_text(encoding='utf-8'))
+        for match in _DROP_COLUMN.finditer(sql):
+            dropped.setdefault(match.group('table'), set()).add(match.group('column'))
+    return dropped
+
+
+def _retired_with_its_column(statement: str, dropped: dict[str, set[str]]) -> bool:
+    """이 인덱스가 **자기 칸과 함께 은퇴**했는가.
+
+    PostgreSQL 은 칸을 지울 때 그 칸에 의존하는 인덱스를 함께 지운다
+    (https://www.postgresql.org/docs/current/sql-altertable.html). 그러므로 은퇴한 칸의
+    인덱스는 "스키마 SSOT 가 모르는" 것이 **옳다** — 신규 DB 에는 그 칸이 애초에 없고,
+    운영 DB 에서는 삭제 마이그레이션이 인덱스를 함께 걷어간다.
+
+    ⚠️ 손 목록이 아니라 **원장에서 파생**한다. 예외를 이름으로 적으면 그 칸이 되살아나는
+    날에도 예외가 남아 게이트가 조용해진다. 여기서는 삭제 문이 사라지면 예외도 사라진다.
+
+    판정은 좁게 한다: 인덱스가 **거는 표**의 삭제된 칸이 인덱스 본문에 식별자로
+    나타날 때만 은퇴로 읽는다. 오타로 없는 칸을 가리키는 인덱스는 여전히 고아다.
+    """
+    target = _INDEX_TARGET.search(statement)
+    if target is None:
+        return False
+    for column in dropped.get(target.group('table'), ()):
+        if re.search(rf'\b{re.escape(column)}\b', target.group('body')):
+            return True
+    return False
+
+
 class TestMigrationIndexesMatchTheSchemaSsot(unittest.TestCase):
 
     def test_the_scan_is_not_vacuous(self):
@@ -122,17 +168,58 @@ class TestMigrationIndexesMatchTheSchemaSsot(unittest.TestCase):
 
     def test_every_index_a_migration_creates_is_declared_in_the_schema(self):
         declared = _declared_indexes()
+        dropped = _dropped_columns()
         orphans = sorted({
             f'{name}  ({file})'
-            for file, name, _ in _incremental_index_statements()
-            if name not in declared
+            for file, name, statement in _incremental_index_statements()
+            if name not in declared and not _retired_with_its_column(statement, dropped)
         })
         self.assertEqual(
             orphans, [],
             '마이그레이션이 만드는데 스키마 SSOT 가 모르는 인덱스가 있다 — 그러면 신규 DB 에는 '
             '그 인덱스가 없다:\n' + '\n'.join(f'  · {item}' for item in orphans)
             + '\n\n고치는 법: docs/platform/central_db_schema.v1.json 의 해당 표에 그 인덱스를 '
-            '선언하고 `scripts/export_platform_central_db_ddl.py --write` 로 001 을 다시 내라.',
+            '선언하고 `scripts/export_platform_central_db_ddl.py --write` 로 001 을 다시 내라.\n'
+            '그 인덱스가 **은퇴**한 것이라면 선언하지 마라 — 신규 DB 에 없는 칸의 인덱스를 '
+            '선언하면 001 이 만들 수 없다. 대신 그 칸을 지우는 마이그레이션이 원장에 있어야 '
+            '한다(그러면 이 게이트가 파생으로 알아본다).',
+        )
+
+    def test_the_retirement_escape_is_narrow_and_not_vacuous(self):
+        """은퇴 예외가 모든 고아를 삼키지 않는가 — 예외는 게이트를 끄는 가장 쉬운 길이다."""
+        dropped = _dropped_columns()
+
+        # ① 원장에서 실제로 파생되는가. 삭제 문이 하나도 안 읽히면 이 예외는 죽은
+        #    코드이고, 살아 있다면 아래 좁힘 조건들이 의미를 갖는다.
+        self.assertTrue(dropped, '삭제되는 칸을 하나도 못 읽었다 — 정규식이 원장과 어긋났다')
+
+        table, column = next(
+            (t, c) for t, cols in sorted(dropped.items()) for c in sorted(cols)
+        )
+        on_it = f'CREATE INDEX "i" ON "{table}" (lower({column}));'
+        self.assertTrue(_retired_with_its_column(on_it, dropped))
+
+        # ② 같은 이름의 칸이라도 **다른 표**면 은퇴가 아니다.
+        self.assertFalse(
+            _retired_with_its_column(
+                f'CREATE INDEX "i" ON "a_table_that_drops_nothing" (lower({column}));',
+                dropped,
+            ),
+        )
+
+        # ③ 삭제되지 않은 칸의 인덱스는 여전히 고아다.
+        self.assertFalse(
+            _retired_with_its_column(
+                f'CREATE INDEX "i" ON "{table}" ("a_column_no_migration_drops");', dropped,
+            ),
+        )
+
+        # ④ 부분 일치로 새지 않는다 — `name` 이 지워졌다고 `applicant_name` 이
+        #    은퇴로 읽히면 진짜 고아가 조용히 통과한다.
+        self.assertFalse(
+            _retired_with_its_column(
+                f'CREATE INDEX "i" ON "{table}" ("prefix_{column}_suffix");', dropped,
+            ),
         )
 
     def test_every_shared_index_has_the_same_definition_in_both_paths(self):

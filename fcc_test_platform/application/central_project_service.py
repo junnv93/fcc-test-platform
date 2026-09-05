@@ -60,7 +60,16 @@ from fcc_test_platform.domain.services.project_directory_query import (
     normalize_search_term,
     search_like_pattern,
 )
-from fcc_test_kernel.domain.services.project_metadata_edit import parse_project_metadata_update
+from fcc_test_kernel.domain.services.project_metadata_edit import (
+    APPLICANT_IDENTITY_FIELD,
+    APPLICANT_SUGGESTION_FIELDS,
+    CREATE_PROJECT_IDENTITY_FIELD,
+    DEVICE_MODEL_META_FIELDS,
+    EDITABLE_PROJECT_META_FIELDS,
+    PROJECT_TABLE_META_FIELDS,
+    parse_project_create_request,
+    parse_project_metadata_update,
+)
 
 
 __all__ = [
@@ -200,6 +209,33 @@ class CentralProjectService:
             'next_cursor': next_cursor,
         }
 
+    def list_applicant_suggestions(
+        self, *, q: Optional[str] = None, limit: Optional[int] = None,
+    ) -> list[dict]:
+        """Return the applicant directory for the create form's auto-fill.
+
+        신청자는 마스터 테이블이 아니라 **프로젝트 행에서 파생**된다(계약 결정):
+        같은 신청자로 만든 프로젝트가 여럿이면 가장 최근 것의 주소/제조사가 기본값이
+        된다. 별도 마스터를 두면 프로젝트가 든 값과 마스터 값이 갈라지고, 어느 쪽이
+        진실인지 묻는 질문이 새로 생긴다 — 그 질문 자체를 만들지 않는다.
+
+        ``q`` 는 프로젝트 검색과 **같은 정규화·이스케이프 규약**을 쓴다
+        (``normalize_search_term`` → ``search_like_pattern``): 빈 검색어는 필터
+        없음이고, 사용자가 친 ``%``/``_`` 는 와일드카드가 아니라 글자다.
+
+        ``limit`` 은 항상 유계다 — ``clamp_limit`` 이 기본/상한 SSOT 이고, 상한 없는
+        읽기를 만들지 않는다. 자동완성은 타이핑마다 호출되므로 상한 없는 읽기는
+        신청자가 누적될수록 그대로 비용이 된다.
+
+        Returns: ``APPLICANT_SUGGESTION_FIELDS`` + ``project_count`` 을 담은 행들,
+        최근 쓰인 신청자 순. 빈 목록은 "아직 신청자가 없다"는 정상 상태다(백엔드
+        장애는 ``CentralProjectError`` 로 loud 하게 드러난다).
+        """
+        term = normalize_search_term(q)
+        pattern = search_like_pattern(term) if term is not None else None
+        rows = self._read.list_applicant_suggestions(q=pattern, limit=clamp_limit(limit))
+        return [_applicant_envelope(row) for row in rows]
+
     def get_project(self, project_id: str) -> dict:
         """Return one project's detail. Raises ``ValueError`` (malformed id) or
         ``ProjectNotFoundError`` (unknown project)."""
@@ -281,17 +317,10 @@ class CentralProjectService:
         return self.get_project(pid)
 
     def create_project(
-        self, *, model_name: str, actor_subject: str,
+        self, body: Optional[Mapping] = None, *, actor_subject: str,
         actor_issuer: str = '', actor_email: str = '', actor_display_name: str = '',
-        customer: Optional[str] = None, manufacturer: Optional[str] = None,
-        management_number: Optional[str] = None,
-        fcc_grantee_code: Optional[str] = None,
-        applicant_name: Optional[str] = None,
-        applicant_address: Optional[str] = None,
-        eut_description: Optional[str] = None,
-        test_standard: Optional[str] = None,
     ) -> dict:
-        """Create (or reuse) a project for ``model_name`` and return its detail.
+        """Create (or reuse) a project from the request ``body`` and return its detail.
 
         ADR-0017 D1 — ``project_code == model name``; a same-code request returns
         the existing project (idempotent). D3 — the creator is granted
@@ -302,8 +331,20 @@ class CentralProjectService:
         are each idempotent, so a partial failure self-heals on retry rather than
         leaving an owner-less project (Codex review §2 — retry story in lieu of a
         single cross-service transaction; the residual non-atomicity is tracked).
+
+        **본문은 도메인 파서가 소유한다** (2026-09-04). 이전에는 이 시그니처가 필드
+        하나당 키워드 인자 하나를 들고 있었고, HTTP 어댑터가 ``payload.get(...)`` 를
+        같은 수만큼 늘어놓아 넘겼다 — 즉 편집 필드 목록의 사본이 서비스와 어댑터에
+        각각 있었다. 지금은 ``parse_project_create_request`` 하나가 필수/폐기/미지
+        필드를 판정하고, 아래 레코드 조립은 필드→테이블 SSOT 에서 파생한다. 필드가
+        늘거나 줄 때 이 파일은 **바뀌지 않는다**.
+
+        Raises:
+            ValueError: 본문 검증 실패(필수 누락, 폐기·미지 필드 등) → 400.
         """
-        name = _require_text(model_name, 'model_name')
+        values = parse_project_create_request(body)
+        # 필수 판정을 파서가 이미 통과시켰으므로 non-empty 가 보장된다.
+        name = str(values[CREATE_PROJECT_IDENTITY_FIELD])
         actor = _require_text(actor_subject, 'actor_subject')
         # actor_issuer is optional: a blank issuer (legacy / trusted-header /
         # claim-less principal) canonicalizes to LEGACY_IDENTITY_ISSUER so central
@@ -325,23 +366,23 @@ class CentralProjectService:
 
         now = self._clock()
         project_id = self._id_factory()
+        # 메타 칸은 **소속 테이블 SSOT** 로 갈라 담는다. 값은 파서가 이미 정규화했다
+        # (trim, 빈 문자열 → None). 본문에 없던 칸은 ``values`` 에 없으므로 ``None`` 이
+        # 되어 컬럼이 NULL 로 남는다 — 생성에서는 "미기재"와 "지움"이 같은 결과다.
+        #
+        # ``management_number`` 는 UNIQUE 이고 성적서 번호(S-{management_number}-…)의
+        # 재료라 필수 칸이며, ``status`` 는 생성 시 항상 'active' 다(값 도메인
+        # active|completed — 영문 토큰, 한글은 i18n). ``fcc_id`` 는 저장하지 않는다:
+        # fcc_grantee_code + model_name 에서 파생된다(fcc_id_policy SSOT).
+        # ``projects.name`` 은 없다(2026-09-04, 마이그레이션 033). 그 컬럼은 항상
+        # ``project_code`` 의 사본이었고 아무도 읽지 않았다 — ADR-0017 D1 이
+        # ``project_code == model name`` 을 못박은 뒤로는 같은 문자열의 세 번째
+        # 사본이었다.
         project_record = {
             'id': project_id,
             'project_code': project_code,
-            'name': name,
-            'customer': _opt_text(customer),
-            # PM-assigned management number (UNIQUE, nullable — optional on create).
-            # Report Number 생성근간(S-{management_number}-…). status 는 생성 시
-            # 'active' 기본(값 도메인 active|completed — 영문 토큰, 한글은 i18n).
-            'management_number': _opt_text(management_number),
             'status': 'active',
-            # 성적서 표지 메타(전부 text, nullable). fcc_id 는 저장하지 않는다 —
-            # fcc_grantee_code + model_name 에서 파생(fcc_id_policy SSOT).
-            'fcc_grantee_code': _opt_text(fcc_grantee_code),
-            'applicant_name': _opt_text(applicant_name),
-            'applicant_address': _opt_text(applicant_address),
-            'eut_description': _opt_text(eut_description),
-            'test_standard': _opt_text(test_standard),
+            **{field: values.get(field) for field in PROJECT_TABLE_META_FIELDS},
             'created_at': now,
             'updated_at': now,
         }
@@ -349,8 +390,7 @@ class CentralProjectService:
             'id': self._id_factory(),
             'project_id': project_id,
             'model_name': name,
-            'manufacturer': _opt_text(manufacturer),
-            'metadata_json': None,
+            **{field: values.get(field) for field in DEVICE_MODEL_META_FIELDS},
             'created_at': now,
             'updated_at': now,
         }
@@ -484,20 +524,39 @@ def _is_enabled(value: object) -> bool:
 
 
 
+def _meta_envelope(row: dict) -> dict:
+    """표지 메타 칸을 도메인 SSOT 순서대로 투영한다.
+
+    필드를 손으로 나열하지 않는 이유는 이 함수의 호출자가 둘(목록/상세)이기
+    때문이다 — 나열하면 사본이 둘 생기고, 편집 필드가 바뀌는 날 한쪽만 고쳐진다.
+    (``customer`` 폐기 때 실제로 두 곳이 각각 옛 필드를 들고 있었다.)
+    """
+    return {field: optional_text(row.get(field)) for field in EDITABLE_PROJECT_META_FIELDS}
+
+
+def _applicant_envelope(row: dict) -> dict:
+    """신청자 제안 한 건. 식별 칸은 조회 조건상 non-null 이 보장되므로 ``text``,
+    함께 따라오는 칸은 미기재가 정상이므로 ``optional_text`` 다 — 그 구분이 곧
+    "이름 없는 제안은 제안이 아니다"라는 사실의 표현이다."""
+    return {
+        **{
+            field: (
+                text(row.get(field)) if field == APPLICANT_IDENTITY_FIELD
+                else optional_text(row.get(field))
+            )
+            for field in APPLICANT_SUGGESTION_FIELDS
+        },
+        'project_count': int(row.get('project_count') or 0),
+    }
+
+
 def _list_envelope(row: dict) -> dict:
     return {
         'project_id': text(row.get('project_id')),
         'project_code': text(row.get('project_code')),
         'model_name': text(row.get('model_name')),
-        'customer': optional_text(row.get('customer')),
-        'manufacturer': optional_text(row.get('manufacturer')),
-        'management_number': optional_text(row.get('management_number')),
         'status': optional_text(row.get('status')),
-        'fcc_grantee_code': optional_text(row.get('fcc_grantee_code')),
-        'applicant_name': optional_text(row.get('applicant_name')),
-        'applicant_address': optional_text(row.get('applicant_address')),
-        'eut_description': optional_text(row.get('eut_description')),
-        'test_standard': optional_text(row.get('test_standard')),
+        **_meta_envelope(row),
         # Derived (never stored): grantee_code + product_code(model_name).
         'fcc_id': fcc_id_policy.fcc_id(
             row.get('fcc_grantee_code'), text(row.get('model_name'))
@@ -512,15 +571,8 @@ def _detail_envelope(row: dict) -> dict:
         'project_id': text(row.get('project_id')),
         'project_code': text(row.get('project_code')),
         'model_name': text(row.get('model_name')),
-        'customer': optional_text(row.get('customer')),
-        'manufacturer': optional_text(row.get('manufacturer')),
-        'management_number': optional_text(row.get('management_number')),
         'status': optional_text(row.get('status')),
-        'fcc_grantee_code': optional_text(row.get('fcc_grantee_code')),
-        'applicant_name': optional_text(row.get('applicant_name')),
-        'applicant_address': optional_text(row.get('applicant_address')),
-        'eut_description': optional_text(row.get('eut_description')),
-        'test_standard': optional_text(row.get('test_standard')),
+        **_meta_envelope(row),
         # Derived (never stored): grantee_code + product_code(model_name).
         'fcc_id': fcc_id_policy.fcc_id(
             row.get('fcc_grantee_code'), text(row.get('model_name'))

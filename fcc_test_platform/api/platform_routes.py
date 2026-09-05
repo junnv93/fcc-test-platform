@@ -798,6 +798,17 @@ class PlatformApiAdapter:
             status=status, q=q, limit=limit, cursor=cursor,
         )
 
+    def list_applicants(
+        self, *, q: Optional[str] = None, limit: Optional[int] = None,
+    ) -> list:
+        # 생성 폼 자동 채움의 원천. 인가는 프로젝트 디렉터리와 같은 클래스
+        # ('authenticated'): 이 값들은 프로젝트 목록에서 이미 보이므로 더 좁혀도
+        # 실질적 보호가 되지 않고, 좁히면 신규 시험원만 손으로 다시 타이핑하게 된다.
+        self.authorize('list_applicants')
+        if self._project_service is None:
+            raise RuntimeError('list_applicants called but project_service is not wired')
+        return self._project_service.list_applicant_suggestions(q=q, limit=limit)
+
     def complete_project(self, project_id: str) -> dict:
         # project-status-visibility — mark a project completed. project_id is
         # passed to authorize so a project-membership admin (not only a global
@@ -844,27 +855,22 @@ class PlatformApiAdapter:
                 'create_project requires an authenticated actor (creator becomes '
                 'project_admin) — anonymous/auth-disabled creation is refused'
             )
-        payload = body or {}
         # JIT (결함 B) — forward the creator's VERIFIED profile claims so the
         # project service can provision their central ``users`` row. Empty when
         # the principal carries no email/name (trusted-header / claim-less token).
         principal = self._principal
         actor_email = getattr(principal, 'email', '') if principal else ''
         actor_display_name = getattr(principal, 'display_name', '') if principal else ''
+        # 본문은 **그대로** 넘긴다. 필드 검증(필수/폐기/미지)은 도메인 정책 SSOT
+        # (``parse_project_create_request``)가 소유하므로 이 어댑터는 필드를 다시
+        # 열거하지 않는다 — update_project 가 이미 그 모양이고, create 만 예외로
+        # ``payload.get(...)`` 을 필드 수만큼 늘어놓아 목록의 두 번째 사본이었다.
         return self._project_service.create_project(
-            model_name=payload.get('model_name'),
+            body,
             actor_subject=actor,
             actor_issuer=getattr(principal, 'issuer', '') if principal else '',
             actor_email=actor_email,
             actor_display_name=actor_display_name,
-            customer=payload.get('customer'),
-            manufacturer=payload.get('manufacturer'),
-            management_number=payload.get('management_number'),
-            fcc_grantee_code=payload.get('fcc_grantee_code'),
-            applicant_name=payload.get('applicant_name'),
-            applicant_address=payload.get('applicant_address'),
-            eut_description=payload.get('eut_description'),
-            test_standard=payload.get('test_standard'),
         )
 
     # ── Phase G (2026-06-23) — test_reports 성적서 surface ────────────────────
@@ -2650,6 +2656,13 @@ def create_platform_router(
         )
         return _emit_page(response, page)
 
+    def list_applicants(request: Request, q: str = '', limit: Optional[int] = None):
+        # Plain array of applicant suggestions (most recently used first). No
+        # cursor: this is an autocomplete read, and the top N IS the whole answer —
+        # advertising pagination the server does not implement would invite a UI
+        # that cannot work.
+        return request_adapter(request).list_applicants(q=q or None, limit=limit)
+
     def create_project(request: Request, body: Optional[dict] = None):
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).create_project(body)
@@ -3118,6 +3131,7 @@ def create_platform_router(
 
     route_handlers = {
         'list_projects': list_projects,
+        'list_applicants': list_applicants,
         'create_project': create_project,
         'get_project': get_project,
         'update_project': update_project,
