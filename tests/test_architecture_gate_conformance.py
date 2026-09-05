@@ -45,6 +45,7 @@ import re
 import subprocess
 import sys
 import unittest
+import warnings
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -138,6 +139,39 @@ def _as_set(raw: str) -> set[str]:
 
 def _sibling_lane() -> Path:
     return REPO_ROOT.parent / 'fcc-test-contracts'
+
+
+class GateEvidence(UserWarning):
+    """게이트 도구가 «일했다»는 증거를 CI 로그로 내보내는 통로.
+
+    ⚠️ **경고가 아니다.** 그런데도 `warnings` 를 쓰는 이유가 있다 — 다른 통로가
+    전부 막혀 있었다(실측 2026-09-05):
+
+        print / stderr        pytest 가 통과한 시험의 출력을 인쇄하지 않는다
+        -rA · -rP 로 전환     `lane_check.py` 의 `PYTEST_ARGS` 는 pre-push 와 CI 가
+                              **공유하는 SSOT** 다. 거기를 건드리면 통과 3,000여 건의
+                              출력이 함께 쏟아진다
+        JUnit XML             이 레인은 생성하지 않는다
+
+    warnings summary 는 **기본으로 인쇄되고 메시지 전문을 싣는다**(CI run
+    33968476114 로그에서 확인). 그래서 이 한 줄만으로 증거가 pre-push 와 CI 양쪽
+    로그에 남는다.
+
+    ## 왜 이것이 필요한가
+
+    아래 두 팔은 도구가 보고한 규모를 **단언**한다(`Analyzed … dependencies` 가
+    없으면 「돌지 않았다」로 red). 그 단언은 러너 위에서 참이지만, **통과하면 숫자가
+    아무 데도 남지 않는다.** 그래서 로그를 읽는 사람은 「돌았다」와 「빠졌다」를
+    skip 줄의 부재로만 추론해야 했다 — 이 저장소가 반복해 밟은 「도구가 안 돌았다 =
+    위반이 없다」와 정확히 같은 관측 문제다(설계서 §7 교훈 ③).
+
+    단언은 **기계**를 위한 것이고, 이 통로는 **사람**을 위한 것이다. 둘 다 필요하다.
+    """
+
+
+def _publish_evidence(line: str) -> None:
+    """도구가 보고한 규모를 로그에 남긴다 — 단언을 대신하지 «않는다»."""
+    warnings.warn(line, GateEvidence, stacklevel=2)
 
 
 def _contracts_are_reachable() -> bool:
@@ -373,6 +407,7 @@ class TestTheGatesActuallyRun(unittest.TestCase):
             int(checked.group(1)), 0, f'mypy 가 0개를 검사했다 — 게이트가 공허하다:\n{report}')
         self.assertEqual(
             0, done.returncode, f'domain/* strict 가 깨졌다 (설계서 S1):\n{report}')
+        _publish_evidence(f'mypy 게이트가 돌았다 — {checked.group(0)}')
 
     @unittest.skipIf(importlib.util.find_spec('importlinter') is None,
                      'import-linter 미설치 — 게이트를 돌리려면: pip install import-linter')
@@ -394,6 +429,9 @@ class TestTheGatesActuallyRun(unittest.TestCase):
             f'세 계약이 모두 KEPT 로 보고되지 않았다 (설계서 S2):\n{report}')
         self.assertEqual(
             0, done.returncode, f'경계 계약이 깨졌다 (설계서 S2):\n{report}')
+        _publish_evidence(
+            f'import-linter 게이트가 돌았다 — {analyzed.group(0)} · '
+            f'KEPT {done.stdout.count(" KEPT")}회')
 
 
 if __name__ == '__main__':
