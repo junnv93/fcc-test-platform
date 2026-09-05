@@ -239,6 +239,60 @@ SQL
 > ⚠️ 이 조회는 `customer` 칸이 **아직 있을 때만** 돈다. `032` 적용 뒤에는 그 칸이 없으므로
 > `column "customer" does not exist` 가 나는 것이 정상이다 — 그때는 이미 지난 관문이다.
 
+### ①-b 버려도 되는 사본에 **먼저 돌려 본다** — 창 안에서 처음 만나지 마라
+
+실측 2026-09-05: 이 리허설이 **창 안에서였다면 창을 몇 배로 늘렸을 문턱 하나**를
+미리 잡았다(아래 ①-c). 마이그레이션은 리뷰만 받고 아직 어디서도 실행되지 않은 상태로
+창에 들어오기 쉽다.
+
+운영 DB 를 건드리지 않고, 같은 postgres 안에 **일회용 사본**을 만들어 돌린다:
+
+```bash
+docker compose -f infra/docker-compose.central.yml \
+  --env-file infra/central/central.env \
+  exec -T postgres sh -c '
+    set -e
+    createdb -U "$POSTGRES_USER" -T template0 fcc_rehearsal
+    pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | psql -q -U "$POSTGRES_USER" -d fcc_rehearsal
+  '
+```
+
+그 사본을 대상으로 러너를 돌린다(`--dsn` 으로 대상을 바꾼다. `--migrations-dir` 은
+**새 이미지의** 파일을 가리켜야 한다 — 도는 컨테이너의 이미지에는 새 `.sql` 이 없다).
+
+끝나면 반드시 지운다: `dropdb -U "$POSTGRES_USER" fcc_rehearsal`.
+
+**리허설이 통과했다는 것의 의미** — 신규 DB 경로와 마이그레이션 경로가 만나는지까지
+본다. 사본에 `001` 만 적용한 두 번째 DB 를 만들어 컬럼·인덱스를 대조하면 된다.
+실측 2026-09-05: **473 컬럼 · 152 인덱스가 완전히 동일**했다. 이 대조가 어긋나면
+「새로 깐 중앙」과 「업그레이드한 중앙」이 다른 모양이 된다.
+
+### ①-c ⚠️ `001` 은 재렌더되므로 `migrate` 가 **드리프트로 거부한다**
+
+`001_initial_central_db.sql` 은 생성물이다(`docs/platform/central_db_schema.v1.json`
+→ `scripts/export_platform_central_db_ddl.py`). 스키마 SSOT 가 바뀐 웨이브에서는 그
+파일이 재렌더되고, 원장에 적힌 체크섬과 달라진다. 그러면 러너가 **전체를 거부**한다:
+
+```
+{"ok": false, "error": "drift",
+ "detail": "001_initial_central_db: file checksum … != ledger … (already-applied migration was edited — refusing to re-apply)"}
+```
+
+거부가 옳다(마이그레이션은 append-only 다). `001` 만이 그 규칙의 **선언된 예외**이고,
+해소는 재적용이 아니라 원장의 체크섬을 다시 맞추는 것이다:
+
+```bash
+docker compose -f infra/docker-compose.central.yml \
+  --env-file infra/central/central.env \
+  exec platform-api python scripts/platform_db_migrate.py reconcile
+```
+
+기대: `{"ok": true, "reconciled": ["001_initial_central_db"]}` — 그 뒤 `migrate` 가
+정상 진행한다.
+
+⚠️ **`001` 이 아닌 이름이 `drift` 에 나오면 `reconcile` 하지 마라.** 그것은 이미 적용된
+마이그레이션이 편집됐다는 뜻이고, 답은 새 `NNN_*.sql` 이지 원장 수정이 아니다.
+
 ### ② 순서 — 창 안에서 한 번에 끝낸다
 
 정지 창을 쓰는 이유가 바로 "그 안에서는 옛 코드가 돌지 않는다"이므로, 마이그레이션과
@@ -248,7 +302,8 @@ SQL
 [정지]  docker compose ... stop platform-api web headless-api
    1.   §4 의 백업이 0바이트가 아닌지 다시 확인한다
    2.   §5 를 --build 와 함께 실행한다 (마이그레이션이 딸려 돈다)
-   3.   §6 으로 pending: [] · drift: [] 를 확인한다
+   3.   ①-c 가 예고한 `001` 드리프트가 나면 `reconcile` 한 뒤 §5 를 다시 실행한다
+   4.   §6 으로 pending: [] · drift: [] 를 확인한다
 [재개]  §7 상태 확인 · §8 스모크
 ```
 
