@@ -18,12 +18,12 @@ name = "fcc-test-platform"
 # version = 이 레인이 이미 소유한 npm 배포물 apps/web/package.json 과 상등.
 #
 # ⚠️ **「상등」은 2026-09-05 현재 거짓이고 그것을 재는 검사가 0건이다** — 이 값은
-# `0.1.10`, npm 쪽은 `0.1.4` 다. 형제 레인(`fcc-test-contracts`)이 2026-09-04 에
+# `0.1.11`, npm 쪽은 `0.1.4` 다. 형제 레인(`fcc-test-contracts`)이 2026-09-04 에
 # 자기 자리에서 같은 사실을 이미 적었다. 이번 판올림에서 npm 을 끌어올려 맞추지
 # **않았다**: 그러면 둘이 보조를 맞춰 온 것처럼 보이게 되고, 갈라진 사실 자체가
 # 사라진다. 위 한 줄은 지금 산문 주장이지 게이트가 아니다. 소유 웨이브 미정.
 #
-# ⚠️ **0.1.10 은 wire 파손을 담는다** — 소비 레인은 이 번호로 pin 하기 전에 측정
+# ⚠️ **0.1.11 은 wire 파손을 담는다** — 소비 레인은 이 번호로 pin 하기 전에 측정
 # job 축을 함께 옮겨야 한다. 파손은 `headless-api` 에만 있고 `platform-api` 는
 # **표면 변화가 0** 이다(아래 수치는 문서가 아니라 `git diff v0.1.9..v0.1.10` 실측):
 #
@@ -52,6 +52,26 @@ name = "fcc-test-platform"
 #     import 표면   모듈 175 → 211 · **삭제 0** · 신규 36
 #                   (`*_cli` 35 + `keycloak_chamber_admin`)
 #
+# ■ ⚠️ 이 판은 v0.1.10 의 **수리**다 — 그 태그는 못 쓴다
+#
+# `v0.1.10`(2026-09-06, 커밋 9aed9cc)은 **판올림 커밋 없이 태그만** 붙었다. 그
+# 트리의 `version` 은 여전히 `0.1.9` 다:
+#
+#     v0.1.8  → version = "0.1.8"   ✓
+#     v0.1.9  → version = "0.1.9"   ✓
+#     v0.1.10 → version = "0.1.9"   ✗
+#
+# 그래서 소비 레인이 그 번호로 pin 하면 설치된 배포판이 스스로를 `0.1.9` 라고
+# 말하고, 모노레포의 `tests/test_lane_pin_matches_installed.py`
+# `::test_the_installed_version_equals_the_declared_tag` 가 「선언 v0.1.10 ·
+# 설치 0.1.9」로 **빨개진다**. 태그는 옮기지 않는 것이 규칙이므로 `v0.1.10` 은
+# 그대로 두고 이 판이 그 자리를 대신한다(형제 레인이 `0.1.19` 를 같은 방식으로
+# 처리한 선례가 있다). **소비 레인은 v0.1.10 을 건너뛰고 이 번호를 pin 하라.**
+#
+# ⚠️ 내용상 v0.1.10 과 이 판의 차이는 **버전 문자열과 게이트 수리 9 커밋뿐**이다 —
+# 실측: import 표면 211 → 211(삭제 0 · 신규 0) · 진입점 37 → 37 ·
+# `docs/api/*` 차분 **0**. 즉 위 wire 파손 표는 v0.1.10 에도 그대로 해당한다.
+#
 # ■ 이 판이 처음으로 «명령»을 싣는다 — 진입점 0 → 37
 #
 # `scripts/` 알맹이 38건이 패키지로 들어오고(PR #84·#87·#88) 그 위에 진입점
@@ -68,7 +88,7 @@ name = "fcc-test-platform"
 #     fcc-test-contracts   v0.1.21 → v0.1.22   (⚠️ 그 판도 wire 파손을 담는다)
 #     fcc-test-kernel      kernel-v0.5.0       (v0.1.9 와 같음 — 새로 적을 것 없음)
 #
-version = "0.1.10"
+version = "0.1.11"
 description = "Central DB, backend API, auth/RBAC, frontend shell, provider registry, deployment composition, and report/artifact browsing workflows."
 # requires-python = infra/central/Dockerfile.api 의 `FROM python:3.11-slim`.
 requires-python = ">=3.11"
