@@ -178,7 +178,7 @@ function routeGet(
           'get',
           STATUS_PATH,
           overrides.status ?? {
-            job_id: 'job-1',
+            generation_job_id: 'job-1',
             project_id: PROJECT_ID,
             status: 'succeeded',
             draft_id: 'draft-generated',
@@ -227,7 +227,7 @@ function routeGet(
     [METADATA_PATH]: {
       get: () =>
         headlessOk('get', METADATA_PATH, {
-          job_id: 'job-1',
+          generation_job_id: 'job-1',
           draft_id: 'draft-generated',
           status: overrides.metadataStatus ?? 'succeeded',
           metadata: { generation_key: 'generation-key' },
@@ -281,7 +281,7 @@ function routePost(
     [SUBMIT_PATH]: {
       post: () =>
         headlessOk('post', SUBMIT_PATH, {
-          job_id: 'job-1',
+          generation_job_id: 'job-1',
           project_id: PROJECT_ID,
           status: 'queued',
           request_sha256: 'a'.repeat(64),
@@ -590,7 +590,7 @@ describe('current generation API cutover', () => {
     authenticateAs(['test_plan:read', 'test_plan:author']);
     routeGet({
       status: {
-        job_id: 'job-1',
+        generation_job_id: 'job-1',
         project_id: PROJECT_ID,
         status: 'failed',
         draft_id: null,

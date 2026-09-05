@@ -427,7 +427,10 @@ export function GenerateTestPlanForm({
       return submitTestPlanGeneration(projectId, idempotencyKey.current, activeRequest, preview);
     },
     onSuccess: (data) => {
-      setJobId(data.job_id);
+      // ⚠️ contract v0.1.22 — the submit response now spells the handle the
+      // way the route consumes it (`{generation_job_id}`); before, the path
+      // parameter had no producing field at all.
+      setJobId(data.generation_job_id);
       setRowAfter(null);
     },
   });

@@ -138,7 +138,9 @@ export const probes = [
 
 /* --------------------------------------------------- positive controls */
 
-const okJobs = headlessOk('get', JOBS, [{ id: 1, status: 'queued', excel_path: 'a.xlsx' }]);
+const okJobs = headlessOk('get', JOBS, [
+  { job_uuid: 'j-1', status: 'queued', excel_path: 'a.xlsx' },
+]);
 const okProblem = headlessProblem('get', JOBS, 503, problemDetails(503, 'UPSTREAM_UNAVAILABLE'));
 const okEmpty = headlessEmptyOk();
 const okBlob = headlessDownload('get', EXPORT, new Blob(['x']), {

@@ -119,7 +119,9 @@ describe('fetchHeadlessJobs — the empty-body fallback belongs to the operation
   });
 
   it('passes a present body through unchanged', async () => {
-    const body = [{ id: 1, status: 'queued', excel_path: 'alpha.xlsx' }];
+    // ⚠️ contract v0.1.22 — a measurement job is identified on the wire by
+    // its opaque handle; the storage primary key no longer travels.
+    const body = [{ job_uuid: 'j-1', status: 'queued', excel_path: 'alpha.xlsx' }];
     transport.GET.mockResolvedValue(headlessOk('get', JOBS_PATH, body));
 
     // The fallback must not be a rewrite: an operation that *always* returns a
@@ -186,7 +188,7 @@ describe('submitTestPlanGeneration — the idempotency key is the caller’s', (
   it('forwards the key it was given', async () => {
     transport.POST.mockResolvedValue(
       headlessOk('post', SUBMIT_PATH, {
-        job_id: 'j1',
+        generation_job_id: 'j1',
         project_id: 'p1',
         status: 'queued',
         request_sha256: 'a'.repeat(64),
@@ -203,7 +205,7 @@ describe('submitTestPlanGeneration — the idempotency key is the caller’s', (
   it('sends a different key for a different submission', async () => {
     transport.POST.mockResolvedValue(
       headlessOk('post', SUBMIT_PATH, {
-        job_id: 'j1',
+        generation_job_id: 'j1',
         project_id: 'p1',
         status: 'queued',
         request_sha256: 'a'.repeat(64),
@@ -226,7 +228,7 @@ describe('submitTestPlanGeneration — the idempotency key is the caller’s', (
   it('carries the request and its preview proof in the body', async () => {
     transport.POST.mockResolvedValue(
       headlessOk('post', SUBMIT_PATH, {
-        job_id: 'j1',
+        generation_job_id: 'j1',
         project_id: 'p1',
         status: 'queued',
         request_sha256: 'a'.repeat(64),

@@ -66,18 +66,23 @@ describe('spyHeadlessTransport routing', () => {
 
   it('routes by method, not just by path', async () => {
     transport.routes({
-      '/headless/jobs/{job_id}/stop': {
+      '/headless/jobs/{job_uuid}/stop': {
         post: () =>
-          headlessOk('post', '/headless/jobs/{job_id}/stop', { job_id: 1, stop_requested: true }),
+          headlessOk('post', '/headless/jobs/{job_uuid}/stop', {
+            job_uuid: 'j-1',
+            stop_requested: true,
+          }),
       },
     });
 
     await expect(
-      headlessClient.POST('/headless/jobs/{job_id}/stop', { params: { path: { job_id: 1 } } }),
-    ).resolves.toMatchObject({ data: { job_id: 1 } });
+      headlessClient.POST('/headless/jobs/{job_uuid}/stop', {
+        params: { path: { job_uuid: 'j-1' } },
+      }),
+    ).resolves.toMatchObject({ data: { job_uuid: 'j-1' } });
     // Same path, undeclared method → still loud.
     await expect(
-      headlessClient.GET('/headless/jobs/{job_id}/stop' as '/headless/jobs', {}),
+      headlessClient.GET('/headless/jobs/{job_uuid}/stop' as '/headless/jobs', {}),
     ).rejects.toThrow(/no route for GET/u);
   });
 
