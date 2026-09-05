@@ -387,6 +387,20 @@ def suggested_command(evidence_key: str, output_path: str) -> list[str]:
         # Derived from the manifest, like the runner it is a hint for. Naming
         # the lanes here as well is how a hint comes to describe a command that
         # no longer exists — and this is an operator's first contact with it.
+        #
+        # ⚠️ **그 위험은 2026-09-04 에 실현됐고, 존재 검사는 그것을 보지 못했다.**
+        # 파일은 있었고 `test_platform_cutover_live_workflow.py` 의
+        # `script.is_file()` 팔은 초록이었다 — 그런데 이 러너는 계약 레인의
+        # `scripts/` 에 사는 협력자 둘을 형제 이름으로 불렀고, 그 디렉터리는 휠이
+        # 나르지 못하므로 배송 상자에서 `ModuleNotFoundError` 로 즉사했다.
+        # 즉 재던 것은 **존재**였고 결함은 **도달성**이었다.
+        #
+        # 그 축을 여기에 새로 세우지 않는다. `tests/test_supply_closure_axis.py`
+        # 의 계급 B 가 `scripts/` 전체를 그 축으로 이미 재고 있고(원장이 비었다는
+        # 것이 곧 「이 명령의 import 가 해소된다」), 같은 사실을 두 곳에서 재면
+        # 하나가 먼저 낡는다. 해소는 2026-09-05: 계약 레인이 알맹이를
+        # `fcc_test_contracts.extraction_import_boundaries` / `.extraction_package`
+        # 로 올려 휠이 나르게 했다(v0.1.19).
         return [
             'python',
             'scripts/platform_extraction_runner.py',
