@@ -16,9 +16,9 @@ from fcc_test_platform.cutover_readiness import (
     CUTOVER_REQUIRED_EVIDENCE,
     validate_collector_manifest,
 )
-from scripts.platform_cutover_bundle import EVIDENCE_ARGUMENTS, EVIDENCE_FILENAMES
-from scripts.platform_cutover_completion_audit import REQUIREMENTS
-from scripts.platform_cutover_live_workflow import build_workflow_template
+from fcc_test_platform.cutover_bundle_cli import EVIDENCE_ARGUMENTS, EVIDENCE_FILENAMES
+from fcc_test_platform.cutover_completion_audit_cli import REQUIREMENTS
+from fcc_test_platform.cutover_live_workflow_cli import build_workflow_template
 from fcc_test_platform.cutover_workflow_hints import suggested_command
 
 

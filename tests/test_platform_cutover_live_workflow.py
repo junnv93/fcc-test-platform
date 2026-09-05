@@ -7,8 +7,8 @@ import unittest
 from unittest import mock
 from pathlib import Path
 
-from scripts.platform_cutover_bundle import EVIDENCE_FILENAMES
-from scripts.platform_cutover_live_workflow import (
+from fcc_test_platform.cutover_bundle_cli import EVIDENCE_FILENAMES
+from fcc_test_platform.cutover_live_workflow_cli import (
     CommandResult,
     build_values_template,
     build_workflow_template,
@@ -394,7 +394,7 @@ class TestPlatformCutoverLiveWorkflow(unittest.TestCase):
                 collector_calls.append(command)
                 return CommandResult(returncode=0)
 
-            with mock.patch('scripts.platform_cutover_live_workflow.os.replace', side_effect=fail_first_replace):
+            with mock.patch('fcc_test_platform.cutover_live_workflow_cli.os.replace', side_effect=fail_first_replace):
                 summary = run_workflow(config, execute=True, command_runner=collector)
 
             receipt_path = Path(summary['steps'][0]['receipt_path'])

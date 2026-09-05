@@ -1,105 +1,22 @@
-"""Validate and template platform extraction evidence manifests."""
-from __future__ import annotations
+#!/usr/bin/env python3
+"""`fcc_test_platform.extraction_evidence_cli` 의 진입점 — 로직은 그쪽이 갖는다.
 
-import argparse
-import json
-from pathlib import Path
+⚠️ 이 파일이 **짧은 것이 요점**이다. `scripts/` 는 패키지가 아니라 휠이 나르지
+못하므로 이 레인을 소비하는 레포마다 사본이 필요한데, 사본이 이만큼이면
+**갈라질 것이 없다.** 알맹이가 바뀌면 휠이 나른다.
+
+⚠️ `sys.path` 한 줄은 **설치 전에도 돌기 위한 것**이다. 이 레포 체크아웃에서
+`python3 scripts/…` 로 직접 부르는 경로가 실재하고, 그때 패키지는 아직
+site-packages 에 없을 수 있다.
+"""
 import sys
+from pathlib import Path
 
+_ROOT = str(Path(__file__).resolve().parents[1])
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SRC_ROOT = PROJECT_ROOT / 'src'
-for path in (PROJECT_ROOT, SRC_ROOT):
-    path_text = str(path)
-    if path_text not in sys.path:
-        sys.path.insert(0, path_text)
+from fcc_test_platform.extraction_evidence_cli import main  # noqa: E402
 
-from fcc_test_platform.extraction_evidence import (
-    EXTRACTION_REQUIRED_REPOSITORIES,
-    extraction_package_errors,
-)
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description='Platform extraction evidence helper.')
-    subparsers = parser.add_subparsers(dest='command', required=True)
-    validate = subparsers.add_parser('validate')
-    validate.add_argument('manifest')
-    validate.add_argument('--extraction-manifest', default='')
-    template = subparsers.add_parser('template')
-    template.add_argument('--evidence-id', default='<extraction evidence id>')
-    args = parser.parse_args(argv)
-
-    if args.command == 'validate':
-        return _validate(Path(args.manifest), _optional_path(args.extraction_manifest))
-    if args.command == 'template':
-        print(json.dumps(_template(args.evidence_id), sort_keys=True, indent=2))
-        return 0
-    return 2
-
-
-def _validate(path: Path, extraction_manifest_path: Path | None) -> int:
-    try:
-        manifest = _read_json(path)
-        extraction_manifest = _read_json(extraction_manifest_path) if extraction_manifest_path else None
-    except Exception as exc:
-        print(json.dumps({
-            'valid': False,
-            'issues': [{
-                'code': 'read_error',
-                'path': str(getattr(exc, 'filename', '') or path),
-                'message': str(exc),
-            }],
-        }, sort_keys=True, indent=2))
-        return 2
-    issues = [
-        issue.to_dict()
-        for issue in extraction_package_errors(manifest, extraction_manifest=extraction_manifest)
-    ]
-    print(json.dumps({'valid': not issues, 'issues': issues}, sort_keys=True, indent=2))
-    return 0 if not issues else 1
-
-
-def _read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding='utf-8'))
-
-
-def _optional_path(value: str) -> Path | None:
-    text = str(value or '').strip()
-    return Path(text) if text else None
-
-
-def _template(evidence_id: str) -> dict:
-    return {
-        'schema_version': 1,
-        'evidence_id': evidence_id,
-        'collected_at': '<ISO-8601 timestamp>',
-        'manifest_path': 'docs/api/headless_contract_extraction_manifest.v1.json',
-        'compatible': False,
-        'issues': ['replace this placeholder with a compatible extraction plan'],
-        'repositories': {
-            repo_name: {
-                'target_repository': repo_name,
-                'target_ref': '<commit sha or release ref>',
-                'extracted_at': '<ISO-8601 timestamp>',
-                'package_compatible': False,
-                'extracted': False,
-                'entries': [
-                    {
-                        'current_path': '<source path from extraction manifest>',
-                        'future_path': '<safe target path from extraction manifest>',
-                        'kind': '<entry kind>',
-                        'byte_size': 0,
-                        'source_sha256': '<source sha256>',
-                        'destination_sha256': '<destination sha256>',
-                        'copied': False,
-                    }
-                ],
-            }
-            for repo_name in EXTRACTION_REQUIRED_REPOSITORIES
-        },
-    }
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())

@@ -1415,7 +1415,7 @@ class TestConditionalHeartbeatInsertLivePostgres(unittest.TestCase):
         scripts_dir = str(Path(__file__).parent.parent / 'scripts')
         if scripts_dir not in sys.path:
             sys.path.insert(0, scripts_dir)
-        from platform_keyset_cursor_live_proof import run_live_proof
+        from fcc_test_platform.keyset_cursor_live_proof_cli import run_live_proof
 
         cls.evidence = run_live_proof(_LIVE_PROOF_DSN, proof_seed='pytest-chamber')
 

@@ -7,7 +7,7 @@ import ast
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.platform_deployment_evidence_workflow import assemble_deployment_evidence
+from fcc_test_platform.deployment_evidence_workflow_cli import assemble_deployment_evidence
 from tests.test_platform_frontend_deployment_collect import _probe
 from tests.test_platform_frontend_browser_qa_collector import _Driver
 # Not tests.test_provider_service_deployment_evidence_cli: that file exercises a
@@ -17,17 +17,26 @@ from tests.test_platform_frontend_browser_qa_collector import _Driver
 from support.provider_service_evidence_manifest import (
     valid_provider_service_deployment_manifest as _service_manifest,
 )
-from scripts.platform_frontend_browser_qa import Viewport, collect_manifest as collect_browser_qa
-from scripts.platform_frontend_deployment_collect import collect_frontend_deployment_evidence
-from scripts.platform_idp_deployment_collect import (
+from fcc_test_platform.frontend_browser_qa_cli import Viewport, collect_manifest as collect_browser_qa
+from fcc_test_platform.frontend_deployment_collect_cli import collect_frontend_deployment_evidence
+from fcc_test_platform.idp_deployment_collect_cli import (
     ClientRegistration,
     collect_idp_deployment_evidence,
 )
 from tests.test_platform_idp_deployment_collect import _fetcher
+from tests._moved_module_source import moved_module_source
 
 
 project_root = Path(__file__).parent.parent
-SCRIPT_PATH = project_root / 'scripts' / 'platform_deployment_evidence_workflow.py'
+# ⚠️ 여기 있던 `SCRIPT_PATH`(= `scripts/…` 껍데기 경로)은 2026-09-05 에 «죽은 상수»가
+#    됐다. 그것을 쓰던 유일한 자리가 경계 단언이었고, 그 단언이 읽어야 할 것은
+#    껍데기가 아니라 알맹이였다(아래 `_GUTS_SOURCE`). 껍데기를 하위 프로세스로
+#    부르는 자리는 상수가 아니라 리터럴 경로를 쓴다 — 되살릴 이유가 없다.
+# ⚠️ **경계는 «알맹이»에게 물어야 한다** — 껍데기는 22줄이라 어떤 금지 import 도
+# 없고, 그것을 읽는 단언은 «참이지만 아무것도 재지 않는 참»이 된다. 경로가 아니라
+# 모듈에게 묻는다 (`tests/_moved_module_source.py`).
+_GUTS_SOURCE = moved_module_source('fcc_test_platform.deployment_evidence_workflow_cli')
+
 
 
 class TestPlatformDeploymentEvidenceWorkflow(unittest.TestCase):
@@ -130,7 +139,7 @@ class TestPlatformDeploymentEvidenceWorkflow(unittest.TestCase):
         self.assertIn('health_check_failed', {issue['code'] for issue in payload['slots']['service_deployment']['issues']})
 
     def test_workflow_import_boundary_excludes_runtime_side_effect_dependencies(self):
-        tree = ast.parse(SCRIPT_PATH.read_text(encoding='utf-8'))
+        tree = ast.parse(_GUTS_SOURCE.read_text(encoding='utf-8'))
         imports: list[str] = []
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -139,6 +148,13 @@ class TestPlatformDeploymentEvidenceWorkflow(unittest.TestCase):
                 imports.append(node.module)
 
         forbidden = {'requests', 'httpx', 'selenium', 'subprocess', 'urllib', 'fastapi', 'sqlalchemy', 'psycopg'}
+        self.assertTrue(
+            imports,
+            f'{_GUTS_SOURCE} 가 아무것도 import 하지 않는다 — 알맹이가 또 옮겨갔다면 '
+            '이 검사도 «새 자리»를 가리키게 고쳐라. 이 팔을 지우면 아래 경계 단언이 '
+            '«참이지만 아무것도 재지 않는 참»으로 되돌아간다.',
+        )
+
         self.assertFalse(sorted(forbidden.intersection(imports)))
 
 
@@ -148,7 +164,7 @@ def _write_valid_sources(root: Path) -> dict[str, Path]:
     (build_root / 'index.html').write_text('<script src="/app.123.js"></script>', encoding='utf-8')
     (build_root / 'app.123.js').write_text('console.log("ok")', encoding='utf-8')
     artifacts_root = root / 'artifacts'
-    with patch('scripts.platform_frontend_browser_qa._probe_provider_routes', return_value=[]):
+    with patch('fcc_test_platform.frontend_browser_qa_cli._probe_provider_routes', return_value=[]):
         browser_manifest = collect_browser_qa(
             driver=_Driver(),
             app_url='http://127.0.0.1:3000',

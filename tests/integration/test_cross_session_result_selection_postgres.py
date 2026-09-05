@@ -34,7 +34,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope='module')
 def live_proof():
-    from platform_central_db_live_proof import (
+    from fcc_test_platform.central_db_live_proof_cli import (
         DEFAULT_REGISTRY_PATH,
         _default_provider_code,
         run_live_proof,

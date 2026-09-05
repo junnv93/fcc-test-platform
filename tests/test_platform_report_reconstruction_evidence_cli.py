@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import scripts.platform_report_reconstruction_evidence as cli
+import fcc_test_platform.report_reconstruction_evidence_cli as cli
 
 
 project_root = Path(__file__).parent.parent

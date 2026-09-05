@@ -46,8 +46,8 @@ from fcc_test_platform.application.chamber_token_evidence import (  # noqa: E402
 )
 from fcc_test_contracts.common.oidc_principal_resolver import OidcJwtConfig  # noqa: E402
 
-import scripts.platform_chamber_token_evidence as cli  # noqa: E402
-import scripts._keycloak_chamber_admin as kc_admin  # noqa: E402
+import fcc_test_platform.chamber_token_evidence_cli as cli  # noqa: E402
+import fcc_test_platform.keycloak_chamber_admin as kc_admin  # noqa: E402
 
 _FIXED_CLOCK = lambda: __import__('datetime').datetime(  # noqa: E731
     2026, 6, 20, tzinfo=__import__('datetime').timezone.utc)
