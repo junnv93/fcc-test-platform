@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from fcc_test_platform.rbac import build_platform_rbac_seed
 from fcc_test_platform.rbac_assignment_evidence import rbac_assignment_evidence_errors
-from scripts.platform_rbac_assignment_collect import (
+from fcc_test_platform.rbac_assignment_collect_cli import (
     _quote_ident,
     build_manifest_from_rows,
     main,
@@ -48,7 +48,7 @@ class TestPlatformRbacAssignmentCollect(unittest.TestCase):
     def test_cli_runtime_error_is_machine_readable(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             stderr = StringIO()
-            with patch('scripts.platform_rbac_assignment_collect._connect', side_effect=RuntimeError('db unavailable')):
+            with patch('fcc_test_platform.rbac_assignment_collect_cli._connect', side_effect=RuntimeError('db unavailable')):
                 with redirect_stderr(stderr):
                     exit_code = main([
                         '--dsn',

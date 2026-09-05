@@ -5,15 +5,24 @@ import unittest
 from pathlib import Path
 
 from fcc_test_platform.frontend_deployment_evidence import frontend_deployment_errors
-from scripts.platform_frontend_deployment_collect import (
+from fcc_test_platform.frontend_deployment_collect_cli import (
     ProbeResult,
     collect_frontend_deployment_evidence,
     main,
 )
+from tests._moved_module_source import moved_module_source
 
 
 project_root = Path(__file__).parent.parent
-SCRIPT_PATH = project_root / 'scripts' / 'platform_frontend_deployment_collect.py'
+# ⚠️ 여기 있던 `SCRIPT_PATH`(= `scripts/…` 껍데기 경로)은 2026-09-05 에 «죽은 상수»가
+#    됐다. 그것을 쓰던 유일한 자리가 경계 단언이었고, 그 단언이 읽어야 할 것은
+#    껍데기가 아니라 알맹이였다(아래 `_GUTS_SOURCE`). 껍데기를 하위 프로세스로
+#    부르는 자리는 상수가 아니라 리터럴 경로를 쓴다 — 되살릴 이유가 없다.
+# ⚠️ **경계는 «알맹이»에게 물어야 한다** — 껍데기는 22줄이라 어떤 금지 import 도
+# 없고, 그것을 읽는 단언은 «참이지만 아무것도 재지 않는 참»이 된다. 경로가 아니라
+# 모듈에게 묻는다 (`tests/_moved_module_source.py`).
+_GUTS_SOURCE = moved_module_source('fcc_test_platform.frontend_deployment_collect_cli')
+
 
 
 def _probe(url: str, timeout_seconds: float) -> ProbeResult:
@@ -105,7 +114,7 @@ class TestPlatformFrontendDeploymentCollect(unittest.TestCase):
         self.assertEqual(frontend_deployment_errors(manifest), [])
 
     def test_cli_import_boundary_uses_stdlib_only(self):
-        tree = ast.parse(SCRIPT_PATH.read_text(encoding='utf-8'))
+        tree = ast.parse(_GUTS_SOURCE.read_text(encoding='utf-8'))
         imports: list[str] = []
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -114,6 +123,13 @@ class TestPlatformFrontendDeploymentCollect(unittest.TestCase):
                 imports.append(node.module)
 
         forbidden = {'requests', 'httpx', 'fastapi', 'sqlite3', 'sqlalchemy', 'playwright', 'selenium'}
+        self.assertTrue(
+            imports,
+            f'{_GUTS_SOURCE} 가 아무것도 import 하지 않는다 — 알맹이가 또 옮겨갔다면 '
+            '이 검사도 «새 자리»를 가리키게 고쳐라. 이 팔을 지우면 아래 경계 단언이 '
+            '«참이지만 아무것도 재지 않는 참»으로 되돌아간다.',
+        )
+
         self.assertFalse(sorted(forbidden.intersection(imports)))
 
 

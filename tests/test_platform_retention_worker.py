@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.platform_retention_worker import execute_retention_plan
+from fcc_test_platform.retention_worker_cli import execute_retention_plan
 
 
 class TestPlatformRetentionWorker(unittest.TestCase):

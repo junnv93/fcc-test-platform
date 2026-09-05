@@ -6,12 +6,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.platform_cutover_bundle import EVIDENCE_FILENAMES
-from scripts.platform_cutover_completion_audit import build_completion_audit
-from scripts.platform_cutover_completion_audit import _bundle as _audit_bundle
+from fcc_test_platform.cutover_bundle_cli import EVIDENCE_FILENAMES
+from fcc_test_platform.cutover_completion_audit_cli import build_completion_audit
+from fcc_test_platform.cutover_completion_audit_cli import _bundle as _audit_bundle
 
 from fcc_test_contracts.common.tree_artifacts import resolve_dependency_artifact
 
+
+from tests._moved_module_source import moved_module_source
 
 project_root = Path(__file__).parent.parent
 
@@ -59,9 +61,17 @@ class TestPlaceholderDetectionSsotDedup(unittest.TestCase):
     #: ⚠️ 2026-08-31 — hints 는 `scripts/` 에서 **패키지로** 옮겼다(휠이 나르지
     #: 못하는 자리였고, 그래서 모노레포의 컷오버 판정 도구가 죽어 있었다).
     #: 위임 명제는 그대로다 — 어디에 살든 원시연산을 재정의하면 안 된다.
+    #: ⚠️ 2026-09-05 — **같은 일이 세 번째로 일어났다.** 이번엔
+    #: `platform_cutover_live_workflow` 의 알맹이가
+    #: `fcc_test_platform.cutover_live_workflow_cli` 로 갔고, `scripts/` 쪽에는 22줄
+    #: 진입점만 남았다. 그 껍데기는 원시연산을 위임하지 «않으므로» 이 검사가 red 가
+    #: 됐다 — 위임 명제는 여전히 참인데 **읽는 대상이 알맹이가 아니었다.**
+    #:
+    #: 그래서 이제 **둘 다 경로가 아니라 모듈에게 묻는다**. 다음에 또 옮겨도
+    #: 이 검사는 따라간다.
     SCRIPTS = (
-        project_root / 'fcc_test_platform' / 'cutover_workflow_hints.py',
-        project_root / 'scripts' / 'platform_cutover_live_workflow.py',
+        moved_module_source('fcc_test_platform.cutover_workflow_hints'),
+        moved_module_source('fcc_test_platform.cutover_live_workflow_cli'),
     )
 
     def test_scripts_have_no_local_placeholder_definitions(self):

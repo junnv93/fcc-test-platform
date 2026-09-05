@@ -1,125 +1,22 @@
-"""Validate platform cutover readiness evidence bundles."""
-from __future__ import annotations
+#!/usr/bin/env python3
+"""`fcc_test_platform.cutover_readiness_cli` 의 진입점 — 로직은 그쪽이 갖는다.
 
-import argparse
-import json
-from pathlib import Path
+⚠️ 이 파일이 **짧은 것이 요점**이다. `scripts/` 는 패키지가 아니라 휠이 나르지
+못하므로 이 레인을 소비하는 레포마다 사본이 필요한데, 사본이 이만큼이면
+**갈라질 것이 없다.** 알맹이가 바뀌면 휠이 나른다.
+
+⚠️ `sys.path` 한 줄은 **설치 전에도 돌기 위한 것**이다. 이 레포 체크아웃에서
+`python3 scripts/…` 로 직접 부르는 경로가 실재하고, 그때 패키지는 아직
+site-packages 에 없을 수 있다.
+"""
 import sys
+from pathlib import Path
 
+_ROOT = str(Path(__file__).resolve().parents[1])
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SRC_ROOT = PROJECT_ROOT / 'src'
-for path in (PROJECT_ROOT, SRC_ROOT):
-    path_text = str(path)
-    if path_text not in sys.path:
-        sys.path.insert(0, path_text)
+from fcc_test_platform.cutover_readiness_cli import main  # noqa: E402
 
-from fcc_test_platform.cutover_readiness import (
-    CUTOVER_REQUIRED_EVIDENCE,
-    cutover_readiness_errors,
-)
-from fcc_test_platform.application.platform_cutover_catalog import catalog_entries
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description='Validate platform cutover readiness evidence.')
-    subparsers = parser.add_subparsers(dest='command', required=True)
-    validate_parser = subparsers.add_parser('validate')
-    validate_parser.add_argument('bundle')
-    validate_parser.add_argument('--central-db-schema', default='')
-    validate_parser.add_argument('--extraction-manifest', default='')
-    template_parser = subparsers.add_parser('template')
-    template_parser.add_argument('--provider-id', default='fcc-unlicensed-conducted')
-    template_parser.add_argument('--cutover-candidate-id', default='cutover-candidate')
-    template_parser.add_argument('--evaluated-at', default='<ISO-8601 timestamp>')
-    args = parser.parse_args(argv)
-
-    if args.command == 'validate':
-        return _validate(
-            Path(args.bundle),
-            _optional_path(args.central_db_schema),
-            _optional_path(args.extraction_manifest),
-        )
-    if args.command == 'template':
-        print(json.dumps(_template(args.provider_id, args.cutover_candidate_id, args.evaluated_at), sort_keys=True, indent=2))
-        return 0
-    return 2
-
-
-def _validate(
-    bundle_path: Path,
-    central_db_schema_path: Path | None,
-    extraction_manifest_path: Path | None,
-) -> int:
-    try:
-        bundle = _read_json(bundle_path)
-        central_db_schema = _read_json(central_db_schema_path) if central_db_schema_path else None
-        extraction_manifest = _read_json(extraction_manifest_path) if extraction_manifest_path else None
-    except Exception as exc:
-        print(json.dumps({
-            'ready': False,
-            'issues': [{
-                'code': 'read_error',
-                'path': str(getattr(exc, 'filename', '') or bundle_path),
-                'message': str(exc),
-                'evidence_key': '',
-            }],
-        }, sort_keys=True, indent=2))
-        return 2
-
-    issues = [
-        issue.to_dict()
-        for issue in cutover_readiness_errors(
-            bundle,
-            central_db_schema=central_db_schema,
-            extraction_manifest=extraction_manifest,
-        )
-    ]
-    print(json.dumps({
-        'ready': not issues,
-        'issues': issues,
-    }, sort_keys=True, indent=2))
-    return 0 if not issues else 1
-
-
-def _read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding='utf-8'))
-
-
-def _optional_path(value: str) -> Path | None:
-    text = str(value or '').strip()
-    return Path(text) if text else None
-
-
-def _template(provider_id: str, cutover_candidate_id: str, evaluated_at: str) -> dict:
-    return {
-        'schema_version': 1,
-        'provider_id': provider_id,
-        'cutover_candidate_id': cutover_candidate_id,
-        'evaluated_at': evaluated_at,
-        'evidence_catalog': [
-            {
-                'key': entry.key,
-                'canonical_filename': entry.canonical_filename,
-                'cli_argument': entry.cli_argument,
-                'validator': entry.validator_name,
-                'required_contexts': list(entry.required_contexts),
-                'completion_group': entry.completion_group,
-            }
-            for entry in catalog_entries()
-        ],
-        'evidence': {
-            key: {
-                'evidence_id': f'<{key} evidence id>',
-                'collected_at': '<ISO-8601 timestamp>',
-                'validated': False,
-                'issues': ['replace this placeholder with validated evidence'],
-                'manifest': {},
-            }
-            for key in CUTOVER_REQUIRED_EVIDENCE
-        },
-    }
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())

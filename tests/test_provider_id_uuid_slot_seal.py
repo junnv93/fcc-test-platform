@@ -409,11 +409,108 @@ def _selection_probe() -> list[tuple[str, tuple]]:
 
 #: 모듈 이름 → 프로브. **완전성 팔이 이 표를 강제한다** — 레인에 ``INSERT INTO`` 를
 #: 쓰는 모듈이 새로 생기면 여기 항목이 생길 때까지 봉인이 빨갛다.
+def _keyset_live_proof_probe() -> list[tuple[str, tuple]]:
+    """라이브 증명의 시드가 uuid 슬롯에 무엇을 넣는지 «실제로 돌려» 본다.
+
+    ⚠️ 이 모듈은 2026-09-05 에 `scripts/platform_keyset_cursor_live_proof.py` 에서
+    옮겨 왔다. `scripts/` 에 있던 동안 이 봉인은 그것을 **보지 못했다** — 이 검사가
+    `fcc_test_platform/` 만 훑기 때문이다. 옮기자마자 팔이 「INSERT 하는데 프로브가
+    없다」를 요구했고, 그것이 이 봉인의 설계 의도다: 판정 불가는 통과가 아니다.
+
+    시드는 라이브 PostgreSQL 을 상대로 도는 코드라 커서를 흉내낸다. 봉인이 묻는
+    것은 「어떤 값이 슬롯에 바인딩되는가」 하나이므로 SQL 을 기록하기만 하면 된다.
+    """
+    from fcc_test_platform.keyset_cursor_live_proof_cli import _seed
+
+    recorded: list[tuple[str, tuple]] = []
+
+    class _RecordingCursor:
+        def execute(self, sql, params=None):
+            recorded.append((sql, tuple(params or ())))
+
+        def close(self):
+            pass
+
+    class _RecordingConnection:
+        def cursor(self):
+            return _RecordingCursor()
+
+        def commit(self):
+            pass
+
+    _seed(_RecordingConnection(), 'seal-probe')
+    return recorded
+
+
+def _central_db_live_proof_probe() -> list[tuple[str, tuple]]:
+    """중앙 라이브 증명의 신분 그래프 시딩이 uuid 슬롯에 무엇을 넣는지 «실제로 돌려» 본다.
+
+    ⚠️ 2026-09-05 에 `scripts/platform_central_db_live_proof.py` 에서 옮겨 왔다.
+    2,087줄이 라이브 PostgreSQL 에 다섯 표로 INSERT 하는데, `scripts/` 에 있던 동안
+    이 봉인의 시야 밖이었다 — 이 검사는 `fcc_test_platform/` 만 훑는다.
+
+    ⚠️ **입력을 일부러 자연키로 준다.** `_provision_identity_graph` 는 자연키로
+    `providers` 를 INSERT 한 뒤 `SELECT id FROM providers` 로 uuid 를 해소해
+    `ids['provider']` 에 되묶는다. 그 해소가 빠지면 자연키가 `test_sessions.provider_id`
+    로 들어가고, 그것이 이 봉인이 잡아야 할 상태다. 해소를 답해 주는 것 말고는 커서를
+    비워 둔다 — 묻는 것은 「해소된 값이 슬롯에 들어가는가」 하나다.
+    """
+    from unittest import mock
+
+    from fcc_test_platform import central_db_live_proof_cli as proof
+
+    recorded: list[tuple[str, tuple]] = []
+
+    class _RecordingCursor:
+        def execute(self, sql, params=None):
+            recorded.append((sql, tuple(params or ())))
+
+        def fetchone(self):
+            #: `SELECT id FROM providers WHERE provider_id = %s` 의 답. 이것이
+            #: 자연키를 uuid 로 바꾸는 «해소»이고, 이 봉인의 두 정상 형태 중 하나다.
+            return (RESOLVED_UUID,)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    class _RecordingConnection:
+        def cursor(self):
+            return _RecordingCursor()
+
+        def commit(self):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    ids = {
+        # ⚠️ 자연키로 «시작»한다 — 해소가 빠지면 이 값이 슬롯으로 흘러간다.
+        'provider': NATURAL_KEY,
+        'project': '11111111-1111-1111-1111-111111111111',
+        'model': '44444444-4444-4444-4444-444444444444',
+        'sample': '55555555-5555-5555-5555-555555555555',
+        'session': '33333333-3333-3333-3333-333333333333',
+    }
+    with mock.patch.object(proof, '_connect', lambda _dsn: _RecordingConnection()):
+        proof._provision_identity_graph(
+            'postgresql://unused/seal-probe', ids, NATURAL_KEY, 'seal-probe',
+        )
+    return recorded
+
+
 PROBES = {
     'fcc_test_platform/application/central_artifact_custody_write_adapter.py': _custody_probe,
     'fcc_test_platform/application/central_progress_write_adapter.py': _progress_probe,
     'fcc_test_platform/application/central_reference_write_adapter.py': _reference_probe,
     'fcc_test_platform/application/central_result_selection_adapter.py': _selection_probe,
+    'fcc_test_platform/central_db_live_proof_cli.py': _central_db_live_proof_probe,
+    'fcc_test_platform/keyset_cursor_live_proof_cli.py': _keyset_live_proof_probe,
     'fcc_test_platform/postgres_ingestion_writer.py': _ingestion_probe,
 }
 

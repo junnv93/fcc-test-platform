@@ -225,7 +225,7 @@ class TestLockIdParity(unittest.TestCase):
 
     def test_lock_id_matches_evidence_runner(self) -> None:
         from platform_db_migrate import advisory_lock_id as migrate_lock_id
-        from platform_db_migration_runner import advisory_lock_id as evidence_lock_id
+        from fcc_test_platform.db_migration_runner_cli import advisory_lock_id as evidence_lock_id
 
         for key in ('fcc-platform:central-db-migrate', 'fcc-platform:001_initial_central_db', 'x'):
             self.assertEqual(migrate_lock_id(key), evidence_lock_id(key))

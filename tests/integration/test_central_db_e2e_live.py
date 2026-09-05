@@ -71,7 +71,7 @@ def _synthetic_reconstruction(bundle: dict) -> dict:
     and, statically, by the derived key-agreement seal in
     tests/test_platform_provider_crossing_closure.py.
     """
-    from platform_central_db_live_proof import RECONSTRUCTION_EVIDENCE_KEY
+    from fcc_test_platform.central_db_live_proof_cli import RECONSTRUCTION_EVIDENCE_KEY
 
     lanes = {}
     for lane, lane_bundle in bundle['lanes'].items():
@@ -105,7 +105,7 @@ def _run():
     requires the database that proof just seeded. Those preconditions are each
     other's negation, which is exactly why step 3 is a separate entry point.
     """
-    from platform_central_db_live_proof import (
+    from fcc_test_platform.central_db_live_proof_cli import (
         DEFAULT_REGISTRY_PATH,
         RECONSTRUCTION_EVIDENCE_KEY,
         _default_provider_code,
@@ -224,7 +224,7 @@ def test_hard_deleted_live_session_is_cited_from_production_snapshot_read_path()
     from fcc_test_platform.application.central_report_write_adapter import (
         PostgresCentralReportWriteAdapter,
     )
-    from platform_central_db_live_proof import _connect
+    from fcc_test_platform.central_db_live_proof_cli import _connect
 
     for lane, dsn in (('fresh', _DSN), ('upgrade', _UPGRADE_DSN)):
         proof = bundle['lanes'][lane]['stages']['migration']['migration_029']
@@ -330,7 +330,7 @@ def test_out_of_order_stale_attempt_does_not_demote_newer_latest():
     # Order-independent is_latest: re-ingesting a stale older attempt after a
     # newer one became latest must NOT crown the stale row (proven-then-fixed
     # live bug, 2026-06-13).
-    from platform_central_db_live_proof import (
+    from fcc_test_platform.central_db_live_proof_cli import (
         DEFAULT_REGISTRY_PATH,
         _default_provider_code,
         run_out_of_order_replay_proof,
@@ -350,13 +350,13 @@ def test_a_missing_reconstruction_lane_is_refused_rather_than_skipped():
     import json
     import tempfile
 
-    from platform_central_db_live_proof import LiveProofError, _load_report_reconstruction
+    from fcc_test_platform.central_db_live_proof_cli import LiveProofError, _load_report_reconstruction
 
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / 'partial.json'
         # 'fresh' is well formed; only 'upgrade' is absent. A fixture that broke
         # both lanes would pass while the loader checked just the first one.
-        from platform_central_db_live_proof import RECONSTRUCTION_EVIDENCE_KEY
+        from fcc_test_platform.central_db_live_proof_cli import RECONSTRUCTION_EVIDENCE_KEY
 
         path.write_text(json.dumps({
             'lanes': {'fresh': {RECONSTRUCTION_EVIDENCE_KEY: {'report_run_id': 'x'}}},

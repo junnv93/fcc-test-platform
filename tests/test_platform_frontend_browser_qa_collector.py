@@ -6,7 +6,7 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.platform_frontend_browser_qa import (
+from fcc_test_platform.frontend_browser_qa_cli import (
     DEFAULT_VIEWPORTS,
     Viewport,
     _parse_viewport,
@@ -65,7 +65,7 @@ class TestPlatformFrontendBrowserQaCollector(unittest.TestCase):
     def test_collect_manifest_builds_valid_browser_qa_evidence(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp = Path(tmpdir)
-            with patch('scripts.platform_frontend_browser_qa._probe_provider_routes', return_value=[]):
+            with patch('fcc_test_platform.frontend_browser_qa_cli._probe_provider_routes', return_value=[]):
                 manifest = collect_manifest(
                     driver=_Driver(),
                     app_url='http://127.0.0.1:3000',
@@ -89,7 +89,7 @@ class TestPlatformFrontendBrowserQaCollector(unittest.TestCase):
     def test_route_failures_keep_manifest_non_claiming(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp = Path(tmpdir)
-            with patch('scripts.platform_frontend_browser_qa._probe_provider_routes', return_value=['/health: refused']):
+            with patch('fcc_test_platform.frontend_browser_qa_cli._probe_provider_routes', return_value=['/health: refused']):
                 manifest = collect_manifest(
                     driver=_Driver(),
                     app_url='http://127.0.0.1:3000',
@@ -111,7 +111,7 @@ class TestPlatformFrontendBrowserQaCollector(unittest.TestCase):
     def test_bearer_token_marks_auth_verified_when_route_probe_passes(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp = Path(tmpdir)
-            with patch('scripts.platform_frontend_browser_qa._probe_provider_routes', return_value=[]) as probe:
+            with patch('fcc_test_platform.frontend_browser_qa_cli._probe_provider_routes', return_value=[]) as probe:
                 manifest = collect_manifest(
                     driver=_Driver(),
                     app_url='http://127.0.0.1:3000',
@@ -132,7 +132,7 @@ class TestPlatformFrontendBrowserQaCollector(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             output = Path(tmpdir) / 'qa.json'
             stderr = StringIO()
-            with patch('scripts.platform_frontend_browser_qa._create_driver', side_effect=RuntimeError('driver missing')):
+            with patch('fcc_test_platform.frontend_browser_qa_cli._create_driver', side_effect=RuntimeError('driver missing')):
                 with redirect_stderr(stderr):
                     exit_code = main([
                     '--app-url',

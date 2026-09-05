@@ -13,7 +13,7 @@ sys.path.insert(0, str(project_root / 'scripts'))
 sys.path.insert(0, str(project_root / 'src'))
 
 from fcc_test_platform.db_migration_evidence import central_db_migration_evidence_errors
-from platform_db_migration_collect import (
+from fcc_test_platform.db_migration_collect_cli import (
     _index_orders,
     _index_predicate,
     _index_columns,
@@ -161,7 +161,7 @@ class TestPlatformDbMigrationCollect(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             output = Path(tmpdir) / 'migration.json'
             stderr = StringIO()
-            with patch('platform_db_migration_collect._connect', side_effect=RuntimeError('driver missing')):
+            with patch('fcc_test_platform.db_migration_collect_cli._connect', side_effect=RuntimeError('driver missing')):
                 with redirect_stderr(stderr):
                     exit_code = main([
                         '--dsn',

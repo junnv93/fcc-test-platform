@@ -54,7 +54,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_SIBLING = _REPO_ROOT / 'scripts' / 'check_auth_mode_pairing.py'
+#: ⚠️ **경로가 아니라 모듈이다 (2026-09-05).** 형제의 알맹이는 이제
+#: `fcc_test_platform.check_auth_mode_pairing_cli` 에 산다 — `scripts/` 는 패키지가
+#: 아니라 휠이 나르지 못하므로, 이 레인을 핀으로 받는 소비자에게 그 파일은 오지
+#: 않는다. `scripts/check_auth_mode_pairing.py` 는 22줄 진입점만 남았고, 그것을
+#: **파일로** 읽으면 파서가 없다.
+_SIBLING_MODULE = 'fcc_test_platform.check_auth_mode_pairing_cli'
 #: ⚠️ 이 저장소에는 ``src/`` 가 없다 (레인 분리 이후). 계약 패키지는 **설치된 배포판**
 #: 으로 오므로 경로를 더할 일이 없고, 없는 경로를 sys.path 에 넣는 것은 「무엇을 읽어
 #: 판정했나」를 흐린다. 레포 루트만 둔다.
@@ -92,19 +97,25 @@ def _load_sibling():
     적는데 exit 0 은 venv 인터프리터에서만 났다.
 
     그래서 이제 로드 실패는 **판정 불가(2)** 로 내려간다.
+
+    ⚠️ **파일 경로로 읽던 것을 모듈 import 로 바꿨다 (2026-09-05).** 형제의 알맹이가
+    패키지로 갔고 `scripts/` 쪽에는 진입점만 남았다. 경로로 읽으면 그 진입점을 읽어
+    ``AttributeError: module 'check_auth_mode_pairing' has no attribute
+    'read_env_text'`` 가 난다 — **실측으로 이 셋을 빨갛게 만들었다**(2026-09-05):
+    ``test_it_reads_an_export_prefixed_shell_launcher`` ·
+    ``test_a_disagreeing_pair_exits_one_as_a_subprocess`` ·
+    ``test_running_it_as_a_subprocess_produces_a_verdict``.
+
+    모듈에게 물으면 그 파서가 어디로 옮겨가든 따라온다. 그리고 이제 **휠이 그것을
+    나르므로** 이 레인을 설치해 쓰는 소비자에게도 같은 파서가 간다.
     """
-    if not _SIBLING.is_file():
-        raise Undetermined(f'형제 파서를 찾을 수 없다: {_SIBLING}')
-    spec = importlib.util.spec_from_file_location('check_auth_mode_pairing', _SIBLING)
-    module = importlib.util.module_from_spec(spec)
     try:
-        spec.loader.exec_module(module)
+        return importlib.import_module(_SIBLING_MODULE)
     except Exception as exc:  # noqa: BLE001 — 원인을 그대로 실어 2 로 내린다
         raise Undetermined(
-            f'형제 파서({_SIBLING.name})를 불러오지 못했다 — '
+            f'형제 파서({_SIBLING_MODULE})를 불러오지 못했다 — '
             f'{type(exc).__name__}: {exc}'
         ) from exc
-    return module
 
 
 def read_env_text(text: str) -> dict:

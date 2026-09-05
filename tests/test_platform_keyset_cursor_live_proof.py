@@ -19,7 +19,15 @@ SCRIPTS_ROOT = REPO_ROOT / "scripts"
 if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
-import platform_keyset_cursor_live_proof as live_proof  # noqa: E402
+import fcc_test_platform.keyset_cursor_live_proof_cli as live_proof  # noqa: E402
+
+from tests._moved_module_source import moved_module_source  # noqa: E402
+
+#: ⚠️ **경로가 아니라 모듈에게 묻는다** (2026-09-05). 이 두 시험은
+#: `_prove_equipment_config_row_lock` 의 «본문»을 AST 로 파헤친다. 알맹이가
+#: `fcc_test_platform.keyset_cursor_live_proof_cli` 로 간 뒤 `scripts/` 쪽에는
+#: 22줄 진입점만 남아 그 함수가 아예 없다 — 경로로 읽으면 이 축이 사라진다.
+_GUTS_SOURCE = moved_module_source('fcc_test_platform.keyset_cursor_live_proof_cli')
 
 
 def _function_node(source: str, name: str) -> ast.FunctionDef:
@@ -36,9 +44,7 @@ class TestLiveProofCounterfactualContract(unittest.TestCase):
     _FUNCTION = "_prove_equipment_config_row_lock"
 
     def test_counterfactual_derivation_is_scoped_to_the_proof_function(self) -> None:
-        source = (SCRIPTS_ROOT / "platform_keyset_cursor_live_proof.py").read_text(
-            encoding="utf-8",
-        )
+        source = _GUTS_SOURCE.read_text(encoding="utf-8")
         function = _function_node(source, self._FUNCTION)
 
         derived_calls = []
@@ -82,9 +88,7 @@ class TestLiveProofCounterfactualContract(unittest.TestCase):
         self.assertIn("WHERE", counterfactual.upper())
 
     def test_counterfactual_both_key_guard_is_function_scoped(self) -> None:
-        source = (SCRIPTS_ROOT / "platform_keyset_cursor_live_proof.py").read_text(
-            encoding="utf-8",
-        )
+        source = _GUTS_SOURCE.read_text(encoding="utf-8")
         function = _function_node(source, self._FUNCTION)
         matching_guards = []
         for node in ast.walk(function):

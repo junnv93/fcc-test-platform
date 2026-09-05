@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from fcc_test_platform.artifact_sync_evidence import artifact_sync_evidence_errors
-from scripts.platform_artifact_sync_worker import (
+from fcc_test_platform.artifact_sync_worker_cli import (
     SyncRecord,
     _parse_record,
     build_sync_manifest,
@@ -81,7 +81,7 @@ class TestPlatformArtifactSyncWorker(unittest.TestCase):
                 'relative_path': 'projects/p/sessions/s/results/r/plot_png/plot.png',
             }]), encoding='utf-8')
 
-            from scripts.platform_artifact_sync_worker import _load_records
+            from fcc_test_platform.artifact_sync_worker_cli import _load_records
 
             records = _load_records([], str(path))
 

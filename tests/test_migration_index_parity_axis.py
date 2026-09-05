@@ -46,7 +46,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MIGRATIONS = PROJECT_ROOT / 'migrations'
 sys.path.insert(0, str(PROJECT_ROOT / 'scripts'))
 
-from export_platform_central_db_ddl import (  # noqa: E402
+from fcc_test_platform.export_central_db_ddl_cli import (  # noqa: E402
     _index_sql,
     load_schema,
 )

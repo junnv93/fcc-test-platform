@@ -41,7 +41,7 @@ from fcc_test_platform.application.chamber_measurement_staging_evidence import (
     measurement_staging_unmet_pass_criteria,
 )
 
-import scripts.chamber_measurement_staging_gate as gate  # noqa: E402
+import fcc_test_platform.chamber_measurement_staging_gate_cli as gate  # noqa: E402
 
 _FIXED_CLOCK = lambda: datetime.datetime(  # noqa: E731
     2026, 6, 20, tzinfo=datetime.timezone.utc)

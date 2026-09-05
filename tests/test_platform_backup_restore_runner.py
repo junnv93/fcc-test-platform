@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from fcc_test_platform.backup_restore_drill import backup_restore_drill_errors
-from scripts.platform_backup_restore_runner import run_backup_restore_drill
+from fcc_test_platform.backup_restore_runner_cli import run_backup_restore_drill
 
 
 class TestPlatformBackupRestoreRunner(unittest.TestCase):

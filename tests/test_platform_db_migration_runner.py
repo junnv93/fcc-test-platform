@@ -13,7 +13,7 @@ sys.path.insert(0, str(project_root / 'scripts'))
 sys.path.insert(0, str(project_root / 'src'))
 
 from fcc_test_platform.db_migration_evidence import central_db_migration_evidence_errors
-from platform_db_migration_runner import (
+from fcc_test_platform.db_migration_runner_cli import (
     advisory_lock_id,
     apply_migration_and_collect,
     main,
@@ -29,7 +29,7 @@ class TestPlatformDbMigrationRunner(unittest.TestCase):
         schema = json.loads(SCHEMA_PATH.read_text(encoding='utf-8'))
         connection = FakeConnection(schema)
 
-        with patch('platform_db_migration_runner._connect', return_value=connection):
+        with patch('fcc_test_platform.db_migration_runner_cli._connect', return_value=connection):
             manifest = apply_migration_and_collect(
                 dsn='postgresql://platform',
                 schema=schema,
@@ -56,7 +56,7 @@ class TestPlatformDbMigrationRunner(unittest.TestCase):
         schema = json.loads(SCHEMA_PATH.read_text(encoding='utf-8'))
         connection = FakeConnection(schema, fail_on='BROKEN SQL')
 
-        with patch('platform_db_migration_runner._connect', return_value=connection):
+        with patch('fcc_test_platform.db_migration_runner_cli._connect', return_value=connection):
             with self.assertRaises(RuntimeError):
                 apply_migration_and_collect(
                     dsn='postgresql://platform',
@@ -79,7 +79,7 @@ class TestPlatformDbMigrationRunner(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             output = Path(tmpdir) / 'nested' / 'cutover' / 'db_migration.json'
             stderr = StringIO()
-            with patch('platform_db_migration_runner._connect', side_effect=RuntimeError('driver missing')):
+            with patch('fcc_test_platform.db_migration_runner_cli._connect', side_effect=RuntimeError('driver missing')):
                 with redirect_stderr(stderr):
                     exit_code = main([
                         '--dsn', 'postgresql://platform',

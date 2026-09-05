@@ -9,6 +9,8 @@ from pathlib import Path
 from fcc_test_platform.cutover_readiness import CUTOVER_REQUIRED_EVIDENCE
 
 
+from tests._moved_module_source import moved_module_source
+
 project_root = Path(__file__).parent.parent
 
 
@@ -172,7 +174,23 @@ class TestPlatformCutoverReadinessCli(unittest.TestCase):
         self.assertEqual(payload['evidence']['hardware_smoke']['manifest'], {})
 
     def test_cli_does_not_import_runtime_side_effect_dependencies(self):
-        text = (project_root / 'scripts' / 'platform_cutover_readiness.py').read_text(encoding='utf-8')
+        """경계는 «알맹이»에게 묻는다 — 껍데기를 읽으면 참이지만 공허한 참이 된다.
+
+        ⚠️ 2026-09-05 에 알맹이가 `fcc_test_platform.cutover_readiness_cli` 로 갔다.
+        `scripts/` 쪽에는 22줄 진입점만 남았고, 그것을 읽는 이 단언은 **이관 전에도
+        후에도 초록**이었다 — 금지 이름이 22줄 안에 있을 리 없으므로. 경로가 아니라
+        모듈에게 물어 축을 되살린다(`tests/_moved_module_source.py`).
+        """
+        text = moved_module_source(
+            'fcc_test_platform.cutover_readiness_cli').read_text(encoding='utf-8')
+
+        # 안티-공허 팔 — 알맹이가 또 옮겨가 여기가 다시 껍데기를 읽게 되면 아래
+        # 네 단언이 «아무것도 재지 않는 참»으로 조용히 되돌아간다.
+        self.assertGreater(
+            len(text.splitlines()), 40,
+            f'읽은 것이 22줄짜리 껍데기만 하다 — 알맹이가 또 옮겨갔다면 이 검사도 '
+            f'«새 자리»를 가리키게 고쳐라. 읽은 줄 수: {len(text.splitlines())}',
+        )
 
         self.assertNotIn('FastAPI', text)
         self.assertNotIn('uvicorn', text)

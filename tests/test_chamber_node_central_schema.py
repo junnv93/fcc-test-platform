@@ -138,7 +138,7 @@ class TestChamberSchemaDdlDrift(unittest.TestCase):
     """JSON 스키마 ↔ 생성된 SQL 파일 drift 0 봉인 (exporter 가 유일한 SQL 생산자)."""
 
     def test_generated_ddl_matches_committed_sql_file(self):
-        import export_platform_central_db_ddl as exporter
+        import fcc_test_platform.export_central_db_ddl_cli as exporter
 
         generated = exporter.render_ddl(exporter.load_schema(SCHEMA_PATH))
         committed = DDL_PATH.read_text(encoding='utf-8')
@@ -700,7 +700,7 @@ class TestChamberAdditiveUpgradeDdl(unittest.TestCase):
     def test_no_additive_marker_yields_no_section(self):
         # A schema with zero added_in columns renders no additive section (the
         # change is byte-identical for tables that never evolved).
-        import export_platform_central_db_ddl as exporter
+        import fcc_test_platform.export_central_db_ddl_cli as exporter
 
         bare = {'tables': {
             't': {'columns': {'id': {'type': 'uuid', 'required': True}}},
@@ -710,7 +710,7 @@ class TestChamberAdditiveUpgradeDdl(unittest.TestCase):
     def test_additive_required_column_is_rejected(self):
         # A NOT NULL additive column is a migration hazard (breaks on existing
         # rows) — the exporter refuses to render it.
-        import export_platform_central_db_ddl as exporter
+        import fcc_test_platform.export_central_db_ddl_cli as exporter
 
         bad = {'t': {'columns': {
             'c': {'type': 'json', 'required': True, 'added_in': 'x'},

@@ -15,10 +15,19 @@ from tests.test_platform_ingestion_execution_evidence import _valid_manifest
 #    **로직이 사는 곳**을 잡아야 한다 — 껍데기를 잡으면 「이름이 사라졌다」와
 #    「로직이 사라졌다」가 같은 AttributeError 가 된다.
 import fcc_test_platform.ingestion_execution_evidence_cli as cli
+from tests._moved_module_source import moved_module_source
 
 
 project_root = Path(__file__).parent.parent
-CLI_PATH = project_root / 'scripts' / 'platform_ingestion_execution_evidence.py'
+# ⚠️ 여기 있던 `CLI_PATH`(= `scripts/…` 껍데기 경로)은 2026-09-05 에 «죽은 상수»가
+#    됐다. 그것을 쓰던 유일한 자리가 경계 단언이었고, 그 단언이 읽어야 할 것은
+#    껍데기가 아니라 알맹이였다(아래 `_GUTS_SOURCE`). 껍데기를 하위 프로세스로
+#    부르는 자리는 상수가 아니라 리터럴 경로를 쓴다 — 되살릴 이유가 없다.
+# ⚠️ **경계는 «알맹이»에게 물어야 한다** — 껍데기는 22줄이라 어떤 금지 import 도
+# 없고, 그것을 읽는 단언은 «참이지만 아무것도 재지 않는 참»이 된다. 경로가 아니라
+# 모듈에게 묻는다 (`tests/_moved_module_source.py`).
+_GUTS_SOURCE = moved_module_source('fcc_test_platform.ingestion_execution_evidence_cli')
+
 
 
 class TestPlatformIngestionExecutionEvidenceCli(unittest.TestCase):
@@ -96,7 +105,7 @@ class TestPlatformIngestionExecutionEvidenceCli(unittest.TestCase):
         self.assertTrue(connection.committed)
 
     def test_cli_import_boundary_excludes_runtime_dependencies(self):
-        tree = ast.parse(CLI_PATH.read_text(encoding='utf-8'))
+        tree = ast.parse(_GUTS_SOURCE.read_text(encoding='utf-8'))
         imports: list[str] = []
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -105,6 +114,13 @@ class TestPlatformIngestionExecutionEvidenceCli(unittest.TestCase):
                 imports.append(node.module)
 
         forbidden = {'requests', 'httpx', 'fastapi', 'subprocess', 'sqlite3', 'sqlalchemy', 'psycopg', 'os'}
+        self.assertTrue(
+            imports,
+            f'{_GUTS_SOURCE} 가 아무것도 import 하지 않는다 — 알맹이가 또 옮겨갔다면 '
+            '이 검사도 «새 자리»를 가리키게 고쳐라. 이 팔을 지우면 아래 경계 단언이 '
+            '«참이지만 아무것도 재지 않는 참»으로 되돌아간다.',
+        )
+
         self.assertFalse(sorted(forbidden.intersection(imports)))
 
 
