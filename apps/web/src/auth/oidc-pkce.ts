@@ -35,8 +35,6 @@
  * the JWKS fetch (inside jose) all become traceparent-emitting.
  */
 
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
-
 import { getRuntimeConfig } from '@/config/runtime';
 
 import { OIDC_CLOCK_TOLERANCE_SECONDS } from './session';
@@ -50,6 +48,9 @@ import {
   STORAGE_KEY_STATE,
   STORAGE_KEY_VERIFIER,
 } from './storage-keys';
+
+import type * as JoseVerify from './jose-verify';
+import type { JWTPayload } from 'jose';
 
 // ─── SSOT constants ────────────────────────────────────────────────────────
 
@@ -171,7 +172,34 @@ let discoveryCache: DiscoveryDocument | null = null;
 let discoveryInFlight: Promise<DiscoveryDocument> | null = null;
 /** JWKS resolver cache keyed by jwks_uri so jose reuses the fetched keys
  *  across multiple id_token verifications in the same page. */
-const jwksResolverCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+const jwksResolverCache = new Map<string, JwksResolver>();
+
+type JwksResolver = ReturnType<typeof JoseVerify.createRemoteJWKSet>;
+
+/**
+ * `jose` on demand — it is NOT part of the initial-load path.
+ *
+ * ⚠️ 이 모듈은 부팅 경로에서 정적으로 도달 가능하다: `session.ts::restoreSession`
+ * 이 `verifyIdToken` 을 import 하고, 그것이 `main.tsx` 부팅에서 실행된다. 그래서
+ * `jose` 를 **값으로** 정적 import 하면 라이브러리 전체가 엔트리 그래프에 들어온다
+ * — 실측 2026-09-05로 **gzip 7,320 B**, 그리고 그중에는 원격 JWKS 조회와 JWS 서명
+ * 검증 그래프가 통째로 들어 있다(`jwks/remote`, `jws` 의 flattened·compact verify,
+ * `runtime` 의 webcrypto 키 처리).
+ *
+ * 그런데 그 코드가 **실제로 실행되는 시점은 부팅이 아니다**. id_token 검증은
+ * (1) 로그인 콜백(`completeLogin`)과 (2) 침묵 갱신(`session.ts` 의 refresh 경로)
+ * 두 곳에서만 일어나고, 둘 다 이미 async 다. 그러므로 도달 가능성만 정적이고 실행은
+ * 지연돼 있었다 — 초기 경로 예산이 재는 것은 정확히 그 차이다(`bundle-budget.json`
+ * 의 `initialLoadPathJs`: *"totalGzipBytes is blind to when a chunk is fetched"*).
+ *
+ * ⚠️ 값을 다시 정적 import 로 되돌리면 이 청크는 조용히 엔트리로 되붙는다. 총계
+ * 예산은 그 변화를 **0으로 채점**하므로, 그것을 잡는 것은 초기 경로 예산뿐이다.
+ */
+let joseModule: Promise<typeof JoseVerify> | null = null;
+function loadJose(): Promise<typeof JoseVerify> {
+  joseModule ??= import('./jose-verify');
+  return joseModule;
+}
 
 /** Fetch + validate the OIDC discovery document. Result is cached for the
  *  page lifetime; call `__resetDiscoveryCacheForTests` from unit tests. */
@@ -502,7 +530,8 @@ export async function verifyIdToken(
   discovery: DiscoveryDocument,
   options: VerifyIdTokenOptions = {},
 ): Promise<JWTPayload> {
-  const jwks = getOrCreateJwksResolver(discovery.jwks_uri);
+  const { jwtVerify } = await loadJose();
+  const jwks = await getOrCreateJwksResolver(discovery.jwks_uri);
   const { payload } = await jwtVerify(idToken, jwks, {
     issuer: discovery.issuer,
     audience: getRuntimeConfig().oidcClientId,
@@ -555,9 +584,10 @@ export async function verifyIdToken(
   return payload;
 }
 
-function getOrCreateJwksResolver(jwksUri: string) {
+async function getOrCreateJwksResolver(jwksUri: string): Promise<JwksResolver> {
   const cached = jwksResolverCache.get(jwksUri);
   if (cached !== undefined) return cached;
+  const { createRemoteJWKSet } = await loadJose();
   // Sprint S2-β α-6 — JWKS key rotation defence + production timeout.
   // `cooldownDuration` rate-limits JWKS re-fetches when jose encounters
   // an unknown `kid` (preventing DoS against the IdP). `timeoutDuration`
