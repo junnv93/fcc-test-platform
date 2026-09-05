@@ -93,6 +93,63 @@ export type KeycloakRequestPolicyDecision = ExternalRequestPolicyDecision & {
   readonly family: KeycloakRequestFamily;
 };
 
+/**
+ * `family: 'token'` 은 **엔드포인트**이지 grant 가 아니다 — 그 한 경로로 서로 다른
+ * grant 가 온다. 그러므로 판정은 grant_type 별로 갈려야 한다.
+ *
+ * ⚠️ 이 함수가 존재하는 이유 (실측 2026-09-05). 그전 판정은 이 family 의 **모든**
+ * POST 에 대해 `authorization_code` + `code_verifier` 를 요구하고, 아니면
+ * *"missing authorization-code PKCE body"* 를 `unexpectedRequests` 에 넣었다.
+ * 그런데 SPA 가 이 엔드포인트로 보내는 grant 는 **둘**이다(`oidc-pkce.ts`):
+ *
+ *   exchangeCode()   grant_type=authorization_code + code_verifier
+ *   refreshTokens()  grant_type=refresh_token      + refresh_token, code_verifier 없음
+ *
+ * 후자에 `code_verifier` 가 없는 것은 결함이 아니라 **RFC 6749 § 6 그대로**다 —
+ * 오히려 넣는 쪽이 틀렸다. 즉 옛 판정은 규격을 지킨 요청을 PKCE 결함으로 세고 있었고,
+ * 그 진단명이 *"PKCE body 가 없다"* 였으므로 읽는 사람을 **인증 구현 쪽으로** 잘못
+ * 보냈다. (전수 확인: `postToken` 의 호출자는 위 둘뿐이고, 앱 안에 토큰 엔드포인트로
+ * 가는 다른 fetch 는 없다. 그러므로 그 메시지를 낼 수 있는 요청은 refresh 뿐이었다.)
+ *
+ * 새 판정은 **약해지지 않고 강해진다** — 각 grant 를 자기 규격으로 본다:
+ *  · `authorization_code` — `code_verifier` 필수. 없으면 그것이 진짜 PKCE 결함이다.
+ *  · `refresh_token` — `refresh_token` 필수, 그리고 `code_verifier` 는 **있으면 안 된다**.
+ *  · 그 외 — 이 SPA 가 보내지 않는 grant 다. 이름을 대고 거부한다.
+ */
+function assertTokenGrant(
+  fields: URLSearchParams,
+  entry: RealAuthNetworkRequest,
+  ledger: RealAuthNetworkLedger,
+  addUnexpected: (description: string) => void,
+): void {
+  const where = `${entry.method} ${entry.origin}${entry.pathname}`;
+  const grant = fields.get('grant_type');
+  switch (grant) {
+    case 'authorization_code':
+      if (fields.has('code_verifier')) {
+        ledger.authorizationCodePkceRequests += 1;
+      } else {
+        addUnexpected(`${where} authorization_code grant without PKCE code_verifier`);
+      }
+      return;
+    case 'refresh_token':
+      if (!fields.has('refresh_token')) {
+        addUnexpected(`${where} refresh_token grant without a refresh_token`);
+        return;
+      }
+      if (fields.has('code_verifier')) {
+        // PKCE 는 authorization code 를 교환할 때의 증명이다. 갱신 요청에 실려 오면
+        // 검증기가 유출되는 것이고 RFC 6749 § 6 이 요구하지도 않는다.
+        addUnexpected(`${where} refresh_token grant carries a PKCE code_verifier`);
+        return;
+      }
+      ledger.refreshTokenGrantRequests += 1;
+      return;
+    default:
+      addUnexpected(`${where} unexpected grant_type: ${grant ?? '(absent)'}`);
+  }
+}
+
 export function classifyKeycloakRequest(
   requestUrl: string,
   method: string,
@@ -200,6 +257,10 @@ export interface RealAuthNetworkLedger {
   readonly authorizationRequestStates: string[];
   tokenEndpointRequests: number;
   authorizationCodePkceRequests: number;
+  /** `grant_type=refresh_token` exchanges (RFC 6749 § 6). Counted SEPARATELY
+   *  from the PKCE exchange because they are a different grant with different
+   *  required fields — see `assertTokenGrant`. */
+  refreshTokenGrantRequests: number;
 }
 
 export interface RealAuthSession {
@@ -275,6 +336,7 @@ function createNetworkLedger(context: BrowserContext): NetworkLedgerController {
     authorizationRequestStates: [],
     tokenEndpointRequests: 0,
     authorizationCodePkceRequests: 0,
+    refreshTokenGrantRequests: 0,
   };
   const appOrigin = new URL(APP_BASE_URL).origin;
   const keycloakOrigin = new URL(KEYCLOAK_BASE_URL).origin;
@@ -314,14 +376,7 @@ function createNetworkLedger(context: BrowserContext): NetworkLedgerController {
       ledger.tokenEndpointRequests += 1;
       const body = request.postData();
       if (body !== null) {
-        const fields = new URLSearchParams(body);
-        if (fields.get('grant_type') === 'authorization_code' && fields.has('code_verifier')) {
-          ledger.authorizationCodePkceRequests += 1;
-        } else {
-          addUnexpected(
-            `${entry.method} ${entry.origin}${entry.pathname} missing authorization-code PKCE body`,
-          );
-        }
+        assertTokenGrant(new URLSearchParams(body), entry, ledger, addUnexpected);
       } else {
         addUnexpected(`${entry.method} ${entry.origin}${entry.pathname} has no token request body`);
       }

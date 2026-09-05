@@ -669,6 +669,52 @@ class TestSecurityHardening(unittest.TestCase):
         )
 
 
+class TestTokenGrantClassifierCoversEverySentGrant(unittest.TestCase):
+    """OIDC 증거 판정기는 SPA 가 **실제로 보내는** grant 를 전부 알아야 한다.
+
+    `family: 'token'` 은 **엔드포인트**이지 grant 가 아니다 — 한 경로로 서로 다른
+    grant 가 온다. 판정기가 그중 하나만 알면, 나머지는 규격을 지켰는데도
+    `unexpectedRequests` 로 떨어진다.
+
+    ⚠️ 실측 2026-09-05: 정확히 그 일이 있었다. 판정기가 그 family 의 **모든** POST 에
+    `authorization_code` + `code_verifier` 를 요구했고, 그래서 `refreshTokens()` 의
+    갱신 교환(RFC 6749 § 6 — `code_verifier` 가 **없는 것이 규격**)이
+    *"missing authorization-code PKCE body"* 로 잡혔다. 진단명이 읽는 사람을
+    **인증 구현 쪽으로** 잘못 보냈고, oidc-conformance 잡이 그 상태로 빨갰다.
+
+    그래서 목록을 손으로 유지하지 않는다 — `oidc-pkce.ts` 가 보내는 `grant_type`
+    리터럴을 **파생**해서 판정기가 그것을 이름으로 다루는지 본다. 다음에 grant 가
+    하나 더 늘면 판정기가 조용히 그것을 결함으로 세는 대신 이 검사가 멈춘다.
+    """
+
+    _OIDC = SRC_AUTH / "oidc-pkce.ts"
+    _FIXTURE = WEB_ROOT / "tests" / "e2e" / "helpers" / "real-auth-fixture.ts"
+
+    def _sent_grants(self) -> set[str]:
+        """SPA 가 토큰 엔드포인트로 보내는 grant_type 리터럴."""
+        body = _strip_ts_comments(_read(self._OIDC))
+        return set(re.findall(r"grant_type:\s*'([^']+)'", body))
+
+    def _classified_grants(self) -> set[str]:
+        """판정기가 이름으로 다루는 grant_type."""
+        body = _strip_ts_comments(_read(self._FIXTURE))
+        return set(re.findall(r"case\s*'([^']+)':", body))
+
+    def test_every_sent_grant_is_classified(self) -> None:
+        sent = self._sent_grants()
+        # 「일했다는 증거」 — 정규식이 아무것도 못 잡고 「차집합 없음」으로 초록이
+        # 되는 자리를 막는다. 이 SPA 는 최소 둘을 보낸다(교환 + 갱신).
+        self.assertGreaterEqual(
+            len(sent), 2, f"grant_type literals not found in {self._OIDC.name}"
+        )
+        self.assertEqual(
+            sorted(sent - self._classified_grants()),
+            [],
+            "the OIDC evidence classifier does not name grant(s) the SPA actually sends; "
+            "they will be counted as unexpected requests",
+        )
+
+
 class TestSentryIntegrationImport(unittest.TestCase):
     """Sprint S2-α #3 — proper Integration type import."""
 
