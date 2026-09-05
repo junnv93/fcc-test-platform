@@ -17,21 +17,27 @@
 보고한다 — 이 레포가 여러 번 값을 치른 형태다(`lane_check` 의 수집 0개 문제,
 `checks.yml` 의 러너 미배정 문제가 같은 계열이다).
 
-## baseline 이 한 방향으로만 줄어드는 것을 «둘»이 지킨다
+## baseline 은 이제 «공집합»이다 (2026-09-05 — 설계서 S3 착지)
+
+세 계약 모두 예외 **0건**으로 KEPT 다. 그래서 정책 축이 「이 두 이름만 허용」에서
+「어느 계약도 예외를 갖지 않는다」로 바뀌었다 — 바닥에 닿은 뒤에는 집합을 이름으로
+세는 것보다 **부재를 요구**하는 쪽이 단순하면서 더 세다(허용 목록이 없으면 늘릴
+목록도 없다).
 
   ① 그래프 축 — import-linter 의 `unmatched_ignore_imports_alerting = error`:
-     위반이 해소되면 등재가 그래프에서 안 맞아 게이트가 깨진다. 고친 사람이
-     등재를 지우도록 강제된다.
-  ② 정책 축 — 이 파일의 `TestTheDbBaselineOnlyShrinks`: 등재 집합을 **이름으로**
-     못박는다. 새 위반을 조용히 등재해 초록을 만드는 길을 막는다.
+     누군가 다시 등재를 넣고 그 위반이 해소되면 게이트가 스스로 깨져 등재를
+     지우도록 강제한다. 지금은 등재가 없어 «놀고» 있지만 미래를 위해 켜 둔다.
+  ② 정책 축 — 이 파일의 `TestNoContractCarriesABaseline`: 세 계약 어디에도
+     `ignore_imports` 가 없어야 한다. 새 위반을 조용히 등재해 초록을 만드는
+     길을 막는다.
 
-  ①만으로는 「등재를 늘려 초록으로 만들기」를 막지 못하고, ②만으로는 「해소됐는데
-  등재가 남아 있기」를 막지 못한다. 개수가 아니라 이름 집합으로 재는 이유는
-  `delivered_test_run_baseline.json` 과 같다 — 개수는 *고쳐진 것*과 *새로 깨진
-  것*을 맞바꾼 것을 구분하지 못한다.
+해소되기 전 두 등재가 무엇이었고 각각 어떻게 처분됐는지는 `.importlinter` 의
+계약 3 주석이 **이름으로** 갖는다. 장부는 코드 옆에 두고 검사는 부재만 묻는다 —
+검사가 장부를 겸하면 장부를 고치려고 검사를 무르는 날이 온다.
 """
 from __future__ import annotations
 
+import ast
 import configparser
 import importlib.util
 import os
@@ -49,18 +55,75 @@ IMPORTLINTER_INI = REPO_ROOT / '.importlinter'
 #: (서드파티 의존 0)이라 타입이 가장 잘 서고, 거기서 얻는 규율이 가장 싸다.
 STRICT_SECTION = 'mypy-fcc_test_platform.domain.*'
 
-#: BASELINE — 2026-09-05 실측(211 파일 / 919 의존)의 `app-no-db` 위반 전부.
-#: 해소는 설계서 S3(DB 어댑터 이전). ⚠️ 이 집합은 **줄어들기만 한다.**
-FROZEN_DB_BASELINE = frozenset({
-    # ① 직접 — 모듈을 infrastructure/adapters/driven/ 으로 옮기면 사라진다.
-    'fcc_test_platform.application.central_project_reference_adapter -> psycopg',
-    # ② 간접 — runtime_config -> central_db_config -> psycopg 의 «진입 간선».
-    #    루트 모듈이 설정과 드라이버를 함께 들고 있어 생긴다. 경유 모듈이
-    #    application 밖이라 한 파일씩 보는 AST 가드로는 원리적으로 안 잡힌다.
-    'fcc_test_platform.application.runtime_config -> fcc_test_platform.central_db_config',
-})
+#: 예외를 가져서는 안 되는 계약 — 즉 **전부**다. 2026-09-05 S3 착지로 마지막
+#: 등재 2건(`app-no-db`)이 해소되면서 세 계약이 나란히 예외 0건이 됐다.
+#: ⚠️ 여기서 이름을 빼는 것은 「그 계약에 예외를 허용한다」는 뜻이다. 그러지 마라.
+CONTRACTS_THAT_CARRY_NO_BASELINE = ('layers', 'purity', 'app-no-db')
 
 _CONTRACT_PREFIX = 'importlinter:contract:'
+
+#: S3 가 드라이버 결박을 모아 둔 «유일한» 자리. 이 모듈의 docstring 이 frozen-exe
+#: 안전(데스크톱 빌드가 PostgreSQL 드라이버를 0바이트 싣는다)을 약속하므로,
+#: 그 약속을 여기서 기계가 지킨다. 약속만 있고 검사가 없으면 주석과 같은 효력이다.
+DRIVER_ADAPTER = (
+    REPO_ROOT / 'fcc_test_platform' / 'infrastructure' / 'adapters' / 'driven'
+    / 'central_db_connection.py'
+)
+
+_DRIVER_ROOTS = frozenset({'psycopg', 'psycopg2', 'asyncpg'})
+
+
+def _driver_import_lines(tree: ast.AST) -> tuple[list[int], list[int]]:
+    """(모듈 최상위, 전체) 드라이버 import 의 줄 번호.
+
+    «전체»는 ``ast.walk`` 라 함수 안 지연 import 까지 센다 — frozen-exe 판정에서
+    중요한 것이 정확히 그 구분이기 때문이다.
+    """
+    def is_driver(node: ast.AST) -> bool:
+        if isinstance(node, ast.Import):
+            return any(a.name.split('.')[0] in _DRIVER_ROOTS for a in node.names)
+        if isinstance(node, ast.ImportFrom):
+            return bool(node.module) and node.module.split('.')[0] in _DRIVER_ROOTS
+        return False
+
+    top = [n.lineno for n in tree.body if is_driver(n)]
+    every = [n.lineno for n in ast.walk(tree) if is_driver(n)]
+    return top, every
+
+
+class TestTheDriverBindingStaysLazy(unittest.TestCase):
+    """frozen-exe — 드라이버는 «한 파일의 함수 안»에서만 묶인다 (설계서 S3).
+
+    ⚠️ **팔이 둘인 이유.** 「모듈 최상위에 psycopg 가 없다」만 물으면, 누군가 그
+    결박을 통째로 지웠을 때도 초록이다 — 참이지만 아무것도 재지 않는 참이 된다.
+    이 저장소는 그 형태를 이미 안다: 경로를 하드코딩한 검사가 이관 후 껍데기를
+    읽으면 단언이 전부 통과하면서 아무것도 안 지킨다. 그래서 둘째 팔이
+    **결박이 실제로 거기 있는지**를 함께 묻는다.
+
+    왜 여기가 아니라 `api_composition` 이 아닌가: 2026-09-05 이전에는 그쪽에
+    결박이 있었고 `test_platform_equipment_list_api` 가 그 자리를 지켰다. S3 가
+    결박을 이 파일로 옮겼으므로 **지키는 자리도 함께 옮겨야** 한다. 옮기지 않으면
+    옛 검사는 자기 파일에 대해서는 여전히 참이면서 성질을 놓친다.
+    """
+
+    def test_the_driver_is_bound_lazily_and_the_binding_is_actually_there(self):
+        self.assertTrue(
+            DRIVER_ADAPTER.is_file(),
+            f'{DRIVER_ADAPTER} 가 없다 — S3 의 드라이버 결박 자리가 사라졌다')
+        tree = ast.parse(DRIVER_ADAPTER.read_text(encoding='utf-8'))
+        top, every = _driver_import_lines(tree)
+
+        self.assertEqual(
+            [], top,
+            f'{DRIVER_ADAPTER.name} 의 모듈 최상위에 드라이버 import 가 생겼다(줄 {top}). '
+            'import 하는 것만으로 psycopg 가 딸려 오면 데스크톱 빌드가 드라이버를 싣는다.')
+
+        # ⚠️ 안티-공허 팔 — 대상의 «부재»로 초록이 되는 길을 막는다.
+        self.assertTrue(
+            every,
+            f'{DRIVER_ADAPTER.name} 에 드라이버 import 가 하나도 없다. 위 팔이 '
+            '「최상위에 없다」로 통과했지만 그것은 결박이 사라졌다는 뜻일 수 있다 — '
+            '결박을 옮겼다면 이 검사도 새 자리를 가리키게 고쳐라.')
 
 
 def _read(path: Path) -> configparser.ConfigParser:
@@ -153,35 +216,33 @@ class TestTheImportLinterContractsAreDeclared(unittest.TestCase):
         self.assertTrue(cfg.getboolean('importlinter', 'include_external_packages'))
 
 
-class TestTheDbBaselineOnlyShrinks(unittest.TestCase):
-    """정책 축 — 등재 집합을 «이름»으로 못박는다 (파일 docstring 참조)."""
+class TestNoContractCarriesABaseline(unittest.TestCase):
+    """정책 축 — 세 계약 어디에도 예외가 없어야 한다 (파일 docstring 참조)."""
 
-    def test_the_baseline_is_exactly_the_two_measured_violations(self):
+    def test_no_contract_carries_a_baseline(self):
+        """⚠️ 이 팔이 「새 위반을 등재해 초록 만들기」를 막는 유일한 자리다.
+
+        그래프 축(`unmatched_ignore_imports_alerting`)은 **해소된** 등재만 잡는다.
+        새로 «추가된» 등재는 그래프와 완벽히 일치하므로 그쪽에서는 초록이다.
+        """
         cfg = _read(IMPORTLINTER_INI)
-        declared = _as_set(cfg[f'{_CONTRACT_PREFIX}app-no-db']['ignore_imports'])
-        self.assertEqual(
-            set(FROZEN_DB_BASELINE), declared,
-            '등재가 바뀌었다. 줄었다면 이 파일의 FROZEN_DB_BASELINE 에서도 지워라. '
-            '늘었다면 그것은 새 위반을 등재해 초록을 만든 것이다 — SQL 은 '
-            'infrastructure 에서만 나온다(설계서 S3).')
+        for name in CONTRACTS_THAT_CARRY_NO_BASELINE:
+            with self.subTest(contract=name):
+                section = cfg[f'{_CONTRACT_PREFIX}{name}']
+                self.assertEqual(
+                    set(), _as_set(section.get('ignore_imports', '')),
+                    f'{name} 계약에 예외가 생겼다. 세 계약은 실측상 위반 0건이다 — '
+                    f'새 위반이 났다면 답은 등재가 아니라 코드다. SQL 은 '
+                    f'infrastructure 에서만 나온다(설계서 S3).')
 
     def test_a_stale_entry_breaks_the_gate_rather_than_lingering(self):
-        """그래프 축 — 해소된 등재가 남아 있으면 게이트가 깨져야 한다."""
+        """그래프 축 — 누군가 다시 등재를 넣더라도 해소되면 게이트가 깨진다."""
         cfg = _read(IMPORTLINTER_INI)
         self.assertEqual(
             'error',
             cfg[f'{_CONTRACT_PREFIX}app-no-db']['unmatched_ignore_imports_alerting'],
             '이 값이 error 가 아니면 해소된 등재가 조용히 남아 baseline 이 '
             '한 방향으로 줄지 않는다')
-
-    def test_the_other_two_contracts_carry_no_baseline(self):
-        """레이어·순수성은 KEPT 다 — 여기 등재가 생기면 그것은 «후퇴»다."""
-        cfg = _read(IMPORTLINTER_INI)
-        for name in ('layers', 'purity'):
-            with self.subTest(contract=name):
-                self.assertNotIn(
-                    'ignore_imports', cfg[f'{_CONTRACT_PREFIX}{name}'],
-                    f'{name} 계약에 예외가 생겼다 — 이 둘은 실측상 위반 0건이다')
 
 
 #: import-linter 의 진입점. ⚠️ `-m importlinter.cli` 가 **아니다** — 그 패키지에는
