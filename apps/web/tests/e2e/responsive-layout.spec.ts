@@ -90,6 +90,42 @@ const ROUTES = [
   //    paragraph already covered by the shell smoke at `/`.
 ] as const;
 
+/**
+ * The routes that render OUTSIDE the app shell — siblings of `/` in the router,
+ * not children of `AppLayout` (`app.tsx`; the structural fact is
+ * `RouteEntry.top_level` in `tests/support/frontend_route_registry.py`).
+ *
+ * ⚠️ 이 집합은 편의가 아니라 **이 게이트가 성립하기 위한 전제**다. 아래 스윕은
+ * 셸 nav 를 「라우트 청크가 마운트됐다」의 표지로 쓰는데, 셸 밖 라우트에는 그
+ * 랜드마크가 애초에 0개다 — 그래서 스윕은 `/login` 에서 15초를 기다리다 죽었고,
+ * **오버플로를 한 번도 재지 못했다**(실측 2026-09-05: 여섯 폭 전부, 그리고 목록에서
+ * `/login` 뒤에 오는 `/inventory`·`/membership`·`/providers`·`/chambers` 는 어느
+ * 폭에서도 측정된 적이 없다). 위 목록의 주석은 이 사실을 이미 적고 있었다 —
+ * "Outside the shell" — 그런데도 단언은 셸을 기다렸다. 빨간 게이트는 꺼진 게이트다.
+ *
+ * 이 집합이 라우터와 어긋나면 e2e 가 아니라
+ * `TestResponsiveRouteCoverage::test_shell_less_routes_match_the_router` 가 빨개진다.
+ * 새 라우트를 셸 밖에 등록한 사람이 그 사실을 여기서 다시 적기를 기억할 필요가 없다.
+ */
+const SHELL_LESS_ROUTES: ReadonlySet<string> = new Set(['/login', '/change-password']);
+
+/**
+ * Wait until the route chunk has mounted, then measure. There is no single
+ * marker that works for every route — 실측 2026-09-05: `<main>` 은
+ * `/equipment-lists`·`/reference-data` 에서 2개, `/test-plans` 에서 0개이고,
+ * `<h1>` 은 `/test-plans` 에서 2개다. 그래서 표지는 **라우트가 셸 안이냐**라는
+ * 구조 사실로 갈린다: 셸 안이면 셸 nav, 셸 밖이면 그 라우트 자신의 `<main>`
+ * (두 화면 모두 자기 `<main>` 을 렌더한다 — `login.tsx` · `change-password.tsx`).
+ */
+async function awaitRouteMounted(page: Page, route: string): Promise<void> {
+  const marker = SHELL_LESS_ROUTES.has(route)
+    ? page.getByRole('main')
+    : page.getByRole('navigation', { name: '메뉴' });
+  await expect(marker, `${route}: route chunk did not mount`).toHaveCount(1, {
+    timeout: 15_000,
+  });
+}
+
 async function gotoHome(page: Page): Promise<void> {
   await injectAuthenticatedSession(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
@@ -121,17 +157,27 @@ test.describe('responsive shell — no document overflow', () => {
 test.describe('responsive routes — no document overflow at any band (M7.6)', () => {
   for (const width of WIDTHS) {
     test(`every route fits the document at ${width}px`, async ({ page }) => {
+      // 이 테스트 하나가 라우트 **전부**를 직렬로 걷는다. 기본 30초 예산은 그
+      // 걸음 수와 무관한 상수라 목록이 길어지면 조용히 모자란다 — 실측
+      // 2026-09-05: 21개 라우트에 라우트당 ~2.5초로 ~53초가 든다.
+      //
+      // ⚠️ 이 예산을 올리는 것은 게이트를 느슨하게 하는 것이 **아니다**. 진짜
+      // 행(hang) 방어는 걸음마다 이미 걸려 있다(`navigationTimeout: 15s` +
+      // 아래 mount 표지 15s). 바깥 예산은 그 걸음들의 **합**이어야 하고,
+      // 그러므로 상수가 아니라 목록 길이에서 파생돼야 한다.
+      //
+      // 이 결함은 전제 결함(셸 밖 라우트에 셸 nav 를 기다림)에 가려져 있었다:
+      // 스윕이 16번째 라우트에서 예산 안에 죽었으므로 예산 부족은 관측될 수
+      // 없었다. 하나를 고치면 다른 하나가 드러난다.
+      test.setTimeout(ROUTES.length * 12_000);
       await page.setViewportSize({ width, height: 900 });
       await injectAuthenticatedSession(page);
       const offenders: string[] = [];
       for (const route of ROUTES) {
         await page.goto(route, { waitUntil: 'domcontentloaded' });
-        // The shell nav is the marker that the route chunk mounted; data
-        // queries may still be pending or failing, which is fine — the loading
-        // and error surfaces are part of what must fit.
-        await expect(page.getByRole('navigation', { name: '메뉴' })).toHaveCount(1, {
-          timeout: 15_000,
-        });
+        // Data queries may still be pending or failing, which is fine — the
+        // loading and error surfaces are part of what must fit.
+        await awaitRouteMounted(page, route);
         const overflow = await documentOverflow(page);
         if (overflow > 0) offenders.push(`${route} (+${overflow}px)`);
       }

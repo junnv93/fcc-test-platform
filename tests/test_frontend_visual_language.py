@@ -1245,6 +1245,50 @@ class TestResponsiveRouteCoverage(unittest.TestCase):
             "the sweep names route(s) the router does not register",
         )
 
+    def _declared_shell_less_routes(self) -> set[str]:
+        """스펙이 「셸 밖」이라고 선언한 집합."""
+        text = self._SPEC.read_text(encoding="utf-8")
+        block = re.search(
+            r"const SHELL_LESS_ROUTES: ReadonlySet<string> = new Set\(\[(.*?)\]\);",
+            text,
+            re.S,
+        )
+        self.assertIsNotNone(block, "SHELL_LESS_ROUTES set not found in the responsive spec")
+        assert block is not None  # narrowing for type checkers
+        return set(re.findall(r"'([^']+)'", strip_ts_comments(block.group(1))))
+
+    def _router_shell_less_routes(self) -> set[str]:
+        """라우터에서 **파생**한 「셸 밖」 집합.
+
+        셸 밖 = 셸의 자식이 아니라 형제(``RouteEntry.top_level``). 셸 자신
+        (``path: '/'`` 인 레이아웃 항목)은 top-level 이지만 셸 **이므로** 뺀다 —
+        그 주소는 자기 ``index`` 자식이 답하고, 그 자식은 top-level 이 아니다.
+        """
+        return {
+            entry.address
+            for entry in collect_route_entries(WEB_SRC)
+            if entry.top_level
+            and entry.path != "/"
+            and entry.address.lstrip("/") not in self._EXCLUDED
+            and entry.address.lstrip("/") != "*"
+        }
+
+    def test_shell_less_routes_match_the_router(self) -> None:
+        """스윕의 준비 표지는 라우트가 셸 안이냐에 달려 있다 — 그 분류는 파생이다.
+
+        ⚠️ 이 검사가 없던 동안 스윕은 **여섯 폭 전부 빨갰고, 오버플로를 한 번도
+        재지 못했다**(실측 2026-09-05). 셸 밖 라우트에 셸 nav 를 기다렸기 때문이다.
+        분류가 손으로 유지되면 다음에 셸 밖 라우트가 하나 더 등록될 때 같은 일이
+        조용히 되풀이된다 — e2e 는 「오버플로 게이트가 빨갛다」고만 말하지
+        「전제가 틀렸다」고는 말해 주지 않는다.
+        """
+        self.assertEqual(
+            sorted(self._router_shell_less_routes()),
+            sorted(self._declared_shell_less_routes()),
+            "the sweep's shell-less classification no longer matches the router; "
+            "the readiness marker for the drifted route(s) is wrong",
+        )
+
     def test_each_exclusion_is_justified_next_to_the_route_list(self) -> None:
         text = self._SPEC.read_text(encoding="utf-8")
         offenders = [name for name in sorted(self._EXCLUDED) if name not in text]
