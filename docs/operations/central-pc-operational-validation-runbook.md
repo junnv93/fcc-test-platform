@@ -14,6 +14,26 @@
 
 **전제**: 중앙 PC 에 WSL Ubuntu + Docker 가 설치돼 있고 repo 가 배치돼 있다.
 
+> ### 이 문서의 `python3 scripts/…` 명령에 대하여 (2026-09-05)
+>
+> 이 런북은 **저장소 체크아웃 안에서** 실행하는 절차라 `python3 scripts/…` 형태를
+> 그대로 유지한다. 그 경로는 계속 유효하다 — 진입점 파일이 그 자리에 남아 있고
+> 알맹이를 부른다.
+>
+> 다만 같은 도구를 **체크아웃 없이도** 부를 수 있게 됐다. 이 배포판을 설치하면
+> 명령이 생긴다:
+>
+> | 이 문서의 표기 | 설치본에서 |
+> |---|---|
+> | `python3 scripts/check_auth_mode_pairing.py` | `fcc-platform-check-auth-mode-pairing` |
+> | `python3 scripts/platform_db_migrate.py` | `fcc-platform-db-migrate` |
+> | `python3 scripts/platform_chamber_token_evidence.py` | `fcc-platform-chamber-token-evidence` |
+>
+> 이름 규칙은 `fcc-platform-` + 모듈 이름이고, 표는 손으로 유지하지 않는다 —
+> `tests/test_tool_entry_points_axis.py` 가 패키지와 어긋나면 빨갛게 만든다.
+> ⚠️ 인자와 동작은 **양쪽이 같다.** 다른 도구가 아니라 같은 알맹이를 부르는 다른
+> 방법이다.
+
 ---
 
 ## 사전 단계 — 중앙 PC · 측정 PC **양쪽** 코드 최신화 (0단계보다 먼저)
