@@ -1131,7 +1131,6 @@ button.app-nav__toggle {
 .home-workbench__rail,
 .jobs-workbench__rail,
 .membership-workbench__rail,
-.my-projects-workbench__rail,
 .progress-workbench__rail,
 .projects-workbench__rail,
 .providers-workbench__rail,
@@ -1152,7 +1151,6 @@ button.app-nav__toggle {
 .home-workbench__rail,
 .jobs-workbench__rail,
 .membership-workbench__rail,
-.my-projects-workbench__rail,
 .progress-workbench__rail,
 .projects-workbench__rail,
 .providers-workbench__rail,
@@ -1254,6 +1252,40 @@ button.app-nav__toggle {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+/* 내 프로젝트 워크벤치는 rail 이 없다(2026-09-04) — 생성 폼이 목록 **위**에 접힌
+   채로 있고 목록이 전폭을 쓴다. 그래서 여기엔 그리드 트랙 선언이 없고, 세로 리듬만
+   공유 토큰으로 잡는다(트랙을 선언하면 없는 두 번째 열을 약속하는 셈이다). */
+.my-projects-workbench {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--workbench-stack-gap);
+}
+
+/* 제목과 [새 프로젝트] 토글이 한 줄에 마주 본다 — 접힌 상태에서 패널이 차지하는
+   높이가 그 한 줄이 전부여야 목록이 위로 올라온다. */
+.my-projects-create__bar {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.my-projects-create__bar .section-band {
+  margin-bottom: 0;
+}
+
+/* 필수 칸은 한 행에 선다. `auto-fit` + `minmax` 라 좁은 화면에서는 열 수가 스스로
+   줄고, 화면 폭을 React 가 알 필요가 없다(뷰포트 상태가 컴포넌트로 새지 않는다). */
+.my-projects-create__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
 }
 
 .chambers-workbench-action-panel,
@@ -3623,7 +3655,7 @@ pre {
 
 .project-card__mgmt,
 .project-card__fcc,
-.project-card__customer,
+.project-card__applicant,
 .field-card__blurb {
   width: 100%;
   color: var(--fg-secondary);
@@ -4411,7 +4443,6 @@ pre {
   .home-workbench__rail,
   .jobs-workbench__rail,
   .membership-workbench__rail,
-  .my-projects-workbench__rail,
   .progress-workbench__rail,
   .projects-workbench__rail,
   .providers-workbench__rail,

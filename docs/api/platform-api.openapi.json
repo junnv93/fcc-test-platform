@@ -86,6 +86,40 @@
         },
         "type": "array"
       },
+      "ApplicantSuggestionEnvelope": {
+        "additionalProperties": false,
+        "properties": {
+          "applicant_address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "applicant_name": {
+            "type": "string"
+          },
+          "manufacturer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "project_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "applicant_name",
+          "project_count"
+        ],
+        "type": "object"
+      },
+      "ApplicantSuggestionList": {
+        "items": {
+          "$ref": "#/components/schemas/ApplicantSuggestionEnvelope"
+        },
+        "type": "array"
+      },
       "ArtifactCustodyFinding": {
         "additionalProperties": false,
         "properties": {
@@ -1191,16 +1225,8 @@
             ]
           },
           "applicant_name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "customer": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "minLength": 1,
+            "type": "string"
           },
           "eut_description": {
             "type": [
@@ -1215,10 +1241,8 @@
             ]
           },
           "management_number": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "minLength": 1,
+            "type": "string"
           },
           "manufacturer": {
             "type": [
@@ -1238,7 +1262,9 @@
           }
         },
         "required": [
-          "model_name"
+          "model_name",
+          "management_number",
+          "applicant_name"
         ],
         "type": "object"
       },
@@ -2120,12 +2146,6 @@
           "created_at": {
             "type": "string"
           },
-          "customer": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "eut_description": {
             "type": [
               "string",
@@ -2202,12 +2222,6 @@
             ]
           },
           "applicant_name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "customer": {
             "type": [
               "string",
               "null"
@@ -5244,12 +5258,6 @@
               "null"
             ]
           },
-          "customer": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "eut_description": {
             "type": [
               "string",
@@ -5363,6 +5371,79 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/platform/applicants": {
+      "get": {
+        "operationId": "list_applicants",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicantSuggestionList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid project_id (not a valid uuid) or malformed cursor."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Central backend unavailable (CentralReadError / ClaimWriteError)."
+          }
+        },
+        "summary": "List the applicant directory for the project create form (read-only, authenticated — same class as the project directory). Applicants are DERIVED from project rows, not a master table: one entry per distinct applicant carrying applicant_name / applicant_address / manufacturer taken from that applicant's MOST RECENT project, plus project_count. Selecting one pre-fills those fields in the create form, where they stay editable — the suggestion is a starting point, not a constraint. ?q narrows case-insensitively; ?limit bounds the answer (there is no cursor: an autocomplete's top N is the whole answer). management_number is deliberately NOT part of a suggestion: it is UNIQUE per project, so inheriting it would be an immediate conflict.",
+        "tags": [
+          "platform"
+        ],
+        "x-fcc-permission": "authenticated"
+      }
+    },
     "/platform/auth/accounts/unlock": {
       "post": {
         "operationId": "unlock_local_account",
@@ -6908,7 +6989,7 @@
             "description": "Central backend unavailable (CentralReadError / ClaimWriteError)."
           }
         },
-        "summary": "List the project directory (read-open, project-status-visibility) — one row per project joined to its 1:1 device model (ADR-0017 D1) + a sample count. Visible to ANY authenticated principal (not membership-scoped) so a team sees the projects it works on; the optional ?status filter (active|completed|all) defaults to active (in-progress) projects. ?q searches server-side (case-insensitive substring over management number / project code / customer); ?limit and ?cursor page by keyset (opaque token in the X-Next-Cursor response header, never OFFSET). Omitting q/limit/cursor returns the whole directory unchanged.",
+        "summary": "List the project directory (read-open, project-status-visibility) — one row per project joined to its 1:1 device model (ADR-0017 D1) + a sample count. Visible to ANY authenticated principal (not membership-scoped) so a team sees the projects it works on; the optional ?status filter (active|completed|all) defaults to active (in-progress) projects. ?q searches server-side (case-insensitive substring over management_number / project_code / applicant_name); ?limit and ?cursor page by keyset (opaque token in the X-Next-Cursor response header, never OFFSET). Omitting q/limit/cursor returns the whole directory unchanged.",
         "tags": [
           "platform"
         ],
@@ -6978,7 +7059,7 @@
             "description": "Central backend unavailable (CentralReadError / ClaimWriteError)."
           }
         },
-        "summary": "Create a project = model (ADR-0017 D1) — inserts one projects row + one device_models row (project_code == model name). A request whose model name matches an existing project_code reuses that project (idempotent, never a duplicate). Gated by the authenticated authorization class (a global operation, not project-scoped); the creator is auto-granted project_admin membership (D3).",
+        "summary": "Create a project = model (ADR-0017 D1) — inserts one projects row + one device_models row (project_code == model name). A request whose model name matches an existing project_code reuses that project (idempotent, never a duplicate). Gated by the authenticated authorization class (a global operation, not project-scoped); the creator is auto-granted project_admin membership (D3). Required fields: model_name + management_number + applicant_name — a project without a management number cannot produce a report number (it is the sole ingredient of S-{management_number}-{edition}) and one without an applicant is unreachable by search, so both are mandatory rather than optional-but-expected. The report-stage fields (fcc_grantee_code / eut_description / test_standard) are accepted here but are normally filled later, when the report is written.",
         "tags": [
           "platform"
         ],
@@ -7052,7 +7133,7 @@
             "description": "Central backend unavailable (CentralReadError / ClaimWriteError)."
           }
         },
-        "summary": "Project detail — model + customer/manufacturer + the sample list. Read-open (project-status-visibility): visible to ANY authenticated principal (an internal-tool decision — note the detail includes sample serial / label / sender-receiver / latest-intake fields). 404 when the project is unknown.",
+        "summary": "Project detail — model + 성적서 표지 메타 + the sample list. Read-open (project-status-visibility): visible to ANY authenticated principal (an internal-tool decision — note the detail includes sample serial / label / sender-receiver / latest-intake fields). 404 when the project is unknown.",
         "tags": [
           "platform"
         ],
@@ -7144,7 +7225,7 @@
             "description": "Central backend unavailable (CentralReadError / ClaimWriteError)."
           }
         },
-        "summary": "Partially update a project's 성적서 표지 메타 (customer / manufacturer / management_number / fcc_grantee_code / applicant_name / applicant_address / eut_description / test_standard) — FCC ID and applicant are normally confirmed AFTER a project starts, so the cover metadata must stay editable. A field the request omits is left unchanged; a field sent as null is cleared. status is NOT editable here (use complete_project / reopen_project) and neither is model_name / project_code (the project identity — changing it is a re-key, not an edit); sending either is a 400. Gated by platform:admin, the same tier as the completion lifecycle. Returns the updated project detail; 404 when the project is unknown.",
+        "summary": "Partially update a project's 성적서 표지 메타 (management_number / applicant_name / applicant_address / manufacturer / fcc_grantee_code / eut_description / test_standard) — FCC ID and applicant are normally confirmed AFTER a project starts, so the cover metadata must stay editable. A field the request omits is left unchanged; a field sent as null is cleared. status is NOT editable here (use complete_project / reopen_project) and neither is model_name / project_code (the project identity — changing it is a re-key, not an edit); sending either is a 400. Gated by platform:admin, the same tier as the completion lifecycle. Returns the updated project detail; 404 when the project is unknown.",
         "tags": [
           "platform"
         ],

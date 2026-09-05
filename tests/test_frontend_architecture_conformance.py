@@ -113,8 +113,13 @@ from fcc_test_platform.domain.services.project_directory_query import (  # noqa:
     PROJECT_SEARCH_COLUMNS,
 )
 from fcc_test_kernel.domain.services.project_metadata_edit import (  # noqa: E402
+    APPLICANT_SUGGESTION_FIELDS,
+    CREATE_PROJECT_IDENTITY_FIELD,
+    CREATE_PROJECT_REQUIRED_FIELDS,
     EDITABLE_PROJECT_META_FIELDS,
     IMMUTABLE_PROJECT_FIELDS,
+    PROJECT_META_FIELD_STAGES,
+    RETIRED_PROJECT_META_FIELDS,
 )
 
 
@@ -2813,9 +2818,16 @@ class TestSearchDebounceIsSingleSsot(unittest.TestCase):
 #: 검색 가능한 축의 화면 표기 토큰. 키 집합 == ``PROJECT_SEARCH_COLUMNS``
 #: (백엔드가 축을 늘리면 여기서 red → 화면 문구를 함께 갱신하게 된다).
 SEARCH_AXIS_DISPLAY_TOKENS: dict[str, tuple[str, ...]] = {
-    "management_number": ("관리번호", "management number", "management no"),
+    # 화면 표기가 "관리번호"에서 "프로젝트 번호"로 바뀌었다(2026-09-04). 컬럼명은
+    # 그대로이므로 두 표기를 **모두** 인정한다 — 옛 문구가 남아 있는 화면도 여전히
+    # 참인 주장을 하고 있고, 축이 사라진 것이 아니라 이름만 바뀐 것이다.
+    "management_number": (
+        "관리번호", "프로젝트 번호", "management number", "management no", "project number",
+    ),
     "project_code": ("모델", "model", "프로젝트 코드", "project code"),
-    "customer": ("고객", "customer"),
+    # 세 번째 축이 customer → applicant_name 으로 이동(2026-09-04). 두 컬럼은 같은
+    # 주체를 가리켰고, 축이 customer 일 때 신청자 칸에만 적힌 회사는 검색되지 않았다.
+    "applicant_name": ("신청자", "applicant"),
 }
 
 #: ``model_name`` 은 검색 **컬럼**이 아니지만 검색은 된다 — ADR-0017 D1 이
@@ -2835,7 +2847,7 @@ NON_SEARCHABLE_DISPLAY_TOKENS: dict[str, tuple[str, ...]] = {
     "fcc_id": ("FCC ID",),
     "manufacturer": ("제조사", "manufacturer"),
     "fcc_grantee_code": ("grantee code", "그랜티"),
-    "applicant_name": ("신청자", "applicant"),
+    # applicant_name 은 2026-09-04 부터 **검색 축**이라 여기 없다(위 표로 이동).
     "applicant_address": ("신청자 주소", "applicant address"),
     "eut_description": ("시험 대상", "eut description"),
     "test_standard": ("규격", "test standard"),
@@ -9625,3 +9637,138 @@ class TestNumericThresholdsDoNotFreezeTodaysArrangement(unittest.TestCase):
             "센서스가 소유 함수와 값을 키로 묶지 못한다 — 선언 표의 키가 그것이므로 "
             "귀속이 틀리면 표 전체가 어긋난다",
         )
+
+
+# ── 프로젝트 메타 스테이지 · 필수 · 자동채움의 cross-language 봉인 ──────────
+#
+# 2026-09-04 개편이 남긴 **유일한 손-유지 사본**을 여기서 잠근다.
+#
+# 필드 *집합*은 프론트가 생성 타입에서 파생하므로 컴파일러가 지킨다. 그러나 세 가지는
+# 타입으로 표현되지 않는다:
+#
+#   1. **스테이지 분류** — "이 칸을 어느 화면이 묻는가". 백엔드 커널의
+#      ``PROJECT_META_FIELD_STAGES`` 와 프론트의 ``EDITABLE_FIELD_STAGES`` 가 같은
+#      사실을 두 언어로 적는다. 어긋나면 한 칸을 두 화면이 모두 묻거나(중복 입력)
+#      **어느 화면도 묻지 않는다**(영구 공란) — 후자가 이번 개편이 고친 결함 그 자체다.
+#   2. **필수 집합** — OpenAPI ``required`` 에서 타입으로 파생되지만, 그 파생을
+#      런타임 배열로 옮기는 witness 객체는 손으로 적힌다.
+#   3. **자동채움 대상** — 제안 envelope ∩ 편집 필드. 프론트는 타입 가드 술어로
+#      좁히는데, 그 술어의 리터럴은 컴파일러가 커널과 대조해 주지 못한다.
+#
+# TS 를 실행하지 않고 판정하기 위해 소스에서 리터럴을 파싱한다. 파싱이 실패하면
+# **모양이 바뀐 것**이므로 그것도 red 다(조용히 통과하면 봉인이 공허해진다).
+_META_PATCH_TS = SRC_DIR / "shared" / "project-meta-patch.ts"
+
+_STAGE_BLOCK_RE = re.compile(
+    r"EDITABLE_FIELD_STAGES[^=]*=\s*\{(?P<body>.*?)\n\};", re.S
+)
+_REQUIRED_BLOCK_RE = re.compile(
+    r"REQUIRED_CREATE_WITNESS[^=]*=\s*\{(?P<body>.*?)\n\};", re.S
+)
+_FILL_BLOCK_RE = re.compile(
+    r"APPLICANT_FILL_FIELDS[^=]*=(?P<body>.*?)\n\);", re.S
+)
+
+
+def _meta_patch_source() -> str:
+    return _META_PATCH_TS.read_text(encoding="utf-8")
+
+
+def _parsed_block(pattern: re.Pattern, source: str, what: str) -> str:
+    match = pattern.search(source)
+    if match is None:
+        raise AssertionError(
+            f"{what} 선언을 project-meta-patch.ts 에서 찾지 못했다 — 이름이나 모양이 "
+            f"바뀌었다면 이 봉인도 함께 갱신해야 한다(파싱 실패를 통과로 읽지 않는다)"
+        )
+    return match.group("body")
+
+
+class TestProjectMetaStageIsOneFactInTwoLanguages(unittest.TestCase):
+    """스테이지·필수·자동채움이 백엔드 SSOT 와 글자 그대로 일치한다."""
+
+    def test_the_front_end_stage_table_equals_the_kernel_stage_table(self) -> None:
+        body = _parsed_block(_STAGE_BLOCK_RE, _meta_patch_source(), "EDITABLE_FIELD_STAGES")
+        front = dict(re.findall(r"(\w+):\s*'(\w+)'", body))
+        self.assertEqual(
+            front,
+            dict(PROJECT_META_FIELD_STAGES),
+            "프론트 스테이지 분류가 커널과 어긋났다 — 한 칸을 두 화면이 모두 묻거나 "
+            "어느 화면도 묻지 않는 상태가 된다(후자는 그 칸이 영구 공란이 된다는 뜻)",
+        )
+
+    def test_every_editable_field_is_classified(self) -> None:
+        """새 편집 필드는 **어느 스테이지에 속하는지 답해야** 트리에 들어온다."""
+        body = _parsed_block(_STAGE_BLOCK_RE, _meta_patch_source(), "EDITABLE_FIELD_STAGES")
+        classified = {name for name, _stage in re.findall(r"(\w+):\s*'(\w+)'", body)}
+        self.assertEqual(classified, set(EDITABLE_PROJECT_META_FIELDS))
+
+    def test_the_front_end_required_witness_equals_the_kernel_required_set(self) -> None:
+        body = _parsed_block(_REQUIRED_BLOCK_RE, _meta_patch_source(), "REQUIRED_CREATE_WITNESS")
+        front = set(re.findall(r"(\w+):\s*true", body))
+        self.assertEqual(
+            front,
+            set(CREATE_PROJECT_REQUIRED_FIELDS),
+            "화면이 별표를 붙이는 칸과 서버가 요구하는 칸이 어긋났다 — 느슨한 쪽이 "
+            "화면이면 '눌렀는데 400', 서버면 '요구하지 않는 칸을 강제'가 된다",
+        )
+
+    def test_the_identity_field_is_required_but_never_editable(self) -> None:
+        """``model_name`` 은 생성 필수이면서 PATCH 로는 바꿀 수 없다(재키잉이다)."""
+        self.assertIn(CREATE_PROJECT_IDENTITY_FIELD, CREATE_PROJECT_REQUIRED_FIELDS)
+        self.assertIn(CREATE_PROJECT_IDENTITY_FIELD, IMMUTABLE_PROJECT_FIELDS)
+        self.assertNotIn(CREATE_PROJECT_IDENTITY_FIELD, EDITABLE_PROJECT_META_FIELDS)
+
+    def test_the_front_end_autofill_predicate_equals_the_kernel_suggestion_fields(self) -> None:
+        body = _parsed_block(_FILL_BLOCK_RE, _meta_patch_source(), "APPLICANT_FILL_FIELDS")
+        front = set(re.findall(r"field === '(\w+)'", body))
+        self.assertEqual(
+            front,
+            set(APPLICANT_SUGGESTION_FIELDS),
+            "자동채움 대상이 서버 제안 필드와 어긋났다 — 넓으면 서버가 주지 않은 칸을 "
+            "비우고, 좁으면 신청자를 바꿔도 옛 값이 남는다",
+        )
+
+    def test_each_form_renders_its_own_stage_and_not_the_other(self) -> None:
+        """생성 폼과 성적서 폼이 **스테이지 상수에서** 칸 목록을 파생한다.
+
+        어느 한쪽이 ``EDITABLE_PROJECT_FIELDS`` 전체를 렌더하면 스테이지 분리가
+        화면에서 무효가 된다 — 그 경우 위 표들이 전부 green 이어도 사용자는 예전과
+        똑같이 답 없는 칸을 마주한다.
+        """
+        create = (SRC_DIR / "routes" / "my-projects.tsx").read_text(encoding="utf-8")
+        report = (SRC_DIR / "routes" / "test-reports.tsx").read_text(encoding="utf-8")
+        self.assertIn("INTAKE_META_FIELDS", create)
+        self.assertIn("REPORT_META_FIELDS", report)
+        self.assertNotIn(
+            "REPORT_META_FIELDS.map", create,
+            "생성 폼이 성적서 스테이지 칸을 렌더한다 — 그 칸들은 이 시점에 답이 없다",
+        )
+
+    def test_a_retired_field_survives_only_as_prose(self) -> None:
+        """폐기된 필드 이름은 **주석에만** 남을 수 있다.
+
+        이력을 설명하는 산문은 남겨야 한다(왜 없어졌는지가 코드 옆에 있어야 한다).
+        금지되는 것은 **실행되는 참조**다 — 문자열 리터럴이나 프로퍼티 접근으로
+        남아 있으면 그 경로는 이제 존재하지 않는 컬럼을 가리킨다.
+        """
+        offenders: list[str] = []
+        for path in _src_files():
+            text = path.read_text(encoding="utf-8")
+            for retired in RETIRED_PROJECT_META_FIELDS:
+                for match in re.finditer(rf"\b{re.escape(retired)}\b", text):
+                    line = text[: match.start()].count("\n") + 1
+                    raw = text.splitlines()[line - 1].strip()
+                    # 주석 줄(`*`, `//`)은 이력 설명이므로 허용한다.
+                    if raw.startswith("*") or raw.startswith("//") or raw.startswith("/*"):
+                        continue
+                    offenders.append(f"{path.relative_to(SRC_DIR).as_posix()}:{line}: {raw}")
+        self.assertEqual(
+            offenders,
+            [],
+            "폐기된 필드를 실행 코드가 아직 참조한다 — 그 컬럼은 더 이상 존재하지 않는다",
+        )
+
+
+if __name__ == "__main__":  # pragma: no cover
+    unittest.main()

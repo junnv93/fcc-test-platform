@@ -325,12 +325,9 @@ def _seed(connection, *, run_id: str) -> SeedManifest:
         )
         cursor.execute(
             'INSERT INTO projects '
-            '(id, project_code, name, status, created_at, updated_at) '
-            'VALUES (%s, %s, %s, %s, %s, %s)',
-            (
-                project_uuid, project_code, 'Cross-session selection benchmark',
-                'active', started, started,
-            ),
+            '(id, project_code, status, created_at, updated_at) '
+            'VALUES (%s, %s, %s, %s, %s)',
+            (project_uuid, project_code, 'active', started, started),
         )
 
         sessions: dict[tuple[int, int], uuid.UUID] = {}

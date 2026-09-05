@@ -82,7 +82,7 @@ EXPECTED_COLUMNS = {
     },
 }
 PROTECTED_COLUMNS = {
-    'projects': ('id', 'project_code', 'name', 'status', 'created_at', 'updated_at'),
+    'projects': ('id', 'project_code', 'status', 'created_at', 'updated_at'),
     'providers': (
         'id', 'provider_id', 'product_line', 'contract_family',
         'contract_version', 'base_url', 'capabilities_json', 'enabled',

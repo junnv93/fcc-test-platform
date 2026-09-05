@@ -109,11 +109,16 @@ from fcc_test_platform.domain.services.project_directory_query import (  # noqa:
     search_like_pattern,
 )
 from fcc_test_kernel.domain.services.project_metadata_edit import (  # noqa: E402
+    APPLICANT_IDENTITY_FIELD,
+    APPLICANT_SUGGESTION_FIELDS,
+    CREATE_PROJECT_IDENTITY_FIELD,
+    CREATE_PROJECT_REQUIRED_FIELDS,
     DEVICE_MODEL_META_FIELDS,
     EDITABLE_PROJECT_META_FIELDS,
     IMMUTABLE_PROJECT_FIELDS,
     PROJECT_META_FIELD_TABLES,
     PROJECT_TABLE_META_FIELDS,
+    UNIQUE_PROJECT_META_FIELDS,
     device_model_table_updates,
     parse_project_metadata_update,
     project_table_updates,
@@ -134,6 +139,14 @@ _CONFLICT_POLICY_MODULE = moved_module_source(
 _CENTRAL_SCHEMA = PROJECT_ROOT / 'docs' / 'platform' / 'central_db_schema.v1.json'
 _MIGRATION_010 = (
     resolve_repo_artifact(__file__, 'docs/platform/migrations/010_project_directory_indexes.sql')
+)
+_MIGRATION_031 = (
+    resolve_repo_artifact(
+        __file__, 'docs/platform/migrations/031_project_applicant_search_axis.sql')
+)
+_MIGRATION_032 = (
+    resolve_repo_artifact(
+        __file__, 'docs/platform/migrations/032_retire_project_customer_column.sql')
 )
 
 #: The three published OpenAPI artifacts, per surface.
@@ -218,6 +231,7 @@ class _FakeProjectReadPort:
         self._c = central
         #: 서비스가 어댑터에 실제로 넘긴 인자 기록 (SSOT 위임 검증용).
         self.calls: list[dict] = []
+        self.applicant_calls: list[dict] = []
 
     def list_projects(self, *, status=None, q=None, limit=None, after=None):
         """Faithful in-memory mirror of the read adapter's directory contract.
@@ -256,6 +270,36 @@ class _FakeProjectReadPort:
         row = self._row(project_id)
         row['samples'] = []
         return row
+
+    def list_applicant_suggestions(self, *, q=None, limit):
+        """신청자당 최신 한 행 — 어댑터 윈도우 함수와 같은 판정의 in-memory 거울.
+
+        실제 SQL 의 그룹 키는 정규화된 이름(``lower``)이고 최신이 이긴다. 여기서도
+        같은 규칙을 지킨다 — 인자를 받고 무시하는 fake 는 깨진 서비스를 통과시킨다.
+        """
+        self.applicant_calls.append({'q': q, 'limit': limit})
+        newest: dict[str, dict] = {}
+        counts: dict[str, int] = {}
+        for pid in self._c.projects:
+            row = self._row(pid)
+            name = (row.get(APPLICANT_IDENTITY_FIELD) or '').strip()
+            if not name:
+                continue
+            if q is not None and not _like(name, q):
+                continue
+            key = name.lower()
+            counts[key] = counts.get(key, 0) + 1
+            previous = newest.get(key)
+            if previous is None or _sort_key(row) > _sort_key(previous):
+                newest[key] = row
+        ranked = sorted(newest.items(), key=lambda kv: _sort_key(kv[1]), reverse=True)
+        return [
+            {
+                **{field: row.get(field) for field in APPLICANT_SUGGESTION_FIELDS},
+                'project_count': counts[key],
+            }
+            for key, row in ranked[:limit]
+        ]
 
     def _row(self, project_id: str) -> dict:
         project = self._c.projects[project_id]
@@ -297,11 +341,13 @@ class _FakeProjectWritePort:
             )
         self._c.projects[pid] = {
             key: project_record.get(key)
-            for key in (
-                'project_code', 'name', 'customer', 'management_number', 'status',
-                'fcc_grantee_code', 'applicant_name', 'applicant_address',
-                'eut_description', 'test_standard', 'created_at', 'updated_at',
-            )
+            # 메타 칸은 소속 테이블 SSOT 파생 — 페이크가 목록을 손으로 들면 필드가
+            # 늘어난 날 이 페이크만 옛 모양을 저장하고, 테스트는 "서비스가 값을
+            # 잃어버린다"고 잘못 말한다. manufacturer 가 여기 없는 것도 파생 결과다
+            # (그 칸은 device_models 소속이고, 아래 models 딕트가 받는다).
+            for key in ('project_code', 'name', 'status')
+            + PROJECT_TABLE_META_FIELDS
+            + ('created_at', 'updated_at')
         }
         self._c.models[pid] = {
             'model_name': device_model_record.get('model_name'),
@@ -368,14 +414,29 @@ _PROJECT_ID = '11111111-1111-4111-8111-111111111111'
 
 def _make_service():
     central = _InMemoryCentral()
-    ids = iter([
-        _PROJECT_ID,
-        '22222222-2222-4222-8222-222222222222',
-        '33333333-3333-4333-8333-333333333333',
-        '44444444-4444-4444-8444-444444444444',
-        '55555555-5555-4555-8555-555555555555',
-    ])
-    clock = iter(['2026-07-28T00:00:00+00:00'] * 8)
+    # 결정적이면서 **고갈되지 않는** id 열. 유한 리스트였을 때는 프로젝트를 셋 이상
+    # 만드는 테스트가 StopIteration 으로 죽었는데, 그 실패는 "id 가 모자랐다"가 아니라
+    # 무관한 예외로 보여서 원인을 가린다. 첫 값은 _PROJECT_ID 로 고정한다 — 기존
+    # 테스트들이 그 id 로 상세/PATCH 를 부른다.
+    #
+    # 한 프로젝트 생성이 id 를 넷 소비한다(project · device_model · membership · audit).
+    def _id_sequence():
+        yield _PROJECT_ID
+        for index in range(2, 1000):
+            digit = index % 10 or 1
+            block = str(digit) * 4
+            yield f'{block}{block[:4]}-{block}-4{block[:3]}-8{block[:3]}-{block * 3}'
+
+    ids = _id_sequence()
+    # 생성 순서가 곧 최신 순서여야 신청자 제안("마지막에 쓴 값이 기본값")을 시험할 수
+    # 있다. 초 단위로 전진시키되, 기존 테스트가 기대하는 첫 시각은 그대로 둔다.
+    def _clock_sequence():
+        for second in range(0, 60):
+            yield f'2026-07-28T00:00:{second:02d}+00:00'
+        while True:
+            yield '2026-07-28T00:01:00+00:00'
+
+    clock = _clock_sequence()
     service = CentralProjectService(
         _FakeProjectReadPort(central), _FakeProjectWritePort(central),
         _FakeMembershipService(),
@@ -385,21 +446,41 @@ def _make_service():
     return service, central
 
 
-def _seed_project(service, **meta):
-    payload = {
-        'model_name': 'SM-X100',
-        'actor_subject': 'tester@example.com',
-        'customer': 'ACME',
-        'manufacturer': 'Samsung',
-        'management_number': 'MGMT-0001',
-        'fcc_grantee_code': 'A1B',
-        'applicant_name': 'ACME Inc.',
-        'applicant_address': '1 Road',
-        'eut_description': 'Handset',
-        'test_standard': 'FCC Part 15',
+def _create_body(model_name: str, **overrides) -> dict:
+    """생성 요청 본문 — 필수 칸이 채워진 최소 형태(필수 집합은 도메인 SSOT)."""
+    body = {
+        'model_name': model_name,
+        'management_number': f'MGMT-{model_name}',
+        'applicant_name': 'ACME Corp',
     }
-    payload.update(meta)
-    return service.create_project(**payload)
+    body.update(overrides)
+    return {key: value for key, value in body.items() if value is not None}
+
+
+assert set(CREATE_PROJECT_REQUIRED_FIELDS) <= set(_create_body('X'))
+
+
+def _seed_project(service, **meta):
+    """편집 가능한 **모든** 메타 칸이 채워진 프로젝트를 하나 만든다.
+
+    아래 PATCH 테스트들이 "보내지 않은 칸은 그대로"를 검사하려면 사전값이 전부
+    non-null 이어야 한다 — 그래서 이 시드는 도메인 편집 필드 집합을 순회해 채운다.
+    값이 필드마다 달라야 "다른 칸이 섞여 들어왔다"를 구분할 수 있으므로, 필드명을
+    값에 넣는다.
+    """
+    body = {
+        field: f'seed-{field}'
+        for field in EDITABLE_PROJECT_META_FIELDS
+    }
+    body['model_name'] = meta.pop('model_name', 'SM-X100')
+    # 유일 제약이 걸린 칸은 **모델명에서 파생**한다. 상수로 두면 두 번째 프로젝트를
+    # 시드하는 순간 의도치 않은 409 가 나고, 그 실패는 테스트가 시험하려던 것과
+    # 아무 상관이 없다.
+    for field in UNIQUE_PROJECT_META_FIELDS:
+        body[field] = f'{field}-{body["model_name"]}'
+    body.update(meta)
+    actor = body.pop('actor_subject', 'tester@example.com')
+    return service.create_project(body, actor_subject=actor)
 
 
 # ── S1 — 부분 갱신 semantics ────────────────────────────────────────────────
@@ -426,11 +507,13 @@ class TestProjectMetadataPatchRoundTrip(unittest.TestCase):
     def test_metadata_patch_absent_key_is_unchanged(self):
         service, _ = _make_service()
         before = _seed_project(service)
-        detail = service.update_project_metadata(_PROJECT_ID, {'customer': 'NEW'})
-        self.assertEqual(detail['customer'], 'NEW')
-        # 보내지 않은 나머지 7필드는 전부 사전값 그대로.
+        detail = service.update_project_metadata(
+            _PROJECT_ID, {'applicant_address': 'NEW'},
+        )
+        self.assertEqual(detail['applicant_address'], 'NEW')
+        # 보내지 않은 나머지 칸은 전부 사전값 그대로.
         for field in EDITABLE_PROJECT_META_FIELDS:
-            if field == 'customer':
+            if field == 'applicant_address':
                 continue
             self.assertEqual(detail[field], before[field], field)
 
@@ -442,23 +525,29 @@ class TestProjectMetadataPatchRoundTrip(unittest.TestCase):
         )
         self.assertIsNone(detail['management_number'])
         # 삭제는 다른 필드를 건드리지 않는다.
-        self.assertEqual(detail['customer'], 'ACME')
+        self.assertEqual(detail['applicant_address'], 'seed-applicant_address')
 
     def test_absent_key_and_explicit_null_are_distinguishable_at_the_parser(self):
         # 계약의 핵심 — 파서가 두 경우를 구분하지 못하면 위 두 테스트가 통과해도
         # 상위 층에서 뭉개진다. 부재 키는 결과에 아예 나타나지 않아야 한다.
-        self.assertNotIn('customer', parse_project_metadata_update({'manufacturer': 'X'}))
+        self.assertNotIn(
+            'applicant_address',
+            parse_project_metadata_update({'manufacturer': 'X'}),
+        )
         self.assertEqual(
-            parse_project_metadata_update({'customer': None}), {'customer': None},
+            parse_project_metadata_update({'applicant_address': None}),
+            {'applicant_address': None},
         )
 
     def test_blank_string_clears_like_the_create_path(self):
         # create 경로(_opt_text)와 같은 규약 — 공백 문자열은 None(삭제).
         self.assertEqual(
-            parse_project_metadata_update({'customer': '   '}), {'customer': None},
+            parse_project_metadata_update({'applicant_address': '   '}),
+            {'applicant_address': None},
         )
         self.assertEqual(
-            parse_project_metadata_update({'customer': ' ACME '}), {'customer': 'ACME'},
+            parse_project_metadata_update({'applicant_address': ' 1 Road '}),
+            {'applicant_address': '1 Road'},
         )
 
     def test_manufacturer_edit_reaches_the_device_models_row(self):
@@ -474,13 +563,13 @@ class TestProjectMetadataPatchRoundTrip(unittest.TestCase):
         service, _ = _make_service()
         with self.assertRaises(ProjectNotFoundError):
             service.update_project_metadata(
-                '99999999-9999-4999-8999-999999999999', {'customer': 'X'},
+                '99999999-9999-4999-8999-999999999999', {'applicant_address': 'X'},
             )
 
     def test_malformed_project_id_raises_value_error(self):
         service, _ = _make_service()
         with self.assertRaises(ValueError):
-            service.update_project_metadata('not-a-uuid', {'customer': 'X'})
+            service.update_project_metadata('not-a-uuid', {'applicant_address': 'X'})
 
     def test_empty_update_is_rejected_loudly(self):
         # 조용한 no-op 금지 — 빈 PATCH 는 클라이언트 오류로 드러난다.
@@ -502,7 +591,7 @@ class TestProjectMetadataPatchRejectsOutOfScope(unittest.TestCase):
             {'status': 'completed'},
             {'model_name': 'OTHER'},
             {'project_code': 'OTHER'},
-            {'customer': 'NEW', 'status': 'completed'},  # 유효 필드와 섞어도 거부
+            {'applicant_address': 'NEW', 'status': 'completed'},  # 유효 필드와 섞어도 거부
         ):
             with self.assertRaises(ValueError, msg=body):
                 service.update_project_metadata(_PROJECT_ID, body)
@@ -511,7 +600,7 @@ class TestProjectMetadataPatchRejectsOutOfScope(unittest.TestCase):
         self.assertEqual(after['status'], before['status'])
         self.assertEqual(after['model_name'], before['model_name'])
         self.assertEqual(after['project_code'], before['project_code'])
-        self.assertEqual(after['customer'], before['customer'])
+        self.assertEqual(after['applicant_address'], before['applicant_address'])
 
     def test_unknown_field_is_rejected(self):
         service, _ = _make_service()
@@ -578,13 +667,47 @@ class TestProjectMetadataFieldSsot(unittest.TestCase):
         for spec in schema['properties'].values():
             self.assertTrue(spec['nullable'])  # null = 삭제를 표현해야 한다
 
-    def test_editable_fields_match_the_create_request_optional_fields(self):
-        # 생성 시 쓸 수 있는 것은 수정도 할 수 있어야 한다(비대칭이 곧 D1 결함).
-        create_optional = tuple(
-            field for field in PLATFORM_API_SCHEMAS['CreateProjectRequest']['properties']
-            if field not in PLATFORM_API_SCHEMAS['CreateProjectRequest']['required']
+    def test_editable_fields_match_the_create_request_meta_fields(self):
+        """생성 시 쓸 수 있는 것은 수정도 할 수 있어야 한다(비대칭이 곧 D1 결함).
+
+        2026-09-04 — 대칭의 기준이 "optional 집합"에서 "**메타 칸 집합**"으로 바뀌었다.
+        관리번호·신청자가 생성 필수가 되면서 그 둘이 create 의 required 로 옮겨갔는데,
+        옛 형태의 이 검사는 그것을 "편집 필드에서 빠졌다"고 잘못 읽는다. 필수 여부는
+        *생성 시점의 요구*이고 편집 가능 여부는 *언제든 고칠 수 있는가*라, 두 축은
+        애초에 다른 것을 말한다 — 실제로 관리번호는 필수이면서 동시에 수정 가능해야
+        한다(오타를 되돌릴 길이 없으면 그게 더 큰 결함이다).
+        """
+        create_meta = set(PLATFORM_API_SCHEMAS['CreateProjectRequest']['properties']) - {
+            CREATE_PROJECT_IDENTITY_FIELD,
+        }
+        self.assertEqual(create_meta, set(EDITABLE_PROJECT_META_FIELDS))
+
+    def test_every_required_create_field_is_still_editable_afterwards(self):
+        """필수 칸이 **편집 불가**가 되면 오타를 되돌릴 길이 사라진다.
+
+        정체성 필드(``model_name``)만 예외다 — 그것은 재키잉 문제이지 편집이 아니다.
+        """
+        for field in CREATE_PROJECT_REQUIRED_FIELDS:
+            if field == CREATE_PROJECT_IDENTITY_FIELD:
+                continue
+            with self.subTest(field=field):
+                self.assertIn(field, EDITABLE_PROJECT_META_FIELDS)
+
+    def test_required_create_fields_are_not_nullable_in_the_contract(self):
+        """필수 칸을 nullable 로 선언하면 계약이 서버와 다른 말을 한다.
+
+        도메인 파서는 공백 문자열을 ``None`` 으로 정규화한 뒤 필수 위반으로 거절하므로,
+        스키마도 ``minLength: 1`` 로 같은 것을 말해야 한다.
+        """
+        schema = PLATFORM_API_SCHEMAS['CreateProjectRequest']
+        self.assertEqual(
+            set(schema['required']), set(CREATE_PROJECT_REQUIRED_FIELDS),
         )
-        self.assertEqual(set(create_optional), set(EDITABLE_PROJECT_META_FIELDS))
+        for field in CREATE_PROJECT_REQUIRED_FIELDS:
+            with self.subTest(field=field):
+                spec = schema['properties'][field]
+                self.assertNotIn('null', str(spec.get('type', '')))
+                self.assertEqual(spec.get('minLength'), 1)
 
     def test_table_split_partitions_every_editable_field(self):
         self.assertEqual(
@@ -701,17 +824,17 @@ class TestProjectMetadataSqlAgainstDdl(unittest.TestCase):
         self.conn.executescript(
             """
             CREATE TABLE projects (
-                id TEXT PRIMARY KEY, project_code TEXT, name TEXT, customer TEXT,
+                id TEXT PRIMARY KEY, project_code TEXT,
                 management_number TEXT UNIQUE, status TEXT, fcc_grantee_code TEXT,
                 applicant_name TEXT, applicant_address TEXT, eut_description TEXT,
                 test_standard TEXT, created_at TEXT, updated_at TEXT
             );
             CREATE TABLE device_models (
                 id TEXT PRIMARY KEY, project_id TEXT, model_name TEXT,
-                manufacturer TEXT, metadata_json TEXT, created_at TEXT,
+                manufacturer TEXT, created_at TEXT,
                 updated_at TEXT
             );
-            INSERT INTO projects (id, project_code, customer, management_number,
+            INSERT INTO projects (id, project_code, applicant_address, management_number,
                                   status, created_at, updated_at)
                 VALUES ('p-a','A','ACME','MGMT-1','active','t0','t0');
             INSERT INTO device_models (id, project_id, model_name, manufacturer,
@@ -732,10 +855,10 @@ class TestProjectMetadataSqlAgainstDdl(unittest.TestCase):
 
     def test_cross_table_update_commits_once(self):
         result = self.adapter.update_project_metadata(
-            'p-a', {'customer': 'NEW', 'manufacturer': 'LG'}, 't1',
+            'p-a', {'applicant_address': 'NEW', 'manufacturer': 'LG'}, 't1',
         )
         self.assertEqual(result, {'project_id': 'p-a'})
-        self.assertEqual(self._read('projects', 'customer'), 'NEW')
+        self.assertEqual(self._read('projects', 'applicant_address'), 'NEW')
         self.assertEqual(self._read('device_models', 'manufacturer'), 'LG')
         # 두 UPDATE, commit 1회 → 하나의 트랜잭션 (부분 성공 불가).
         updates = [s for s in self.statements if s.startswith('UPDATE')]
@@ -745,7 +868,7 @@ class TestProjectMetadataSqlAgainstDdl(unittest.TestCase):
 
     def test_updated_at_is_bumped_on_both_tables(self):
         self.adapter.update_project_metadata(
-            'p-a', {'customer': 'NEW', 'manufacturer': 'LG'}, 't1',
+            'p-a', {'applicant_address': 'NEW', 'manufacturer': 'LG'}, 't1',
         )
         self.assertEqual(self._read('projects', 'updated_at'), 't1')
         self.assertEqual(self._read('device_models', 'updated_at'), 't1')
@@ -754,10 +877,10 @@ class TestProjectMetadataSqlAgainstDdl(unittest.TestCase):
         self.adapter.update_project_metadata('p-a', {'manufacturer': 'LG'}, 't1')
         self.assertEqual(self._read('device_models', 'manufacturer'), 'LG')
         self.assertEqual(self._read('projects', 'updated_at'), 't1')
-        self.assertEqual(self._read('projects', 'customer'), 'ACME')  # 무변경
+        self.assertEqual(self._read('projects', 'applicant_address'), 'ACME')  # 무변경
 
     def test_projects_only_edit_does_not_touch_device_models(self):
-        self.adapter.update_project_metadata('p-a', {'customer': 'NEW'}, 't1')
+        self.adapter.update_project_metadata('p-a', {'applicant_address': 'NEW'}, 't1')
         updates = [s for s in self.statements if s.startswith('UPDATE')]
         self.assertEqual(len(updates), 1)
         self.assertEqual(self._read('device_models', 'updated_at'), 't0')
@@ -775,16 +898,16 @@ class TestProjectMetadataSqlAgainstDdl(unittest.TestCase):
         self.conn.commit()
         with self.assertRaises(CentralProjectError):
             self.adapter.update_project_metadata(
-                'p-a', {'customer': 'NEW', 'manufacturer': 'LG'}, 't1',
+                'p-a', {'applicant_address': 'NEW', 'manufacturer': 'LG'}, 't1',
             )
         self.assertEqual(self.connection.rollbacks, 1)
         self.assertEqual(self.connection.commits, 0)
-        self.assertEqual(self._read('projects', 'customer'), 'ACME')  # 롤백됨
+        self.assertEqual(self._read('projects', 'applicant_address'), 'ACME')  # 롤백됨
 
     def test_unknown_project_returns_none_and_writes_nothing(self):
         self.assertIsNone(
             self.adapter.update_project_metadata(
-                'p-zzz', {'customer': 'NEW', 'manufacturer': 'LG'}, 't1',
+                'p-zzz', {'applicant_address': 'NEW', 'manufacturer': 'LG'}, 't1',
             )
         )
         # RETURNING 이 빈 결과 → device_models UPDATE 는 아예 실행되지 않는다.
@@ -822,7 +945,7 @@ class TestProjectMetadataPatchRouteWiring(unittest.TestCase):
         self.assertEqual(resp.status_code, 200, resp.text)
         body = resp.json()
         self.assertEqual(body['applicant_name'], 'NEW Inc.')
-        self.assertEqual(body['customer'], 'ACME')  # 무변경
+        self.assertEqual(body['applicant_address'], 'seed-applicant_address')  # 무변경
 
     def test_patch_with_status_is_a_problem_json_400(self):
         resp = self.client.patch(
@@ -838,7 +961,7 @@ class TestProjectMetadataPatchRouteWiring(unittest.TestCase):
     def test_patch_unknown_project_is_404(self):
         resp = self.client.patch(
             '/platform/projects/99999999-9999-4999-8999-999999999999',
-            json={'customer': 'X'},
+            json={'applicant_address': 'X'},
         )
         self.assertEqual(resp.status_code, 404, resp.text)
 
@@ -873,12 +996,7 @@ def _make_directory_service(count: int, *, tied_timestamps: bool = False):
         clock=_next_clock, id_factory=_next_id,
     )
     for index in range(count):
-        service.create_project(
-            model_name=f'SM-X{index:03d}',
-            actor_subject='tester@example.com',
-            customer='ACME' if index % 2 == 0 else 'Contoso',
-            management_number=f'MGMT-{index:04d}',
-        )
+        service.create_project(_create_body(f'SM-X{index:03d}', applicant_name='ACME' if index % 2 == 0 else 'Contoso', management_number=f'MGMT-{index:04d}'), actor_subject='tester@example.com')
     return service, central, read_port
 
 
@@ -1183,8 +1301,8 @@ class TestProjectIdentifierConflictFromRealSqlite(unittest.TestCase):
         self.conn = SqliteConnectionFactory(':memory:').create()
         self.conn.execute(
             'CREATE TABLE projects ('
-            ' id TEXT PRIMARY KEY, project_code TEXT NOT NULL, name TEXT NOT NULL,'
-            ' customer TEXT, management_number TEXT, status TEXT,'
+            ' id TEXT PRIMARY KEY, project_code TEXT NOT NULL,'
+            ' management_number TEXT, status TEXT,'
             ' fcc_grantee_code TEXT, applicant_name TEXT, applicant_address TEXT,'
             ' eut_description TEXT, test_standard TEXT,'
             ' created_at TEXT NOT NULL, updated_at TEXT NOT NULL)'
@@ -1194,14 +1312,14 @@ class TestProjectIdentifierConflictFromRealSqlite(unittest.TestCase):
             'ON projects (management_number)'
         )
         self.conn.execute(
-            "INSERT INTO projects (id, project_code, name, management_number,"
+            "INSERT INTO projects (id, project_code, management_number,"
             " status, created_at, updated_at) VALUES"
-            " ('p1','SM-A','SM-A','MGMT-1','active','t0','t0')"
+            " ('p1','SM-A','MGMT-1','active','t0','t0')"
         )
         self.conn.execute(
-            "INSERT INTO projects (id, project_code, name, management_number,"
+            "INSERT INTO projects (id, project_code, management_number,"
             " status, created_at, updated_at) VALUES"
-            " ('p2','SM-B','SM-B','MGMT-2','active','t0','t0')"
+            " ('p2','SM-B','MGMT-2','active','t0','t0')"
         )
         self.conn.commit()
         self.adapter = PostgresCentralProjectWriteAdapter(lambda: AdoptedQmarkConnection(self.conn))
@@ -1232,7 +1350,7 @@ class TestProjectIdentifierConflictFromRealSqlite(unittest.TestCase):
             lambda: (_ for _ in ()).throw(RuntimeError('boom'))
         )
         with self.assertRaises(CentralProjectError) as ctx:
-            broken.update_project_metadata('p2', {'customer': 'X'}, 't1')
+            broken.update_project_metadata('p2', {'applicant_address': 'X'}, 't1')
         self.assertNotIsInstance(ctx.exception, ProjectIdentifierConflictError)
 
 
@@ -1244,20 +1362,14 @@ class TestCreateProjectConflictIsNotSwallowed(unittest.TestCase):
     def test_duplicate_management_number_on_create_raises_the_conflict(self):
         service, _central, _read = _make_directory_service(2)
         with self.assertRaises(ProjectIdentifierConflictError) as ctx:
-            service.create_project(
-                model_name='SM-BRAND-NEW',
-                actor_subject='tester@example.com',
-                management_number='MGMT-0000',   # 이미 0번 프로젝트가 쓰는 번호
-            )
+            service.create_project(_create_body('SM-BRAND-NEW', management_number='MGMT-0000'), actor_subject='tester@example.com')
         self.assertEqual(ctx.exception.field, 'management_number')
 
     def test_same_model_name_still_reuses_idempotently(self):
         # D1 재사용(같은 project_code)은 충돌이 아니다 — 409 승격이 이 경로를
         # 망가뜨리지 않았는지 확인한다.
         service, _central, _read = _make_directory_service(1)
-        again = service.create_project(
-            model_name='SM-X000', actor_subject='tester@example.com',
-        )
+        again = service.create_project(_create_body('SM-X000'), actor_subject='tester@example.com')
         self.assertEqual(again['model_name'], 'SM-X000')
 
 
@@ -1312,8 +1424,8 @@ class TestProjectSearchSqlAgainstDdl(unittest.TestCase):
         self.conn = SqliteConnectionFactory(':memory:').create()
         self.conn.execute(
             'CREATE TABLE projects ('
-            ' id TEXT PRIMARY KEY, project_code TEXT NOT NULL, name TEXT NOT NULL,'
-            ' customer TEXT, management_number TEXT, status TEXT,'
+            ' id TEXT PRIMARY KEY, project_code TEXT NOT NULL,'
+            ' management_number TEXT, status TEXT,'
             ' fcc_grantee_code TEXT, applicant_name TEXT, applicant_address TEXT,'
             ' eut_description TEXT, test_standard TEXT,'
             ' created_at TEXT NOT NULL, updated_at TEXT NOT NULL)'
@@ -1321,7 +1433,7 @@ class TestProjectSearchSqlAgainstDdl(unittest.TestCase):
         self.conn.execute(
             'CREATE TABLE device_models ('
             ' id TEXT PRIMARY KEY, project_id TEXT NOT NULL, model_name TEXT NOT NULL,'
-            ' manufacturer TEXT, metadata_json TEXT,'
+            ' manufacturer TEXT,'
             ' created_at TEXT NOT NULL, updated_at TEXT NOT NULL)'
         )
         self.conn.execute(
@@ -1334,12 +1446,12 @@ class TestProjectSearchSqlAgainstDdl(unittest.TestCase):
             ('p2', 'SM-X940', 'Contoso', '2026-RF-0002', '2026-07-28T00:00:02Z'),
             ('p3', 'LM-G900', 'ACME Corp', '2025-SAR-50%', '2026-07-28T00:00:03Z'),
         ]
-        for pid, code, customer, mgmt, created in rows:
+        for pid, code, applicant, mgmt, created in rows:
             self.conn.execute(
-                'INSERT INTO projects (id, project_code, name, customer,'
+                'INSERT INTO projects (id, project_code, applicant_name,'
                 ' management_number, status, created_at, updated_at)'
-                " VALUES (?,?,?,?,?, 'active', ?, ?)",
-                (pid, code, code, customer, mgmt, created, created),
+                " VALUES (?,?,?,?, 'active', ?, ?)",
+                (pid, code, applicant, mgmt, created, created),
             )
             self.conn.execute(
                 'INSERT INTO device_models (id, project_id, model_name, manufacturer,'
@@ -1366,7 +1478,7 @@ class TestProjectSearchSqlAgainstDdl(unittest.TestCase):
         self.assertEqual(self._search('sm-x940'), ['p2'])
         self.assertEqual(self._search('acme'), ['p3', 'p1'])  # newest first
 
-    def test_search_spans_project_code_and_customer(self):
+    def test_search_spans_project_code_and_applicant_name(self):
         self.assertEqual(sorted(self._search('ACME')), ['p1', 'p3'])
         self.assertEqual(self._search('LM-G'), ['p3'])
 
@@ -1650,8 +1762,8 @@ class TestProjectDirectoryKeysetSqlAgainstDdl(unittest.TestCase):
         self.conn = SqliteConnectionFactory(':memory:').create()
         self.conn.execute(
             'CREATE TABLE projects ('
-            ' id TEXT PRIMARY KEY, project_code TEXT NOT NULL, name TEXT NOT NULL,'
-            ' customer TEXT, management_number TEXT, status TEXT,'
+            ' id TEXT PRIMARY KEY, project_code TEXT NOT NULL,'
+            ' management_number TEXT, status TEXT,'
             ' fcc_grantee_code TEXT, applicant_name TEXT, applicant_address TEXT,'
             ' eut_description TEXT, test_standard TEXT,'
             ' created_at TEXT NOT NULL, updated_at TEXT NOT NULL)'
@@ -1659,7 +1771,7 @@ class TestProjectDirectoryKeysetSqlAgainstDdl(unittest.TestCase):
         self.conn.execute(
             'CREATE TABLE device_models ('
             ' id TEXT PRIMARY KEY, project_id TEXT NOT NULL, model_name TEXT NOT NULL,'
-            ' manufacturer TEXT, metadata_json TEXT,'
+            ' manufacturer TEXT,'
             ' created_at TEXT NOT NULL, updated_at TEXT NOT NULL)'
         )
         self.conn.execute(
@@ -1671,10 +1783,10 @@ class TestProjectDirectoryKeysetSqlAgainstDdl(unittest.TestCase):
         for index in range(self.total):
             pid = f'p{index:02d}'
             self.conn.execute(
-                'INSERT INTO projects (id, project_code, name, status,'
+                'INSERT INTO projects (id, project_code, status,'
                 ' created_at, updated_at)'
-                " VALUES (?,?,?, 'active', ?, ?)",
-                (pid, f'SM-{index:03d}', f'SM-{index:03d}',
+                " VALUES (?,?, 'active', ?, ?)",
+                (pid, f'SM-{index:03d}',
                  '2026-07-28T00:00:00Z', '2026-07-28T00:00:00Z'),
             )
             self.conn.execute(
@@ -1826,10 +1938,19 @@ class TestProjectDirectoryMigration010(unittest.TestCase):
         import platform_db_migrate
 
         self.runner = platform_db_migrate
+        # **적용 완료된 마이그레이션은 과거의 사실이다.** 러너가 파일 checksum 을
+        # 원장과 대조하므로 010 을 손대면 이미 적용한 DB 에서 drift 오류가 난다 —
+        # 즉 이 목록은 오늘의 검색 축(SSOT)이 아니라 010 이 만든 인덱스여야 한다.
+        # 축이 applicant_name 으로 옮겨간 것은 031 이 담당하고,
+        # TestApplicantSearchAxisMigration 이 "오늘의 SSOT ↔ 마이그레이션" 대응을
+        # 지킨다. 여기서 SSOT 를 참조하면 축이 바뀔 때마다 과거 파일이 red 가 된다.
         self.expected_indexes = (
             'idx_projects_directory',
             'idx_projects_status_directory',
-        ) + tuple(f'idx_projects_search_{column}' for column in PROJECT_SEARCH_COLUMNS)
+            'idx_projects_search_management_number',
+            'idx_projects_search_project_code',
+            'idx_projects_search_customer',
+        )
 
     def test_the_runner_discovers_it_after_009(self):
         """010 must sort after 009 and appear exactly once.
@@ -2054,6 +2175,186 @@ class TestProjectDirectoryRouteWiring(unittest.TestCase):
             PLATFORM_NEXT_CURSOR_HEADER,
             PLATFORM_API_RESPONSE_HEADERS['list_projects'],
         )
+
+
+# ── 신청자 축 이전 (2026-09-04) — 031 확장 / 032 수축 ────────────────────────
+
+
+class TestApplicantSearchAxisMigration(unittest.TestCase):
+    """검색 축이 ``customer`` → ``applicant_name`` 으로 옮겨간 두 마이그레이션.
+
+    **expand-and-contract** 다: 031 이 새 인덱스를 먼저 만들고(확장), 032 가 값을
+    합친 뒤 컬럼을 지운다(수축). 순서가 뒤집히면 축 인덱스가 없는 창이 생기고, 그
+    창에서 디렉터리 검색이 Seq Scan 으로 떨어진다.
+    """
+
+    def setUp(self):
+        sys.path.insert(0, str(PROJECT_ROOT / 'scripts'))
+        import platform_db_migrate
+
+        self.runner = platform_db_migrate
+        self.expand = _MIGRATION_031.read_text(encoding='utf-8')
+        self.contract = _MIGRATION_032.read_text(encoding='utf-8')
+
+    def test_todays_search_axis_is_covered_by_a_migration(self):
+        """오늘의 검색 축 SSOT ↔ 마이그레이션 대응 — 이것이 드리프트 게이트다.
+
+        010 은 자기 시점의 축을 담은 **과거의 사실**이라(체크섬이 원장에 잠겨 있어
+        수정 불가) 축이 바뀌면 새 마이그레이션이 그 차이를 메워야 한다. 축이 또
+        옮겨가는 날 이 테스트가 red 가 되고, 인덱스 없는 축이 배포되지 않는다.
+        """
+        applied = self.expand + self.contract + _MIGRATION_010.read_text(encoding='utf-8')
+        for column in PROJECT_SEARCH_COLUMNS:
+            with self.subTest(column=column):
+                self.assertIn(f'idx_projects_search_{column}', applied)
+
+    def test_the_expand_half_creates_both_indexes_idempotently(self):
+        for name in ('idx_projects_search_applicant_name',
+                     'idx_projects_applicant_directory'):
+            with self.subTest(index=name):
+                self.assertIn(
+                    f'CREATE INDEX CONCURRENTLY IF NOT EXISTS "{name}"', self.expand,
+                )
+                # 실패한 CONCURRENTLY 가 남긴 INVALID 인덱스를 먼저 치운다(재시도 self-heal).
+                self.assertIn(f'DROP INDEX CONCURRENTLY IF EXISTS "{name}";', self.expand)
+
+    def test_the_expand_half_is_non_transactional_and_non_destructive(self):
+        self.assertTrue(self.runner.migration_requires_non_transactional(self.expand))
+        body = self.runner._strip_sql_line_comments(self.expand).upper()
+        for forbidden in ('DROP TABLE', 'DROP COLUMN', 'TRUNCATE', 'DELETE FROM',
+                          'DROP EXTENSION', 'ALTER TABLE'):
+            self.assertNotIn(forbidden, body, f'{forbidden} is destructive')
+
+    def test_the_contract_half_runs_in_one_transaction(self):
+        """백필·가드·DROP 이 한 트랜잭션이어야 부분 적용이 없다.
+
+        CONCURRENTLY 가 없어야 러너가 트랜잭션 경로를 고르고, 그 경로만이 파일을
+        통째로 실행해 ``DO $$ ... $$`` 가드를 성립시킨다.
+        """
+        self.assertFalse(self.runner.migration_requires_non_transactional(self.contract))
+        self.assertIn('BEGIN;', self.contract)
+        self.assertIn('COMMIT;', self.contract)
+
+    def test_the_contract_half_refuses_to_destroy_an_adjudicable_value(self):
+        """두 칸에 **서로 다른** 주체가 있으면 사람이 판단해야 한다 — 조용히 이기지 않는다."""
+        self.assertIn('RAISE EXCEPTION', self.contract)
+        # 가드는 DROP **앞**에 있어야 한다(뒤에 있으면 이미 지운 뒤다).
+        self.assertLess(
+            self.contract.index('RAISE EXCEPTION'),
+            self.contract.index('DROP COLUMN'),
+        )
+        # 병합은 잃을 것이 없는 행에만 적용된다.
+        self.assertIn('btrim("applicant_name") = \'\'', self.contract)
+
+    def test_the_contract_half_declares_its_partial_reversibility(self):
+        """컬럼 DROP 은 값을 되돌리지 못한다 — 그 사실이 주석에 있어야 한다.
+
+        형상(컬럼+인덱스)은 복구하되 값은 복구하지 못한다고 말하지 않으면, 운영자는
+        rollback 한 줄로 원상복구된다고 믿는다.
+        """
+        self.assertTrue(
+            self.runner.rollback_annotation_lines_are_inert_comments(self.contract)
+        )
+        rollback = self.runner.parse_rollback_statements(self.contract)
+        self.assertTrue(any('ADD COLUMN' in stmt for stmt in rollback))
+        self.assertIn('PARTIAL', self.contract)
+
+    def test_the_two_halves_are_ordered_and_unique(self):
+        discovered = self.runner.discover_migrations(_MIGRATION_031.parent)
+        versions = [version for version, _path in discovered]
+        self.assertEqual(len(versions), len(set(versions)), 'duplicate version')
+        self.assertLess(
+            versions.index(_MIGRATION_031.stem),
+            versions.index(_MIGRATION_032.stem),
+            'the expand half must run before the contract half',
+        )
+
+    def test_the_retired_column_is_gone_from_the_schema_ssot(self):
+        import json
+
+        schema = json.loads(_CENTRAL_SCHEMA.read_text(encoding='utf-8'))
+        columns = schema['tables']['projects']['columns']
+        self.assertNotIn('customer', columns)
+        # 후임 칸은 남아 있어야 한다 — 폐기는 이동이지 삭제가 아니다.
+        self.assertIn(APPLICANT_IDENTITY_FIELD, columns)
+
+
+class TestApplicantDirectoryRead(unittest.TestCase):
+    """신청자 제안 조회 — 자동 채움의 원천이 실제로 '최신 한 행'인가."""
+
+    def _service(self):
+        service, _central = _make_service()
+        return service
+
+    def test_one_row_per_applicant_with_the_newest_values(self):
+        service = self._service()
+        _seed_project(
+            service, model_name='OLD-1',
+            applicant_name='ACME Inc.', applicant_address='1 Old Road',
+            manufacturer='OldCo',
+        )
+        _seed_project(
+            service, model_name='NEW-1',
+            applicant_name='ACME Inc.', applicant_address='2 New Road',
+            manufacturer='NewCo',
+        )
+        suggestions = service.list_applicant_suggestions()
+        self.assertEqual(len(suggestions), 1, suggestions)
+        entry = suggestions[0]
+        # 같은 신청자로 두 번 만들었으면 **마지막에 쓴** 주소/제조사가 기본값이다.
+        self.assertEqual(entry['applicant_address'], '2 New Road')
+        self.assertEqual(entry['manufacturer'], 'NewCo')
+        self.assertEqual(entry['project_count'], 2)
+
+    def test_case_only_variants_are_the_same_applicant(self):
+        service = self._service()
+        _seed_project(service, model_name='A-1', applicant_name='ACME Inc.')
+        _seed_project(service, model_name='A-2', applicant_name='acme inc.')
+        self.assertEqual(len(service.list_applicant_suggestions()), 1)
+
+    def test_projects_without_an_applicant_are_not_suggestions(self):
+        service = self._service()
+        # applicant_name 은 생성 필수라 빈 값으로는 만들 수 없다 — 그러니 '이름 없는
+        # 후보'는 레거시 행에서만 온다. 그 경우에도 제안이 되어서는 안 된다.
+        _seed_project(service, model_name='A-1', applicant_name='ACME Inc.')
+        service.update_project_metadata(
+            service.list_projects()['items'][0]['project_id'],
+            {'applicant_name': None},
+        )
+        self.assertEqual(service.list_applicant_suggestions(), [])
+
+    def test_the_suggestion_never_carries_a_unique_field(self):
+        """관리번호는 제안에 실리면 **안 된다** — 물려받는 순간 409 다."""
+        service = self._service()
+        _seed_project(service, model_name='A-1', applicant_name='ACME Inc.')
+        entry = service.list_applicant_suggestions()[0]
+        for field in UNIQUE_PROJECT_META_FIELDS:
+            with self.subTest(field=field):
+                self.assertNotIn(field, entry)
+
+    def test_search_narrows_by_applicant_name(self):
+        service = self._service()
+        _seed_project(service, model_name='A-1', applicant_name='ACME Inc.')
+        _seed_project(service, model_name='B-1', applicant_name='Contoso Ltd.')
+        names = [
+            entry[APPLICANT_IDENTITY_FIELD]
+            for entry in service.list_applicant_suggestions(q='conto')
+        ]
+        self.assertEqual(names, ['Contoso Ltd.'])
+
+    def test_a_blank_search_term_is_no_filter_not_an_empty_result(self):
+        service = self._service()
+        _seed_project(service, model_name='A-1', applicant_name='ACME Inc.')
+        self.assertEqual(len(service.list_applicant_suggestions(q='   ')), 1)
+
+    def test_the_read_is_always_bounded(self):
+        """자동완성은 타이핑마다 호출된다 — 상한 없는 읽기를 만들지 않는다."""
+        service, _central = _make_service()
+        _seed_project(service, model_name='A-1', applicant_name='ACME Inc.')
+        service.list_applicant_suggestions()
+        for call in service._read.applicant_calls:
+            self.assertIsNotNone(call['limit'])
+            self.assertLessEqual(call['limit'], MAX_PAGE_SIZE)
 
 
 if __name__ == '__main__':  # pragma: no cover

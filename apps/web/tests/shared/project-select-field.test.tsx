@@ -33,7 +33,6 @@ function project(over: Record<string, unknown>): Record<string, unknown> {
     project_id: '11111111-1111-4111-8111-111111111111',
     project_code: 'SM-S921U',
     model_name: 'SM-S921U',
-    customer: null,
     manufacturer: null,
     management_number: null,
     status: 'active',

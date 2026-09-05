@@ -159,8 +159,7 @@ function buildSampleFields(values: FormValues) {
     sample_description: nullable(values.sample_description),
     // Accessory 는 Conducted/Radiated 를 갖지 않는다 (ADR-0002 결정 8). 종류를
     // Accessory 로 바꾸면 숨긴 칸의 옛 값이 남아 흘러가지 않도록 여기서 비운다.
-    test_category:
-      values.sample_kind === 'Accessory' ? null : nullable(values.test_category),
+    test_category: values.sample_kind === 'Accessory' ? null : nullable(values.test_category),
     label_number: nullable(values.label_number),
     smsn: nullable(values.smsn),
     serial_number: nullable(values.serial_number),

@@ -177,11 +177,9 @@ describe('② PM 축 반입/반출이 1급 사건으로 보인다', () => {
     platformApi.appendSampleCustodyEvent.mockResolvedValue(events[0]);
     renderRoute(`/inventory?project=${PROJECT_ID}&sample=${SAMPLE_ID}`);
 
-    await user.selectOptions(
-      await screen.findByTestId('sample-custody-event-type'), 'received');
+    await user.selectOptions(await screen.findByTestId('sample-custody-event-type'), 'received');
     await user.type(screen.getByTestId('sample-custody-occurred-on'), '2025-11-04');
-    await user.type(
-      screen.getByTestId('sample-custody-intake-cert'), '20251104-1432333773');
+    await user.type(screen.getByTestId('sample-custody-intake-cert'), '20251104-1432333773');
     await user.click(screen.getByTestId('sample-custody-add'));
 
     await waitFor(() => expect(platformApi.appendSampleCustodyEvent).toHaveBeenCalled());
@@ -206,7 +204,11 @@ describe('② PM 축 반입/반출이 1급 사건으로 보인다', () => {
     await user.click(await screen.findByTestId(`sample-custody-delete-${EVENT_ID}`));
     await waitFor(() =>
       expect(platformApi.deleteSampleCustodyEvent).toHaveBeenCalledWith(
-        PROJECT_ID, SAMPLE_ID, EVENT_ID));
+        PROJECT_ID,
+        SAMPLE_ID,
+        EVENT_ID,
+      ),
+    );
   });
 
   it('shows the derived custody state in the list without deciding it locally', async () => {
@@ -220,7 +222,9 @@ describe('② PM 축 반입/반출이 1급 사건으로 보인다', () => {
   it('reports a sample with no events as not recorded, never as released', async () => {
     platformApi.fetchSampleInventory.mockResolvedValue({
       items: [sample({ custody_state: null, custody_event_count: 0 })],
-      next_cursor: null, as_of: null, filters: {},
+      next_cursor: null,
+      as_of: null,
+      filters: {},
     });
     renderRoute(`/inventory?project=${PROJECT_ID}`);
     expect(await screen.findByTestId('inventory-custody-#2')).toHaveTextContent(
@@ -233,10 +237,22 @@ describe('③ 시험 실무자 축의 1:N 이 화면에 나온다', () => {
   it('lists every intake observation, not only the latest', async () => {
     platformApi.fetchSampleIntakes.mockResolvedValue({
       items: [
-        { intake_id: 'i-1', sample_id: SAMPLE_ID, project_id: PROJECT_ID,
-          intake_date: '2025-09-30', bl: 'BL-1', tech_group: 'RF' },
-        { intake_id: 'i-2', sample_id: SAMPLE_ID, project_id: PROJECT_ID,
-          intake_date: '2025-10-21', bl: 'BL-2', tech_group: 'RF' },
+        {
+          intake_id: 'i-1',
+          sample_id: SAMPLE_ID,
+          project_id: PROJECT_ID,
+          intake_date: '2025-09-30',
+          bl: 'BL-1',
+          tech_group: 'RF',
+        },
+        {
+          intake_id: 'i-2',
+          sample_id: SAMPLE_ID,
+          project_id: PROJECT_ID,
+          intake_date: '2025-10-21',
+          bl: 'BL-2',
+          tech_group: 'RF',
+        },
       ],
     });
     renderRoute(`/inventory?project=${PROJECT_ID}&sample=${SAMPLE_ID}`);
@@ -254,8 +270,7 @@ describe('④ 분류가 폼에 있다', () => {
     expect(await screen.findByTestId('sample-editor-test_category')).toBeInTheDocument();
 
     await user.selectOptions(screen.getByTestId('sample-editor-sample_kind'), 'Accessory');
-    await waitFor(() =>
-      expect(screen.queryByTestId('sample-editor-test_category')).toBeNull());
+    await waitFor(() => expect(screen.queryByTestId('sample-editor-test_category')).toBeNull());
   });
 
   it('clears a stale test category when the kind becomes Accessory', async () => {
@@ -263,8 +278,7 @@ describe('④ 분류가 폼에 있다', () => {
     platformApi.patchSample.mockResolvedValue(sample());
     renderRoute(`/inventory?project=${PROJECT_ID}&sample=${SAMPLE_ID}`);
 
-    await user.selectOptions(
-      await screen.findByTestId('sample-editor-sample_kind'), 'Accessory');
+    await user.selectOptions(await screen.findByTestId('sample-editor-sample_kind'), 'Accessory');
     await user.click(screen.getByTestId('sample-editor-save'));
     await waitFor(() => expect(platformApi.patchSample).toHaveBeenCalled());
     expect(platformApi.patchSample.mock.calls[0]?.[2]).toMatchObject({
@@ -289,10 +303,12 @@ describe('④ 분류가 폼에 있다', () => {
   });
 
   it('keeps the legacy spreadsheet text visible and editable', async () => {
-    platformApi.fetchSample.mockResolvedValue(sample({
-      note: '11/4일 재 반입\n10/28일 재 반입',
-      intake_cert: '20251104-1432333773\n20251027-1724065293',
-    }));
+    platformApi.fetchSample.mockResolvedValue(
+      sample({
+        note: '11/4일 재 반입\n10/28일 재 반입',
+        intake_cert: '20251104-1432333773\n20251027-1724065293',
+      }),
+    );
     renderRoute(`/inventory?project=${PROJECT_ID}&sample=${SAMPLE_ID}`);
     // 결정 9 — 자동 변환하지 않는다. 원문이 화면에서 사라지면 옮길 수도 없다.
     expect(await screen.findByTestId('sample-editor-note')).toHaveValue(

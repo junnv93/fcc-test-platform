@@ -45,7 +45,7 @@ dependencies = [
     #
     # 형제와 같은 이유로 **DIRECT reference** 다 — 이 배포물을 담을 인덱스가 없다.
     # 태그를 못 박는다: 움직이는 ref 는 「어느 코드가 돌았나」를 사후에 답할 수 없게 한다.
-    "fcc-test-kernel @ git+https://github.com/junnv93/fcc-test-contracts@kernel-v0.4.0#subdirectory=packages/fcc-test-kernel",
+    "fcc-test-kernel @ git+https://github.com/junnv93/fcc-test-contracts@kernel-v0.5.0#subdirectory=packages/fcc-test-kernel",
     # 상자의 런타임이 실제로 도달하는 서드파티. 실측 기준은 *도달*이지
     # 모듈 레벨 여부가 아니다 — platform 의 런타임 import 는 합성 경계에서
     # 지연되지만(fastapi 4건 · psycopg 2건이 함수 안) 그 지연은 합성 패턴이지

@@ -12,6 +12,7 @@
 - `central.env`에 새로 필요해진 키가 있는지 대조
 - 운영 DB 백업
 - 이미지 재빌드와 스택 기동(= 마이그레이션 적용)
+- 이번 갱신이 **정지 창**을 요구하는지 판정(원장에서 파생) — 요구하면 그 절차
 - 마이그레이션이 **실제로** 적용됐는지 확인
 - 배포 후 스모크
 - 배포 드리프트 게이트(도는 배포가 이 저장소와 같은가)
@@ -180,6 +181,91 @@ ls -lh backup_pre_deploy_*.sql
 > `sh -c` 로 감싸야 변수가 컨테이너 안에서 전개된다.
 
 기대: 파일 크기가 **0바이트가 아니다.** 0바이트는 백업이 아니다.
+
+---
+
+## 4-a. 이번 갱신이 **정지 창**을 요구하는가
+
+§5 는 "재빌드 → 기동 = 마이그레이션 적용"을 한 걸음으로 적는다. **대부분의
+마이그레이션에서 그것이 옳다** — 칸을 더하거나 인덱스를 `CONCURRENTLY` 로 만드는 것은
+도는 서비스를 깨지 않는다.
+
+⚠️ **그러나 그 한 걸음이 성립하지 않는 부류가 있다.** 칸을 **지우는** 마이그레이션은
+지금 서빙 중인 코드를 깬다(그 코드는 그 마이그레이션보다 먼저 빌드됐으므로 지워진 칸을
+여전히 SQL 에 적는다). 반대로 새 코드가 채우지 않는 칸에 `NOT NULL` 이 남아 있으면
+새 코드가 깨진다. **두 제약이 반대 방향이면 배포와 적용 사이에 순서가 생기고, 그 순서는
+§5 의 한 걸음 안에 들어가지 않는다.**
+
+### 판정 — 눈으로 읽지 말고 원장에서 파생한다
+
+```bash
+python3 scripts/platform_migration_deploy_class.py
+```
+
+`ONLINE` 만 나오면 **이 절은 건너뛰고 §5 로 간다.** `STOP-WINDOW` 가 하나라도 있으면
+아래를 따른다. 판정은 SQL 자체에서 나오므로 파일이 늘어도 목록을 손보지 않는다
+(`tests/test_migration_deploy_class_axis.py` 가 그 파생을 봉인한다).
+
+`CAN-REFUSE` 표시는 그 파일이 `RAISE EXCEPTION` 가드를 든다는 뜻이다 — **창 안에서
+거부하면 창이 길어진다.** 반드시 아래 ①을 먼저 한다.
+
+### ① 창을 열기 전에 — 거부 가드를 읽기 전용으로 미리 돌린다
+
+`032` 는 한 프로젝트가 `customer` 와 `applicant_name` 에 **서로 다른** 주체를 들고 있으면
+값을 파괴하지 않기 위해 거부한다. 그 상태는 사람만 판정할 수 있으므로, 창을 열기 전에
+알아야 한다.
+
+```bash
+docker compose -f infra/docker-compose.central.yml \
+  --env-file infra/central/central.env \
+  exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At' <<'SQL'
+SELECT count(*) AS conflicting,
+       coalesce(string_agg(format('%s (customer=%L, applicant_name=%L)',
+                                  project_code, customer, applicant_name),
+                           '; ' ORDER BY project_code), '(none)') AS detail
+  FROM projects
+ WHERE customer IS NOT NULL AND btrim(customer) <> ''
+   AND applicant_name IS NOT NULL AND btrim(applicant_name) <> ''
+   AND lower(btrim(customer)) <> lower(btrim(applicant_name));
+SQL
+```
+
+**읽기 전용이다 — 아무것도 바꾸지 않는다.** 이 질의는 `032` 의 가드와 같은 술어이므로
+여기서 `0` 이면 창 안에서 거부가 나지 않는다.
+
+`0` 이 아니면 **창을 열지 마라.** 나온 프로젝트를 화면에서 먼저 정리한다(두 칸을 같게
+만들거나 낡은 쪽을 비운다). 정리 뒤 이 질의를 다시 돌려 `0` 을 확인하고 나서 창을 연다.
+
+> ⚠️ 이 조회는 `customer` 칸이 **아직 있을 때만** 돈다. `032` 적용 뒤에는 그 칸이 없으므로
+> `column "customer" does not exist` 가 나는 것이 정상이다 — 그때는 이미 지난 관문이다.
+
+### ② 순서 — 창 안에서 한 번에 끝낸다
+
+정지 창을 쓰는 이유가 바로 "그 안에서는 옛 코드가 돌지 않는다"이므로, 마이그레이션과
+배포를 쪼갤 필요가 없다.
+
+```
+[정지]  docker compose ... stop platform-api web headless-api
+   1.   §4 의 백업이 0바이트가 아닌지 다시 확인한다
+   2.   §5 를 --build 와 함께 실행한다 (마이그레이션이 딸려 돈다)
+   3.   §6 으로 pending: [] · drift: [] 를 확인한다
+[재개]  §7 상태 확인 · §8 스모크
+```
+
+> ⚠️ **`stop` 이지 `down` 이 아니다.** §0 이 적은 대로 볼륨을 지우는 경로로 가지 않는다.
+> `postgres` 는 **멈추지 않는다** — 마이그레이션이 그것을 쓴다.
+
+### ③ 왜 (나)안(무정지 expand/contract)을 쓰지 않는가 — 2026-09-05 판정
+
+`033` 을 "`NOT NULL` 완화 → 배포 → 삭제"로 쪼개면 정지 없이 갈 수 있다. 그런데 이
+저장소의 러너에는 **`migrate --until` 이 없다**(`--through` 는 `baseline` 전용,
+`--target` 은 `rollback` 전용). 그러므로 배포 경계는 *"그 릴리스의 `migrations/` 에
+어떤 파일이 들어 있나"* 로만 그을 수 있고, 무정지는 곧 **릴리스 2회**를 뜻한다.
+
+중앙 PC 1대·내부망이라 정지 비용이 낮다. 릴리스 2회 + 파일 재번호 + 혼재 구간(새 코드가
+만든 프로젝트가 옛 화면에서 고객사 칸이 비어 보임)을 사는 대가로는 비싸다는 것이
+운영자 판정이었다. **규모가 커지면 이 판정은 다시 해야 한다** — 그때 바꿀 것은 이 문단이지
+마이그레이션 파일이 아니다.
 
 ---
 

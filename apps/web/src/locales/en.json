@@ -20,7 +20,7 @@
       "truncated": "More projects match — only {count} are shown, so narrow the search.",
       "search": {
         "label": "Search projects",
-        "placeholder": "Model · management number · customer"
+        "placeholder": "Model · project number · applicant"
       }
     }
   },
@@ -422,7 +422,7 @@
       "description": "Pick the project (model) you want to measure, or create a new one. Selecting a project takes you to choose a test field.",
       "workbenchNavAria": "Project start workflow",
       "stepSearch": "Find",
-      "stepSearchDetail": "Search model, customer, management no.",
+      "stepSearchDetail": "Search model, applicant, project no.",
       "stepPick": "Pick",
       "stepPickDetail": "Choose the project context",
       "stepCreate": "Create",
@@ -441,11 +441,21 @@
         "forbidden": "You are not allowed to create a project. Check that you are signed in.",
         "invalid": "Enter a model name.",
         "offline": "Could not reach the central server. Try again shortly.",
-        "failed": "Could not create the project."
+        "failed": "Could not create the project.",
+        "open": "New project",
+        "collapse": "Collapse",
+        "modelHelp": "This name IS the project code. Creating the same model name again opens the existing project.",
+        "applicantHelp": "Pick an already-registered applicant and their address / manufacturer fill in automatically. The filled values stay editable.",
+        "applicantOption": "{count} project(s)",
+        "conflict": "Another project already uses this project number. Enter a different one.",
+        "conflictField": "This number is already taken.",
+        "optionalSection": "Optional details",
+        "optionalMeta": "{n} field(s) · filled in for you when you pick an applicant",
+        "reportStageHint": "The {n} fields that appear only on the report cover are not asked here — you fill them in on the Test Reports screen, when the report is written.",
+        "autofilled": "Applicant “{applicant}” selected. {n} related field(s) were filled in — you can still edit them."
       },
       "metaField": {
-        "management_number": "Management no.",
-        "customer": "Customer",
+        "management_number": "Project number",
         "applicant_name": "Applicant",
         "applicant_address": "Applicant address",
         "manufacturer": "Manufacturer",
@@ -475,7 +485,7 @@
       "search": {
         "ariaLabel": "Search projects",
         "label": "Search",
-        "placeholder": "Find by model, customer, or management no."
+        "placeholder": "Find by model, applicant or project number"
       },
       "statusFilter": {
         "ariaLabel": "Filter by status",
@@ -503,7 +513,7 @@
         "sampleCount": "{n} samples",
         "statusActive": "In progress",
         "statusCompleted": "Completed",
-        "mgmtLabel": "Mgmt no. {value}",
+        "mgmtLabel": "Project no. {value}",
         "fccLabel": "FCC ID {value}",
         "nextProgress": "Progress",
         "nextCoverage": "Coverage",
@@ -1262,18 +1272,18 @@
       "colSession": "Current job",
       "sectionAdmin": "Chamber Administration",
       "bootstrapTitle": "Register the first chamber",
-      "bootstrapDescription": "No chambers are registered yet. An administrator can add the first Session Node here.",
+      "bootstrapDescription": "No chambers are registered yet. Register the first chamber here; web-session approval remains a separate administrator decision after the row is fetched.",
       "bootstrapHelp": "Registration only adds the chamber record. Approval and live heartbeat are separate checks.",
       "bootstrapAria": "Register the first chamber",
       "bootstrapChamberIdLabel": "Chamber ID",
       "bootstrapNameLabel": "Chamber name",
-      "bootstrapBaseUrlLabel": "Session Node address",
+      "bootstrapBaseUrlLabel": "Chamber address",
       "bootstrapTtlLabel": "Heartbeat timeout (seconds)",
       "bootstrapSubmit": "Register chamber",
       "bootstrapSubmitting": "Registering...",
       "bootstrapValidation": "Enter a chamber ID, name, HTTP(S) Session Node address, and a positive heartbeat timeout.",
-      "bootstrapSuccess": "Registered chamber '{chamber}'. Approval remains a separate administrator action.",
-      "bootstrapForbidden": "You don't have permission to register chambers. Please contact an administrator.",
+      "bootstrapSuccess": "Registered chamber '{chamber}'. Approval remains a separate action.",
+      "bootstrapForbidden": "You don't have permission to register a chamber. Please contact an administrator.",
       "bootstrapNetwork": "Cannot reach the central server, so the chamber was not registered.",
       "bootstrapFailed": "Failed to register the chamber.",
       "sectionEquipment": "Instrument Connection Settings",
@@ -1320,18 +1330,8 @@
       "adminNetwork": "Cannot reach the central server.",
       "adminFailed": "Failed to save chamber.",
       "bootstrapFormAria": "Register the first test chamber",
-      "bootstrapDescription": "No chambers are registered yet. Register the first chamber here; web-session approval remains a separate administrator decision after the row is fetched.",
-      "bootstrapChamberIdLabel": "Chamber ID",
-      "bootstrapNameLabel": "Chamber name",
-      "bootstrapBaseUrlLabel": "Chamber address",
-      "bootstrapSubmit": "Register chamber",
-      "bootstrapSubmitting": "Registering...",
       "bootstrapValidationRequired": "Chamber ID, name, and address are required.",
       "bootstrapValidationUrl": "Enter a complete HTTP or HTTPS chamber address.",
-      "bootstrapSuccess": "Registered chamber '{chamber}'. Approval remains a separate action.",
-      "bootstrapForbidden": "You don't have permission to register a chamber. Please contact an administrator.",
-      "bootstrapNetwork": "Cannot reach the central server, so the chamber was not registered.",
-      "bootstrapFailed": "Failed to register the chamber.",
       "status": {
         "idle": "Idle",
         "in_use": "In Use",
@@ -1755,7 +1755,7 @@
         "cite": "Citation"
       },
       "reportNumberAbsent": {
-        "managementNumber": "No report number — the project has no management number",
+        "managementNumber": "No report number — the project has no project number",
         "edition": "No report number — no edition selected"
       },
       "list": {
@@ -1789,6 +1789,24 @@
         "permissionHint": "Your account shows no report-registration right, but being assigned to this project also grants it — so this form is never blocked in advance. If you genuinely lack the right, you will be told when you submit.",
         "optionalHint": "Only the edition is required. A field you leave blank is not sent to the server, so it stays distinguishable from a value filled in later."
       },
+      "coverMetaSection": "Report cover details",
+      "coverMeta": {
+        "ariaLabel": "Report cover details",
+        "dirty": "{n} field(s) changed",
+        "save": "Save",
+        "saving": "Saving…",
+        "discard": "Revert",
+        "saved": "Cover details saved.",
+        "unsaved": "{n} unsaved change(s). Press Save to apply them to the citation below.",
+        "invalid": "The central server rejected these values. Check them and try again.",
+        "forbidden": "You do not have permission to view this project.",
+        "saveForbidden": "You do not have permission to edit this project’s cover details.",
+        "notFound": "That project no longer exists.",
+        "network": "Cannot reach the central server. Try again shortly.",
+        "failed": "Could not load the project details.",
+        "saveFailed": "Could not save the cover details.",
+        "fccIdHint": "The FCC ID is derived centrally from the grantee code and the model name. Save, and it appears in the citation below."
+      },
       "citationSection": "Header citation",
       "citationEditionLabel": "Edition used for the citation",
       "citationEditionNone": "Not selected",
@@ -1801,7 +1819,7 @@
       "citationSamplesEmptyDescription": "This project has no sample yet. Register samples under [Samples] and their SN and firmware will appear here.",
       "citation": {
         "reportNumber": "Report number",
-        "managementNumber": "Management number",
+        "managementNumber": "Project number",
         "fccId": "FCC ID",
         "applicantName": "Applicant",
         "applicantAddress": "Applicant address",

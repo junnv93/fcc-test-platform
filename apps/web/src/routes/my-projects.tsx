@@ -1,11 +1,13 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
+  type ApplicantSuggestionEnvelope,
   completeProject,
   createProject,
   type CreateProjectRequest,
+  fetchApplicantSuggestions,
   fetchProjectsPage,
   type PlatformPage,
   type ProjectDetailEnvelope,
@@ -15,17 +17,23 @@ import {
   updateProject,
   type UpdateProjectRequest,
 } from '@/api/platform-client';
-import { queryKeys } from '@/api/query-config';
+import { queryKeys, REFETCH_STRATEGIES } from '@/api/query-config';
 import { useAuthSession } from '@/auth/route-guard';
 import { useT } from '@/i18n';
 import {
+  APPLICANT_FILL_FIELDS,
+  applyApplicantSuggestion,
+  buildCreateProjectBody,
   buildProjectMetaPatch,
   EDITABLE_PROJECT_FIELDS,
   EMPTY_PROJECT_META_DRAFT,
+  INTAKE_META_FIELDS,
   isProjectMetaField,
+  isRequiredCreateField,
   projectMetaDraftFrom,
   type ProjectMetaDraft,
   type ProjectMetaField,
+  REPORT_META_FIELDS,
 } from '@/shared/project-meta-patch';
 import { projectWorkflowActions, projectWorkspaceHref } from '@/shared/project-workflow';
 import { ROUTE_PATHS } from '@/shared/route-links';
@@ -47,7 +55,6 @@ import {
   StatusBadge,
   StatusMessage,
   Toolbar,
-  WorkbenchLayout,
 } from '@/ui';
 
 import type { ApiError } from '@/shared/api-error';
@@ -74,13 +81,54 @@ import type { ApiError } from '@/shared/api-error';
  * 거짓말이 페이지 경계에서 재발한다). 재필터 경로는 남겨두지 않고 제거했다 —
  * 남아 있으면 서버 검색 봉인이 공허해진다.
  *
- * 표지 메타 편집(W3-B M2, 2026-07-30): 성적서 표지에 실리는 8칸(관리번호·고객·
- * 신청자·제조사·grantee code·시험 대상·규격)을 **생성 시점**과 **사후 편집** 양쪽에서
- * 채운다. 이전에는 생성 폼이 `model_name`/`management_number` 2칸만 노출하고 편집
- * 화면이 아예 없어서, 나머지 칸과 파생값 `fcc_id` 가 영구 공란으로 남았다.
- * 부분 갱신(PATCH) 의 diff 계산은 `@/shared/project-meta-patch` 단일 순수 지점이며
- * 생성 폼도 같은 함수를 공유한다(§"빈 칸 = 키 생략" == 빈 baseline 대비 diff).
+ * 표지 메타 편집(W3-B M2, 2026-07-30): 성적서 표지에 실리는 칸을 **생성 시점**과
+ * **사후 편집** 양쪽에서 채운다. 이전에는 생성 폼이 `model_name`/`management_number`
+ * 2칸만 노출하고 편집 화면이 아예 없어서, 나머지 칸과 파생값 `fcc_id` 가 영구 공란으로
+ * 남았다. 부분 갱신(PATCH) 의 diff 계산은 `@/shared/project-meta-patch` 단일 순수
+ * 지점이며 생성 폼도 같은 함수를 공유한다(§"빈 칸 = 키 생략" == 빈 baseline 대비 diff).
+ *
+ * ## 생성 폼 재설계 (2026-09-04)
+ *
+ * 세 가지가 동시에 잘못돼 있었다:
+ *
+ * 1. **모든 칸이 같은 무게였다.** 8칸이 전부 선택 입력이라, 성적서 번호의 유일한
+ *    재료인 관리번호도 "나중에 채워도 되는 값"처럼 보였다. 실제로 대부분 공란으로
+ *    남았고, 그런 프로젝트는 성적서 번호를 만들 수 없으며 이름 말고는 검색으로 찾을
+ *    수도 없었다. 이제 필수(모델명·프로젝트 번호·신청자)와 선택이 나뉘고, 그 분류는
+ *    계약에서 파생된다(`REQUIRED_CREATE_FIELDS` ← OpenAPI required).
+ * 2. **지금 답할 수 없는 것을 물었다.** grantee code·EUT 설명·시험 규격은 성적서를
+ *    쓸 때가 되어야 정해진다. 그 칸들은 스테이지 축으로 성적서 화면(`test-reports`)
+ *    으로 옮겼다 — 계약이 좁아진 것이 아니라 **묻는 화면이 달라졌을 뿐**이다.
+ * 3. **오른쪽 rail 에 세로로 길게 서 있었다.** 8칸 세로 스택이 목록 옆에 붙어 목록의
+ *    가로 폭을 먹고, 폼 자체도 스크롤 없이는 다 보이지 않았다. 이제 rail 을 없애고
+ *    목록이 전폭을 쓴다. 생성 폼은 목록 **위**에 접힌 채로 있다가 [새 프로젝트]로
+ *    펼쳐지고, 필수 3칸이 한 행에, 선택 칸은 그 안에서 다시 접힌다.
+ *
+ * 신청자 자동 채움: 이미 등록된 신청자를 고르면 그 신청자의 **가장 최근** 주소·제조사가
+ * 함께 채워지고, 채워진 값은 그대로 수정 가능하다(제안은 출발점이지 제약이 아니다).
+ * 제안은 `GET /platform/applicants` 가 프로젝트 행에서 파생하며, 관리번호는 제안에
+ * 실리지 않는다 — UNIQUE 라 물려받는 순간 409 다.
  */
+
+/**
+ * 신청자 제안 요청 상한.
+ *
+ * 자동완성의 답은 "상위 몇 건"이 전부다 — 사용자는 목록을 훑는 것이 아니라 자기가
+ * 아는 이름을 확인할 뿐이고, 더 좁히고 싶으면 글자를 더 친다(그러면 서버가 다시
+ * 좁힌다). 백엔드가 pagination SSOT 로 다시 clamp 하므로 이 값은 상한이 아니라
+ * **요청 크기**다.
+ */
+const APPLICANT_SUGGESTION_LIMIT = 20;
+
+/**
+ * 생성 폼이 그리는 두 칸 묶음 — **모듈 로드 시 한 번** 파생한다.
+ *
+ * 둘 다 상수(`INTAKE_META_FIELDS`)에서 나오므로 렌더마다 다시 거를 이유가 없다.
+ * 더 중요한 것은 이 자리가 파생의 **단일 지점**이라는 사실이다: 화면이 필드 이름을
+ * 적지 않으므로, 새 접수 칸이 생기면 필수 여부에 따라 알아서 어느 한쪽에 나타난다.
+ */
+const REQUIRED_INTAKE_FIELDS = INTAKE_META_FIELDS.filter((field) => isRequiredCreateField(field));
+const OPTIONAL_INTAKE_FIELDS = INTAKE_META_FIELDS.filter((field) => !isRequiredCreateField(field));
 
 function MyProjectsRoute(): JSX.Element {
   const { t } = useT();
@@ -141,20 +189,9 @@ function MyProjectsRoute(): JSX.Element {
     void queryClient.invalidateQueries({ queryKey: queryKeys.project.lists() });
   };
 
-  const createMutation = useMutation({
-    mutationFn: (input: { modelName: string; meta: ProjectMetaDraft }) => {
-      // 표지 메타는 전부 선택 입력이고 **빈 칸은 키를 생략**한다(백엔드가 NULL 로
-      // 저장 — `''` 와 다르다). 그 계산은 빈 baseline 대비 diff 와 정확히 같으므로
-      // 편집 폼과 같은 순수 함수 한 곳을 공유한다(두 번째 구현 금지).
-      const body: CreateProjectRequest = {
-        model_name: input.modelName,
-        ...buildProjectMetaPatch(EMPTY_PROJECT_META_DRAFT, input.meta),
-      };
-      return createProject(body);
-    },
-    onSuccess: invalidateLists,
-  });
-
+  // 에러 타입을 명시한다 — `createProject` 는 RFC 9457 problem 을 `ApiError` 로 던지고,
+  // 아래 409 필드 귀속이 `params.field` 를 읽어야 한다. 기본 추론(`Error`)에 캐스트를
+  // 얹으면 그 캐스트가 곧 "타입이 실제로 무엇인지 모른다"는 선언이 된다.
   const lifecycleMutation = useMutation({
     mutationFn: (input: { projectId: string; action: 'complete' | 'reopen' }) =>
       input.action === 'complete'
@@ -231,21 +268,6 @@ function MyProjectsRoute(): JSX.Element {
     metaMutation.reset();
   };
 
-  const [modelDraft, setModelDraft] = useState('');
-  const [createMeta, setCreateMeta] = useState<ProjectMetaDraft>(EMPTY_PROJECT_META_DRAFT);
-
-  const trimmedModel = modelDraft.trim();
-  const canCreate = trimmedModel !== '' && !createMutation.isPending;
-
-  const createError = createMutation.error
-    ? describeApiError(createMutation.error, 'platform', {
-        forbidden: t('routes.myProjects.create.forbidden'),
-        badRequest: t('routes.myProjects.create.invalid'),
-        network: t('routes.myProjects.create.offline'),
-        default: t('routes.myProjects.create.failed'),
-      })
-    : null;
-
   return (
     <section className="my-projects" aria-labelledby="my-projects-heading">
       <PageHeader
@@ -256,256 +278,488 @@ function MyProjectsRoute(): JSX.Element {
 
       <MyProjectsWorkbenchOverview />
 
-      <WorkbenchLayout
-        className="my-projects-workbench"
-        mainLabel={t('routes.myProjects.listSection')}
-        railLabel={t('routes.myProjects.createSection')}
-        testId="my-projects-workbench"
-        main={
-          <div className="my-projects-workbench__main">
-            <Card
-              as="section"
-              className="my-projects-workbench-panel"
-              aria-labelledby="my-projects-search-heading"
-            >
-              <SectionBand
-                title={t('routes.myProjects.searchSection')}
-                titleId="my-projects-search-heading"
-              />
-              {/* 검색은 **서버측** `q` 한 축이고 훑는 컬럼은 백엔드
+      {/* rail 을 쓰지 않는다(2026-09-04). 생성 폼은 목록 **위**에 접힌 채로 있고
+        목록이 전폭을 쓴다 — 프로젝트 카드가 가로로 늘어설 수 있어야 한 화면에
+        들어오는 개수가 늘고, 폼은 펼쳤을 때만 자리를 차지한다. */}
+      <div className="my-projects-workbench" data-testid="my-projects-workbench">
+        <ProjectCreatePanel />
+
+        <main
+          className="my-projects-workbench__main"
+          aria-label={t('routes.myProjects.listSection')}
+        >
+          <Card
+            as="section"
+            className="my-projects-workbench-panel"
+            aria-labelledby="my-projects-search-heading"
+          >
+            <SectionBand
+              title={t('routes.myProjects.searchSection')}
+              titleId="my-projects-search-heading"
+            />
+            {/* 검색은 **서버측** `q` 한 축이고 훑는 컬럼은 백엔드
                 `PROJECT_SEARCH_COLUMNS` 가 단독으로 정한다 — 관리번호 ·
                 프로젝트 코드(= 모델명, ADR-0017 D1) · 고객사. 로드된 배열을 다시
                 거르지 않으므로 "없음"은 **현재 상태 필터 안의** 중앙 디렉토리에
                 없다는 뜻이다 — 같은 요청이 `status` 로도 좁혀지므로 그보다 넓게
                 말하면 딱 그 필터 폭만큼 거짓이 된다(넓히려면 아래 [전체] 토글). */}
-              <form
-                aria-label={t('routes.myProjects.search.ariaLabel')}
-                onSubmit={(e) => e.preventDefault()}
-              >
-                <Toolbar ariaLabel={t('routes.myProjects.search.ariaLabel')} inline>
-                  <FieldGroup label={t('routes.myProjects.search.label')} htmlFor="project-search">
-                    <input
-                      id="project-search"
-                      data-testid="project-search"
-                      type="search"
-                      value={searchDraft}
-                      placeholder={t('routes.myProjects.search.placeholder')}
-                      onChange={(e) => setSearchDraft(e.target.value)}
-                    />
-                  </FieldGroup>
-                </Toolbar>
-              </form>
-            </Card>
+            <form
+              aria-label={t('routes.myProjects.search.ariaLabel')}
+              onSubmit={(e) => e.preventDefault()}
+            >
+              <Toolbar ariaLabel={t('routes.myProjects.search.ariaLabel')} inline>
+                <FieldGroup label={t('routes.myProjects.search.label')} htmlFor="project-search">
+                  <input
+                    id="project-search"
+                    data-testid="project-search"
+                    type="search"
+                    value={searchDraft}
+                    placeholder={t('routes.myProjects.search.placeholder')}
+                    onChange={(e) => setSearchDraft(e.target.value)}
+                  />
+                </FieldGroup>
+              </Toolbar>
+            </form>
+          </Card>
 
-            {/* 진행 중 / 완료 / 전체 토글 (project-status-visibility) — 기본 active. */}
-            <Toolbar ariaLabel={t('routes.myProjects.statusFilter.ariaLabel')} inline>
-              <div
-                className="status-filter"
-                role="group"
-                aria-label={t('routes.myProjects.statusFilter.ariaLabel')}
-                data-testid="project-status-filter"
-              >
-                {(['active', 'completed', 'all'] as const).map((value) => (
-                  <Button
-                    key={value}
-                    type="button"
-                    variant={statusFilter === value ? 'primary' : 'ghost'}
-                    data-testid={`project-status-${value}`}
-                    aria-pressed={statusFilter === value}
-                    onClick={() => setStatusFilter(value)}
-                  >
-                    {t(`routes.myProjects.statusFilter.${value}`)}
-                  </Button>
-                ))}
-              </div>
-            </Toolbar>
+          {/* 진행 중 / 완료 / 전체 토글 (project-status-visibility) — 기본 active. */}
+          <Toolbar ariaLabel={t('routes.myProjects.statusFilter.ariaLabel')} inline>
+            <div
+              className="status-filter"
+              role="group"
+              aria-label={t('routes.myProjects.statusFilter.ariaLabel')}
+              data-testid="project-status-filter"
+            >
+              {(['active', 'completed', 'all'] as const).map((value) => (
+                <Button
+                  key={value}
+                  type="button"
+                  variant={statusFilter === value ? 'primary' : 'ghost'}
+                  data-testid={`project-status-${value}`}
+                  aria-pressed={statusFilter === value}
+                  onClick={() => setStatusFilter(value)}
+                >
+                  {t(`routes.myProjects.statusFilter.${value}`)}
+                </Button>
+              ))}
+            </div>
+          </Toolbar>
 
-            {lifecycleMutation.isError && (
+          {lifecycleMutation.isError && (
+            <ErrorState
+              testId="project-lifecycle-error"
+              message={describeApiError(lifecycleMutation.error, 'platform', {
+                forbidden: t('routes.myProjects.lifecycle.forbidden'),
+                notFound: t('routes.myProjects.lifecycle.notFound'),
+                network: t('routes.myProjects.lifecycle.network'),
+                default: t('routes.myProjects.lifecycle.failed'),
+              })}
+            />
+          )}
+
+          <section
+            className="my-projects-workbench-panel"
+            aria-labelledby="my-projects-list-heading"
+          >
+            <SectionBand
+              title={t('routes.myProjects.listSection')}
+              titleId="my-projects-list-heading"
+            />
+            {projects.isLoading && <BlockSkeleton lines={4} testId="my-projects-loading" />}
+            {projects.isError && (
               <ErrorState
-                testId="project-lifecycle-error"
-                message={describeApiError(lifecycleMutation.error, 'platform', {
-                  forbidden: t('routes.myProjects.lifecycle.forbidden'),
-                  notFound: t('routes.myProjects.lifecycle.notFound'),
-                  network: t('routes.myProjects.lifecycle.network'),
-                  default: t('routes.myProjects.lifecycle.failed'),
+                testId="projects-error"
+                message={describeApiError(projects.error, 'platform', {
+                  forbidden: t('routes.myProjects.list.forbidden'),
+                  network: t('routes.myProjects.list.network'),
+                  default: t('routes.myProjects.list.failed'),
                 })}
               />
             )}
-
-            <section
-              className="my-projects-workbench-panel"
-              aria-labelledby="my-projects-list-heading"
-            >
-              <SectionBand
-                title={t('routes.myProjects.listSection')}
-                titleId="my-projects-list-heading"
-              />
-              {projects.isLoading && <BlockSkeleton lines={4} testId="my-projects-loading" />}
-              {projects.isError && (
-                <ErrorState
-                  testId="projects-error"
-                  message={describeApiError(projects.error, 'platform', {
-                    forbidden: t('routes.myProjects.list.forbidden'),
-                    network: t('routes.myProjects.list.network'),
-                    default: t('routes.myProjects.list.failed'),
-                  })}
-                />
-              )}
-              {/* 빈 상태는 **잔여 페이지가 없을 때만** 주장한다. 커서가 남아 있는데
+            {/* 빈 상태는 **잔여 페이지가 없을 때만** 주장한다. 커서가 남아 있는데
                 "없습니다"를 띄우면 클라이언트 필터가 하던 거짓말이 페이지 경계에서
                 재발한다(아래 [더보기]가 그 잔여를 드러낸다). */}
-              {projects.isSuccess &&
-                rows.length === 0 &&
-                !projects.hasNextPage &&
-                (searchQuery !== undefined ? (
-                  <EmptyState
-                    testId="projects-empty"
-                    title={t('routes.myProjects.list.emptyFilteredTitle', { query: searchQuery })}
-                    description={t('routes.myProjects.list.emptyFilteredDescription')}
-                  />
-                ) : (
-                  <EmptyState
-                    testId="projects-empty"
-                    title={t('routes.myProjects.list.emptyTitle')}
-                    description={t('routes.myProjects.list.emptyDescription')}
+            {projects.isSuccess &&
+              rows.length === 0 &&
+              !projects.hasNextPage &&
+              (searchQuery !== undefined ? (
+                <EmptyState
+                  testId="projects-empty"
+                  title={t('routes.myProjects.list.emptyFilteredTitle', { query: searchQuery })}
+                  description={t('routes.myProjects.list.emptyFilteredDescription')}
+                />
+              ) : (
+                <EmptyState
+                  testId="projects-empty"
+                  title={t('routes.myProjects.list.emptyTitle')}
+                  description={t('routes.myProjects.list.emptyDescription')}
+                />
+              ))}
+            {projects.isSuccess && rows.length > 0 && (
+              <ul className="project-card-list" data-testid="project-card-list">
+                {rows.map((project) => (
+                  <ProjectCard
+                    key={project.project_id}
+                    project={project}
+                    canManage={canManage}
+                    lifecyclePending={lifecycleMutation.isPending}
+                    onLifecycle={(action) =>
+                      lifecycleMutation.mutate({ projectId: project.project_id, action })
+                    }
+                    edit={edits[project.project_id]}
+                    onMetaChange={(field, value) => updateMetaDraft(project, field, value)}
+                    onMetaSave={(patch) =>
+                      metaMutation.mutate({ projectId: project.project_id, patch })
+                    }
+                    onMetaDiscard={() => {
+                      discardEdit(project.project_id);
+                      metaMutation.reset();
+                    }}
+                    // 쓰기 상태는 **이 카드 몫만** 보인다. 단일 mutation 인스턴스가
+                    // 모든 카드를 처리하므로, 대상 프로젝트로 좁히지 않으면 A 카드의
+                    // 409 가 B 카드에도 뜬다.
+                    metaPending={
+                      metaMutation.isPending &&
+                      metaMutation.variables?.projectId === project.project_id
+                    }
+                    metaError={
+                      metaMutation.variables?.projectId === project.project_id
+                        ? metaMutation.error
+                        : null
+                    }
+                    metaSaved={
+                      metaMutation.isSuccess &&
+                      metaMutation.variables?.projectId === project.project_id
+                    }
                   />
                 ))}
-              {projects.isSuccess && rows.length > 0 && (
-                <ul className="project-card-list" data-testid="project-card-list">
-                  {rows.map((project) => (
-                    <ProjectCard
-                      key={project.project_id}
-                      project={project}
-                      canManage={canManage}
-                      lifecyclePending={lifecycleMutation.isPending}
-                      onLifecycle={(action) =>
-                        lifecycleMutation.mutate({ projectId: project.project_id, action })
-                      }
-                      edit={edits[project.project_id]}
-                      onMetaChange={(field, value) => updateMetaDraft(project, field, value)}
-                      onMetaSave={(patch) =>
-                        metaMutation.mutate({ projectId: project.project_id, patch })
-                      }
-                      onMetaDiscard={() => {
-                        discardEdit(project.project_id);
-                        metaMutation.reset();
-                      }}
-                      // 쓰기 상태는 **이 카드 몫만** 보인다. 단일 mutation 인스턴스가
-                      // 모든 카드를 처리하므로, 대상 프로젝트로 좁히지 않으면 A 카드의
-                      // 409 가 B 카드에도 뜬다.
-                      metaPending={
-                        metaMutation.isPending &&
-                        metaMutation.variables?.projectId === project.project_id
-                      }
-                      metaError={
-                        metaMutation.variables?.projectId === project.project_id
-                          ? metaMutation.error
-                          : null
-                      }
-                      metaSaved={
-                        metaMutation.isSuccess &&
-                        metaMutation.variables?.projectId === project.project_id
-                      }
-                    />
-                  ))}
-                </ul>
-              )}
-              {/* 잔여 존재를 사용자에게 드러내는 유일한 수단. `hasNextPage` 는
+              </ul>
+            )}
+            {/* 잔여 존재를 사용자에게 드러내는 유일한 수단. `hasNextPage` 는
                 `X-Next-Cursor` 헤더에서 파생되므로(=`nextCursor !== null`), 버튼의
                 존재 자체가 "서버에 더 있다"는 서버측 사실이다. */}
-              {projects.isSuccess && projects.hasNextPage && (
-                <LoadMoreButton
-                  testId="project-load-more"
-                  onClick={projects.fetchNextPage}
-                  isFetching={projects.isFetchingNextPage}
-                />
-              )}
-            </section>
-          </div>
-        }
-        rail={
-          <div
-            className="my-projects-workbench__rail"
-            aria-labelledby="my-projects-create-heading"
-            data-testid="my-projects-create-panel"
-          >
-            <section className="my-projects-create">
-              <SectionBand
-                title={t('routes.myProjects.createSection')}
-                titleId="my-projects-create-heading"
+            {projects.isSuccess && projects.hasNextPage && (
+              <LoadMoreButton
+                testId="project-load-more"
+                onClick={projects.fetchNextPage}
+                isFetching={projects.isFetchingNextPage}
               />
-              {/* [새 프로젝트] — 모델명만 입력(ADR-0017 D1: project_code == 모델명). 인증된
-                시험원이면 누구나 생성(생성자 자동 admin). 동명은 멱등 재사용. */}
-              <form
-                aria-label={t('routes.myProjects.create.ariaLabel')}
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (canCreate)
-                    createMutation.mutate({ modelName: trimmedModel, meta: createMeta });
-                }}
-              >
-                <Toolbar ariaLabel={t('routes.myProjects.create.ariaLabel')}>
-                  <FieldGroup
-                    label={t('routes.myProjects.create.modelLabel')}
-                    htmlFor="new-project-model"
-                  >
-                    <input
-                      id="new-project-model"
-                      data-testid="new-project-model"
-                      value={modelDraft}
-                      placeholder={t('routes.myProjects.create.modelPlaceholder')}
-                      onChange={(e) => setModelDraft(e.target.value)}
-                    />
-                  </FieldGroup>
-                  {/* 표지 메타 — 전부 선택 입력. 목록·필드 순서는
-                    `EDITABLE_PROJECT_FIELDS` 단일 SSOT 가 정한다(편집 폼과 동일
-                    순서·동일 라벨 키 → 두 폼이 어긋날 수 없다). */}
-                  {EDITABLE_PROJECT_FIELDS.map((field) => (
-                    <FieldGroup
-                      key={field}
-                      label={t(`routes.myProjects.metaField.${field}`)}
-                      htmlFor={`new-project-${field}`}
-                    >
-                      <input
-                        id={`new-project-${field}`}
-                        data-testid={`new-project-${field}`}
-                        value={createMeta[field]}
-                        onChange={(e) =>
-                          setCreateMeta((prev) => ({ ...prev, [field]: e.target.value }))
-                        }
-                      />
-                    </FieldGroup>
-                  ))}
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    data-testid="new-project-submit"
-                    disabled={!canCreate}
-                  >
-                    {createMutation.isPending
-                      ? t('routes.myProjects.create.submitting')
-                      : t('routes.myProjects.create.submit')}
-                  </Button>
-                </Toolbar>
-              </form>
-              {createError !== null && (
-                <ErrorState testId="new-project-error" message={createError} />
-              )}
-              {createMutation.isSuccess && createMutation.error === null && (
-                <StatusMessage
-                  tone="success"
-                  testId="new-project-success"
-                  message={t('routes.myProjects.create.success', {
-                    model: createMutation.data?.model_name ?? '',
-                  })}
-                />
-              )}
-              <p className="section-hint">{t('routes.myProjects.createHint')}</p>
-            </section>
-          </div>
-        }
-      />
+            )}
+          </section>
+        </main>
+      </div>
     </section>
+  );
+}
+
+/**
+ * 새 프로젝트 생성 패널 — 목록 **위**의 전폭 카드, 기본은 접힘.
+ *
+ * ## 왜 접혀 있고, 왜 rail 이 아닌가
+ *
+ * 이 화면의 주된 일은 "고르기"이고 "만들기"는 가끔이다. 예전 구조는 생성 폼을
+ * 오른쪽 rail 에 세로로 세워 두어, 쓰지 않는 동안에도 목록의 가로 폭을 상시 먹었고
+ * 폼 자체도 8칸 세로 스택이라 한눈에 들어오지 않았다. 지금은 접힌 상태에서 버튼
+ * 하나만 차지하고, 펼치면 필수 3칸이 **한 행**에 선다.
+ *
+ * ## 필수와 선택의 근거
+ *
+ * `*` 가 붙는 칸은 화면이 고른 것이 아니라 계약에서 파생된다
+ * (`isRequiredCreateField` ← OpenAPI `required` ← 도메인 SSOT). 그래서 백엔드가
+ * 필수를 늘리면 별표와 제출 게이트가 함께 따라오고, 셋 중 하나만 느슨해지지 않는다.
+ *
+ * 성적서 스테이지 칸(grantee code / EUT / 규격)은 **여기 없다.** 프로젝트를 개설하는
+ * 시점에는 답이 없는 질문이라, 물으면 대부분 공란으로 남는다. 아래 힌트가 그 칸들이
+ * 사라진 게 아니라 성적서 화면으로 옮겨갔다고 밝힌다 — 밝히지 않으면 "입력란이
+ * 없어졌다"로 읽힌다.
+ */
+function ProjectCreatePanel(): JSX.Element {
+  const { t } = useT();
+  const queryClient = useQueryClient();
+
+  // **입력 상태가 이 컴포넌트 안에 있다** (2026-09-04). 라우트가 들고 있었을 때는 폼에
+  // 한 글자 칠 때마다 라우트 전체가 다시 렌더됐고, 그 아래에는 프로젝트 카드 전부가
+  // 있다([더보기]로 누적되면 그만큼 커진다). memo 로 덮는 대신 **상태를 쓰는 곳으로
+  // 내렸다** — 리렌더 감소는 그 설계의 결과이지 목적이 아니다. 라우트는 "만들어졌다"는
+  // 사실만 캐시 무효화로 전달받으면 되고, 그 이상을 알 필요가 없다.
+  const [open, setOpen] = useState(false);
+  const [modelDraft, setModelDraft] = useState('');
+  const [meta, setMeta] = useState<ProjectMetaDraft>(EMPTY_PROJECT_META_DRAFT);
+
+  const createMutation = useMutation<ProjectDetailEnvelope, ApiError, CreateProjectRequest>({
+    mutationFn: (body) => createProject(body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.project.lists() });
+      // 방금 만든 프로젝트가 **새 신청자**를 등록했을 수 있다. 신청자 디렉터리는
+      // 프로젝트 행에서 파생되므로 그 순간 낡는다 — 무효화하지 않으면 곧바로 다음
+      // 프로젝트를 만들 때 방금 쓴 신청자가 제안에 없다. 폼이 닫혀 있으면 이 읽기는
+      // `enabled:false` 라 즉시 재조회되지 않고 stale 표시만 되므로 비용은 없다.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.project.applicantDirectory() });
+      setModelDraft('');
+      setMeta(EMPTY_PROJECT_META_DRAFT);
+      setAutofilled(null);
+    },
+  });
+
+  // 제출 가능 판정과 요청 본문 조립은 **같은 함수 한 번**이다. 둘을 따로 두면
+  // "버튼은 눌리는데 서버가 400 을 답하는" 상태가 생긴다 — null 이면 아직 필수 칸이
+  // 비었다는 뜻이고, 그것이 곧 버튼 비활성의 근거다.
+  const createBody = buildCreateProjectBody(modelDraft, meta);
+  const canSubmit = createBody !== null && !createMutation.isPending;
+
+  // 409 필드 귀속 — `params.field` 가 **이 폼에 실제로 있는 칸**일 때만 그 입력에
+  // 붙인다. `PROJECT_IDENTIFIER_CONFLICT` 는 폼에 없는 `project_code` 충돌로도
+  // 나므로(동명 모델은 멱등 재사용이라 실제로는 관리번호 쪽이 대부분이다), 모르는
+  // 값을 억지로 붙이면 사용자가 엉뚱한 칸을 고치려 한다.
+  const conflictField =
+    createMutation.error?.status === 409 && isProjectMetaField(createMutation.error.params?.field)
+      ? createMutation.error.params.field
+      : null;
+
+  const error = createMutation.error
+    ? describeApiError(createMutation.error, 'platform', {
+        forbidden: t('routes.myProjects.create.forbidden'),
+        badRequest: t('routes.myProjects.create.invalid'),
+        conflict: t('routes.myProjects.create.conflict'),
+        network: t('routes.myProjects.create.offline'),
+        default: t('routes.myProjects.create.failed'),
+      })
+    : null;
+
+  const created =
+    createMutation.isSuccess && createMutation.error === null
+      ? (createMutation.data?.model_name ?? '')
+      : null;
+
+  // 신청자 제안: 타이핑한 값으로 서버를 좁힌다. 목록 검색과 **같은 디바운스 상수**를
+  // 쓴다(두 입력이 다른 리듬으로 반응하면 같은 화면이 두 개의 성격을 갖는다).
+  const [applicantTerm, setApplicantTerm] = useState('');
+  // 마지막으로 자동 채움을 일으킨 신청자. 통지 문구의 근거이자 "방금 채워졌다"는
+  // 사실의 단일 표현이다(채워진 칸 목록은 SSOT 가 이미 안다).
+  const [autofilled, setAutofilled] = useState<string | null>(null);
+  const typedApplicant = meta.applicant_name;
+  useEffect(() => {
+    if (typedApplicant === applicantTerm) return undefined;
+    const handle = window.setTimeout(() => setApplicantTerm(typedApplicant), SEARCH_DEBOUNCE_MS);
+    return () => {
+      window.clearTimeout(handle);
+    };
+  }, [typedApplicant, applicantTerm]);
+
+  // 폼이 접혀 있는 동안에는 조회하지 않는다 — 보이지 않는 폼을 위한 네트워크는 순수
+  // 낭비다. 펼치면 빈 검색어로 한 번 읽어 "최근 쓴 신청자"가 곧바로 보인다.
+  const suggestions = useQuery({
+    queryKey: queryKeys.project.applicants(applicantTerm),
+    queryFn: () => fetchApplicantSuggestions(applicantTerm, APPLICANT_SUGGESTION_LIMIT),
+    enabled: open,
+    ...REFETCH_STRATEGIES.NORMAL,
+  });
+
+  // 정규화 이름 → 제안. 서버가 대소문자를 무시하고 묶으므로 클라이언트도 같은 키를
+  // 쓴다(다른 키를 쓰면 서버가 하나로 본 것을 화면이 둘로 본다).
+  const suggestionByName = useMemo(() => {
+    const index = new Map<string, ApplicantSuggestionEnvelope>();
+    for (const entry of suggestions.data ?? []) {
+      index.set(entry.applicant_name.trim().toLowerCase(), entry);
+    }
+    return index;
+  }, [suggestions.data]);
+
+  /**
+   * 신청자 칸 입력. **이름이 등록된 신청자와 일치하는 순간** 주소·제조사를 그
+   * 신청자의 최신 값으로 채운다.
+   *
+   * `useEffect` 로 하지 않는 것이 중요하다: 이 라우트는 포커스 refetch 를 하므로,
+   * 제안 목록이 갱신될 때마다 effect 가 다시 돌면 사용자가 손으로 고쳐 둔 주소를
+   * 주기적으로 덮어쓴다. 채움은 **사용자의 입력이라는 사건**에만 반응해야 한다.
+   *
+   * 채운 뒤에도 두 칸은 그대로 편집 가능하다 — 제안은 출발점이지 제약이 아니다.
+   * 신청자 이름을 다시 바꾸면 그 신청자의 값으로 다시 채워진다(규칙이 하나라서
+   * 설명 가능하다: "지금 적힌 신청자의 최신 값").
+   */
+  const handleApplicantName = (value: string): void => {
+    const next = { ...meta, applicant_name: value };
+    const match = suggestionByName.get(value.trim().toLowerCase());
+    setMeta(match === undefined ? next : applyApplicantSuggestion(next, match));
+    // 자동 채움은 **사용자가 건드리지 않은 칸의 값을 바꾼다.** 화면을 보는 사람은
+    // 초록 테두리로 그것을 알지만, 스크린리더 사용자에게는 아무 일도 일어나지 않은
+    // 것과 같다 — 그래서 무엇이 채워졌는지 polite live region 으로 알린다(진행 중인
+    // 타이핑을 끊지 않는다).
+    setAutofilled(match === undefined ? null : match.applicant_name);
+  };
+
+  return (
+    <Card
+      as="section"
+      className="my-projects-create"
+      aria-labelledby="my-projects-create-heading"
+      testId="my-projects-create-panel"
+    >
+      <div className="my-projects-create__bar">
+        <SectionBand
+          title={t('routes.myProjects.createSection')}
+          titleId="my-projects-create-heading"
+        />
+        <Button
+          type="button"
+          variant={open ? 'ghost' : 'primary'}
+          data-testid="new-project-toggle"
+          aria-expanded={open}
+          aria-controls="new-project-form"
+          onClick={() => {
+            setOpen((current) => !current);
+            createMutation.reset();
+            setAutofilled(null);
+          }}
+        >
+          {open ? t('routes.myProjects.create.collapse') : t('routes.myProjects.create.open')}
+        </Button>
+      </div>
+
+      {open && (
+        <form
+          id="new-project-form"
+          aria-label={t('routes.myProjects.create.ariaLabel')}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (createBody !== null && !createMutation.isPending) createMutation.mutate(createBody);
+          }}
+        >
+          {/* 필수 칸은 한 행에 선다 — 세 칸이 함께 보여야 "이만큼만 채우면 만들 수
+            있다"가 한눈에 읽힌다. 좁은 화면에서는 CSS 가 한 열로 접는다. */}
+          <div className="my-projects-create__grid">
+            <FieldGroup
+              label={t('routes.myProjects.create.modelLabel')}
+              htmlFor="new-project-model"
+              help={t('routes.myProjects.create.modelHelp')}
+              required
+            >
+              <input
+                id="new-project-model"
+                data-testid="new-project-model"
+                value={modelDraft}
+                placeholder={t('routes.myProjects.create.modelPlaceholder')}
+                onChange={(event) => setModelDraft(event.target.value)}
+              />
+            </FieldGroup>
+
+            {REQUIRED_INTAKE_FIELDS.map((field) => (
+              <FieldGroup
+                key={field}
+                label={t(`routes.myProjects.metaField.${field}`)}
+                htmlFor={`new-project-${field}`}
+                required
+                {...(field === 'applicant_name'
+                  ? { help: t('routes.myProjects.create.applicantHelp') }
+                  : {})}
+                {...(conflictField === field
+                  ? { error: t('routes.myProjects.create.conflictField') }
+                  : {})}
+              >
+                <input
+                  id={`new-project-${field}`}
+                  data-testid={`new-project-${field}`}
+                  value={meta[field]}
+                  {...(field === 'applicant_name' ? { list: 'new-project-applicant-options' } : {})}
+                  onChange={(event) => {
+                    if (field === 'applicant_name') {
+                      handleApplicantName(event.target.value);
+                      return;
+                    }
+                    setMeta({ ...meta, [field]: event.target.value });
+                  }}
+                />
+                {field === 'applicant_name' && (
+                  // 제안 목록은 **서버가 준 것 그대로**다. 등록된 신청자를 고르면
+                  // 아래 선택 칸이 함께 채워진다(그 사실은 위 help 문구가 밝힌다).
+                  <datalist
+                    id="new-project-applicant-options"
+                    data-testid="new-project-applicant-options"
+                  >
+                    {(suggestions.data ?? []).map((entry) => (
+                      <option key={entry.applicant_name} value={entry.applicant_name}>
+                        {t('routes.myProjects.create.applicantOption', {
+                          count: entry.project_count,
+                        })}
+                      </option>
+                    ))}
+                  </datalist>
+                )}
+              </FieldGroup>
+            ))}
+          </div>
+
+          {/* 선택 칸은 접어 둔다 — 등록된 신청자를 고르면 대개 자동으로 채워지므로
+            사용자가 열어 볼 일 자체가 드물다. native `<details>` 라 키보드·스크린
+            리더 동작이 공짜다(코드베이스에 dialog 프리미티브가 없는 것과 같은 이유). */}
+          <details className="advanced-disclosure" data-testid="new-project-optional">
+            <summary className="advanced-disclosure__summary">
+              <span className="advanced-disclosure__title">
+                {t('routes.myProjects.create.optionalSection')}
+              </span>
+              <span className="advanced-disclosure__meta">
+                {t('routes.myProjects.create.optionalMeta', { n: OPTIONAL_INTAKE_FIELDS.length })}
+              </span>
+            </summary>
+            <div className="my-projects-create__grid">
+              {OPTIONAL_INTAKE_FIELDS.map((field) => (
+                <FieldGroup
+                  key={field}
+                  label={t(`routes.myProjects.metaField.${field}`)}
+                  htmlFor={`new-project-${field}`}
+                >
+                  <input
+                    id={`new-project-${field}`}
+                    data-testid={`new-project-${field}`}
+                    value={meta[field]}
+                    onChange={(event) => setMeta({ ...meta, [field]: event.target.value })}
+                  />
+                </FieldGroup>
+              ))}
+            </div>
+          </details>
+
+          {autofilled !== null && (
+            <StatusMessage
+              tone="info"
+              testId="new-project-autofilled"
+              message={t('routes.myProjects.create.autofilled', {
+                applicant: autofilled,
+                n: APPLICANT_FILL_FIELDS.length - 1,
+              })}
+            />
+          )}
+
+          <Toolbar ariaLabel={t('routes.myProjects.create.ariaLabel')} inline>
+            <Button
+              type="submit"
+              variant="primary"
+              data-testid="new-project-submit"
+              disabled={!canSubmit}
+            >
+              {createMutation.isPending
+                ? t('routes.myProjects.create.submitting')
+                : t('routes.myProjects.create.submit')}
+            </Button>
+          </Toolbar>
+
+          {/* 사라진 칸의 행방을 밝힌다 — 밝히지 않으면 "입력란이 없어졌다"로 읽힌다. */}
+          <p className="section-hint" data-testid="new-project-report-stage-hint">
+            {t('routes.myProjects.create.reportStageHint', { n: REPORT_META_FIELDS.length })}
+          </p>
+        </form>
+      )}
+
+      {error !== null && <ErrorState testId="new-project-error" message={error} />}
+      {created !== null && (
+        <StatusMessage
+          tone="success"
+          testId="new-project-success"
+          message={t('routes.myProjects.create.success', { model: created })}
+        />
+      )}
+      <p className="section-hint">{t('routes.myProjects.createHint')}</p>
+    </Card>
   );
 }
 
@@ -634,11 +888,16 @@ function ProjectCard({
             {t('routes.myProjects.list.fccLabel', { value: project.fcc_id })}
           </span>
         )}
-        {project.customer !== null && project.customer !== undefined && project.customer !== '' && (
-          <span className="project-card__customer" data-testid="project-card-customer">
-            {project.customer}
-          </span>
-        )}
+        {/* 의뢰 주체는 이제 한 칸이다(2026-09-04) — 고객사/신청자 두 칸이 같은 주체를
+          가리키다 갈라지던 것을 신청자로 합쳤다. 카드에 싣는 이유는 이것이 모델명
+          다음으로 프로젝트를 알아보는 축이자 검색 축이기 때문이다. */}
+        {project.applicant_name !== null &&
+          project.applicant_name !== undefined &&
+          project.applicant_name !== '' && (
+            <span className="project-card__applicant" data-testid="project-card-applicant">
+              {project.applicant_name}
+            </span>
+          )}
       </Link>
       {canManage && (
         <Button

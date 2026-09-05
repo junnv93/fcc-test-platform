@@ -283,30 +283,39 @@ test.describe('responsive representative routes — ready structure (M5)', () =>
         );
         expect((await currentNav.first().innerText()).trim()).not.toBe('');
 
-        const layout = page.locator('.workbench-layout').first();
-        await expect(layout).toBeVisible();
-        const main = layout.locator(':scope > .workbench-layout__main');
-        const rail = layout.locator(':scope > .workbench-layout__rail');
+        // 계약은 **이름 붙은 랜드마크**이지 특정 CSS 클래스가 아니다. 이 매트릭스의
+        // 라우트는 전부 자기 `<main>` 을 소유하고(`_layout.ROUTES_WITH_OWN_MAIN_LANDMARK`),
+        // rail 은 선택이다 — `WorkbenchLayout` 은 그 계약을 만족시키는 **한 가지 방법**이지
+        // 계약 자체가 아니다.
+        //
+        // ⚠️ 실측 2026-09-05: `my-projects` 가 rail 을 걷고 자기 `<main>` 을
+        // `.my-projects-workbench__main` 으로 옮기자 이 블록만 빨갛게 됐다. 랜드마크도,
+        // 그 라벨도, 오버플로도 전부 그대로였다 — 즉 게이트가 잡은 것은 **접근성 회귀가
+        // 아니라 클래스 이름의 변경**이었다. 클래스에 묶인 단언은 같은 계약을 다른 조합으로
+        // 만족시키는 라우트마다 거짓 빨강을 낸다. 그래서 role 로 내린다.
+        const main = page.getByRole('main');
         await expect(main).toHaveCount(1);
+        await expect(main).toBeVisible();
+        // 워크벤치 컨테이너 = 랜드마크의 부모. 아래 표면·포커스·타겟 검사가 이 범위를 쓴다.
+        const layout = main.locator('xpath=..');
         expect(((await main.getAttribute('aria-label')) ?? '').trim()).not.toBe('');
 
+        // rail 은 main 의 **형제**여야 한다 — 페이지 아무 데나 있는 `<aside>` 가 아니라
+        // 이 워크벤치의 보조 열이라는 것이 기하 단언의 전제다.
+        const rail = main.locator('xpath=following-sibling::aside');
         const railCount = await rail.count();
         if (railCount > 0) {
-          expect(((await rail.getAttribute('aria-label')) ?? '').trim()).not.toBe('');
+          expect(((await rail.first().getAttribute('aria-label')) ?? '').trim()).not.toBe('');
         }
 
-        const geometry = await layout.evaluate((element) => {
-          const mainElement = element.querySelector<HTMLElement>(
-            ':scope > .workbench-layout__main',
-          );
-          const railElement = element.querySelector<HTMLElement>(
-            ':scope > .workbench-layout__rail',
-          );
-          if (mainElement === null) throw new Error('workbench main landmark missing');
+        const geometry = await main.evaluate((mainElement) => {
+          const container = mainElement.parentElement;
+          if (container === null) throw new Error('main landmark has no container');
+          const railElement = container.querySelector<HTMLElement>(':scope > aside');
           const mainRect = mainElement.getBoundingClientRect();
           const railRect = railElement?.getBoundingClientRect() ?? null;
           return {
-            columns: getComputedStyle(element).gridTemplateColumns,
+            columns: getComputedStyle(container).gridTemplateColumns,
             main: { x: mainRect.x, y: mainRect.y, right: mainRect.right, bottom: mainRect.bottom },
             rail: railRect
               ? { x: railRect.x, y: railRect.y, right: railRect.right, bottom: railRect.bottom }
@@ -386,7 +395,7 @@ test.describe('responsive representative routes — ready structure (M5)', () =>
               (candidate) => candidate.getAttribute('tabindex') !== '-1' && visible(candidate),
             )
             .map((candidate) => ({
-              area: candidate.closest('.workbench-layout__rail') !== null ? 'rail' : 'main',
+              area: candidate.closest('aside') != null ? 'rail' : 'main',
               x: candidate.getBoundingClientRect().x,
               y: candidate.getBoundingClientRect().y,
             }));
@@ -415,10 +424,10 @@ test.describe('responsive representative routes — ready structure (M5)', () =>
           }
         }
 
-        const targetViolations = await page
-          .locator(
-            '.workbench-layout button, .workbench-layout a[href], .workbench-layout input, .workbench-layout select, .workbench-layout textarea',
-          )
+        // ⚠️ 클래스로 고르면 `.workbench-layout` 을 쓰지 않는 라우트에서 **0개**가 잡히고,
+        // 위반 목록이 비어 검사가 공허하게 통과한다. 랜드마크 범위에서 고른다.
+        const targetViolations = await layout
+          .locator('button, a[href], input, select, textarea')
           .evaluateAll((elements, viewportWidth) => {
             const offenders: string[] = [];
             for (const element of elements) {
@@ -460,8 +469,11 @@ test.describe('responsive representative routes — ready structure (M5)', () =>
         let focusTargetReached = false;
         for (let attempt = 0; attempt < 32; attempt += 1) {
           await page.keyboard.press('Tab');
+          // 계약은 「키보드가 **main 랜드마크**에 닿는다」이지 특정 클래스가 아니다.
+          // ⚠️ `?.` 와 `!== null` 을 함께 쓰면 activeElement 가 없을 때 `undefined !== null`
+          //    이 참이 되어 **닿지 않았는데 닿았다고** 보고한다. `!= null` 로 둘 다 잡는다.
           focusTargetReached = await page.evaluate(
-            () => document.activeElement?.closest('.workbench-layout__main') !== null,
+            () => document.activeElement?.closest('main') != null,
           );
           if (focusTargetReached) break;
         }

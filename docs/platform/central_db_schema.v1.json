@@ -42,12 +42,10 @@
       ]
     },
     "projects": {
-      "purpose": "Customer/project-level grouping for test campaigns.",
+      "purpose": "Project-level grouping for test campaigns. The requesting party is ONE column (applicant_name); the former customer column was retired 2026-09-04 and its values merged into applicant_name (migration 032) — two columns for one party split the same company across both, and the search axis only ever indexed one of them.",
       "columns": {
         "id": {"type": "uuid", "required": true},
         "project_code": {"type": "text", "required": true, "unique": true},
-        "name": {"type": "text", "required": true},
-        "customer": {"type": "text", "required": false},
         "management_number": {"type": "text", "required": false, "unique": true},
         "status": {"type": "text", "required": false, "allowed_values": ["active", "completed"]},
         "fcc_grantee_code": {"type": "text", "required": false},
@@ -65,17 +63,17 @@
         {"name": "idx_projects_status_directory", "columns": ["status", "created_at", "id"], "purpose": "W3 backend — same keyset order under the ?status filter (the default view). Earns its keep over idx_projects_directory when the filtered status is the selective one: measured on 50k rows, ?status=completed (10%) chose this index while ?status=all chose idx_projects_directory."},
         {"name": "idx_projects_search_management_number", "using": "gin", "expressions": ["lower(management_number) gin_trgm_ops"], "purpose": "W3 backend — trigram GIN over the ?q search axis (domain SSOT project_directory_query.PROJECT_SEARCH_COLUMNS). A plain B-tree cannot serve LOWER(col) LIKE '%q%'. Measured on 50k rows: a search matching 0 rows fell from 27.6ms (Seq Scan) to 0.11ms (BitmapOr over these three indexes)."},
         {"name": "idx_projects_search_project_code", "using": "gin", "expressions": ["lower(project_code) gin_trgm_ops"], "purpose": "W3 backend — trigram GIN over the ?q search axis. project_code == model name (ADR-0017 D1), so this also covers model-name search without indexing the device_models side of the join."},
-        {"name": "idx_projects_search_customer", "using": "gin", "expressions": ["lower(customer) gin_trgm_ops"], "purpose": "W3 backend — trigram GIN over the ?q search axis."}
+        {"name": "idx_projects_search_applicant_name", "using": "gin", "expressions": ["lower(applicant_name) gin_trgm_ops"], "purpose": "W3 backend — trigram GIN over the ?q search axis (domain SSOT project_directory_query.PROJECT_SEARCH_COLUMNS). Replaced idx_projects_search_customer on 2026-09-04 when the requesting-party axis moved to applicant_name: the retired customer column held the same party, so indexing it let search see only the half of the corpus that happened to use that column."},
+        {"name": "idx_projects_applicant_directory", "expressions": ["lower(applicant_name)", "\"created_at\" DESC", "\"id\" DESC"], "orders": {"created_at": "DESC", "id": "DESC"}, "where": "applicant_name IS NOT NULL", "purpose": "Applicant suggestion lookup (GET /platform/applicants) — the query takes the MOST RECENT row per normalized applicant via ROW_NUMBER() OVER (PARTITION BY lower(applicant_name) ORDER BY created_at DESC, id DESC). This index stores rows in exactly that partition/order, so the window function runs over an ordered scan instead of sorting the candidate set. PARTIAL (applicant_name IS NOT NULL): a row with no applicant can never be a suggestion, so indexing it would only add bloat."}
       ]
     },
     "device_models": {
-      "purpose": "Device model metadata shared across providers.",
+      "purpose": "Device model metadata shared across providers. One model per project (ADR-0017 D1 1:1 overlay); model_name IS the project identity, so the project row does not repeat it.",
       "columns": {
         "id": {"type": "uuid", "required": true},
         "project_id": {"type": "uuid", "required": true, "references": "projects.id"},
         "model_name": {"type": "text", "required": true},
         "manufacturer": {"type": "text", "required": false},
-        "metadata_json": {"type": "json", "required": false},
         "created_at": {"type": "timestamp", "required": true},
         "updated_at": {"type": "timestamp", "required": true}
       },
@@ -108,7 +106,6 @@
         "row_version": {"type": "integer", "required": true, "default": "1"},
         "deleted_at": {"type": "timestamp", "required": false},
         "deleted_by": {"type": "text", "required": false},
-        "metadata_json": {"type": "json", "required": false},
         "created_at": {"type": "timestamp", "required": true},
         "updated_at": {"type": "timestamp", "required": true}
       },
