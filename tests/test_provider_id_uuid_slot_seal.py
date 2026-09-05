@@ -504,12 +504,114 @@ def _central_db_live_proof_probe() -> list[tuple[str, tuple]]:
     return recorded
 
 
+def _cross_session_evidence_probe() -> list[tuple[str, tuple]]:
+    """교차 세션 증명의 시드가 uuid 슬롯에 무엇을 넣는지 «실제로 돌려» 본다.
+
+    ⚠️ 2026-09-05 에 `scripts/cross_session_result_selection_evidence.py` 에서 옮겨
+    왔다. `scripts/` 에 있던 동안 이 봉인의 시야 밖이었다 — 이 검사는
+    `fcc_test_platform/` 만 훑는다.
+
+    ⚠️ **이 시드는 `executemany` 를 쓴다.** 봉인의 판정기는 `(sql, 파라미터 «한 벌»)`
+    을 받으므로 행마다 하나씩 풀어서 낸다. 풀지 않으면 `params[binding.param_index]`
+    가 «행 튜플»을 집어 uuid 파싱이 엉뚱하게 실패한다 — 팔이 거짓 경보를 내면
+    면제 목록으로 꺼진다.
+
+    ⚠️ 이 모듈은 형제들과 달리 `providers.id` 를 **SELECT 로 해소하지 않고 직접
+    생성**한다(`_proof_uuid`). 그것도 정상 형태다 — 봉인이 묻는 것은 「해소 방식」이
+    아니라 「슬롯에 uuid 가 들어가는가」이기 때문이다.
+    """
+    from fcc_test_platform import cross_session_result_selection_evidence_cli as evidence
+
+    recorded: list[tuple[str, tuple]] = []
+
+    class _RecordingCursor:
+        def execute(self, sql, params=None):
+            recorded.append((sql, tuple(params or ())))
+
+        def executemany(self, sql, seq):
+            for params in seq:
+                recorded.append((sql, tuple(params or ())))
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    class _RecordingConnection:
+        def cursor(self):
+            return _RecordingCursor()
+
+        def commit(self):
+            pass
+
+    evidence._seed_live_rows(_RecordingConnection(), lane='seal', run_id='probe')
+    return recorded
+
+
+def _bench_project_result_selection_probe() -> list[tuple[str, tuple]]:
+    """벤치마크 시드가 uuid 슬롯에 무엇을 넣는지 «실제로 돌려» 본다.
+
+    ⚠️ 2026-09-05 에 `scripts/bench_project_result_selection.py` 에서 옮겨 왔다.
+    `scripts/` 에 있던 동안 이 봉인의 시야 밖이었다.
+
+    ⚠️ 이 시드도 `executemany` 를 쓰므로 행마다 하나씩 풀어서 낸다. 그리고 이 모듈은
+    provider 를 **둘** 만들어(`bench-<run>-a` · `-b`) 교차 세션 축을 세운다 — 자연키가
+    둘이므로, 해소가 빠지면 «어느 쪽»이 슬롯에 들어갔는지까지 실패 메시지에 실린다.
+    """
+    from unittest import mock
+
+    from fcc_test_platform import bench_project_result_selection_cli as bench
+
+    recorded: list[tuple[str, tuple]] = []
+
+    class _RecordingCursor:
+        def execute(self, sql, params=None):
+            recorded.append((sql, tuple(params or ())))
+
+        def executemany(self, sql, seq):
+            for params in seq:
+                recorded.append((sql, tuple(params or ())))
+
+        def fetchone(self):
+            return None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    class _RecordingConnection:
+        def cursor(self):
+            return _RecordingCursor()
+
+        def commit(self):
+            pass
+
+    # ⚠️ **규모를 줄인다.** 원래 값(조건 16,000 × provider 2 × 시도 3)은 uuid 슬롯
+    # 101,000건을 만들고 이 봉인을 1.5초에서 18초로 늘린다. 이 봉인이 «매» lane_check
+    # 마다 도는 것을 생각하면 그것은 잡일이고, **잡일이 된 봉인은 면제 목록으로
+    # 꺼진다.** 축은 「슬롯에 uuid 가 들어가는가」이지 「몇 건인가」가 아니므로
+    # 규모를 줄여도 이 검사가 묻는 것은 그대로다. provider 2개는 «유지»한다 —
+    # 자연키가 둘이어야 어느 쪽이 새는지 실패 메시지가 말한다.
+    with mock.patch.multiple(
+        bench,
+        CONDITIONS_PER_PROVIDER=2,
+        SESSIONS_PER_PROVIDER=2,
+    ):
+        bench._seed(_RecordingConnection(), run_id='seal-probe')
+    return recorded
+
+
 PROBES = {
     'fcc_test_platform/application/central_artifact_custody_write_adapter.py': _custody_probe,
     'fcc_test_platform/application/central_progress_write_adapter.py': _progress_probe,
     'fcc_test_platform/application/central_reference_write_adapter.py': _reference_probe,
     'fcc_test_platform/application/central_result_selection_adapter.py': _selection_probe,
+    'fcc_test_platform/bench_project_result_selection_cli.py': _bench_project_result_selection_probe,
     'fcc_test_platform/central_db_live_proof_cli.py': _central_db_live_proof_probe,
+    'fcc_test_platform/cross_session_result_selection_evidence_cli.py': _cross_session_evidence_probe,
     'fcc_test_platform/keyset_cursor_live_proof_cli.py': _keyset_live_proof_probe,
     'fcc_test_platform/postgres_ingestion_writer.py': _ingestion_probe,
 }

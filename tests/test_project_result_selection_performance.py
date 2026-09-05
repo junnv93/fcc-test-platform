@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from scripts import bench_project_result_selection as benchmark
+from fcc_test_platform import bench_project_result_selection_cli as benchmark
 
 
 def test_benchmark_fixture_has_exact_contract_cardinality_and_edge_cases():

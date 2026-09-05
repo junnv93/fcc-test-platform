@@ -131,7 +131,53 @@ spec = importlib.util.spec_from_file_location('check_auth_mode_pairing', _SIBLIN
 
 - **모노레포 껍데기는 릴리스 후에만.** 모노레포는 `@v0.1.8` 을 핀으로 받으므로
   새 `_cli` 모듈은 그때까지 설치본에 없다. 순서: 레인 커밋 → 태그 → 핀 갱신 → 모노레포.
-- 왈러스 오탐(`_comprehension_walrus_targets`)이 `origin/main` 에 들어간 뒤 남은 3건.
+- ~~왈러스 오탐이 `origin/main` 에 들어간 뒤 남은 3건.~~ **닫혔다** — 아래 참조.
+
+## 후속 닫힘 — 마지막 3건 (같은 날, 브랜치 `refactor/scripts-guts-wave-tail-20260905`)
+
+왈러스 수리(`5a2ad66`)를 머지하니 `platform_db_migrate` 의 미해소가 **2건 → 0건**이
+됐고, 그것이 뿌리이던 사슬 셋이 풀렸다.
+
+    예약 대상            38건
+    이관                 38건 — **남음 0**
+    패키지로 간 알맹이   14,268줄
+    남은 껍데기             842줄 (건당 22줄)
+
+⚠️ **주 커밋에 머지하지 않았다.** 그 수리가 사는 브랜치는 축이 셋 섞여 있고
+(`6ca43b1` 도메인 시험 입양 · `5a2ad66` 왈러스 · `84e0960` 게이트 실행 팔), 그중
+`84e0960` 은 형제 세션이 별도 PR 로 올리려 조율 중이다. 주 커밋을 `origin/main` 위에
+깨끗하게 두고 꼬리를 별도 브랜치에 쌓아, 취할 것을 고를 수 있게 했다.
+
+### 이관이 «없던 검사를» 넷 붙였다
+
+`test_provider_id_uuid_slot_seal` 은 `fcc_test_platform/` 만 훑는다. 라이브
+PostgreSQL 에 INSERT 하는 네 모듈이 `scripts/` 에 있던 동안 그 시야 밖이었다 —
+합쳐 **6,564줄**. 옮기자마자 「판정 불가는 통과가 아니다」가 발동했고 넷 다 프로브를
+붙였다. 기록용 커서로 시드 함수를 «실제로» 돌리고, 공허하지 않음을 따로 쟀다:
+
+    keyset_cursor_live_proof                 문장  20 · uuid 슬롯  8
+    central_db_live_proof                    문장   6 · uuid 슬롯  1
+    cross_session_result_selection_evidence  문장   7 · uuid 슬롯  5
+    bench_project_result_selection           문장  24 · uuid 슬롯 20
+
+반증으로 이빨을 확인했다 — 해소를 빼면 `자연키가 uuid provider_id 컬럼에
+바인딩된다` 로 정확히 지목한다.
+
+⚠️ **`bench` 프로브는 규모를 줄였다.** 원래 값(조건 16,000 × provider 2 × 시도 3)은
+uuid 슬롯 101,000건을 만들고 이 봉인을 1.5초 → **18초**로 늘린다. 매 `lane_check`
+마다 도는 검사에 그것은 잡일이고, **잡일이 된 봉인은 면제 목록으로 꺼진다.** 축은
+「슬롯에 uuid 가 들어가는가」이지 「몇 건인가」가 아니므로 20건으로 충분하다(3.1초).
+provider 2개는 유지했다 — 자연키가 둘이어야 어느 쪽이 새는지 메시지가 말한다.
+
+### 최종 검증
+
+    ① 껍데기가 실제로 도는가   정상 38 / 비정상 0
+    ② 상자 안 미해소 import    211파일/396건 → 0 · scripts 55파일/40건 → 0
+    ③ 공허해진 경계 단언       0곳
+    ④ 옛 이름 참조             74곳 — 전부 형태 ⑥
+    ⑤ 휠                       이관 모듈 37개 실림 · scripts/ 0개
+    ⑥ lane_check               선언 0 / 관측 0 ✅ 일치
+    전체 시험                  3,093 passed / 29 skipped / 824 subtests / 실패 0
 
 
 ## 이관이 «없던 검사를 새로 붙였다»
