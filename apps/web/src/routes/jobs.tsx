@@ -40,7 +40,7 @@ import {
  * `measurement_jobs.counts` 집계와 (2) `GET /headless/jobs` 전체 snapshot 목록을
  * 제공한다 — list 엔드포인트에는 status/limit query param 이 없으므로(생성 타입상
  * `query?: never`) 상태 필터는 클라이언트측에서 수행한다(존재하지 않는 API
- * 파라미터를 만들지 않는다). 중지는 `POST /headless/jobs/{job_id}/stop`.
+ * 파라미터를 만들지 않는다). 중지는 `POST /headless/jobs/{job_uuid}/stop`.
  *
  * RBAC: 조회는 `headless:read`, 중지(write)는 `headless:control` 로 각각
  * 게이트한다(백엔드 `HEADLESS_API_PERMISSIONS` SSOT 미러 — 프론트 enum 박기
@@ -333,7 +333,7 @@ function JobListPanel(): JSX.Element {
                 caption={t('routes.jobs.list.caption')}
                 columns={jobColumns(t, canControl)}
                 rows={filtered}
-                rowKey={(job) => String(job.id)}
+                rowKey={(job) => job.job_uuid}
                 rowTestId="job-row"
               />
             </RefetchRegion>
@@ -397,12 +397,14 @@ const JOB_COUNT_KEYS = ['queued', 'running', 'completed', 'failed', 'cancelled']
 function jobColumns(t: Translate, canControl: boolean): readonly DataTableColumn<JobSnapshot>[] {
   return [
     {
-      key: 'id',
+      key: 'job_uuid',
       header: t('routes.jobs.list.colId'),
       priority: 'primary',
-      className: 'data-cell-numeric',
+      // ⚠️ contract v0.1.22 — the opaque handle replaced the numeric primary
+      // key, so this column is no longer a number and must not be right-aligned
+      // as one.
       testId: 'job-id',
-      cell: (job) => job.id,
+      cell: (job) => job.job_uuid,
     },
     {
       key: 'status',
@@ -466,15 +468,15 @@ function JobStopCell({
     );
   }
   if (!canControl) return <span data-testid="job-stop-forbidden">—</span>;
-  return <JobStopButton jobId={job.id} />;
+  return <JobStopButton jobUuid={job.job_uuid} />;
 }
 
-function JobStopButton({ jobId }: { readonly jobId: number }): JSX.Element {
+function JobStopButton({ jobUuid }: { readonly jobUuid: string }): JSX.Element {
   const { t } = useT();
   const queryClient = useQueryClient();
-  const stop = useMutation<unknown, ApiError, number>({
-    mutationFn: async (id: number) => {
-      return stopHeadlessJob(id);
+  const stop = useMutation<unknown, ApiError, string>({
+    mutationFn: async (handle: string) => {
+      return stopHeadlessJob(handle);
     },
     onSuccess: () => {
       // A stopped job shifts both the aggregate counts and its own row state —
@@ -491,7 +493,7 @@ function JobStopButton({ jobId }: { readonly jobId: number }): JSX.Element {
         variant="danger"
         data-testid="job-stop"
         disabled={stop.isPending}
-        onClick={() => stop.mutate(jobId)}
+        onClick={() => stop.mutate(jobUuid)}
       >
         {stop.isPending ? t('routes.jobs.list.stopPending') : t('routes.jobs.list.stopButton')}
       </Button>

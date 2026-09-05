@@ -19,7 +19,7 @@ const headlessClient = spyHeadlessTransport();
 
 const STATUS_PATH = '/headless/status';
 const JOBS_PATH = '/headless/jobs';
-const STOP_PATH = '/headless/jobs/{job_id}/stop';
+const STOP_PATH = '/headless/jobs/{job_uuid}/stop';
 
 type StatusSnapshot = HeadlessOkBody<'get', typeof STATUS_PATH>;
 type JobList = HeadlessOkBody<'get', typeof JOBS_PATH>;
@@ -85,7 +85,8 @@ function statusSnapshot(overrides: Record<string, number> = {}): StatusSnapshot 
 
 function job(overrides: Partial<JobList[number]> = {}): JobList[number] {
   return {
-    id: 1,
+    // ⚠️ contract v0.1.22 — the storage primary key left the wire; the opaque
+    // handle is what the list carries and what the stop route takes.
     job_uuid: 'job-1',
     status: 'queued',
     excel_path: 'C:\\plans\\alpha.xlsx',
@@ -129,8 +130,13 @@ describe('JobsRoute', () => {
   it('renders queue counts and the job list', async () => {
     authenticateAs(['headless:read']);
     mockHeadless(statusSnapshot(), [
-      job({ id: 1, status: 'queued', excel_path: 'C:\\plans\\alpha.xlsx' }),
-      job({ id: 2, status: 'completed', excel_path: '/tmp/beta.xlsx', requested_by: 'qa' }),
+      job({ job_uuid: 'job-1', status: 'queued', excel_path: 'C:\\plans\\alpha.xlsx' }),
+      job({
+        job_uuid: 'job-2',
+        status: 'completed',
+        excel_path: '/tmp/beta.xlsx',
+        requested_by: 'qa',
+      }),
     ]);
 
     renderJobs();
@@ -156,8 +162,8 @@ describe('JobsRoute', () => {
   it('filters loaded rows client-side by status', async () => {
     authenticateAs(['headless:read']);
     mockHeadless(statusSnapshot(), [
-      job({ id: 1, status: 'queued', excel_path: 'queued.xlsx' }),
-      job({ id: 2, status: 'failed', excel_path: 'failed.xlsx' }),
+      job({ job_uuid: 'job-1', status: 'queued', excel_path: 'queued.xlsx' }),
+      job({ job_uuid: 'job-2', status: 'failed', excel_path: 'failed.xlsx' }),
     ]);
 
     renderJobs();
@@ -179,7 +185,7 @@ describe('JobsRoute', () => {
           jobsCall += 1;
           if (jobsCall === 1) {
             return headlessOk('get', JOBS_PATH, [
-              job({ id: 1, status: 'queued', excel_path: 'alpha.xlsx' }),
+              job({ job_uuid: 'job-1', status: 'queued', excel_path: 'alpha.xlsx' }),
             ]);
           }
           // The refetch fails — React Query flips isError true but RETAINS the
@@ -218,7 +224,7 @@ describe('JobsRoute', () => {
           jobsCall += 1;
           if (jobsCall === 1) {
             return headlessOk('get', JOBS_PATH, [
-              job({ id: 1, status: 'queued', excel_path: 'alpha.xlsx' }),
+              job({ job_uuid: 'job-1', status: 'queued', excel_path: 'alpha.xlsx' }),
             ]);
           }
           // The refetch never resolves → isFetching stays true with data retained.
@@ -251,7 +257,9 @@ describe('JobsRoute', () => {
    */
   it('gives the operator an explicit way to re-read the queue (S8)', async () => {
     authenticateAs(['headless:read']);
-    mockHeadless(statusSnapshot(), [job({ id: 1, status: 'queued', excel_path: 'a.xlsx' })]);
+    mockHeadless(statusSnapshot(), [
+      job({ job_uuid: 'job-1', status: 'queued', excel_path: 'a.xlsx' }),
+    ]);
 
     renderJobs();
     await waitFor(() => expect(screen.getAllByTestId('job-row')).toHaveLength(1));
@@ -279,7 +287,7 @@ describe('JobsRoute', () => {
         get: () => {
           jobsCall += 1;
           if (jobsCall === 1) {
-            return headlessOk('get', JOBS_PATH, [job({ id: 1, status: 'queued' })]);
+            return headlessOk('get', JOBS_PATH, [job({ job_uuid: 'job-1', status: 'queued' })]);
           }
           // The manual re-read never resolves → isFetching stays true.
           return new Promise<never>(() => undefined);
@@ -309,7 +317,7 @@ describe('JobsRoute', () => {
     // route declaring anything, i.e. it would be a vacuous green: the very
     // situation that let `/jobs` inherit NORMAL unnoticed in the first place.
     authenticateAs(['headless:read']);
-    mockHeadless(statusSnapshot(), [job({ id: 1, status: 'queued' })]);
+    mockHeadless(statusSnapshot(), [job({ job_uuid: 'job-1', status: 'queued' })]);
 
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -350,7 +358,7 @@ describe('JobsRoute', () => {
 
   it('hides stop actions without headless:control and enables them with it', async () => {
     authenticateAs(['headless:read']);
-    mockHeadless(statusSnapshot(), [job({ id: 1, status: 'running' })]);
+    mockHeadless(statusSnapshot(), [job({ job_uuid: 'job-1', status: 'running' })]);
 
     renderJobs();
 
@@ -361,10 +369,10 @@ describe('JobsRoute', () => {
 
   it('stops a running job through the typed client and invalidates both reads', async () => {
     authenticateAs(['headless:read', 'headless:control']);
-    mockHeadless(statusSnapshot(), [job({ id: 7, status: 'running' })]);
+    mockHeadless(statusSnapshot(), [job({ job_uuid: 'j-7', status: 'running' })]);
     headlessClient.routes({
       [STOP_PATH]: {
-        post: () => headlessOk('post', STOP_PATH, { job_id: 7, stop_requested: true }),
+        post: () => headlessOk('post', STOP_PATH, { job_uuid: 'j-7', stop_requested: true }),
       },
     });
 
@@ -375,8 +383,8 @@ describe('JobsRoute', () => {
     await userEvent.click(tableView('jobs-table').getByTestId('job-stop'));
 
     await waitFor(() => {
-      expect(headlessClient.POST).toHaveBeenCalledWith('/headless/jobs/{job_id}/stop', {
-        params: { path: { job_id: 7 } },
+      expect(headlessClient.POST).toHaveBeenCalledWith('/headless/jobs/{job_uuid}/stop', {
+        params: { path: { job_uuid: 'j-7' } },
         body: { message: '' },
       });
     });

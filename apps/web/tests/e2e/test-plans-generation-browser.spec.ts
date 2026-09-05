@@ -183,7 +183,7 @@ async function mockGenerationBrowser(page: Page, state: BrowserGenerationState):
       if (state.failOnSubmit) state.status = 'failed';
       else if (state.completeOnSubmit) state.status = 'succeeded';
       const body = {
-        job_id: GENERATION_BROWSER_JOB_ID,
+        generation_job_id: GENERATION_BROWSER_JOB_ID,
         project_id: GENERATION_BROWSER_PROJECT_ID,
         status: state.status,
         request_sha256: 'a'.repeat(64),
@@ -195,7 +195,7 @@ async function mockGenerationBrowser(page: Page, state: BrowserGenerationState):
     }
     if (path.endsWith(`/test-plan/generations/${GENERATION_BROWSER_JOB_ID}`) && method === 'GET') {
       const body = {
-        job_id: GENERATION_BROWSER_JOB_ID,
+        generation_job_id: GENERATION_BROWSER_JOB_ID,
         project_id: GENERATION_BROWSER_PROJECT_ID,
         status: state.status,
         draft_id: state.status === 'succeeded' ? GENERATION_BROWSER_DRAFT_ID : null,
@@ -257,7 +257,7 @@ async function mockGenerationBrowser(page: Page, state: BrowserGenerationState):
     }
     if (path.endsWith('/generation-metadata') && method === 'GET') {
       await json(200, {
-        job_id: GENERATION_BROWSER_JOB_ID,
+        generation_job_id: GENERATION_BROWSER_JOB_ID,
         draft_id: GENERATION_BROWSER_DRAFT_ID,
         status: state.status,
         metadata: { output_digest: 'd'.repeat(64), generation_key: 'generation-key-1' },

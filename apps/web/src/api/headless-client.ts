@@ -269,10 +269,19 @@ export async function fetchHeadlessJobs(): Promise<MeasurementJobList> {
   return data ?? [];
 }
 
-/** POST `/headless/jobs/{job_id}/stop` — request that a running job halt. */
-export async function stopHeadlessJob(jobId: number): Promise<StopMeasurementJobResponse> {
-  const { data, error, response } = await headlessClient.POST('/headless/jobs/{job_id}/stop', {
-    params: { path: { job_id: jobId } },
+/**
+ * POST `/headless/jobs/{job_uuid}/stop` — request that a running job halt.
+ *
+ * ⚠️ Contract v0.1.22 moved this route from the storage primary key to the
+ * job's opaque handle. The old `{job_id}` was an `AUTOINCREMENT` integer, so it
+ * was enumerable, it published how many measurement jobs this laboratory had
+ * ever run, and it was not unique across providers — see OWASP API1:2023 and
+ * Zalando rules 174/144. `job_uuid` was already on the wire; only the route
+ * changed.
+ */
+export async function stopHeadlessJob(jobUuid: string): Promise<StopMeasurementJobResponse> {
+  const { data, error, response } = await headlessClient.POST('/headless/jobs/{job_uuid}/stop', {
+    params: { path: { job_uuid: jobUuid } },
     body: { message: '' },
   });
   if (error || !data) {

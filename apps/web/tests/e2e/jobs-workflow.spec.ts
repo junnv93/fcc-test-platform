@@ -5,7 +5,11 @@ import { tableView } from './helpers/responsive-table';
 
 const STATUS_GLOB = '**/headless/status*';
 const JOBS_GLOB = '**/headless/jobs';
-const STOP_GLOB = '**/headless/jobs/7/stop';
+// ⚠️ contract v0.1.22 — the stop route is addressed by the OPAQUE handle, not the
+// storage primary key. A glob that still names `7` simply never matches, and an
+// unmatched `page.route` is silent: the click goes to the real origin and the
+// assertion times out on a missing element rather than on a wrong URL.
+const STOP_GLOB = '**/headless/jobs/job-7/stop';
 
 async function mockJobs(page: Page): Promise<void> {
   let stopRequested = false;
@@ -29,7 +33,6 @@ async function mockJobs(page: Page): Promise<void> {
       contentType: 'application/json',
       body: JSON.stringify([
         {
-          id: 7,
           job_uuid: 'job-7',
           status: 'running',
           excel_path: 'C:\\plans\\jobs.xlsx',
@@ -50,7 +53,7 @@ async function mockJobs(page: Page): Promise<void> {
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ job_id: 7, stop_requested: true }),
+      body: JSON.stringify({ job_uuid: 'job-7', stop_requested: true }),
     });
   });
 }
