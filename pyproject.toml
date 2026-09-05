@@ -103,6 +103,58 @@ dependencies = [
     "bcrypt>=3.2.0",
 ]
 
+
+# ── 운영 도구의 진입점 ──────────────────────────────────────────────
+# ⚠️ **이 표는 손으로 유지하지 않는다.** SSOT 는 패키지 자신이다 —
+#    `fcc_test_platform/<name>_cli.py` 가 최상위 `main()` 을 가지면 그것이 도구다.
+#    이 표는 그 사실의 «투영»이고, 어긋나면
+#    `tests/test_tool_entry_points_axis.py` 가 빨갛게 만든다(양방향 — 빠진 것도,
+#    남은 것도). PEP 621 은 정적 선언을 요구한다(코드를 실행하지 않고 메타데이터를
+#    읽을 수 있어야 하므로) — 그래서 «파생 + 봉인» 이지 «동적 생성» 이 아니다.
+#
+# ⚠️ **target 은 반드시 `fcc_test_platform.*` 안이어야 한다.** `scripts.*` 로 쓰면
+#    editable 설치(로컬·CI·pre-push)에서는 import 되고 **실제 휠에서만 죽는다** —
+#    모든 게이트가 초록인데 운영자 기계에서만 `ModuleNotFoundError` 다.
+#    그 규칙도 같은 시험이 봉인한다.
+#
+# 이름 규칙: `fcc-platform-` + 모듈 이름에서 `_cli` 를 떼고 `_`→`-`.
+#    도구마다 정할 것이 없다 — 규칙이 이름을 만든다.
+[project.scripts]
+fcc-platform-artifact-sync-evidence = "fcc_test_platform.artifact_sync_evidence_cli:main"
+fcc-platform-artifact-sync-worker = "fcc_test_platform.artifact_sync_worker_cli:main"
+fcc-platform-backup-restore-drill = "fcc_test_platform.backup_restore_drill_cli:main"
+fcc-platform-backup-restore-runner = "fcc_test_platform.backup_restore_runner_cli:main"
+fcc-platform-central-db-live-proof = "fcc_test_platform.central_db_live_proof_cli:main"
+fcc-platform-chamber-measurement-staging-gate = "fcc_test_platform.chamber_measurement_staging_gate_cli:main"
+fcc-platform-chamber-token-evidence = "fcc_test_platform.chamber_token_evidence_cli:main"
+fcc-platform-check-auth-mode-pairing = "fcc_test_platform.check_auth_mode_pairing_cli:main"
+fcc-platform-cutover-bundle = "fcc_test_platform.cutover_bundle_cli:main"
+fcc-platform-cutover-completion-audit = "fcc_test_platform.cutover_completion_audit_cli:main"
+fcc-platform-cutover-live-workflow = "fcc_test_platform.cutover_live_workflow_cli:main"
+fcc-platform-cutover-readiness = "fcc_test_platform.cutover_readiness_cli:main"
+fcc-platform-db-migration-collect = "fcc_test_platform.db_migration_collect_cli:main"
+fcc-platform-db-migration-evidence = "fcc_test_platform.db_migration_evidence_cli:main"
+fcc-platform-db-migration-runner = "fcc_test_platform.db_migration_runner_cli:main"
+fcc-platform-deployment-evidence-workflow = "fcc_test_platform.deployment_evidence_workflow_cli:main"
+fcc-platform-export-central-db-ddl = "fcc_test_platform.export_central_db_ddl_cli:main"
+fcc-platform-extraction-evidence = "fcc_test_platform.extraction_evidence_cli:main"
+fcc-platform-extraction-runner = "fcc_test_platform.extraction_runner_cli:main"
+fcc-platform-frontend-browser-qa = "fcc_test_platform.frontend_browser_qa_cli:main"
+fcc-platform-frontend-deployment-collect = "fcc_test_platform.frontend_deployment_collect_cli:main"
+fcc-platform-frontend-deployment-evidence = "fcc_test_platform.frontend_deployment_evidence_cli:main"
+fcc-platform-frontend-qa-evidence = "fcc_test_platform.frontend_qa_evidence_cli:main"
+fcc-platform-identity-policy = "fcc_test_platform.identity_policy_cli:main"
+fcc-platform-idp-deployment-collect = "fcc_test_platform.idp_deployment_collect_cli:main"
+fcc-platform-idp-deployment-evidence = "fcc_test_platform.idp_deployment_evidence_cli:main"
+fcc-platform-ingestion-execution-evidence = "fcc_test_platform.ingestion_execution_evidence_cli:main"
+fcc-platform-keyset-cursor-live-proof = "fcc_test_platform.keyset_cursor_live_proof_cli:main"
+fcc-platform-performance-smoke = "fcc_test_platform.performance_smoke_cli:main"
+fcc-platform-provider-identity-live-proof = "fcc_test_platform.provider_identity_live_proof_cli:main"
+fcc-platform-rbac-assignment-collect = "fcc_test_platform.rbac_assignment_collect_cli:main"
+fcc-platform-rbac-assignment-evidence = "fcc_test_platform.rbac_assignment_evidence_cli:main"
+fcc-platform-report-reconstruction-evidence = "fcc_test_platform.report_reconstruction_evidence_cli:main"
+fcc-platform-retention-worker = "fcc_test_platform.retention_worker_cli:main"
+
 [project.optional-dependencies]
 # 상자가 자기 suite 를 싣는다(매니페스트 `lane_test_suite`). 실측: 테스트가
 # 모듈 레벨로 도달하는 서드파티는 pytest 와 openpyxl 둘.
