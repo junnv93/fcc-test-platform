@@ -253,6 +253,38 @@ class TestNoContractCarriesABaseline(unittest.TestCase):
 _LINT_IMPORTS_ENTRY = 'from importlinter.cli import lint_imports_command; lint_imports_command()'
 
 
+class TestTheGatesCanActuallyRunHere(unittest.TestCase):
+    """⚠️ **skip 은 통과가 아니다** — 이 클래스가 그 차이를 지킨다 (2026-09-05).
+
+    아래 `TestTheGatesActuallyRun` 의 두 팔은 도구가 없으면 `skipIf` 로 빠진다.
+    그 설계는 옳다(도구 미설치가 남의 커밋을 막으면 안 된다). 그런데 **선언이 없으면
+    그 skip 이 «영구»가 된다** — 갓 `pip install -e '.[test]'` 한 러너에서도 빠지고,
+    아무도 계약이 KEPT 인지 보지 않는 채로 게이트가 초록을 낸다.
+
+    실측 2026-09-05: `[test]` extra 에 두 도구가 «선언되어 있지 않아» 공유 체크아웃의
+    `.venv` 와 시스템 `python3`(= `pre-push` 의 기본 인터프리터) 양쪽에서 두 팔이
+    조용히 빠지고 있었다. 이 파일이 본문에서 경고하는 「도구가 안 돌았다 = 위반이
+    없다」를 **이 파일 자신이** 겪고 있었다.
+
+    그래서 이 팔은 도구의 «존재»가 아니라 **선언**을 본다 — 존재를 보면 도구가 깔린
+    기계에서만 초록이 되어 같은 함정을 되풀이한다.
+    """
+
+    def test_the_test_extra_declares_both_gate_tools(self):
+        import tomllib
+        pyproject = REPO_ROOT / 'pyproject.toml'
+        data = tomllib.loads(pyproject.read_text(encoding='utf-8'))
+        extra = data['project']['optional-dependencies']['test']
+        names = {re.split(r'[<>=!\[]', item, 1)[0].strip().lower() for item in extra}
+        for tool in ('mypy', 'import-linter'):
+            with self.subTest(tool=tool):
+                self.assertIn(
+                    tool, names,
+                    f"`[project.optional-dependencies].test` 에 {tool} 이 없다 — "
+                    f"그러면 TestTheGatesActuallyRun 의 팔이 갓 설치한 러너에서도 "
+                    f"영구히 skip 되고, 계약이 깨져도 아무도 보지 못한다.")
+
+
 class TestTheGatesActuallyRun(unittest.TestCase):
     """선언이 아니라 «실행». 도구가 없으면 skip 하되, 그 skip 이 보이게 한다.
 
