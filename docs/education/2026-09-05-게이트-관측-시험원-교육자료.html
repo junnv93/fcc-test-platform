@@ -340,7 +340,7 @@
   <div class="kicker">
     <span>fcc-test-platform</span>
     <span>PR #82 · 게이트 관측</span>
-    <span>2026-09-05</span>
+    <span>2026-09-06 착지</span>
   </div>
   <h1 class="hd">초록인데 아무것도 검사하지 않았다</h1>
   <p class="standfirst">
@@ -883,16 +883,65 @@ GateEvidence: import-linter 게이트가 돌았다 — Analyzed 213 files, 927 d
 
   <h3>이번에 통과한 최종 상태</h3>
 
-<pre class="mono wide">CI (run 33996903367 · 2026-09-06 최신 main 위)
-  3076 passed, 30 skipped, 30 warnings
+<pre class="mono wide">main 에 착지함 — df7bae3 (run 33997725196)
+  3107 passed, 30 skipped, 828 subtests
   이 게이트의 skip: 0건
 
   GateEvidence: mypy 게이트가 돌았다 — 54 source files
   GateEvidence: import-linter 게이트가 돌았다 — Analyzed 259 files, 1299 dependencies · KEPT 3회
 
 로컬 (lane_check)
-  3079 passed, 27 skipped
+  3110 passed, 27 skipped
   선언된 실패 0개 / 관측된 실패 0개  →  일치</pre>
+
+  <h3>그런데 이 숫자들도 「돌았다」의 증거는 아니다</h3>
+
+  <p>
+    통과 수가 늘고 건너뜀이 줄었다는 것은 <strong>간접</strong> 증거다.
+    「원래 지킬 것이 없었던 것 아닌가」라는 반론이 남는다. 그 반론을 닫는 방법은
+    하나뿐이다 — <strong>위반을 넣어 보는 것</strong>(03절에서 쓴 그 방법이다).
+  </p>
+
+  <p>
+    그래서 같은 위반을 <strong>착지 전 <code>main</code></strong> 과
+    <strong>착지 후 <code>main</code></strong> 에 각각 넣었다. 조건은 동일하다 —
+    같은 파일 맨 위에 <code>import psycopg</code> 한 줄, 형제 저장소 폴더 없음.
+  </p>
+
+  <div class="tablebox wide">
+    <table>
+      <thead>
+        <tr><th><code>main</code></th><th>같은 위반을 넣었을 때</th><th>판정</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">9aed9cc<br><small>착지 전</small></td>
+          <td class="mono">10 passed, 1 skipped · exit 0</td>
+          <td class="n-bad">위반이 있는데 <strong>초록</strong></td>
+        </tr>
+        <tr>
+          <td class="mono">df7bae3<br><small>착지 후</small></td>
+          <td class="mono">1 failed — <code>3 != 2 KEPT</code></td>
+          <td class="n-good">위반을 <strong>지목하고 멈춘다</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <p>
+      <strong>이 두 줄이 이 문서 전체에서 가장 강한 증거다.</strong>
+      건너뜀 개수는 「없던 것」을 세는 일이라 반론의 여지가 있지만, 위반을 넣었을 때의
+      반응은 그렇지 않다. 앞으로 「이 검사가 정말 지키고 있나」를 물을 때는
+      숫자를 세기 전에 <strong>이것부터</strong> 해 보면 된다.
+    </p>
+    <p style="margin-bottom:0">
+      <small>
+        착지 전 수치는 형제 세션 <code>fcc-delivery-final-99</code> 가 병합 직전에 측정했다.
+        착지 후 수치는 병합 직후 같은 조건에서 측정했다. 두 주입 모두 되돌렸다.
+      </small>
+    </p>
+  </div>
 
   <div class="note">
     <p>
