@@ -1,0 +1,984 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>시험 도구가 어느 쪽이 원본인지 — 시험원 교육자료</title>
+    <!--
+      이 파일은 네트워크 없이 열린다 — 외부 글꼴·스크립트·이미지를 부르지 않는다.
+      시험실 PC 에서 더블클릭으로 여는 것이 이 문서의 기본 사용법이기 때문이다.
+      선례: docs/education/2026-09-05-DB-드라이버-경계-시험원-교육자료.html
+    -->
+  </head>
+  <body>
+<style>
+  :root {
+    --ground:      #F5F7FA;
+    --surface:     #FFFFFF;
+    --surface-2:   #EDF1F6;
+    --ink:         #12171F;
+    --ink-2:       #4A5566;
+    --ink-3:       #77839A;
+    --rule:        #D3DAE4;
+    --rule-2:      #B9C3D1;
+    --accent:      #1B4F8C;
+    --accent-soft: #E4EDF8;
+    --bad:         #A93318;
+    --bad-soft:    #FBE9E4;
+    --good:        #17654A;
+    --good-soft:   #E1F0E9;
+
+    --f-sans: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+    --f-mono: "Cascadia Mono", Consolas, "D2Coding", "SFMono-Regular", monospace;
+
+    --measure: 66ch;
+    --pad: clamp(1.1rem, 4vw, 2.5rem);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0F131A;
+      --surface:     #161C25;
+      --surface-2:   #1D242F;
+      --ink:         #E7ECF3;
+      --ink-2:       #A7B2C2;
+      --ink-3:       #7C879A;
+      --rule:        #2A323E;
+      --rule-2:      #3B4553;
+      --accent:      #74AAE8;
+      --accent-soft: #182636;
+      --bad:         #EC8368;
+      --bad-soft:    #2C1D18;
+      --good:        #55C295;
+      --good-soft:   #14261F;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #0F131A;
+    --surface:     #161C25;
+    --surface-2:   #1D242F;
+    --ink:         #E7ECF3;
+    --ink-2:       #A7B2C2;
+    --ink-3:       #7C879A;
+    --rule:        #2A323E;
+    --rule-2:      #3B4553;
+    --accent:      #74AAE8;
+    --accent-soft: #182636;
+    --bad:         #EC8368;
+    --bad-soft:    #2C1D18;
+    --good:        #55C295;
+    --good-soft:   #14261F;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-sans);
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+  }
+
+  .wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: var(--pad) var(--pad) 5rem;
+  }
+
+  /* ─── 흐름: 산문은 좁게, 그림·표는 넓게 ─────────────────────── */
+  .flow > * { max-width: var(--measure); }
+  .flow > .wide { max-width: 100%; }
+
+  /* ─── 표제 ──────────────────────────────────────────────── */
+  .masthead {
+    border-top: 3px solid var(--ink);
+    padding-top: 1.1rem;
+    margin-bottom: 3rem;
+  }
+  .kicker {
+    font-family: var(--f-mono);
+    font-size: .72rem;
+    font-weight: 500;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem 1.4rem;
+    margin-bottom: 1rem;
+  }
+  h1 {
+    font-size: clamp(1.85rem, 5.2vw, 3rem);
+    font-weight: 600;
+    line-height: 1.18;
+    letter-spacing: -.02em;
+    text-wrap: balance;
+    margin: 0 0 .9rem;
+  }
+  .standfirst {
+    font-size: clamp(1rem, 2.4vw, 1.16rem);
+    color: var(--ink-2);
+    font-weight: 300;
+    max-width: 58ch;
+    margin: 0;
+  }
+  .standfirst strong { font-weight: 600; color: var(--ink); }
+
+  /* ─── 결과 스트립 ───────────────────────────────────────── */
+  .strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin: 2.5rem 0 3.5rem;
+  }
+  .strip div { background: var(--surface); padding: 1rem 1.1rem; }
+  .strip dt {
+    font-family: var(--f-mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: .45rem;
+  }
+  .strip dd {
+    margin: 0;
+    font-family: var(--f-mono);
+    font-size: 1.32rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
+  }
+  .strip dd small {
+    display: block;
+    font-family: var(--f-sans);
+    font-size: .78rem;
+    font-weight: 400;
+    color: var(--ink-2);
+    letter-spacing: 0;
+    margin-top: .2rem;
+  }
+  .n-good { color: var(--good); }
+  .n-bad  { color: var(--bad); }
+
+  /* ─── 절 ────────────────────────────────────────────────── */
+  section { margin-top: 4rem; }
+  h2 {
+    font-size: clamp(1.25rem, 3vw, 1.6rem);
+    font-weight: 600;
+    letter-spacing: -.015em;
+    line-height: 1.3;
+    text-wrap: balance;
+    margin: 0 0 .35rem;
+    padding-top: .9rem;
+    border-top: 1px solid var(--rule-2);
+  }
+  h2 .num {
+    font-family: var(--f-mono);
+    font-size: .74rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: .1em;
+    display: block;
+    margin-bottom: .5rem;
+  }
+  h3 {
+    font-size: 1.02rem;
+    font-weight: 600;
+    margin: 2.3rem 0 .5rem;
+    letter-spacing: -.005em;
+  }
+  p { margin: 0 0 1.05rem; }
+  .lede { color: var(--ink-2); margin-bottom: 1.8rem; }
+
+  code, .mono { font-family: var(--f-mono); font-size: .875em; }
+  code {
+    background: var(--surface-2);
+    padding: .1em .34em;
+    border-radius: 2px;
+    word-break: break-all;
+  }
+  strong { font-weight: 600; }
+  em { font-style: normal; background: var(--accent-soft); padding: .05em .3em; }
+
+  ul, ol { margin: 0 0 1.05rem; padding-left: 1.3rem; }
+  li { margin-bottom: .5rem; }
+  li::marker { color: var(--ink-3); }
+
+  /* ─── 그림 ──────────────────────────────────────────────── */
+  figure {
+    margin: 2rem 0 2.4rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 1.4rem 1.2rem 1rem;
+    overflow-x: auto;
+  }
+  figure svg { display: block; width: 100%; min-width: 480px; height: auto; }
+  figcaption {
+    margin-top: 1rem;
+    padding-top: .8rem;
+    border-top: 1px solid var(--rule);
+    font-size: .84rem;
+    line-height: 1.6;
+    color: var(--ink-2);
+    min-width: 480px;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  .svg-box   { fill: var(--surface-2); stroke: var(--rule-2); }
+  .svg-lbl   { fill: var(--ink); font-family: "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+  .svg-sub   { fill: var(--ink-3); color: var(--ink-3); font-family: "Noto Sans KR", "Malgun Gothic", sans-serif; font-size: 11.5px; }
+  .svg-edge  { stroke: var(--rule-2); fill: none; stroke-width: 1.6; }
+  .svg-bad   { stroke: var(--bad); fill: none; stroke-width: 2; }
+  .svg-good  { stroke: var(--good); fill: none; stroke-width: 2; }
+  .svg-badtx { fill: var(--bad); font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 600; }
+  .svg-gootx { fill: var(--good); font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 600; }
+  .svg-hd    { fill: var(--ink-3); font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; letter-spacing: .1em; }
+
+  /* ─── 표 ────────────────────────────────────────────────── */
+  .tablebox { overflow-x: auto; margin: 1.6rem 0 2rem; border: 1px solid var(--rule); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: .88rem; }
+  th, td { text-align: left; padding: .62rem .85rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th {
+    font-family: var(--f-mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .m { font-family: var(--f-mono); font-size: .84em; word-break: break-all; }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--f-mono);
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    padding: .1rem .42rem;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .tag-bad  { color: var(--bad); background: var(--bad-soft); }
+  .tag-good { color: var(--good); background: var(--good-soft); }
+
+  /* ─── 강조 블록 ─────────────────────────────────────────── */
+  .note {
+    border-left: 3px solid var(--accent);
+    background: var(--surface);
+    padding: 1.1rem 1.2rem;
+    margin: 1.8rem 0;
+  }
+  .note.warn { border-left-color: var(--bad); }
+  .note > :last-child { margin-bottom: 0; }
+  .note .hd {
+    font-family: var(--f-mono);
+    font-size: .7rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: .5rem;
+  }
+
+  /* ─── 다음 세션 멘트 ────────────────────────────────────── */
+  .prompt-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: .7rem;
+  }
+  button.copy {
+    font-family: var(--f-mono);
+    font-size: .74rem;
+    letter-spacing: .06em;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    padding: .38rem .8rem;
+    cursor: pointer;
+  }
+  button.copy:hover { background: var(--surface-2); }
+  button.copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  pre.prompt {
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    padding: 1.1rem 1.2rem;
+    margin: 0;
+    overflow-x: auto;
+    font-family: var(--f-mono);
+    font-size: .795rem;
+    line-height: 1.72;
+    white-space: pre-wrap;
+    word-break: break-word;
+    tab-size: 2;
+  }
+
+  footer {
+    margin-top: 4.5rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--rule-2);
+    font-size: .8rem;
+    color: var(--ink-3);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="kicker">
+    <span>fcc-test-platform</span>
+    <span>운영자 결정 2026-08-31 집행</span>
+    <span>2026-09-05</span>
+    <span>커밋 abba0c5 · a7e35aa</span>
+  </div>
+  <h1>같은 도구가 두 곳에 있었고<br />어느 쪽이 원본인지 아무도 몰랐다</h1>
+  <p class="standfirst">
+    시험원이 쓰는 도구 <strong>38개</strong>의 알맹이가 두 저장소에 사본으로 있었다.
+    한쪽을 고쳐도 다른 쪽에 가지 않았고, <strong>그 사실을 알려 주는 장치가 없었다.</strong>
+    이제 알맹이는 한 곳에만 있고 나머지 한 곳에는 <strong>22줄짜리 호출부</strong>만 남는다.
+    <strong>시험원이 치는 명령은 바뀌지 않는다.</strong>
+  </p>
+</header>
+
+<dl class="strip">
+  <div>
+    <dt>이관한 도구</dt>
+    <dd><span class="n-good">38</span> / 38<small>대상 전부</small></dd>
+  </div>
+  <div>
+    <dt>옮긴 코드</dt>
+    <dd>14,268<small>줄 — 이제 배포판이 나른다</small></dd>
+  </div>
+  <div>
+    <dt>남긴 호출부</dt>
+    <dd>842<small>줄 (도구당 22줄)</small></dd>
+  </div>
+  <div>
+    <dt>실행하는 명령</dt>
+    <dd><span class="n-good">동일</span><small>python3 scripts/….py</small></dd>
+  </div>
+</dl>
+
+<main class="flow">
+
+<section>
+<h2>1 · 무엇이 문제였나</h2>
+
+<p class="copy">
+  플랫폼 저장소의 <code>scripts/</code> 폴더에는 시험 운영에 쓰는 도구가 들어 있다 —
+  DB 이관, 증거 수집, 컷오버 점검, 성능 측정 같은 것들이다.
+  이 저장소는 <strong>배포판(패키지)</strong> 형태로 다른 저장소에 전달된다.
+  그런데 <strong><code>scripts/</code> 폴더는 그 배포판에 실리지 않는다.</strong>
+</p>
+
+<p class="copy">
+  말이 아니라 실제로 배포판을 만들어 열어 보면 이렇다.
+</p>
+
+<figure class="wide">
+<svg viewBox="0 0 860 250" role="img" aria-label="배포판이 나르는 것과 나르지 못하는 것">
+  <text class="svg-hd" x="10" y="18">배포판(WHEEL)을 실제로 만들어 열어 본 결과</text>
+
+  <rect class="svg-box" x="10" y="40" width="380" height="88" rx="4"/>
+  <text class="svg-lbl" x="26" y="66">fcc_test_platform/  (패키지)</text>
+  <text class="svg-sub" x="26" y="88">DB 접속, 증거 판정, 계산 로직 …</text>
+  <text class="svg-gootx" x="26" y="112">→ 배포판에 실린다 · 모듈 37개</text>
+
+  <rect class="svg-box" x="10" y="142" width="380" height="88" rx="4"/>
+  <text class="svg-lbl" x="26" y="168">scripts/  (폴더)</text>
+  <text class="svg-sub" x="26" y="190">시험원이 직접 부르는 진입점</text>
+  <text class="svg-badtx" x="26" y="214">→ 배포판에 실리지 않는다 · 0개</text>
+
+  <path class="svg-good" d="M395 84 L 470 84" marker-end="url(#ag)"/>
+  <path class="svg-bad"  d="M395 186 L 445 186" stroke-dasharray="5 4"/>
+  <line class="svg-bad"  x1="452" y1="176" x2="468" y2="196"/>
+  <line class="svg-bad"  x1="468" y1="176" x2="452" y2="196"/>
+
+  <rect class="svg-box" x="500" y="90" width="350" height="90" rx="4"/>
+  <text class="svg-lbl" x="516" y="118">받는 쪽 저장소</text>
+  <text class="svg-sub" x="516" y="140">배포판을 설치해서 쓴다</text>
+  <text class="svg-sub" x="516" y="160">→ 로직은 오지만 진입점은 «오지 않는다»</text>
+
+  <defs>
+    <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor" class="svg-gootx"/>
+    </marker>
+  </defs>
+</svg>
+</figure>
+
+<p class="copy">
+  진입점이 안 가니, 받는 쪽은 <strong>그 파일을 자기 저장소에 직접 복사해</strong> 두고 있었다.
+  그 상태에서 2026-08-31 에 <strong>사본을 자동으로 맞춰 주던 장치가 폐지</strong>됐다.
+  그 뒤로 두 사본은 각자 따로 움직였다.
+</p>
+
+<h3>가정이 아니다 — 지금 갈라져 있는 자리를 하나 짚는다</h3>
+
+<p class="copy">
+  같은 이름의 도구 <code>cross_session_result_selection_evidence.py</code> 가 두 저장소에 있다.
+  최근에 어떤 모듈의 위치가 바뀌었는데, <strong>한쪽만 따라갔다.</strong>
+</p>
+
+<div class="tablebox wide">
+<table>
+  <thead><tr><th style="width:26%">어느 쪽 사본</th><th style="width:56%">부르는 경로</th><th style="width:18%">지금 상태</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>플랫폼 저장소<br /><small>829행</small></td>
+      <td><code>…<strong>infrastructure.adapters.driven</strong>.central_project_reference_adapter</code></td>
+      <td><span class="tag tag-good">있는 경로</span></td>
+    </tr>
+    <tr>
+      <td>받는 쪽 저장소<br /><small>798행</small></td>
+      <td><code>…<strong>application</strong>.central_project_reference_adapter</code></td>
+      <td><span class="tag tag-bad">사라진 경로</span></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p class="copy">
+  ⚠️ 이 줄은 <strong>함수 안</strong>에 있어서, 그 함수가 <strong>실제로 불릴 때에만</strong> 드러난다.
+  그리고 그 함수는 라이브 DB 가 있어야 도달한다 — <strong>평소 검사에서는 밟히지 않는다.</strong>
+  받는 쪽에서 이 도구를 돌리면 그때 처음 죽는다.
+</p>
+
+<div class="note warn">
+  <div class="hd">이것이 왜 위험한가</div>
+  <p>
+    한쪽 파일에서 판정 기준을 고쳤다고 하자. 다른 쪽 사본은 <strong>옛 기준 그대로</strong>다.
+    두 저장소에서 같은 도구를 돌리면 <strong>서로 다른 답</strong>이 나오는데,
+    두 답 모두 «정상 종료»로 보인다. <strong>틀렸다고 알려 주는 것이 아무것도 없다.</strong>
+  </p>
+</div>
+
+</section>
+
+<section>
+<h2>2 · 무엇을 했나</h2>
+
+<p class="copy">
+  로직(알맹이)을 배포판이 나르는 자리로 옮기고, <code>scripts/</code> 에는
+  <strong>그것을 부르기만 하는 22줄</strong>을 남겼다. 가장 큰 도구를 예로 들면 이렇다.
+</p>
+
+<figure class="wide">
+<svg viewBox="0 0 860 220" role="img" aria-label="이관 전후 구조">
+  <text class="svg-hd" x="10" y="18">scripts/platform_cutover_live_workflow.py</text>
+
+  <text class="svg-sub" x="10" y="44">이관 전</text>
+  <rect class="svg-box" x="10" y="54" width="300" height="60" rx="4"/>
+  <text class="svg-lbl" x="26" y="80">scripts/…live_workflow.py</text>
+  <text class="svg-badtx" x="26" y="102">1,305줄 — 배포판에 안 실림</text>
+
+  <path class="svg-edge" d="M330 84 L 400 84" marker-end="url(#a2)"/>
+  <text class="svg-sub" x="336" y="76">이관</text>
+
+  <text class="svg-sub" x="430" y="44">이관 후</text>
+  <rect class="svg-box" x="430" y="54" width="420" height="60" rx="4"/>
+  <text class="svg-lbl" x="446" y="80">fcc_test_platform/cutover_live_workflow_cli.py</text>
+  <text class="svg-gootx" x="446" y="102">1,327줄 — 배포판이 나른다</text>
+
+  <rect class="svg-box" x="430" y="130" width="420" height="60" rx="4"/>
+  <text class="svg-lbl" x="446" y="156">scripts/…live_workflow.py</text>
+  <text class="svg-gootx" x="446" y="178">22줄 — 위를 부르기만 한다</text>
+
+  <path class="svg-edge" d="M640 130 L 640 116" marker-end="url(#a2)"/>
+
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" class="svg-edge" fill="currentColor"/>
+    </marker>
+  </defs>
+</svg>
+</figure>
+
+<p class="copy">
+  <strong>22줄에는 판정 로직이 없다.</strong> 그래서 두 저장소에 사본이 있어도
+  갈라질 내용이 없다. 로직이 바뀌면 배포판이 그것을 나른다.
+</p>
+
+<div class="note">
+  <div class="hd">시험원이 실제로 겪는 변화</div>
+  <p><strong>없다.</strong> 치는 명령이 그대로다.</p>
+  <pre class="mono">python3 scripts/platform_cutover_live_workflow.py --help
+python3 scripts/platform_db_migrate.py status
+python3 scripts/platform_performance_smoke.py validate manifest.json</pre>
+  <p>
+    38개 전부를 실제로 불러서 확인했다 — <strong>정상 38 / 비정상 0</strong>.
+    바뀐 것은 「그 명령이 실행하는 코드가 어디에 사는가」뿐이다.
+  </p>
+</div>
+
+</section>
+
+<section>
+<h2>3 · 이 작업에서 가장 중요한 발견<br />— 초록인데 아무것도 재지 않는 검사</h2>
+
+<p class="copy">
+  시험원은 검사가 <strong>초록이면 정상</strong>이라고 읽는다. 그 전제가 깨지는 자리를
+  이번에 <strong>10곳</strong> 찾았다. 실제 예를 그대로 옮긴다.
+</p>
+
+<div class="tablebox wide">
+<table>
+  <thead>
+    <tr><th style="width:34%">검사가 하는 일</th><th style="width:33%">이관 전</th><th style="width:33%">이관 후</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>platform_cutover_readiness.py</code> 파일을 읽어<br />
+          <code>FastAPI</code>·<code>uvicorn</code>·<code>sqlite3</code>·<code>subprocess</code> 가<br />
+          <strong>없는지</strong> 확인</td>
+      <td>125줄짜리 <strong>본체</strong>를 읽는다<br />
+          <span class="tag tag-good">초록</span> 실제로 없다 — 참인 검사</td>
+      <td>22줄짜리 <strong>호출부</strong>를 읽는다<br />
+          <span class="tag tag-good">초록</span> 22줄에 있을 리 없다 —<br />
+          <strong>참이지만 아무것도 재지 않는다</strong></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note warn">
+  <div class="hd">왜 아무도 못 잡았나</div>
+  <p>
+    파일 경로가 그대로 남아 있어 <strong>읽기가 계속 성공</strong>한다. 검사도 계속 초록이다.
+    <strong>이관 전에도 초록, 이관 후에도 초록</strong>이므로
+    「전후 비교」로도 안 보이고, 전체 시험을 돌려도 안 보인다.
+    <strong>파일을 하나씩 눈으로 훑어야만 보인다.</strong>
+  </p>
+  <p>
+    ⚠️ 그중 <strong>1곳은 2026-08-31 의 선행 작업이 남긴 것</strong>이었다.
+    닷새 동안 그 검사는 초록이었고 아무것도 재지 않았다.
+  </p>
+</div>
+
+<h3>어떻게 고쳤나 — 「경로」가 아니라 「모듈」에게 묻는다</h3>
+
+<div class="tablebox wide">
+<table>
+  <thead><tr><th style="width:50%">고치기 전</th><th style="width:50%">고친 뒤</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><pre class="mono">text = (project_root / 'scripts'
+        / 'platform_cutover_readiness.py'
+       ).read_text()</pre>
+      <span class="tag tag-bad">경로를 손으로 적는다</span></td>
+      <td><pre class="mono">text = moved_module_source(
+    'fcc_test_platform.cutover_readiness_cli'
+).read_text()</pre>
+      <span class="tag tag-good">모듈에게 사는 곳을 묻는다</span></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p class="copy">
+  이렇게 하면 <strong>다음에 또 옮겨도 검사가 따라온다.</strong>
+  그리고 각 자리에 팔을 하나 더 달았다 — <strong>「이 모듈이 실제로 무언가를 읽고 있는가」</strong>.
+  이 팔이 없으면, 누가 알맹이를 통째로 비웠을 때도
+  「금지 항목이 없다」가 참이 되어 다시 초록이 된다.
+</p>
+
+</section>
+
+<section>
+<h2>4 · 고쳤다고 말하기 전에 — 일부러 깨뜨려 확인했다</h2>
+
+<p class="copy">
+  검사를 고쳤다는 말만으로는 그 검사에 <strong>이빨이 남았는지</strong> 알 수 없다.
+  그래서 정상 상태를 일부러 망가뜨려 <strong>검사가 우는지</strong> 확인했다.
+</p>
+
+<div class="tablebox wide">
+<table>
+  <thead>
+    <tr><th style="width:38%">일부러 만든 상태</th><th style="width:14%">기대</th><th style="width:48%">실제 결과</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>정상 (아무것도 안 건드림)</td>
+      <td><span class="tag tag-good">초록</span></td>
+      <td><code>1 passed</code></td>
+    </tr>
+    <tr>
+      <td>알맹이에 금지 항목 <code>import subprocess</code> 를 넣음</td>
+      <td><span class="tag tag-bad">빨강</span></td>
+      <td><code>AssertionError: ['subprocess'] is not false</code></td>
+    </tr>
+    <tr>
+      <td>알맹이를 <strong>통째로 비움</strong></td>
+      <td><span class="tag tag-bad">빨강</span></td>
+      <td><code>[] is not true : … 알맹이가 또 옮겨갔다면<br />이 검사도 «새 자리»를 가리키게 고쳐라</code></td>
+    </tr>
+    <tr>
+      <td>도구의 진입점 이름을 없앰</td>
+      <td><span class="tag tag-bad">빨강</span></td>
+      <td><code>rc=1 ImportError: cannot import name 'main'</code></td>
+    </tr>
+    <tr>
+      <td>DB 기록에서 식별자 변환 한 줄을 뺌</td>
+      <td><span class="tag tag-bad">빨강</span></td>
+      <td><code>자연키가 uuid 컬럼에 바인딩된다 …<br />('…', 'test_sessions', 'fcc-unlicensed-conducted')</code></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note">
+  <div class="hd">실패 메시지가 무엇을 말하는가도 봤다</div>
+  <p>
+    위 셋째 줄의 메시지는 <strong>「이 검사를 지워라」가 아니라 「검사도 따라 옮겨라」</strong>를
+    가리킨다. 다음에 이 검사를 만난 사람이 <strong>지우는 대신 고치도록</strong>
+    문장을 그렇게 썼다.
+  </p>
+</div>
+
+</section>
+
+<section>
+<h2>5 · 옮긴 것만으로 새 검사가 붙었다</h2>
+
+<p class="copy">
+  <code>fcc_test_platform/</code> 폴더에는 <code>scripts/</code> 에는 적용되지 않던
+  검사가 걸려 있다. 그중 하나는 <strong>DB 에 기록을 넣을 때 식별자 형식이 맞는지</strong>
+  보는 검사다. 옮기는 순간 이 검사가 네 도구를 처음으로 훑기 시작했다.
+</p>
+
+<div class="tablebox wide">
+<table>
+  <thead>
+    <tr><th style="width:46%">도구</th><th style="width:14%">줄 수</th><th style="width:40%">이 검사가 보던 상태</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>platform_keyset_cursor_live_proof</code></td><td>661</td><td rowspan="4" style="vertical-align:middle">
+      <strong><code>scripts/</code> 에 있는 동안<br />이 검사의 시야 밖이었다</strong><br />
+      <small>라이브 PostgreSQL 에 실제로 기록을 넣는 코드인데도</small></td></tr>
+    <tr><td><code>platform_central_db_live_proof</code></td><td>2,087</td></tr>
+    <tr><td><code>cross_session_result_selection_evidence</code></td><td>1,955</td></tr>
+    <tr><td><code>bench_project_result_selection</code></td><td>859</td></tr>
+    <tr><td colspan="2" style="text-align:right"><strong>합계</strong></td><td><strong>6,564줄</strong></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p class="copy">
+  검사는 <strong>「검사하지 않았다」를 「결함 없다」로 접지 않는다.</strong>
+  기록을 넣는 코드를 발견하면 <strong>확인 장치를 요구하며 실패</strong>한다.
+  네 개 모두 장치를 붙였고, 각각이 실제로 몇 건을 보는지 따로 셌다.
+</p>
+
+<div class="note warn">
+  <div class="hd">검사가 «느려지면» 꺼진다 — 그래서 규모를 줄였다</div>
+  <p>
+    네 번째 도구는 성능 측정용이라 <strong>10만 행</strong>을 만든다.
+    확인 장치를 그대로 붙이니 이 검사가 <strong>1.5초 → 18초</strong>가 됐다.
+    이 검사는 <strong>모든 검증 때마다</strong> 돈다.
+  </p>
+  <p>
+    이 검사가 묻는 것은 「몇 건인가」가 아니라 <strong>「형식이 맞는가」</strong>이므로,
+    규모를 20건으로 줄였다 — <strong>3.1초</strong>. 줄인 뒤에도 일부러 깨뜨린 상태를
+    잡는 것을 확인했다.
+  </p>
+</div>
+
+</section>
+
+<section>
+<h2>6 · 최종 확인</h2>
+
+<div class="tablebox wide">
+<table>
+  <thead><tr><th style="width:44%">무엇을 봤나</th><th style="width:56%">결과</th></tr></thead>
+  <tbody>
+    <tr><td>도구 38개를 실제로 실행</td><td><span class="tag tag-good">정상 38 / 비정상 0</span></td></tr>
+    <tr><td>없는 대상을 부르는 코드가 있나</td><td><span class="tag tag-good">0건</span> <small>패키지 211파일/396곳 · scripts 55파일/40곳</small></td></tr>
+    <tr><td>초록인데 안 재는 검사가 남았나</td><td><span class="tag tag-good">0곳</span> <small>시작 시 10곳</small></td></tr>
+    <tr><td>배포판이 나르는 것</td><td><span class="tag tag-good">모듈 37개</span> · <code>scripts/</code> 0개</td></tr>
+    <tr><td>레인 판정 도구 (<code>lane_check</code>)</td><td><span class="tag tag-good">선언 0 / 관측 0 — 일치</span></td></tr>
+    <tr><td>전체 시험</td><td><span class="tag tag-good">3,093 통과 / 29 건너뜀 / 실패 0</span></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>옮긴 코드가 «같은 코드»인지도 확인했다</h3>
+
+<p class="copy">
+  「사본 둘 중 어느 것이 원본인가」를 정리하려면, 옮긴 것이 <strong>내용이 같아야</strong> 한다.
+  파일마다 함수·클래스를 이름으로 짝지어 구조를 대조했다.
+  <strong>28건 중 로직이 바뀐 것은 한 줄</strong>이었고, 그 한 줄이 무엇인지도 남겼다.
+</p>
+
+<pre class="mono">- from scripts._keycloak_chamber_admin       import run_lifecycle_live
++ from fcc_test_platform.keycloak_chamber_admin import run_lifecycle_live</pre>
+
+</section>
+
+<section>
+<h2>7 · 고치지 않고 «보고»만 한 것</h2>
+
+<div class="note warn">
+  <div class="hd">간헐적으로 실패하는 시험이 하나 있다 — 실물로 확인됨</div>
+  <p>
+    <code>tests/test_token_revocation_custody.py</code> 는
+    <strong>실시간 초 단위 시계</strong>를 쓰고 토큰 50개를 한꺼번에 밀어 넣는다
+    (<code>epoch_clock=lambda: int(time.time())</code>, 168행).
+    PC 가 바쁘면 초 경계를 넘어 <strong>만료 판정이 뒤집힌다.</strong>
+  </p>
+  <div class="tablebox">
+  <table>
+    <thead><tr><th>언제</th><th>전체 시험</th><th>그 파일만 단독</th></tr></thead>
+    <tbody>
+      <tr><td>작업 시작 전 기준선</td><td><span class="tag tag-bad">실패 1</span></td><td><span class="tag tag-good">73 통과</span></td></tr>
+      <tr><td>작업 중 (다른 시험 이름)</td><td><span class="tag tag-bad">실패 1</span></td><td><span class="tag tag-good">73 통과</span></td></tr>
+      <tr><td>작업 중 (또 다른 이름)</td><td><span class="tag tag-bad">실패 1</span></td><td><span class="tag tag-good">73 통과</span></td></tr>
+      <tr><td><strong>다른 세션에서도 1회</strong></td><td><span class="tag tag-bad">업로드 차단</span></td><td><span class="tag tag-good">3회 모두 통과</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>
+    <strong>실패하는 시험 «이름»이 매번 달랐다.</strong> 하나의 결함이 아니라
+    그 파일 전체가 PC 부하에 민감하다는 뜻이다.
+    두 세션이 각각 목격했으므로 <strong>간헐 실패는 실물</strong>이다.
+  </p>
+  <p>
+    이번 작업이 만든 것이 아니라 <strong>드러낸</strong> 것이다 —
+    전체 시험을 30번 넘게 돌렸기 때문이다.
+    고정된 시계로 바꾸는 것은 그 시험이 무엇을 보장하는지를 바꾸는 일이라
+    <strong>이번 범위에서 손대지 않고 보고만 한다.</strong>
+  </p>
+</div>
+
+<p class="copy">
+  <strong>시험원이 알아야 할 것</strong>: 전체 시험에서 이 파일의 시험 하나가 빨갛게 나오면,
+  <strong>그 파일만 단독으로 다시 돌려 보라.</strong> 단독에서 초록이면 PC 부하 때문이고
+  코드 문제가 아니다.
+</p>
+
+<pre class="mono">python3 -m pytest -q tests/test_token_revocation_custody.py</pre>
+
+</section>
+
+<section>
+<h2>8 · 지금 상태와 남은 일</h2>
+
+<figure class="wide">
+<svg viewBox="0 0 860 210" role="img" aria-label="이번에 끝난 것과 남은 것">
+  <text class="svg-hd" x="10" y="18">사본 두 벌 중 «한쪽»만 정리됐다</text>
+
+  <rect class="svg-box" x="10" y="40" width="380" height="140" rx="4"/>
+  <text class="svg-lbl" x="26" y="66">플랫폼 저장소 (이번 작업)</text>
+  <text class="svg-gootx" x="26" y="92">✔ 알맹이 14,268줄 → 배포판</text>
+  <text class="svg-gootx" x="26" y="114">✔ 호출부 842줄 · 명령 37개</text>
+  <text class="svg-gootx" x="26" y="136">✔ 검사 3종 신설 · 10곳 상환</text>
+  <text class="svg-gootx" x="26" y="162">✔ main 에 착지 (PR #84·86·87·88)</text>
+
+  <rect class="svg-box" x="470" y="40" width="380" height="140" rx="4"/>
+  <text class="svg-lbl" x="486" y="66">받는 쪽 저장소 (남은 일)</text>
+  <text class="svg-badtx" x="486" y="92">✗ 옛 사본이 그대로 있다</text>
+  <text class="svg-badtx" x="486" y="114">✗ 배포판 핀이 아직 옛 판</text>
+  <text class="svg-sub"  x="486" y="140">→ 여기까지 해야 사본이 하나가 된다</text>
+  <text class="svg-sub"  x="486" y="162">순서: 올리기 → 판올림 → 핀 → 사본 교체</text>
+
+  <path class="svg-edge" d="M395 110 L 465 110" stroke-dasharray="6 5"/>
+</svg>
+</figure>
+
+<div class="note">
+  <div class="hd">그 뒤로 하나가 더 끝났다 — 도구를 이 저장소 «없이» 부를 수 있다</div>
+  <p>
+    이 문서를 처음 쓸 때는 「받는 쪽에서 파일을 지우면 런북이 갈 곳을 잃는다」가
+    남은 문제였다. 배포판을 설치해도 <strong>명령이 하나도 생기지 않았기</strong>
+    때문이다(태그 v0.1.9 실측: 진입점 0개).
+  </p>
+  <p>
+    그 자리를 메웠다. 이제 이 배포판을 설치하면 도구마다 명령이 생긴다.
+    <strong>실제 배포판으로 확인했다</strong> — 개발용 설치가 아니라 진짜 휠로:
+  </p>
+  <pre class="mono">생성된 명령        37개
+저장소 «밖»에서    fcc-platform-backup-restore-drill template … → JSON, rc=0</pre>
+  <p>
+    ⚠️ 인자와 동작은 <strong>양쪽이 같다.</strong> 다른 도구가 아니라 같은 알맹이를
+    부르는 다른 방법이고, 런북의 <code>python3 scripts/…</code> 도 그대로 유효하다.
+  </p>
+</div>
+
+<div class="note">
+  <div class="hd">그래도 받는 쪽 사본은 아직 있다 — 순서 때문이다</div>
+  <p>
+    받는 쪽의 사본을 <strong>먼저</strong> 22줄로 바꾸면, 그 순간 받는 쪽이 <strong>멈춘다</strong> —
+    22줄이 부르려는 새 모듈이 <strong>아직 그쪽 배포판에 없기</strong> 때문이다.
+    <strong>순서를 지켜야 한다</strong>: 이쪽을 올리고 → 판올림(태그)하고 →
+    받는 쪽의 배포판 핀을 새 판으로 올린 다음 → 그때 사본을 교체한다.
+  </p>
+</div>
+
+</section>
+
+<section>
+<h2>9 · 다음 세션에 붙여 넣을 것</h2>
+
+<p class="copy">
+  아래 상자를 그대로 복사해서 다음 세션 첫 메시지로 붙여 넣으면 된다.
+</p>
+
+<div class="prompt-head">
+  <span>다음 세션 프롬프트 — 받는 쪽 저장소의 사본을 마저 정리</span>
+  <button class="copy" id="cp" type="button">전체 복사</button>
+</div>
+<pre class="prompt wide" id="pr">받는 쪽 저장소(모노레포)에 남아 있는 도구 사본을 22줄 호출부로 교체할 것.
+2026-09-05 에 플랫폼 레인 쪽 38건을 끝냈고, 이것이 그 «나머지 반쪽»이다.
+
+■ 왜 이 작업을 해야 하는가 — 반쪽만 하면 오히려 나빠진다
+
+지금 같은 도구의 로직이 두 저장소에 각각 있다. 2026-08-31 에 두 사본을
+맞춰 주던 장치가 폐지돼, 그 뒤로 둘은 각자 움직인다. 어느 쪽이 원본인지
+기계가 판정하지 못하고, 갈라져도 «두 쪽 다 정상 종료»로 보인다.
+
+2026-09-05 웨이브가 «플랫폼 쪽»을 정리했다 — 알맹이 14,268줄이 배포판으로
+가고 호출부 842줄만 남았다. 그런데 **받는 쪽은 아직 옛 사본 그대로**다.
+즉 지금은 「한쪽은 얇은 호출부, 한쪽은 두꺼운 옛 사본」이고,
+**갈라짐이 멈춘 것이 아니라 갈라진 채로 고정됐다.**
+받는 쪽까지 교체해야 사본이 «하나»가 된다.
+
+■ 순서를 반드시 지킬 것 — 뒤집으면 받는 쪽이 그 자리에서 멈춘다
+
+  ✅ ① 플랫폼 레인 착지 — 2026-09-05 완료
+       PR #84 알맹이 33건 + 봉인 둘 · #87 이름 해소 오탐 수리 ·
+       #88 마지막 3건 · #86 진입점 37개와 그 봉인
+       → 이관 38/38, 남음 0. 도구를 이 저장소 «없이» 부를 수 있다
+
+  ② 판올림(태그)한다 — 새 모듈과 명령은 태그가 나와야 배포판에 실린다
+  ③ 받는 쪽의 배포판 핀을 새 판으로 올린다
+     ⚠️ 이 범위는 임자가 있다 — 위의 「소유자와 조율」 항목을 먼저 읽을 것
+  ④ **그때** 받는 쪽 사본을 정리한다
+
+  ⚠️ ④를 ③보다 먼저 하면, 그 자리를 대신할 모듈이 그쪽 설치본에 «없어서»
+     그 도구들이 전부 죽는다. 이것이 이 순서의 유일한 이유다.
+
+  ⚠️ 그리고 ④는 「22줄 호출부로 교체」가 아니라 **삭제**다. 설계서
+     (`docs/architecture/repository_split_adr.md` § Provider-Lane Endpoint)가
+     2026-09-05 에 그 종착 조건을 적었다 — 받는 쪽은 provider 레인으로만 남고
+     플랫폼 도구를 «모르는» 것이 끝난 상태다. 호출부를 영구히 두면 그것이 해결한
+     문제(두 레포가 다 소유자처럼 보이는 상태)를 되살린다.
+     실측: 사본을 부르는 시험 28개 중 **23개가 이미 같은 이름으로 플랫폼 레인에
+     있다** — 옮길 것이 아니라 지울 중복이다. 남은 5개만 설치본을 가리키게 고친다.
+
+■ 교체할 때 반드시 훑을 것 — 형태가 «여덟»이다
+
+플랫폼 쪽에서 실측으로 확인한 목록이다. 여섯까지는 예상했고 일곱·여덟은
+「작업이 실제로 멈춘 자리」가 알려 줬다.
+
+  ① from <도구> import <이름>            코드로 보임
+  ② 형제 도구끼리의 import               코드로 보임 (위상 순서 필요)
+  ③ import <도구> as <별명>              코드로 보임
+     ⚠️ 줄 끝에 `# noqa` 가 붙은 것, 여러 줄 `from X import (` 형태를 놓치기 쉽다
+  ④ mock.patch('<도구>.<이름>')           문자열 — 코드 검색으로 안 보임
+  ⑤ 'scripts.<도구>.<이름>'               문자열 (접두사 형태)
+  ⑥ 'scripts/<도구>.py' 경로              대개 무해 — 호출부가 그 자리에 남으므로
+  ⑦ **그 파일의 «내용»을 읽는 검사**      ⚠️ 이관 전에도 후에도 «초록»이다
+  ⑧ **경로가 조각으로 쪼개진 동적 로드**  ⚠️ `_ROOT / 'scripts' / 'x.py'`
+
+⚠️ ⑦이 가장 위험하다. 검사가 실패하지 않으므로 전체 시험으로도, 전후 비교로도
+   안 보인다. **파일 이름으로 정적 검색해야만** 보인다. 플랫폼 쪽에서 10곳
+   나왔고 그중 1곳은 선행 작업이 닷새 동안 남겨 둔 것이었다.
+   처방은 저장소가 이미 갖고 있다: tests/_moved_module_source.py —
+   경로가 아니라 «모듈»에게 사는 곳을 묻는다. 그리고 그 자리마다
+   「이 모듈이 실제로 무언가를 읽고 있는가」 팔을 함께 달 것.
+
+⚠️ ④⑤ 를 정규식으로 고칠 때 `'x.py'` 를 「모듈.이름」으로 오인하지 말 것 —
+   `py` 가 유효한 이름이라 순진한 패턴이 그대로 잡는다.
+
+■ 한 번에 하나씩. 매 건마다 판정할 것
+
+일괄 시도는 47건이 한꺼번에 빨개져 되돌린 전례가 있다. 한 건씩 하면
+어느 형태가 원인인지 갈린다. 매 건 이 여섯을 볼 것:
+
+  ① 수집 에러 수      ② 이름이 실제로 있나   ③ 옛 이름을 문자열로 든 곳
+  ④ 옛 파일 내용을 읽던 검사   ⑤ 없는 대상을 부르는 import   ⑥ 전체 시험
+
+■ 알아 둘 것 — 간헐 실패 하나
+
+tests/test_token_revocation_custody.py 가 실시간 초 시계를 쓴다(168행).
+PC 가 바쁘면 실패하고, **실패하는 시험 이름이 매번 다르다.**
+두 세션이 각각 목격했으므로 실물이다. 전체 시험에서 이 파일이 빨가면
+그 파일만 단독으로 다시 돌려 볼 것 — 단독에서 초록이면 부하 탓이다.
+이번 범위에서 고치지 말고, 고칠 거면 별도 작업으로.
+
+■ 참고 자료
+
+  docs/education/2026-09-05-scripts-알맹이-패키지-이관-시험원-교육자료.html
+  .claude/evaluations/2026-09-05-scripts-guts-into-the-package.md
+
+■ 시작 전에 반드시 확인할 것 두 가지 (2026-09-05 실측)
+
+(가) origin/main 이 계속 움직인다. 이 세션 중에도 d977275 → 90ec3e5 → 4f1e0f7
+     → 0b183fe 로 네 번 갔다. **베이스를 다시 맞추고 전체 시험을 다시 돌릴 것.**
+     특히 0b183fe 는 계약 배포판 핀을 v0.1.21 → v0.1.22 로 올린다 —
+     venv 도 선언대로 재설치해야 한다(다른 세션이 이걸 놓쳐 한 번 헛돌렸다).
+
+(나) 받는 쪽 사본 중 하나는 **이미 깨져 있다.**
+       플랫폼 쪽 :829  …infrastructure.adapters.driven.central_project_reference_adapter
+       받는 쪽   :798  …application.central_project_reference_adapter   ← 사라진 경로
+     scripts/cross_session_result_selection_evidence.py 다. 그 줄은 함수 «안»에
+     있어 실제로 불릴 때에만 드러나고, 라이브 DB 가 있어야 도달하므로 평소 검사에
+     안 밟힌다. 사본을 교체하면 이 문제도 함께 사라진다 —
+     **이 작업이 「정리」가 아니라 「고장 수리」인 이유가 이것이다.**
+
+push 전에 사용자 승인을 받을 것. 착수 직후와 완료 후 보고할 것.</pre>
+
+</section>
+
+<footer>
+  fcc-test-platform · scripts 알맹이 이관 웨이브 완주(38/38) · 커밋
+  <span class="mono">abba0c5</span> · <span class="mono">a7e35aa</span> · push 전<br />
+  이 문서의 모든 숫자는 실제 실행 결과다 — 추정치는 들어 있지 않다.
+</footer>
+
+</main>
+</div>
+
+<script>
+  (function () {
+    var btn = document.getElementById('cp');
+    var pre = document.getElementById('pr');
+    if (!btn || !pre) return;
+    btn.addEventListener('click', function () {
+      var text = pre.innerText;
+      var done = function (msg) {
+        btn.textContent = msg;
+        setTimeout(function () { btn.textContent = '전체 복사'; }, 2200);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done('복사됨'); },
+          function () { select(); });
+      } else { select(); }
+      function select() {
+        var r = document.createRange();
+        r.selectNodeContents(pre);
+        var s = window.getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+        done('선택됨 — Ctrl+C');
+      }
+    });
+  })();
+</script>
+  </body>
+</html>
