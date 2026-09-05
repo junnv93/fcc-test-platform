@@ -96,8 +96,7 @@ export function SampleCustodyPanel({
   });
 
   const remove = useMutation({
-    mutationFn: (eventId: string) =>
-      deleteSampleCustodyEvent(projectId, sampleId, eventId),
+    mutationFn: (eventId: string) => deleteSampleCustodyEvent(projectId, sampleId, eventId),
     onSuccess: () => void invalidate(),
   });
 
@@ -152,9 +151,7 @@ export function SampleCustodyPanel({
                   : t('routes.sampleInventory.custodyReleased')}
               </span>
               <span className="sample-custody__date">{item.occurred_on ?? '—'}</span>
-              <span className="sample-custody__counterparty">
-                {item.counterparty ?? ''}
-              </span>
+              <span className="sample-custody__counterparty">{item.counterparty ?? ''}</span>
               <span className="sample-custody__cert">{item.intake_cert_number ?? ''}</span>
               <span className="sample-custody__reason">{item.reason ?? ''}</span>
               <span className="sample-custody__note">{item.note ?? ''}</span>
@@ -204,12 +201,8 @@ export function SampleCustodyPanel({
                     update('event_type', event.target.value as SampleCustodyEventType)
                   }
                 >
-                  <option value="received">
-                    {t('routes.sampleInventory.custodyReceived')}
-                  </option>
-                  <option value="released">
-                    {t('routes.sampleInventory.custodyReleased')}
-                  </option>
+                  <option value="received">{t('routes.sampleInventory.custodyReceived')}</option>
+                  <option value="released">{t('routes.sampleInventory.custodyReleased')}</option>
                 </select>
               </FieldGroup>
               <FieldGroup

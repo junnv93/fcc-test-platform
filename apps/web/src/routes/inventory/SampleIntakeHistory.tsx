@@ -3,13 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchSampleIntakes } from '@/api/platform-client';
 import { queryKeys } from '@/api/query-config';
 import { useT } from '@/i18n';
-import {
-  BlockSkeleton,
-  describeApiError,
-  EmptyState,
-  ErrorState,
-  SectionBand,
-} from '@/ui';
+import { BlockSkeleton, describeApiError, EmptyState, ErrorState, SectionBand } from '@/ui';
 
 /**
  * 시험 실무자 축의 1:N 입고 이력 (ADR-0002 완료조건 4).
@@ -58,9 +52,7 @@ export function SampleIntakeHistory({
       <p className="sample-intake-history__description">
         {t('routes.sampleInventory.intakeHistoryDescription')}
       </p>
-      {intakes.isPending && (
-        <BlockSkeleton lines={3} testId="sample-intake-history-loading" />
-      )}
+      {intakes.isPending && <BlockSkeleton lines={3} testId="sample-intake-history-loading" />}
       {intakes.isError && (
         <ErrorState
           testId="sample-intake-history-error"

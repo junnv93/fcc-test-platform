@@ -933,14 +933,11 @@ export type SamplePatchRequest = components['schemas']['SamplePatchRequest'];
 export type SampleStatusRequest = components['schemas']['SampleStatusRequest'];
 export type SampleVersionRequest = components['schemas']['SampleVersionRequest'];
 export type SampleHistoryPage = components['schemas']['SampleHistoryPage'];
-export type SampleIntakeHistoryEnvelope =
-  components['schemas']['SampleIntakeHistoryEnvelope'];
+export type SampleIntakeHistoryEnvelope = components['schemas']['SampleIntakeHistoryEnvelope'];
 export type SampleIntakeHistoryList = components['schemas']['SampleIntakeHistoryList'];
-export type SampleCustodyEventEnvelope =
-  components['schemas']['SampleCustodyEventEnvelope'];
+export type SampleCustodyEventEnvelope = components['schemas']['SampleCustodyEventEnvelope'];
 export type SampleCustodyEventList = components['schemas']['SampleCustodyEventList'];
-export type SampleCustodyEventRequest =
-  components['schemas']['SampleCustodyEventRequest'];
+export type SampleCustodyEventRequest = components['schemas']['SampleCustodyEventRequest'];
 export type SampleCustodyEventType = SampleCustodyEventRequest['event_type'];
 export type SampleRevisionEnvelope = components['schemas']['SampleRevisionEnvelope'];
 export type HardDeleteReceipt = components['schemas']['HardDeleteReceipt'];
