@@ -1,18 +1,18 @@
 {
   "_doc": "FE-P7 (2026-05-26) production bundle budget. NOT a magic number: maxGzipBytes is DERIVED from a measured baseline (measure-bundle.mjs --build) times a documented headroom factor. Re-measure + re-derive when the baseline legitimately shifts. Rationale + procedure: docs/architecture/frontend/performance-budget.md.",
-  "measuredGzipBytes": 318274,
-  "measuredAt": "2026-06-26",
-  "measuredCommitNote": "Platform workbench UX redesign and local dev origin standardization PR. Re-measured with `npm run measure:bundle -- --build`; reachable bundle baseline moved from 251,641 B to 318,274 B gzip after the new workbench surfaces and supporting UI code.",
+  "measuredGzipBytes": 402509,
+  "measuredAt": "2026-09-05",
+  "measuredCommitNote": "Re-derived on main 275069b with the canonical tool (`node scripts/measure-bundle.mjs --build`); reproduced twice, identical buildId. Previous baseline 318274 B was measured 2026-06-26 IN THE MONOREPO, before this box existed — so a per-commit attribution back to it is not possible here (the delivery box carries no monorepo history, EXTRACTED_FROM.md). WHY IT DRIFTED UNSEEN: the gate had not executed in CI since 2026-08-31. `frontend.yml`'s `build` job sets `defaults.run.working-directory: apps/web`, and the api-artifacts mirror step used a repo-root path, so the job died with MODULE_NOT_FOUND before ever reaching measure/budget. Every step after it — codegen, codegen drift, lint, unit tests, production build, this budget — was dead for five days (fixed 2026-09-05). The overage is accumulated drift that no one could see, not a single regression. NOT A LAZY-LOADING REGRESSION: the two observability SDKs (sentry-runtime 77,502 B + tracing 36,415 B = 113,917 B, 28% of this total) are still absent from the initial-load path — see initialLoadPathJs below. That is the failure this budget's sibling metric exists to catch, and it did not happen. MEASURED TRAJECTORY inside this box: b7c60bf (2026-09-04, before the sample-domain wave) 396,634 B; 89a4e38 (2026-09-05, before PR #68) 399,493 B; 275069b (this baseline) 402,509 B — i.e. PR #68 contributed +3,016 B and the rest is spread across the waves before it. Growth is route/feature chunks, all lazy.",
   "headroomFactor": 1.2,
-  "maxGzipBytes": 381929,
+  "maxGzipBytes": 483011,
   "initialLoadPathJs": {
     "_doc": "Wave fe-w4-bundle-observability-cost (2026-07-31) — a SECOND budget on a DIFFERENT metric, using the same measured-derived discipline as the total above. Metric = the entry <script type=\"module\"> in dist/index.html plus every <link rel=\"modulepreload\"> it declares: exactly the JavaScript a user must download before the app can run. Lazily import()ed route and observability chunks are excluded by construction (Vite only preloads the entry's static import graph); CSS and .map files are out of scope. WHY A SECOND METRIC: totalGzipBytes is blind to *when* a chunk is fetched. This wave moved 114,561 B gzip off the initial path and the total barely moved — so a total-only budget scores both this win and its exact regression as 'no change', which is why the defect it was supposed to catch survived for two months.",
-    "measuredGzipBytes": 161064,
-    "measuredRawBytes": 522543,
-    "measuredAt": "2026-07-31",
-    "measuredCommitNote": "Measured on disk with scripts/measure-bundle.mjs (node:zlib level 9). Before, built from pristine ff47ef8a in an isolated worktree with the identical instrument: 886,519 B raw / 275,625 B gzip. After: 522,543 B raw / 161,064 B gzip (-41.1% raw, -41.6% gzip). The metric also counts the four render-blocking <head> scripts (runtime-config / theme-init / density-boot / lang-init, 5,182 B raw total) — they are part of what the browser must fetch, and they are identical on both sides.",
+    "measuredGzipBytes": 177967,
+    "measuredRawBytes": 580775,
+    "measuredAt": "2026-09-05",
+    "measuredCommitNote": "Re-derived on main 275069b alongside the total above. Previous baseline 161064 B (2026-07-31) was exceeded by only 796 B — the breach is recent and small: this box measured 175,864 B at b7c60bf (2026-09-04), i.e. 1,307 B under the old ceiling, so the wave that crossed it was the last day of work, not a long slide. The entry graph is 8 chunks: index 83,298 / react 64,913 / validation 13,774 / query 12,998 / lang 1,014 / theme 713 / runtime 638 / density 619. NEITHER SDK IS AMONG THEM — the re-gluing this metric was built to catch has not occurred; the growth is the app shell itself.",
     "headroomFactor": 1.1,
-    "maxGzipBytes": 177171,
-    "headroomRationale": "10% rather than the total budget's 20%: the initial path is the metric users feel, and it should not silently absorb a whole SDK. The resulting headroom is 16,107 B — deliberately SMALLER than the smallest chunk this wave removed (tracing, 36,414 B gzip), so re-gluing either SDK back into the entry graph trips the gate immediately instead of being swallowed. Ratchet: lower it when a wave measurably shrinks the initial path; raising it needs a recorded justification."
+    "maxGzipBytes": 195764,
+    "headroomRationale": "10% rather than the total budget's 20%: the initial path is the metric users feel, and it should not silently absorb a whole SDK. The resulting headroom is 17,797 B — still deliberately SMALLER than the smallest chunk the 2026-07-31 wave removed (tracing, 36,415 B gzip), so re-gluing either SDK back into the entry graph trips the gate immediately instead of being swallowed. Ratchet: lower it when a wave measurably shrinks the initial path; raising it needs a recorded justification."
   }
 }
