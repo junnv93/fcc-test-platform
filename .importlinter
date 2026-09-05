@@ -1,0 +1,83 @@
+# import-linter — 경계 계약 (설계서 §6.2 / S2)
+#
+# 왜 루트의 별도 파일인가: mypy.ini 와 같은 이유다. 루트 pyproject.toml 은
+# .extraction-layout.json 이 예약한 배송 경로라 게이트 설정을 거기 두면 배송이 거부한다.
+#
+# 실행에 형제 레인이 sys.path 에 필요하다 (이 레인은 혼자 돌지 않는다 — EXTRACTED_FROM.md):
+#   SIB="$(cd .. && pwd)/fcc-test-contracts"
+#   PYTHONPATH="$PWD:$SIB:$SIB/packages/fcc-test-kernel" lint-imports --no-cache
+#
+# --no-cache 는 장식이 아니다: 캐시를 쓰면 `.import_linter_cache/` 가 트리에 남는데,
+# mypy 와 달리 import-linter 는 자기 캐시에 .gitignore 를 넣지 않는다. 이 레포의
+# .gitignore 는 배송이 관리하므로 규칙을 더할 수 없다 — 그래서 플래그로 막는다.
+# 게이트(tests/test_architecture_gate_conformance.py)도 같은 플래그로 부른다.
+#
+# include_external_packages 가 없으면 실행 자체가 거부된다 —
+# forbidden_modules 에 외부 패키지(psycopg 등)가 있기 때문이다.
+
+[importlinter]
+root_packages =
+    fcc_test_platform
+include_external_packages = True
+
+# ── 계약 1 — 4층 레이어 ────────────────────────────────────────────────
+# 위가 아래를 import 한다. 역방향과 건너뛰는 역방향을 모두 금지한다.
+[importlinter:contract:layers]
+name = 4-layer architecture (api > infrastructure > application > domain)
+type = layers
+layers =
+    fcc_test_platform.api
+    fcc_test_platform.infrastructure
+    fcc_test_platform.application
+    fcc_test_platform.domain
+
+# ── 계약 2 — 도메인 순수성 ─────────────────────────────────────────────
+# 도메인은 웹 프레임워크 · DB 드라이버 · 표 계산 라이브러리를 몰라야 한다.
+# 이 계약이 KEPT 인 것이 mypy.ini 가 domain/* 에만 strict 를 거는 근거다.
+[importlinter:contract:purity]
+name = domain third-party purity
+type = forbidden
+source_modules =
+    fcc_test_platform.domain
+forbidden_modules =
+    fastapi
+    psycopg
+    sqlalchemy
+    pandas
+    openpyxl
+
+# ── 계약 3 — application 의 DB 드라이버 격리 ───────────────────────────
+# SQL 은 infrastructure 에서만 나와야 한다. 지금은 BROKEN 2건이고 아래 baseline 에
+# 등재돼 있다. 해소는 설계서 S3(DB 어댑터 이전).
+#
+# BASELINE — 2026-09-05 실측(211 파일 / 919 의존). 이 둘이 전부다:
+#
+#   ① application.central_project_reference_adapter -> psycopg (l.63)   직접
+#      해소: 모듈을 infrastructure/adapters/driven/ 으로 이전(S3).
+#
+#   ② application.runtime_config -> fcc_test_platform.central_db_config (l.26)
+#        -> psycopg (l.135)                                             간접
+#      루트 모듈 central_db_config 가 «설정»과 «드라이버»를 함께 들고 있어 생긴다.
+#      grep 으로는 보이지 않는다 — 경유 모듈이 application 밖에 있기 때문이다.
+#      해소: 설정 읽기와 연결 생성을 분리해 runtime_config 가 설정만 보게 한다(S3).
+#      등재는 «진입 간선» 한 개만 지운다 — central_db_config -> psycopg 를 지우면
+#      다른 application 모듈이 같은 경유로 드라이버에 닿아도 조용해지기 때문이다.
+#
+# ⚠️ 한 방향으로만 줄어든다: unmatched_ignore_imports_alerting = error 이므로
+#    위반이 해소되면 그 등재가 그래프에서 사라지고 «등재가 안 맞는다»로 게이트가
+#    깨진다. 즉 고친 사람이 등재를 지우도록 기계가 강제한다. 새 위반은 추가 금지.
+[importlinter:contract:app-no-db]
+name = application DB driver isolation
+type = forbidden
+source_modules =
+    fcc_test_platform.application
+forbidden_modules =
+    psycopg
+    sqlalchemy
+ignore_imports =
+    fcc_test_platform.application.central_project_reference_adapter -> psycopg
+    fcc_test_platform.application.runtime_config -> fcc_test_platform.central_db_config
+unmatched_ignore_imports_alerting = error
+broken_contract_guidance =
+    SQL 은 infrastructure 에서만 나온다. 새 위반이면 어댑터를 infrastructure/adapters/driven/ 에
+    두고 application 은 domain 의 포트(Protocol)만 잡아라. 설계서 S3 를 보라.

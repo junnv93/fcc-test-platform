@@ -87,7 +87,9 @@ def _unii_bucket_for_band(band_token: str) -> str:
     return _UNII_BUCKET_PREFIX + _unii_segment(band_token)
 
 
-def progress_bucket_id(*, technology, band) -> Optional[str]:
+def progress_bucket_id(
+    *, technology: Optional[str], band: Optional[str]
+) -> Optional[str]:
     """Derive the ``progress_bucket_id`` for one measurement condition.
 
     ``None`` when the condition is unbucketable (unknown technology, or a WLAN

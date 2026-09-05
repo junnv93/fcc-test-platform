@@ -28,9 +28,9 @@ def build_expectation_atom(
     provider_id: str,
     progress_area: str,
     condition_hash: str,
-    technology,
-    band,
-    raw_test_type,
+    technology: Optional[str],
+    band: Optional[str],
+    raw_test_type: str,
     catalog: StandardTimeCatalog,
     plan_published_at: Optional[str] = None,
 ) -> ProgressExpectationAtom:
