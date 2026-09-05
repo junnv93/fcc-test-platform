@@ -44,12 +44,20 @@
 --
 -- ## Ordering
 --
--- INDEPENDENT of 031-033. Those three straddle a deploy boundary because live code
--- reads/writes the columns they touch; this one touches a column NO code names, in
--- either direction, so it can be applied online at any point in the sequence and
--- needs no stop window of its own. It is numbered 035 because 034 is taken
--- (sample custody events) — verified 2026-09-05 across every remote branch and
--- every local worktree.
+-- Numbered 035 because 034 is taken (sample custody events) — verified 2026-09-05
+-- across every remote branch and every local worktree.
+--
+-- `scripts/platform_migration_deploy_class.py` classifies this file STOP-WINDOW, and
+-- that verdict is correct as a CLASS: it derives the hazard from the SQL alone, and
+-- `DROP COLUMN` is a hazard because the tool cannot know what the *currently
+-- deployed* build names. The evidence above is the narrower claim — that in THIS
+-- tree no code names the column in either direction.
+--
+-- ⚠️ The narrower claim does not override the tool, and it does not need to. This
+-- file rides the same window as 032 · 033, so the conservative verdict costs
+-- nothing. Do not add an escape hatch that lets a file downgrade its own class:
+-- a self-certified 'online' is a claim the gate cannot check, and the one time it
+-- is wrong is the time the gate existed for.
 --
 -- Dialect: PostgreSQL only (like 001-034). Transactional: no CONCURRENTLY, so
 -- scripts/platform_db_migrate.py runs the whole file in one transaction.
