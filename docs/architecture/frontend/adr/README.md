@@ -2,16 +2,20 @@
 
 이 디렉토리는 FCC frontend platform 의 **stable architecture decision** 을 보관한다. 각 ADR 은 결정의 context / decision / consequences / alternatives / revisit conditions 를 명시한다.
 
+> ⚠️ **상태 갱신 2026-09-05** — 표의 Status 가 전부 `Proposed` 였으나 **여섯 결정 모두
+> 이미 구현돼 있다.** 각 ADR 본문에 구현 증거를 적었다. **재구현하지 말 것.**
+> 현황은 [`../../2026-09-04-플랫폼-리팩토링-설계서.md`](../../2026-09-04-플랫폼-리팩토링-설계서.md) 참조.
+
 ## ADR Index
 
 | # | Title | Status |
 |---|-------|--------|
-| [0001](0001-frontend-repo-location.md) | Frontend repo location — monorepo `apps/web/` vs 별도 `fcc-test-platform` repo | Proposed |
-| [0002](0002-stack-selection.md) | Stack selection — React + Vite + TypeScript + React Router + TanStack Query | Proposed |
-| [0003](0003-openapi-ts-client-generator.md) | OpenAPI → TS client generator — `openapi-typescript` 채택 | Proposed |
-| [0004](0004-distributed-tracing-sdk.md) | Distributed tracing frontend SDK — OpenTelemetry browser | Proposed |
-| [0005](0005-central-db-read-model.md) | Central DB read model — PostgreSQL or SQLite-extended | Proposed |
-| [0006](0006-observability-backend.md) | Observability backend — Sentry + OpenTelemetry collector | Proposed |
+| [0001](0001-frontend-repo-location.md) | Frontend repo location — monorepo `apps/web/` vs 별도 `fcc-test-platform` repo | ✅ 구현됨 |
+| [0002](0002-stack-selection.md) | Stack selection — React + Vite + TypeScript + React Router + TanStack Query | ✅ 구현됨 |
+| [0003](0003-openapi-ts-client-generator.md) | OpenAPI → TS client generator — `openapi-typescript` 채택 | ✅ 구현됨 |
+| [0004](0004-distributed-tracing-sdk.md) | Distributed tracing frontend SDK — OpenTelemetry browser | ✅ 구현됨 |
+| [0005](0005-central-db-read-model.md) | Central DB read model — PostgreSQL or SQLite-extended | Accepted |
+| [0006](0006-observability-backend.md) | Observability backend — Sentry + OpenTelemetry collector | ✅ 구현됨 |
 
 ## ADR 형식
 

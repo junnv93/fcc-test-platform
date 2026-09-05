@@ -1,11 +1,19 @@
 # @fcc/api-artifacts
 
-Repo-split-ready bundle of the shared FCC API contract artifacts (B3 / P14).
+Bundle of the shared FCC API contract artifacts (B3 / P14). It packages the
+cross-language contract artifacts so every backend/frontend consumes one
+surface through a normal npm dependency.
 
-It packages the four cross-language contract artifacts so that, when the
-monorepo is split (see `docs/architecture/repository_split_adr.md`), the
-contract surface can be lifted into its own `fcc-test-contracts` repo and
-consumed by every backend/frontend via a normal npm dependency.
+> ⚠️ **상태 갱신 2026-09-05** — 원문은 「모노레포가 **분리되면**(when the monorepo
+> is split) 계약 표면을 `fcc-test-contracts` 로 들어올릴 수 있다」는 **미래형**이었다.
+> **그 분리는 이미 일어났다.** `fcc-test-contracts` 는 정식 레포이고 2026-09-04 부터
+> **자기 OpenAPI 를 스스로 발행한다**(`d83ebee` — 「조립기가 저쪽에 있어 다섯 사본이
+> 낡았다」). 이 패키지의 사본이 그 발행본과 어긋나지 않는지는 CI 의
+> `api-artifacts mirror drift gate`(`scripts/sync.mjs --check`)가 판정한다.
+>
+> ⚠️ 원문이 가리키던 `docs/architecture/repository_split_adr.md` 는 **이 저장소에
+> 없다**(깨진 링크였다). 분리의 현재 형상은 루트 `README.md` 와
+> [`../../docs/architecture/2026-09-04-플랫폼-리팩토링-설계서.md`](../../docs/architecture/2026-09-04-플랫폼-리팩토링-설계서.md) §0 에 있다.
 
 ## Contents
 
