@@ -10,6 +10,12 @@ Composes the two env-sourced settings the platform read surface needs:
 
 dependency-free: no FastAPI / PySide6 / sqlalchemy / psycopg imports (psycopg is
 bound lazily in the composition root only).
+
+⚠️ 그래서 ``CentralDbConfig`` 를 ``central_db_settings`` 에서 가져온다 —
+``central_db_config`` 파사드가 «아니다». 파사드는 driven 어댑터를 통해 드라이버 쪽에
+닿아 있어서, 여기서 그것을 import 하면 이 모듈의 「dependency-free」 주장이 정적으로
+거짓이 된다. 2026-09-05 이전에는 실제로 그랬고, import-linter 의 ``app-no-db`` 계약이
+그 사슬을 위반 ②로 보고했다(설계서 S3).
 """
 from __future__ import annotations
 
@@ -23,7 +29,7 @@ from fcc_test_contracts.common.rate_limit_config import (
     load_rate_limit_policy,
     rate_limit_env_map,
 )
-from fcc_test_platform.central_db_config import CentralDbConfig
+from fcc_test_platform.central_db_settings import CentralDbConfig
 from fcc_test_platform.domain.services.chamber_proxy_policy import ChamberProxyPolicy
 from fcc_test_contracts.common.rate_limit_policy import RateLimitPolicy
 

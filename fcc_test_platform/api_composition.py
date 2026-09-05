@@ -13,11 +13,16 @@ Loud-fail when the central DB is not configured — the platform read API cannot
 serve project-wide coverage/claims without it, so a missing ``FCC_CENTRAL_DB_URL``
 raises at composition time rather than producing a runtime that 503s every call.
 
-**frozen-exe safety.** ``psycopg`` is imported lazily inside
-``_build_central_connection_factory`` only — a desktop build that never composes
-the platform API pulls in zero PostgreSQL driver code. Tests inject a fake/SQLite
-connection factory and never touch psycopg. Enforced by
-``tests/test_platform_read_api_fe_p0d.py``.
+**frozen-exe safety.** ``psycopg`` is imported lazily inside the driven adapter
+``infrastructure.adapters.driven.central_db_connection`` only — a desktop build
+that never composes the platform API pulls in zero PostgreSQL driver code. Tests
+inject a fake/SQLite connection factory and never touch psycopg.
+
+⚠️ 2026-09-05 (설계서 S3) 이전에는 이 모듈이 그 lazy-connect 로직을 **자기 안에**
+들고 있었고, ``central_db_config`` 에도 같은 것이 한 벌 더 있었다. 둘 다 위 driven
+어댑터로 위임한다 — 드라이버를 잡는 코드가 둘이면 한쪽만 고쳐지는 날이 온다.
+(초판이 이 자리에서 인용하던 ``tests/test_platform_read_api_fe_p0d.py`` 는 이
+레인에 없다. 그 봉인은 모노레포 쪽에 있다.)
 """
 from __future__ import annotations
 
@@ -151,6 +156,9 @@ from fcc_test_platform.application.central_sync_metrics import (
     CentralSyncMetrics,
 )
 from fcc_test_platform.central_db_config import CENTRAL_DB_ENV
+from fcc_test_platform.infrastructure.adapters.driven.central_db_connection import (
+    build_central_db_connection_factory,
+)
 from fcc_test_platform.postgres_central_id_resolver import PostgresCentralIdResolver
 from fcc_test_platform.postgres_ingestion_writer import PostgresIngestionWriter
 from fcc_test_platform.application.central_read_adapter import PostgresCentralReadAdapter
@@ -161,7 +169,7 @@ from fcc_test_platform.application.central_result_selection_adapter import (
 from fcc_test_platform.application.central_result_selection_service import (
     CentralResultSelectionService,
 )
-from fcc_test_platform.application.central_project_reference_adapter import (
+from fcc_test_platform.infrastructure.adapters.driven.central_project_reference_adapter import (
     PostgresCentralProjectReferenceAdapter,
 )
 from fcc_test_platform.application.central_project_reference_service import (
@@ -253,18 +261,15 @@ _spraying_logger = get_logger('platform_api')
 def _build_central_connection_factory(database_url: str) -> Callable[[], DbConnection]:
     """Return a ``() -> DbConnection`` factory backed by psycopg (lazy import).
 
+    Delegates to the driven adapter that owns the driver binding
+    (``infrastructure.adapters.driven.central_db_connection``, 설계서 S3). 이 이름은
+    이 모듈의 조립 경로와 ``password_hasher`` 주석이 부르고 있으므로 남긴다 —
+    사라진 것은 «구현»이지 이름이 아니다.
+
     Each call opens a fresh connection; the read adapter closes it after the
-    single SELECT, so no connection is shared across reads. ``psycopg`` is
-    imported here only (frozen-exe safety — see module docstring).
+    single SELECT, so no connection is shared across reads.
     """
-    if not database_url:
-        raise ValueError('database_url is required to build a connection factory')
-    import psycopg  # lazy — keeps desktop frozen-exe free of the PostgreSQL driver
-
-    def _connect() -> DbConnection:
-        return psycopg.connect(database_url)
-
-    return _connect
+    return build_central_db_connection_factory(database_url)
 
 
 def build_central_connection_factory(database_url: str) -> Callable[[], DbConnection]:

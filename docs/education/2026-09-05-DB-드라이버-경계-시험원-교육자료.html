@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DB 드라이버 경계 착지 — 시험원 교육자료</title>
+    <!--
+      이 파일은 네트워크 없이 열린다 — 외부 글꼴·스크립트·이미지를 부르지 않는다.
+      시험실 PC 에서 더블클릭으로 여는 것이 이 문서의 기본 사용법이기 때문이다.
+      선례: docs/education/2026-09-03-플롯-보관-판정-복구-시험원-교육자료.html
+    -->
+  </head>
+  <body>
+<style>
+  :root {
+    --ground:      #F5F7FA;
+    --surface:     #FFFFFF;
+    --surface-2:   #EDF1F6;
+    --ink:         #12171F;
+    --ink-2:       #4A5566;
+    --ink-3:       #77839A;
+    --rule:        #D3DAE4;
+    --rule-2:      #B9C3D1;
+    --accent:      #1B4F8C;
+    --accent-soft: #E4EDF8;
+    --bad:         #A93318;
+    --bad-soft:    #FBE9E4;
+    --good:        #17654A;
+    --good-soft:   #E1F0E9;
+
+    --f-sans: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+    --f-mono: "Cascadia Mono", Consolas, "D2Coding", "SFMono-Regular", monospace;
+
+    --measure: 66ch;
+    --pad: clamp(1.1rem, 4vw, 2.5rem);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0F131A;
+      --surface:     #161C25;
+      --surface-2:   #1D242F;
+      --ink:         #E7ECF3;
+      --ink-2:       #A7B2C2;
+      --ink-3:       #7C879A;
+      --rule:        #2A323E;
+      --rule-2:      #3B4553;
+      --accent:      #74AAE8;
+      --accent-soft: #182636;
+      --bad:         #EC8368;
+      --bad-soft:    #2C1D18;
+      --good:        #55C295;
+      --good-soft:   #14261F;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #0F131A;
+    --surface:     #161C25;
+    --surface-2:   #1D242F;
+    --ink:         #E7ECF3;
+    --ink-2:       #A7B2C2;
+    --ink-3:       #7C879A;
+    --rule:        #2A323E;
+    --rule-2:      #3B4553;
+    --accent:      #74AAE8;
+    --accent-soft: #182636;
+    --bad:         #EC8368;
+    --bad-soft:    #2C1D18;
+    --good:        #55C295;
+    --good-soft:   #14261F;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-sans);
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+  }
+
+  .wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: var(--pad) var(--pad) 5rem;
+  }
+
+  /* ─── 흐름: 산문은 좁게, 그림·표는 넓게 ─────────────────────── */
+  .flow > * { max-width: var(--measure); }
+  .flow > .wide { max-width: 100%; }
+
+  /* ─── 표제 ──────────────────────────────────────────────── */
+  .masthead {
+    border-top: 3px solid var(--ink);
+    padding-top: 1.1rem;
+    margin-bottom: 3rem;
+  }
+  .kicker {
+    font-family: var(--f-mono);
+    font-size: .72rem;
+    font-weight: 500;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem 1.4rem;
+    margin-bottom: 1rem;
+  }
+  h1 {
+    font-size: clamp(1.85rem, 5.2vw, 3rem);
+    font-weight: 600;
+    line-height: 1.18;
+    letter-spacing: -.02em;
+    text-wrap: balance;
+    margin: 0 0 .9rem;
+  }
+  .standfirst {
+    font-size: clamp(1rem, 2.4vw, 1.16rem);
+    color: var(--ink-2);
+    font-weight: 300;
+    max-width: 58ch;
+    margin: 0;
+  }
+  .standfirst strong { font-weight: 600; color: var(--ink); }
+
+  /* ─── 결과 스트립 ───────────────────────────────────────── */
+  .strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin: 2.5rem 0 3.5rem;
+  }
+  .strip div { background: var(--surface); padding: 1rem 1.1rem; }
+  .strip dt {
+    font-family: var(--f-mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: .45rem;
+  }
+  .strip dd {
+    margin: 0;
+    font-family: var(--f-mono);
+    font-size: 1.32rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
+  }
+  .strip dd small {
+    display: block;
+    font-family: var(--f-sans);
+    font-size: .78rem;
+    font-weight: 400;
+    color: var(--ink-2);
+    letter-spacing: 0;
+    margin-top: .2rem;
+  }
+  .n-good { color: var(--good); }
+  .n-bad  { color: var(--bad); }
+
+  /* ─── 절 ────────────────────────────────────────────────── */
+  section { margin-top: 4rem; }
+  h2 {
+    font-size: clamp(1.25rem, 3vw, 1.6rem);
+    font-weight: 600;
+    letter-spacing: -.015em;
+    line-height: 1.3;
+    text-wrap: balance;
+    margin: 0 0 .35rem;
+    padding-top: .9rem;
+    border-top: 1px solid var(--rule-2);
+  }
+  h2 .num {
+    font-family: var(--f-mono);
+    font-size: .74rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: .1em;
+    display: block;
+    margin-bottom: .5rem;
+  }
+  h3 {
+    font-size: 1.02rem;
+    font-weight: 600;
+    margin: 2.3rem 0 .5rem;
+    letter-spacing: -.005em;
+  }
+  p { margin: 0 0 1.05rem; }
+  .lede { color: var(--ink-2); margin-bottom: 1.8rem; }
+
+  code, .mono { font-family: var(--f-mono); font-size: .875em; }
+  code {
+    background: var(--surface-2);
+    padding: .1em .34em;
+    border-radius: 2px;
+    word-break: break-all;
+  }
+  strong { font-weight: 600; }
+  em { font-style: normal; background: var(--accent-soft); padding: .05em .3em; }
+
+  ul, ol { margin: 0 0 1.05rem; padding-left: 1.3rem; }
+  li { margin-bottom: .5rem; }
+  li::marker { color: var(--ink-3); }
+
+  /* ─── 그림 ──────────────────────────────────────────────── */
+  figure {
+    margin: 2rem 0 2.4rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 1.4rem 1.2rem 1rem;
+    overflow-x: auto;
+  }
+  figure svg { display: block; width: 100%; min-width: 480px; height: auto; }
+  figcaption {
+    margin-top: 1rem;
+    padding-top: .8rem;
+    border-top: 1px solid var(--rule);
+    font-size: .84rem;
+    line-height: 1.6;
+    color: var(--ink-2);
+    min-width: 480px;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  .svg-box   { fill: var(--surface-2); stroke: var(--rule-2); }
+  .svg-lbl   { fill: var(--ink); font-family: "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+  .svg-sub   { fill: var(--ink-3); color: var(--ink-3); font-family: "Noto Sans KR", "Malgun Gothic", sans-serif; font-size: 11.5px; }
+  .svg-edge  { stroke: var(--rule-2); fill: none; stroke-width: 1.6; }
+  .svg-bad   { stroke: var(--bad); fill: none; stroke-width: 2; }
+  .svg-good  { stroke: var(--good); fill: none; stroke-width: 2; }
+  .svg-badtx { fill: var(--bad); font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 600; }
+  .svg-gootx { fill: var(--good); font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 600; }
+  .svg-hd    { fill: var(--ink-3); font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; letter-spacing: .1em; }
+
+  /* ─── 표 ────────────────────────────────────────────────── */
+  .tablebox { overflow-x: auto; margin: 1.6rem 0 2rem; border: 1px solid var(--rule); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: .88rem; }
+  th, td { text-align: left; padding: .62rem .85rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th {
+    font-family: var(--f-mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .m { font-family: var(--f-mono); font-size: .84em; word-break: break-all; }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--f-mono);
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    padding: .1rem .42rem;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .tag-bad  { color: var(--bad); background: var(--bad-soft); }
+  .tag-good { color: var(--good); background: var(--good-soft); }
+
+  /* ─── 강조 블록 ─────────────────────────────────────────── */
+  .note {
+    border-left: 3px solid var(--accent);
+    background: var(--surface);
+    padding: 1.1rem 1.2rem;
+    margin: 1.8rem 0;
+  }
+  .note.warn { border-left-color: var(--bad); }
+  .note > :last-child { margin-bottom: 0; }
+  .note .hd {
+    font-family: var(--f-mono);
+    font-size: .7rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: .5rem;
+  }
+
+  /* ─── 다음 세션 멘트 ────────────────────────────────────── */
+  .prompt-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: .7rem;
+  }
+  button.copy {
+    font-family: var(--f-mono);
+    font-size: .74rem;
+    letter-spacing: .06em;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    padding: .38rem .8rem;
+    cursor: pointer;
+  }
+  button.copy:hover { background: var(--surface-2); }
+  button.copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  pre.prompt {
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    padding: 1.1rem 1.2rem;
+    margin: 0;
+    overflow-x: auto;
+    font-family: var(--f-mono);
+    font-size: .795rem;
+    line-height: 1.72;
+    white-space: pre-wrap;
+    word-break: break-word;
+    tab-size: 2;
+  }
+
+  footer {
+    margin-top: 4.5rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--rule-2);
+    font-size: .8rem;
+    color: var(--ink-3);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="kicker">
+    <span>fcc-test-platform</span>
+    <span>설계서 §6.3 · S3</span>
+    <span>2026-09-05</span>
+    <span>커밋 7846c0b</span>
+  </div>
+  <h1>DB 드라이버 경계 착지</h1>
+  <p class="standfirst">
+    <code>application</code> 계층이 PostgreSQL 드라이버를 붙들고 있던 경로 <strong>2건을 0건으로</strong> 끊었다.
+    이제 그 규칙이 지켜지는지를 사람이 눈으로 확인하지 않고 도구가 판정한다.
+  </p>
+</header>
+
+<dl class="strip">
+  <div>
+    <dt>application → psycopg</dt>
+    <dd><span class="n-bad">2</span> → <span class="n-good">0</span><small>정적 의존 경로</small></dd>
+  </div>
+  <div>
+    <dt>계약 예외 등재</dt>
+    <dd><span class="n-bad">2</span> → <span class="n-good">0</span><small>봐주기 항목</small></dd>
+  </div>
+  <div>
+    <dt>분석 규모</dt>
+    <dd>213 / 927<small>파일 수 / 의존 간선 수</small></dd>
+  </div>
+  <div>
+    <dt>전체 시험</dt>
+    <dd class="n-good">0 = 0<small>변경 전후 실패 건수</small></dd>
+  </div>
+</dl>
+
+<main class="flow">
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">01 — 규칙</span>SQL 은 한 층에서만 나온다</h2>
+
+  <p class="lede">
+    이 저장소의 백엔드는 네 층으로 나뉘어 있고, <strong>위층이 아래층을 부르는 방향만</strong> 허용한다.
+    그리고 데이터베이스 드라이버처럼 바깥 세상에 붙는 코드는 <code>infrastructure</code> 층에만 두기로 돼 있다.
+  </p>
+
+  <p>
+    이것은 취향 문제가 아니라 배포 조건이다. 챔버 노드는 PyInstaller·Nuitka 로 묶은
+    <strong>단일 실행 파일</strong>로 시험실 PC 에 나간다. 그 빌드는 중앙 DB 에 접속하지 않으므로
+    PostgreSQL 드라이버를 <em>한 바이트도 싣지 않아야</em> 한다.
+    아래층 코드가 드라이버를 붙들고 있으면, 그 코드를 부르는 것만으로 드라이버가 실행 파일에 딸려 들어간다.
+  </p>
+
+  <figure class="wide">
+    <svg viewBox="0 0 780 400" role="img" aria-label="네 계층 구조와, application 층에서 psycopg 로 향하는 위반 경로 두 개">
+      <defs>
+        <marker id="ar-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--bad)"></path>
+        </marker>
+        <marker id="ar-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--rule-2)"></path>
+        </marker>
+      </defs>
+
+      <text class="svg-hd" x="60" y="22">계층 (이 상자가 소유)</text>
+      <text class="svg-hd" x="600" y="22">외부 패키지</text>
+
+      <!-- 허용 방향 -->
+      <line class="svg-edge" x1="42" y1="36" x2="42" y2="268" marker-end="url(#ar-dim)"></line>
+      <text class="svg-sub" x="26" y="160" transform="rotate(-90 26 160)" text-anchor="middle">허용 방향</text>
+
+      <!-- 계층 4개 -->
+      <rect class="svg-box" x="60" y="30" width="240" height="52"></rect>
+      <text class="svg-lbl" x="76" y="55">api</text>
+      <text class="svg-sub" x="76" y="71">HTTP 표면</text>
+
+      <rect class="svg-box" x="60" y="92" width="240" height="52"></rect>
+      <text class="svg-lbl" x="76" y="117">infrastructure</text>
+      <text class="svg-sub" x="76" y="133">바깥 세상에 붙는 자리 — 드라이버는 여기</text>
+
+      <rect x="60" y="154" width="240" height="52" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.6"></rect>
+      <text class="svg-lbl" x="76" y="179">application</text>
+      <text class="svg-sub" x="76" y="195">업무 흐름 — 드라이버를 몰라야 한다</text>
+
+      <rect class="svg-box" x="60" y="216" width="240" height="52"></rect>
+      <text class="svg-lbl" x="76" y="241">domain</text>
+      <text class="svg-sub" x="76" y="257">순수 규칙</text>
+
+      <!-- psycopg -->
+      <rect class="svg-box" x="600" y="154" width="140" height="52"></rect>
+      <text class="svg-lbl" x="616" y="179">psycopg</text>
+      <text class="svg-sub" x="616" y="195">PostgreSQL 드라이버</text>
+
+      <!-- 위반 ① 직접 -->
+      <line class="svg-bad" x1="300" y1="172" x2="596" y2="172" marker-end="url(#ar-bad)"></line>
+      <text class="svg-badtx" x="448" y="164" text-anchor="middle">① 직접 · l.63</text>
+
+      <!-- 경유 모듈 -->
+      <rect class="svg-box" x="360" y="300" width="230" height="52" stroke-dasharray="4 3"></rect>
+      <text class="svg-lbl" x="376" y="325">central_db_config</text>
+      <text class="svg-sub" x="376" y="341">계층 밖 루트 모듈</text>
+
+      <!-- 위반 ② 간접 -->
+      <path class="svg-bad" d="M300 196 L330 196 L330 326 L356 326" marker-end="url(#ar-bad)"></path>
+      <text class="svg-badtx" x="336" y="252">② 간접 · l.26</text>
+      <path class="svg-bad" d="M590 326 L650 326 L650 210" marker-end="url(#ar-bad)"></path>
+      <text class="svg-badtx" x="662" y="270">l.135</text>
+
+      <text class="svg-sub" x="360" y="378">이 경유 모듈은 네 층 어디에도 속하지 않는다 — 그래서 계층 규칙만으로는 안 걸린다.</text>
+    </svg>
+    <figcaption>
+      <b>착수 시점의 위반 2건.</b> ①은 어댑터 파일이 드라이버를 직접 부른다. ②는 <code>runtime_config</code> 가
+      설정값 하나를 읽으려고 <code>central_db_config</code> 를 부르는데, 그 모듈이 드라이버까지 함께 들고 있어
+      두 칸 건너 드라이버에 닿는다. <b>②는 파일 안을 아무리 들여다봐도 보이지 않는다</b> — 그 파일에는
+      <code>psycopg</code> 라는 글자가 없기 때문이다.
+    </figcaption>
+  </figure>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">02 — 진단</span>②는 파일을 옮겨서는 풀리지 않았다</h2>
+
+  <p class="lede">
+    ①은 어댑터 파일을 <code>infrastructure</code> 로 옮기면 끝난다. ②는 성격이 다르다.
+    문제는 파일의 <strong>위치</strong>가 아니라 한 모듈이 <strong>두 가지 일을 겸하고 있다</strong>는 데 있었다.
+  </p>
+
+  <p>
+    <code>central_db_config</code> 는 두 가지를 함께 갖고 있었다 —
+    <strong>「DB 가 어디 있는지 읽는 일」</strong>(설정)과 <strong>「그 DB 에 실제로 연결하는 일」</strong>(드라이버).
+    <code>runtime_config</code> 는 앞의 것만 필요했지만, 한 모듈이라 뒤의 것까지 함께 딸려 왔다.
+  </p>
+
+  <div class="note warn">
+    <div class="hd">이 모듈은 자기 설명문과 이미 어긋나 있었다</div>
+    <p>
+      파일 머리말은 <span class="mono">"this module never imports psycopg"</span> 라고 적어 두었는데,
+      135행에 <code>import psycopg</code> 가 있었다. 둘 다 거짓말은 아니다 —
+      그 <code>import</code> 는 <strong>함수 안</strong>에 있어서, 그 함수를 부르지 않는 한 실행 중에는
+      정말로 드라이버를 끌어오지 않는다. 실행 파일 크기 주장은 성립한다.
+    </p>
+    <p>
+      그러나 검사 도구는 <strong>코드를 실행하지 않고 글자만 읽는다.</strong> 함수 안에 있든 밖에 있든
+      <code>import psycopg</code> 는 똑같이 「이 모듈은 드라이버에 닿는다」로 센다.
+      그래서 설명문과 도구의 판정이 갈렸고, 이 어긋남을 없애는 방법은 그 함수를 <strong>다른 모듈로 옮기는 것</strong>뿐이었다.
+    </p>
+  </div>
+
+  <figure class="wide">
+    <svg viewBox="0 0 700 560" role="img" aria-label="central_db_config 모듈을 설정·연결·파사드 셋으로 나누기 전과 후의 의존 관계">
+      <defs>
+        <marker id="ar-b2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--bad)"></path>
+        </marker>
+        <marker id="ar-d2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--rule-2)"></path>
+        </marker>
+        <marker id="ar-g2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--good)"></path>
+        </marker>
+      </defs>
+
+      <!-- ── 분리 전 ── -->
+      <text class="svg-hd" x="16" y="20">분리 전</text>
+      <line class="svg-edge" x1="16" y1="30" x2="684" y2="30" stroke-width="1"></line>
+
+      <rect x="16" y="66" width="164" height="46" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.6"></rect>
+      <text class="svg-lbl" x="28" y="88">runtime_config</text>
+      <text class="svg-sub" x="28" y="104">application 층</text>
+
+      <rect class="svg-box" x="248" y="50" width="212" height="94"></rect>
+      <text class="svg-lbl" x="260" y="72">central_db_config</text>
+      <line class="svg-edge" x1="248" y1="84" x2="460" y2="84" stroke-width="1" stroke-dasharray="3 3"></line>
+      <text class="svg-sub" x="260" y="102">설정 — DB 가 어디 있나</text>
+      <text class="svg-sub" x="260" y="130">연결 생성 — 드라이버를 잡는다</text>
+
+      <rect class="svg-box" x="528" y="66" width="150" height="46"></rect>
+      <text class="svg-lbl" x="540" y="94">psycopg</text>
+
+      <rect class="svg-box" x="248" y="186" width="212" height="44"></rect>
+      <text class="svg-lbl" x="260" y="207">모노레포 (pip)</text>
+      <text class="svg-sub" x="260" y="222">v0.1.8 로 고정해 이 이름을 쓴다</text>
+
+      <line class="svg-bad" x1="180" y1="88" x2="244" y2="88" marker-end="url(#ar-b2)"></line>
+      <text class="svg-sub" x="184" y="78">설정만 필요</text>
+      <line class="svg-bad" x1="460" y1="88" x2="524" y2="88" marker-end="url(#ar-b2)"></line>
+      <line class="svg-edge" x1="354" y1="182" x2="354" y2="148" marker-end="url(#ar-d2)"></line>
+
+      <text class="svg-badtx" x="16" y="256">application 에서 드라이버까지 두 칸 — 계약 위반 ②</text>
+
+      <!-- ── 분리 후 ── -->
+      <text class="svg-hd" x="16" y="308">분리 후</text>
+      <line class="svg-edge" x1="16" y1="318" x2="684" y2="318" stroke-width="1"></line>
+
+      <rect x="16" y="352" width="164" height="46" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.6"></rect>
+      <text class="svg-lbl" x="28" y="374">runtime_config</text>
+      <text class="svg-sub" x="28" y="390">application 층</text>
+
+      <rect class="svg-box" x="248" y="352" width="212" height="46"></rect>
+      <text class="svg-lbl" x="260" y="374">central_db_settings</text>
+      <text class="svg-sub" x="260" y="390">설정만 — 드라이버를 모른다</text>
+
+      <rect class="svg-box" x="248" y="426" width="212" height="46"></rect>
+      <text class="svg-lbl" x="260" y="448">central_db_config</text>
+      <text class="svg-sub" x="260" y="464">이름만 남은 문패 — 공표된 8개 그대로</text>
+
+      <rect class="svg-box" x="248" y="500" width="212" height="46"></rect>
+      <text class="svg-lbl" x="260" y="520" font-size="11.5">infrastructure/…/</text>
+      <text class="svg-lbl" x="260" y="536" font-size="11.5">central_db_connection</text>
+
+      <rect class="svg-box" x="528" y="500" width="150" height="46"></rect>
+      <text class="svg-lbl" x="540" y="528">psycopg</text>
+
+      <rect class="svg-box" x="16" y="426" width="164" height="46"></rect>
+      <text class="svg-lbl" x="28" y="448">모노레포 (pip)</text>
+      <text class="svg-sub" x="28" y="464">고친 것 없음</text>
+
+      <line class="svg-good" x1="180" y1="375" x2="244" y2="375" marker-end="url(#ar-g2)"></line>
+      <line class="svg-edge" x1="180" y1="449" x2="244" y2="449" marker-end="url(#ar-d2)"></line>
+      <path class="svg-edge" d="M470 440 L500 440 L500 380 L464 380" marker-end="url(#ar-d2)"></path>
+      <path class="svg-edge" d="M354 476 L354 496" marker-end="url(#ar-d2)"></path>
+      <line class="svg-edge" x1="460" y1="523" x2="524" y2="523" marker-end="url(#ar-d2)"></line>
+      <text class="svg-sub" x="466" y="516">함수 안에서만</text>
+
+      <text class="svg-gootx" x="16" y="556">application 에서 드라이버로 가는 길이 없다 — 계약 준수</text>
+    </svg>
+    <figcaption>
+      <b>한 모듈을 셋으로 나눴다.</b> 설정은 <code>central_db_settings</code>, 연결 생성은
+      <code>infrastructure</code> 아래 새 모듈, 그리고 원래 이름 <code>central_db_config</code> 는
+      <b>문패로 남겨</b> 바깥에서 부르던 이름 8개를 그대로 다시 내보낸다.
+      <code>runtime_config</code> 는 이제 설정 쪽만 본다.
+    </figcaption>
+  </figure>
+
+  <h3>이름을 없앨 수는 없었다</h3>
+  <p>
+    이 저장소 안에서만 찾으면 <code>build_central_db_connection_factory</code> 라는 함수는
+    <strong>부르는 곳이 한 군데도 없다.</strong> 지워도 될 죽은 코드처럼 보인다.
+  </p>
+  <p>
+    그런데 실제 사용자는 바깥에 있었다. 모노레포가 이 저장소를 <code>@v0.1.8</code> 로 고정해
+    <code>pip</code> 로 설치한 뒤 그 함수를 부른다. 이름을 없앴다면 다음 판올림에서 그쪽이 깨진다.
+    그래서 원래 이름을 문패로 남겼고, <strong>바깥에서 보는 모습은 분리 전과 완전히 같다.</strong>
+  </p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">03 — 처분</span>무엇을 어떻게 바꿨나</h2>
+
+  <div class="tablebox wide">
+    <table>
+      <thead>
+        <tr><th>대상</th><th>성격</th><th>왜</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="m">infrastructure/adapters/driven/<br>central_project_reference_adapter.py</span></td>
+          <td>이동<br><span class="tag tag-good">내용 0줄 변경</span></td>
+          <td>위반 ① 처분. 드라이버를 잡는 코드라 원래 이 층에 있어야 했다. 옮기면서 슬쩍 고치는 일이 없도록 내용은 손대지 않았고, git 이 100% 동일 이동으로 기록한다.</td>
+        </tr>
+        <tr>
+          <td><span class="m">central_db_settings.py</span></td>
+          <td>신규</td>
+          <td>설정 읽기만 담는다. 드라이버를 모른다.</td>
+        </tr>
+        <tr>
+          <td><span class="m">infrastructure/adapters/driven/<br>central_db_connection.py</span></td>
+          <td>신규</td>
+          <td>연결 생성의 <b>유일한</b> 구현. 이전에는 같은 코드가 두 벌 있었다.</td>
+        </tr>
+        <tr>
+          <td><span class="m">central_db_config.py</span></td>
+          <td>문패로 재작성</td>
+          <td>바깥 사용자를 위해 이름 8개를 그대로 유지.</td>
+        </tr>
+        <tr>
+          <td><span class="m">application/runtime_config.py</span></td>
+          <td>한 줄</td>
+          <td>문패가 아니라 설정 모듈을 보게 했다. <b>이 한 줄이 위반 ②를 끊는다.</b></td>
+        </tr>
+        <tr>
+          <td><span class="m">api_composition.py</span></td>
+          <td>중복 제거</td>
+          <td>같은 연결 코드 두 벌을 하나로 모았다. 드라이버를 잡는 코드가 둘이면 한쪽만 고쳐지는 날이 온다.</td>
+        </tr>
+        <tr>
+          <td><span class="m">.importlinter</span> · <span class="m">tests/test_architecture_gate_conformance.py</span></td>
+          <td>검사 강화</td>
+          <td>봐주기 항목 2건을 지우고, 「이 둘만 봐준다」를 <b>「어느 계약도 봐주지 않는다」</b>로 바꿨다.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">04 — 확인</span>「초록」과 「검사했다」는 다른 축이다</h2>
+
+  <p class="lede">
+    이 저장소는 같은 함정에 여러 번 값을 치렀다. 검사 도구가 <strong>아무것도 검사하지 않고</strong>
+    정상 종료하면, 그 결과는 「위반 없음」과 <strong>구별되지 않는다.</strong>
+  </p>
+
+  <figure>
+    <svg viewBox="0 0 620 190" role="img" aria-label="종료코드 0이 나오는 두 가지 원인과, 그것을 구별하는 방법">
+      <defs>
+        <marker id="ar-d3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--rule-2)"></path>
+        </marker>
+      </defs>
+      <rect class="svg-box" x="16" y="66" width="150" height="46"></rect>
+      <text class="svg-lbl" x="30" y="94">종료코드 = 0</text>
+
+      <path class="svg-edge" d="M166 89 L200 89 L200 40 L246 40" marker-end="url(#ar-d3)"></path>
+      <path class="svg-edge" d="M166 89 L200 89 L200 142 L246 142" marker-end="url(#ar-d3)"></path>
+
+      <rect x="250" y="18" width="230" height="44" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.6"></rect>
+      <text class="svg-lbl" x="264" y="40">위반이 없다</text>
+      <text class="svg-sub" x="264" y="55">우리가 원한 결과</text>
+
+      <rect x="250" y="120" width="230" height="44" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.6"></rect>
+      <text class="svg-lbl" x="264" y="142">도구가 돌지 않았다</text>
+      <text class="svg-sub" x="264" y="157">설치 안 됨 · 진입점 오류 · 수집 0개</text>
+
+      <text class="svg-sub" x="500" y="84">이 둘을 가르는 것은</text>
+      <text class="svg-lbl" x="500" y="104" font-size="12">「일했다는 증거」</text>
+      <text class="svg-sub" x="500" y="122">검사한 파일 수 ·</text>
+      <text class="svg-sub" x="500" y="138">분석한 의존 수</text>
+    </svg>
+    <figcaption>
+      그래서 이 세션의 모든 측정은 종료코드가 아니라 <b>도구가 출력한 규모 숫자</b>를 함께 읽는다.
+      <span class="mono">Analyzed 213 files, 927 dependencies</span> 가 나와야 실제로 훑은 것이다.
+    </figcaption>
+  </figure>
+
+  <h3>측정</h3>
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>검사</th><th>착수 전</th><th>착지 후</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>경계 계약 (import-linter)</td>
+          <td class="num">211 파일 / 921 의존<br><span class="tag tag-bad">봐주기 2건</span></td>
+          <td class="num">213 파일 / 927 의존<br><span class="tag tag-good">3계약 전부 준수 · 봐주기 0</span></td>
+        </tr>
+        <tr>
+          <td>도메인 타입 검사 (mypy)</td>
+          <td class="num">54 파일 통과</td>
+          <td class="num">54 파일 통과 <span class="tag tag-good">회귀 없음</span></td>
+        </tr>
+        <tr>
+          <td><code>application</code> 의 드라이버 <code>import</code><br><span class="svg-sub">코드 구조로 셈 · 함수 안 포함</span></td>
+          <td class="num">73 파일 중 2건</td>
+          <td class="num">73 파일 중 <b>0건</b></td>
+        </tr>
+        <tr>
+          <td>전체 시험 — 실패한 시험의 <b>이름 집합</b></td>
+          <td class="num">0건 <span class="svg-sub">3,054 통과</span></td>
+          <td class="num">0건 <span class="svg-sub">3,053 통과</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <div class="hd">통과 수가 1 줄어든 것은 회귀가 아니다</div>
+    <p>
+      검사 항목 하나가 사라지고 그 자리를 3계약을 한꺼번에 보는 항목이 대신했다
+      (세부 검사 159 → 160). <strong>건수가 아니라 이름 집합으로 재는 이유</strong>가 이것이다 —
+      건수만 보면 「하나 고쳐지고 하나 새로 깨진 것」과 구별되지 않는다.
+    </p>
+  </div>
+
+  <h3>반증 — 일부러 깨뜨려 봤다</h3>
+  <p>
+    초록이 「지켜지고 있다」는 뜻인지 확인하려면, 규칙을 어겼을 때 <strong>실제로 빨간불이 켜지는지</strong>
+    봐야 한다. 셋 다 확인했다.
+  </p>
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>일부러 만든 위반</th><th>결과</th><th>도구가 한 말</th></tr></thead>
+      <tbody>
+        <tr><td>해소된 봐주기 항목을 되살린다</td><td><span class="tag tag-good">멈춤</span></td><td><span class="m">No matches for ignored import</span></td></tr>
+        <tr><td><code>application</code> 에 드라이버를 다시 넣는다</td><td><span class="tag tag-good">멈춤</span></td><td><span class="m">application DB driver isolation BROKEN</span></td></tr>
+        <tr><td>새 위반을 몰래 봐주기에 등재한다</td><td><span class="tag tag-good">멈춤</span></td><td>계약 이름을 대며 거부</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">05 — 오판</span>이번에 두 번 틀렸다</h2>
+
+  <p class="lede">
+    둘 다 「도구가 조용히 일부만 보여 준 것」을 사실로 받아들여서 생겼다. 기록해 둘 값어치가 있다.
+  </p>
+
+  <h3>① 장부의 값을 고쳤다가 시험 9건이 깨졌다</h3>
+  <p>
+    파일을 옮겼으니 원본 경로 장부(<code>.extraction-layout.json</code>)의 값도 맞춰야 한다고 판단했다.
+    고치자 전체 시험이 <strong>실패 6건 + 수집 오류 3건</strong>이 됐다.
+  </p>
+  <p>
+    그 장부는 살아 있는 해소기의 입력이었고, <strong>디렉터리 단위로</strong> 답을 만든다 —
+    한 폴더 아래 파일들이 모두 같은 곳으로 갔어야 답이 하나로 정해진다. 파일 하나만 다른 폴더로 보내자
+    후보가 둘이 되어 도구가 거부했다. 이 저장소에서 그 폴더를 묻는 자리가 <strong>9곳</strong>이었다.
+    <strong>되돌렸다.</strong>
+  </p>
+  <div class="note warn">
+    <div class="hd">왜 미리 못 봤나</div>
+    <p>
+      착수 전에 「이 장부를 누가 읽는가」를 저장소 안에서 검색했고
+      <strong>「존재 여부만 확인하는 3곳뿐」</strong>이라는 답을 받았다.
+      진짜 사용자는 <strong>설치된 외부 패키지 안</strong>에 있었다 — 저장소 안만 훑는 검색으로는
+      원리적으로 안 나오는 자리다. 오류도 경고도 없이 그럴듯한 답이 나왔다.
+    </p>
+  </div>
+
+  <h3>② 검사 «범위»가 조용히 줄어드는 자리</h3>
+  <p>
+    다른 세션이 짚어 준 덕에 찾았다. 감사·권한 관련 봉인 검사 셋은
+    <code>application</code> 폴더 아래만 훑는다. 이번에 옮긴 파일은 그 폴더 밖으로 나갔으므로
+    <strong>그 검사들의 대상 목록에서 빠졌다.</strong>
+  </p>
+  <p>
+    이번 이동의 손실은 실측 <strong>0</strong> 이다 — 옮긴 464줄에 그 검사들이 세는 항목이 하나도 없었다.
+    그러나 앞으로 감사 기록을 남기는 어댑터를 같은 길로 옮기면 조용히 검사 밖으로 나간다.
+  </p>
+  <div class="note">
+    <div class="hd">이 부류가 위험한 이유</div>
+    <p>
+      파일이 사라져서 <strong>죽는</strong> 고장은 시험이 시끄럽게 잡아 준다. 그러나
+      <strong>검사 대상이 줄어드는</strong> 고장은 변경 전에도 후에도 초록이라
+      전후 비교로 잡히지 않는다. 조건과 처방을 <code>.importlinter</code> 의
+      「다음에 옮기는 사람이 읽을 자리」에 적어 두었고, 범위를 넓힐지는 그 봉인 담당의 판단이라 남겨 뒀다.
+    </p>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">06 — 다음</span>왜 여기서 멈추면 안 되는가</h2>
+
+  <p class="lede">
+    지금 이 계약은 <strong>「선언」돼 있을 뿐 어느 러너에서도 실행되지 않는다.</strong>
+    이 한 문장이 다음 세션의 이유 전부다.
+  </p>
+
+  <p>
+    경계를 검사하는 두 도구(<code>mypy</code> · <code>import-linter</code>)가
+    이 저장소의 시험용 의존 목록에 <strong>선언돼 있지 않다.</strong> 그래서 새로 내려받아
+    시험 환경을 만든 기계에서는 검사 항목이 <strong>「도구 없음」으로 조용히 건너뛴다.</strong>
+    이번 세션의 측정은 제가 작업용 환경에 그 두 도구를 <em>손으로 설치해서</em> 얻은 것이다.
+  </p>
+
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>커밋</th><th>무엇을</th><th>상태</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="num">7846c0b<br><span class="svg-sub">이 세션</span></td>
+          <td>경계 위반 2건 제거 · 검사 강화</td>
+          <td><span class="tag tag-bad">push 전</span></td>
+        </tr>
+        <tr>
+          <td class="num">84e0960<br><span class="svg-sub">형제 세션</span></td>
+          <td>두 도구를 시험용 의존에 선언</td>
+          <td><span class="tag tag-bad">push 전</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    <strong>두 커밋은 같은 시험 파일을 함께 만진다.</strong> 따로 들어가면 충돌만 커지고,
+    한쪽만 들어가면 「경계를 기계가 판정한다」는 주장이 여전히 참이 아니다.
+    <strong>함께 착지시켜야 한다.</strong>
+  </p>
+
+  <div class="prompt-head">
+    <h3 style="margin:0">다음 세션에 붙여 넣을 것</h3>
+    <button class="copy" id="cp" type="button">전체 복사</button>
+  </div>
+  <pre class="prompt wide" id="pr">S3 후속 — 게이트를 「선언」이 아니라 「실제로 도는」 상태로 착지시킬 것.
+
+## 현재 상태
+- 내 커밋 7846c0b (브랜치 feat/s3-db-adapter-to-infrastructure-20260905) 가 push 전이다.
+  application 의 psycopg 의존 2건을 0으로 만들고 .importlinter 의 app-no-db 등재를 0건으로 비웠다.
+- 형제 세션 fcc-delivery-final-5c 의 커밋 84e0960 (브랜치 test/adopt-orphaned-domain-tests-20260905)
+  도 push 전이고, pyproject.toml 의 [test] extra 에 mypy 와 import-linter 를 선언한다.
+- 두 커밋이 tests/test_architecture_gate_conformance.py 를 함께 만진다.
+
+## 왜 지금 이 일인가
+지금 app-no-db 계약은 선언돼 있을 뿐 어느 러너에서도 실행되지 않는다. mypy 와 import-linter 가
+[test] extra 에 없어서, 갓 `pip install -e '.[test]'` 한 환경에서는 실행 팔이 skipIf 로 조용히
+빠진다. 즉 「경계를 기계가 판정한다」는 주장이 아직 공유 환경에서는 참이 아니고, 직전 세션의
+측정은 작업용 venv 에 도구를 손으로 설치해 얻은 값이다. 두 커밋이 함께 들어가야 그 주장이
+성립한다. 따로 들어가면 같은 파일에서 충돌만 커진다.
+
+## 해야 할 일
+1. 형제 세션과 머지 순서를 합의하고 두 브랜치를 push → PR.
+   충돌 예상 지점: FROZEN_DB_BASELINE 삭제 / TestTheDbBaselineOnlyShrinks →
+   TestNoContractCarriesABaseline 개명 / 파일 docstring 의 「두 축」 절.
+2. 머지 후 새 워크트리 + 새 venv 에 `pip install -e '.[test]'` 만으로 게이트가 실제로 도는지
+   실측하라. 초록만 보지 말고 증거 숫자를 봐라 — mypy 「54 source files」, import-linter
+   「Analyzed N files, M dependencies」, 그리고 KEPT 3회. 실행 팔이 skip 이면 아직 안 끝난 것이다.
+3. RBAC·감사 봉인 셋(tests/test_platform_rbac_membership_audit_fe_p8.py)의 스캔 범위를
+   infrastructure/adapters/driven/ 까지 넓힐지 판정하라. 근거와 실측은 .importlinter 계약 3
+   주석에 적어 뒀다 — 지금 넓혀도 방출 집합이 안 변해 안전하다(application 73파일이 7/7 토큰,
+   driven 5파일이 0건).
+
+## 함정 — 직전 세션에서 실제로 밟은 것 포함
+(가) 공유 체크아웃이다. git switch 금지. push 는 `git push origin HEAD:refs/heads/&lt;name&gt;` 로.
+     merge 가 필요하면 워크트리를 따로 파라.
+(나) 검증은 워크트리 전용 venv 에 `pip install -e '.[test]'` 로. PYTHONPATH 로 형제 소스 레인을
+     앞세우면 미릴리스 변경이 딸려 와 무관한 실패가 난다 — 그 방식이 실패 31건, 격리 방식이 0건이었다.
+(다) .extraction-layout.json 의 값을 고치지 마라. 레인 안에서 파일을 옮겨도 마찬가지다.
+     디렉터리 해소기가 목적지 후보를 둘로 보면 RelocationAmbiguity 로 거부한다 —
+     직전 세션에서 실패 6 + 수집 오류 3 이 났고 되돌렸다.
+(라) 모든 판정은 작업트리가 아니라 HEAD 블롭에 대고 하라.
+(마) 소비자 조사를 레포 grep 으로 끝내지 마라. 진짜 소비자가 설치된 의존 안에 있을 수 있다 —
+     .extraction-layout.json 이 정확히 그랬다.
+(바) 소스를 「경로 문자열」로 읽는 검사가 있다(resolve_repo_artifact · read_text · _repo_source).
+     파일을 옮기면 import 만 봐서는 안 보이는 곳에서 깨진다.
+(사) 스캔 「범위」가 줄어드는 파손은 전후 비교로 안 잡힌다 — 변경 전후 둘 다 초록이기 때문이다.
+
+push 는 승인 지점이다. 17항목 자기감사 규약을 지킬 것.</pre>
+</section>
+
+<footer>
+  fcc-test-platform · 설계서 §6.3 (S3) 착지 · 커밋 <span class="mono">7846c0b</span> ·
+  브랜치 <span class="mono">feat/s3-db-adapter-to-infrastructure-20260905</span> · push 전
+</footer>
+
+</main>
+</div>
+
+<script>
+  (function () {
+    var btn = document.getElementById('cp');
+    var pre = document.getElementById('pr');
+    if (!btn || !pre) return;
+    btn.addEventListener('click', function () {
+      var text = pre.innerText;
+      var done = function (msg) {
+        btn.textContent = msg;
+        setTimeout(function () { btn.textContent = '전체 복사'; }, 2200);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done('복사됨'); },
+          function () { select(); });
+      } else { select(); }
+      function select() {
+        var r = document.createRange();
+        r.selectNodeContents(pre);
+        var s = window.getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+        done('선택됨 — Ctrl+C');
+      }
+    });
+  })();
+</script>
+  </body>
+</html>
