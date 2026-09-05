@@ -34,7 +34,7 @@ dependencies = [
     # The URL and the tag are DERIVED (manifest `delivery_remote` + the sibling's
     # own declared version); `TestTheSiblingPinTracksTheSiblingVersion` is what
     # keeps this copy from drifting when that version moves.
-    "fcc-test-contracts @ git+https://github.com/junnv93/fcc-test-contracts@v0.1.15",
+    "fcc-test-contracts @ git+https://github.com/junnv93/fcc-test-contracts@v0.1.21",
     # 공유 커널 1단계 (ADR-0001, 2026-09-03). 형제 레인과 **같은 저장소의 다른
     # 배포판**이라 `#subdirectory=` 가 붙는다 — 「한 저장소, 여러 배포판」은 그쪽이
     # 이미 npm `@fcc/api-artifacts` 로 하고 있던 패턴이다.
@@ -45,7 +45,7 @@ dependencies = [
     #
     # 형제와 같은 이유로 **DIRECT reference** 다 — 이 배포물을 담을 인덱스가 없다.
     # 태그를 못 박는다: 움직이는 ref 는 「어느 코드가 돌았나」를 사후에 답할 수 없게 한다.
-    "fcc-test-kernel @ git+https://github.com/junnv93/fcc-test-contracts@kernel-v0.3.0#subdirectory=packages/fcc-test-kernel",
+    "fcc-test-kernel @ git+https://github.com/junnv93/fcc-test-contracts@kernel-v0.5.0#subdirectory=packages/fcc-test-kernel",
     # 상자의 런타임이 실제로 도달하는 서드파티. 실측 기준은 *도달*이지
     # 모듈 레벨 여부가 아니다 — platform 의 런타임 import 는 합성 경계에서
     # 지연되지만(fastapi 4건 · psycopg 2건이 함수 안) 그 지연은 합성 패턴이지
@@ -78,6 +78,24 @@ test = [
     "httpx>=0.28.1",
     "jsonschema>=4.0.0",
     "PyJWT[crypto]>=2.8.0",
+    # ⚠️ 2026-09-04 — 같은 결함이 세 번째로 났다. `test_central_docker_compose.py` 가
+    # compose 를 파싱하려고 `yaml` 을 부르는데 선언에 없었고, 그 결과 **중앙 저장소의
+    # lane-check CI 가 24건 빨간 채로 굳어 있었다**(run 33858657216). 빨간 것이 기본이
+    # 되면 새 회귀가 그 소음에 묻힌다 — 직전 배송은 자기 회귀가 0건임을 증명하려고
+    # main 의 실패 집합과 손으로 대조해야 했다.
+    #
+    # ⭐ 이번에는 주석으로 끝내지 않았다. `tests/test_supply_closure_axis.py` 가 이
+    # 목록과 실제 import 를 **파생해서 대조**한다. 다음 누락은 사람이 아니라 게이트가
+    # 이름을 대고 멈춘다.
+    "PyYAML>=6.0",
+]
+# 브라우저 QA 도구(`scripts/platform_frontend_browser_qa.py`)만 쓰는 것. 중앙 이미지의
+# 의존성 집합(`requirements-central.txt`)에는 **의도적으로 없다** — Dockerfile 주석이
+# 그 사실을 적는다(desktop/chamber 패키지 제거). 그래도 이 상자가 그 스크립트를 싣는
+# 이상 무엇이 필요한지는 선언돼야 한다. 선언하지 않으면 「돌려보니 죽더라」가 유일한
+# 발견 경로가 된다.
+browser-qa = [
+    "selenium>=4.0.0",
 ]
 
 # ⚠️ selenium(scripts/platform_frontend_browser_qa.py) 과 psycopg2 폴백
@@ -159,6 +177,20 @@ py-modules = []
 # (새 확장자가 생기는 날 그 봉인이 red 로 이름을 댄다 — 선언을 넓게 적어두는 쪽은
 # 아무것도 검사하지 않으면서 검사한 것처럼 읽힌다).
 "*" = ["*.json"]
+# PM/RF 엑셀 내보내기 템플릿 (2026-09-04). 2026-09-04 이전에는 이 둘이
+# `tests/fixtures/` 에 있었고 렌더러가 `parents[3]` 로 걸어 나가 읽었다 — 개발
+# 트리에서만 성립하는 형태다. 이미지는 `tests/` 를 COPY 하지도 않고 휠은
+# `fcc_test_platform*` 만 실으므로 컨테이너에서 내보내기는 **구조적으로** 불가능했다.
+# 위 `*.json` 과 정확히 같은 계급의 결함이고, 같은 답을 준다: 코드가 읽는 비-.py 는
+# 코드와 함께 실린다.
+#
+# ⚠️ 봉인은 `tests/test_sample_inventory_exporter.py` 다 — 자원이 패키지 경계 **안에서**
+# 해소되는지와 이 선언이 파일 집합을 덮는지를 본다. 바로 위 `*.json` 주석이 참조하는
+# `tests/test_repo_split_packaging_axis.py` 는 **이 상자에 없다**(모노레포 잔여, 실측
+# 2026-09-04). 즉 「실제로 휠을 빌드해 전량성을 재는」 축은 이 레인에 아직 없고,
+# 그 자리는 지금 사람이 손으로 메운다: 2026-09-04 에 휠을 빌드해 두 xlsx 가 실린 것과,
+# 소스 트리 없이 설치된 휠만으로 PM/RF 내보내기가 도는 것을 확인했다.
+"fcc_test_platform.infrastructure.excel" = ["templates/*.xlsx"]
 
 # ⚠️ 사본이다 — TOML 에는 include 가 없다. 그래서 루트 pyproject.toml 의
 #    testpaths/markers/addopts 와 **상등 파리티 게이트**를 함께 세운다

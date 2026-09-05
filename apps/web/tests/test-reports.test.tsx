@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { queryKeys } from '@/api/query-config';
 import { applyTokenSet, CLAIM_PERMISSIONS, __resetAuthStateForTests } from '@/auth/session';
+import koMessages from '@/locales/ko.json';
 import {
   absentReportNumberReason,
   buildCreateReportRequest,
@@ -183,6 +184,14 @@ describe('S3 buildCreateReportRequest', () => {
 
 // ── S1 · S8 · S11 — 목록 ────────────────────────────────────────────────────
 
+/** 성적서 번호가 비는 **두 사유**의 문구 SSOT.
+ *
+ * ⚠️ 문구를 시험에 박지 않는다. 실측 2026-09-05: 이 자리에 `'관리번호'` 가 박혀
+ * 있었고, 접수 개편이 그 용어를 「프로젝트 번호」로 통일하자 **표현만 바뀌었는데**
+ * 시험 2건이 깨졌다. 시험이 재려던 것은 표현이 아니라 *어느 사유를 지목하는가* 다.
+ */
+const REPORT_NUMBER_ABSENT = koMessages.routes.testReports.reportNumberAbsent;
+
 describe('S1 성적서 목록', () => {
   it('서버가 준 report_number 를 그대로 렌더한다', async () => {
     platformApi.fetchProjectReports.mockResolvedValue([report()]);
@@ -209,9 +218,10 @@ describe('S1 성적서 목록', () => {
     renderRoute();
     await waitFor(() => expect(screen.getByTestId('test-reports-table')).toBeInTheDocument());
     const cell = reportTable().getByTestId('test-report-number-absent');
-    // edition 은 있으므로 원인은 관리번호 부재다.
-    expect(cell).toHaveTextContent('관리번호');
-    expect(cell.textContent ?? '').not.toBe('');
+    // edition 은 있으므로 원인은 **프로젝트 번호 부재**다 — 두 사유 중 어느 쪽을
+    // 지목하는지가 이 시험이 재는 것이므로, 나머지 사유가 아님도 함께 못박는다.
+    expect(cell).toHaveTextContent(REPORT_NUMBER_ABSENT.managementNumber);
+    expect(cell).not.toHaveTextContent(REPORT_NUMBER_ABSENT.edition);
   });
 
   it('로딩 · 빈 목록 · 에러가 서로 다른 표면으로 나타난다', async () => {
@@ -351,7 +361,8 @@ describe('S7 자동 인용', () => {
     );
     renderRoute(`${ENTRY}&edition=2`);
     const absent = await screen.findByTestId('citation-report-number-absent');
-    expect(absent).toHaveTextContent('관리번호');
+    expect(absent).toHaveTextContent(REPORT_NUMBER_ABSENT.managementNumber);
+    expect(absent).not.toHaveTextContent(REPORT_NUMBER_ABSENT.edition);
   });
 
   it('선택한 edition 을 인용 조회에 싣는다 (report_number 도달 경로)', async () => {

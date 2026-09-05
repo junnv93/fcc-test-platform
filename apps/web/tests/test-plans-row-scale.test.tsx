@@ -145,7 +145,6 @@ beforeEach(() => {
         project_id: PROJECT_ID,
         project_code: 'SM-TEST',
         model_name: 'SM-TEST',
-        customer: null,
         management_number: null,
         status: 'active',
       },

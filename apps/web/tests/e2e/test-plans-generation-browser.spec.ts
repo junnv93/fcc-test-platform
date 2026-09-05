@@ -147,7 +147,6 @@ async function mockGenerationBrowser(page: Page, state: BrowserGenerationState):
           project_id: GENERATION_BROWSER_PROJECT_ID,
           project_code: 'BROWSER-16K',
           model_name: 'BROWSER-16K',
-          customer: null,
           manufacturer: null,
           management_number: 'M-16K',
           status: 'active',

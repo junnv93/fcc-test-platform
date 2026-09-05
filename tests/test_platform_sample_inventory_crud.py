@@ -67,8 +67,11 @@ class TestPlatformSampleInventoryCrud:
         assert revision['revision_number'] == 1
         assert revision['event_type'] == 'created'
         assert revision['actor_subject'] == 'user:pm'
+        # 일부러 하드코딩한 봉인이다 — 커널 튜플에서 파생시키면 생산 코드와 같은
+        # 상수를 읽어 아무것도 증명하지 못한다. 필드가 늘면 여기도 손으로 늘린다.
         assert set(revision['changed_fields']) == {
-            'sample_number', 'sample_code', 'test_category', 'label_number',
+            'sample_number', 'sample_code', 'sample_kind', 'sample_description',
+            'test_category', 'label_number',
             'smsn', 'serial_number', 'intake_cert', 'assigned_team', 'sender',
             'receiver', 'received_date', 'released_date', 'note', 'status',
             'row_version', 'latest_intake',

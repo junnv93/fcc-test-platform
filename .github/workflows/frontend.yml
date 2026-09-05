@@ -81,6 +81,14 @@ jobs:
       #    생성하고도 성공**한다. 그 상태는 「정본대로 생성했다」와 같은 초록이다.
       #    실측(2026-08-31): 정본만 재생성하자 하루도 안 돼 미러가 갈라졌다.
       - name: api-artifacts mirror drift gate
+        # ⚠️ 이 잡의 `defaults.run.working-directory` 는 `apps/web` 이고, 이 경로는
+        #    **레포 루트 기준**이다. 기본값을 그대로 두면
+        #    `apps/web/packages/api-artifacts/scripts/sync.mjs` 를 찾다가
+        #    MODULE_NOT_FOUND 로 죽는다 — 실측: 이 단계가 들어온 2026-08-31 이래
+        #    main 의 `build` 가 **한 번도 통과한 적이 없고**, 아래 다섯 단계
+        #    (codegen · codegen:check · lint · unit tests · bundle budget)가 CI 에서
+        #    단 한 번도 실행되지 않았다. 빨간 게이트는 꺼진 게이트다.
+        working-directory: ${{ github.workspace }}
         run: node packages/api-artifacts/scripts/sync.mjs --check
 
       - name: codegen (from @fcc/api-artifacts package SSOT)

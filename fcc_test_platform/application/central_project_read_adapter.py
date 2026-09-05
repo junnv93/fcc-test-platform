@@ -30,6 +30,12 @@ from fcc_test_platform.domain.ports.output.central_sample_inventory_read_port im
 )
 from fcc_test_platform.domain.ports.output.central_project_port import CentralProjectError
 from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_kernel.domain.services.project_metadata_edit import (
+    APPLICANT_IDENTITY_FIELD,
+    APPLICANT_SUGGESTION_FIELDS,
+    EDITABLE_PROJECT_META_FIELDS,
+    PROJECT_META_FIELD_TABLES,
+)
 from fcc_test_platform.domain.services.project_directory_query import (
     PROJECT_DIRECTORY_ORDER_COLUMNS,
     PROJECT_SEARCH_COLUMNS,
@@ -39,6 +45,9 @@ from fcc_test_platform.domain.services.project_directory_query import (
 
 
 __all__ = [
+    'APPLICANT_SUGGESTION_COLUMNS',
+    'APPLICANT_SUGGESTION_SQL',
+    'APPLICANT_SUGGESTION_SQL_SEARCH',
     'PROJECT_DETAIL_COLUMNS',
     'PROJECT_DIRECTORY_KEYSET_DOMAINS',
     'PROJECT_LIST_COLUMNS',
@@ -54,43 +63,70 @@ __all__ = [
 ]
 
 
-# Output columns of the list/detail SELECTs (= SELECT aliases). Order defines
-# the row→dict mapping consumed by CentralProjectService envelopes.
-PROJECT_LIST_COLUMNS: tuple[str, ...] = (
-    'project_id',
-    'project_code',
-    'model_name',
-    'customer',
-    'manufacturer',
-    'management_number',
-    'status',
-    'fcc_grantee_code',
-    'applicant_name',
-    'applicant_address',
-    'eut_description',
-    'test_standard',
-    'sample_count',
-    # W3 백엔드 — keyset 커서의 첫 성분. SELECT 는 예전에도 ORDER BY 용으로 이 컬럼을
-    # 실어 보냈지만 출력 튜플에 없어서 ``dict(zip(...))`` 가 버리고 있었다. 이제
-    # 서비스가 커서를 만들려면 필요하므로 행에 남긴다 — 단, 응답 envelope 에는
-    # 넣지 않는다(넣으면 무-페이지네이션 응답이 기존과 달라져 계약 S11 위반).
-    'created_at',
+# ── 출력 컬럼과 SELECT 절의 단일 파생점 ──────────────────────────────────────
+#
+# 이 두 가지는 **위치로 대응**해야 한다: 어댑터가 행 튜플을 ``dict(zip(COLUMNS, row))``
+# 로 매핑하므로, SELECT alias 순서와 컬럼 튜플 순서가 한 칸이라도 어긋나면 값이
+# 조용히 엉뚱한 키에 실린다(``customer`` 자리에 ``manufacturer`` 가 들어가는 식 —
+# 타입이 같아 아무 데서도 터지지 않는다).
+#
+# 그래서 둘을 손으로 두 번 적지 않는다. 표지 메타 필드는 커널의
+# ``EDITABLE_PROJECT_META_FIELDS`` 가, 그 필드가 어느 테이블에 있는지는
+# ``PROJECT_META_FIELD_TABLES`` 가 이미 알고 있다 — 여기서는 테이블에 **별칭만**
+# 붙여 두 산출물을 같은 순회에서 만든다. 커널 튜플이 바뀌면 SELECT 와 컬럼 튜플이
+# 같은 방향으로 함께 움직이므로 어긋날 방법이 없다.
+_TABLE_ALIASES: Mapping[str, str] = MappingProxyType({
+    'projects': 'p',
+    'device_models': 'dm',
+})
+
+#: 표지 메타 SELECT 항목 — 커널 선언 순서 그대로.
+_META_SELECT_ITEMS: tuple[str, ...] = tuple(
+    f'"{_TABLE_ALIASES[PROJECT_META_FIELD_TABLES[field]]}"."{field}"'
+    for field in EDITABLE_PROJECT_META_FIELDS
 )
-PROJECT_DETAIL_COLUMNS: tuple[str, ...] = (
-    'project_id',
-    'project_code',
-    'model_name',
-    'customer',
-    'manufacturer',
-    'management_number',
-    'status',
-    'fcc_grantee_code',
-    'applicant_name',
-    'applicant_address',
-    'eut_description',
-    'test_standard',
-    'created_at',
+
+#: 메타 앞에 오는 정체성 열 (alias, SELECT 표현식).
+_IDENTITY_SELECT: tuple[tuple[str, str], ...] = (
+    ('project_id', '"p"."id" AS "project_id"'),
+    ('project_code', '"p"."project_code"'),
+    ('model_name', '"dm"."model_name"'),
 )
+
+#: 메타 뒤에 오는 상태 열.
+_STATUS_SELECT: tuple[tuple[str, str], ...] = (
+    ('status', '"p"."status"'),
+)
+
+#: 프로젝트당 스칼라 서브쿼리(목록 전용). 상세는 시료 목록을 따로 읽으므로 없다.
+_SAMPLE_COUNT_SELECT = (
+    '(SELECT COUNT(*) FROM "samples" s WHERE s."project_id" = "p"."id") AS "sample_count"'
+)
+
+#: 커서 첫 성분. 응답 envelope 에는 넣지 않지만(계약 S11) 서비스가 커서를 만들려면
+#: 행에 있어야 한다 — 예전에는 SELECT 에만 있고 출력 튜플에 없어서 ``dict(zip(...))``
+#: 가 버리고 있었다.
+_CREATED_AT_SELECT: tuple[tuple[str, str], ...] = (
+    ('created_at', '"p"."created_at"'),
+)
+
+_LIST_SELECT_PAIRS: tuple[tuple[str, str], ...] = (
+    _IDENTITY_SELECT
+    + tuple(zip(EDITABLE_PROJECT_META_FIELDS, _META_SELECT_ITEMS))
+    + _STATUS_SELECT
+    + (('sample_count', _SAMPLE_COUNT_SELECT),)
+    + _CREATED_AT_SELECT
+)
+_DETAIL_SELECT_PAIRS: tuple[tuple[str, str], ...] = (
+    _IDENTITY_SELECT
+    + tuple(zip(EDITABLE_PROJECT_META_FIELDS, _META_SELECT_ITEMS))
+    + _STATUS_SELECT
+    + _CREATED_AT_SELECT
+)
+
+PROJECT_LIST_COLUMNS: tuple[str, ...] = tuple(alias for alias, _ in _LIST_SELECT_PAIRS)
+PROJECT_DETAIL_COLUMNS: tuple[str, ...] = tuple(alias for alias, _ in _DETAIL_SELECT_PAIRS)
+
 PROJECT_SAMPLES_COLUMNS: tuple[str, ...] = (
     'sample_id',
     'sample_code',
@@ -121,16 +157,12 @@ PROJECT_SAMPLES_COLUMNS: tuple[str, ...] = (
 # 인덱스 스캔을 무력화한다(실측 — 50k 행 status 필터: DISTINCT 289ms / 인덱스
 # 미사용·external merge disk 3.4MB → 제거+인덱스 0.54ms, 계약 M6 증거 A·D).
 # 1:1 overlay 는 ADR-0017 D1 이 보증한다.
-_PROJECT_LIST_SELECT = (
-    'SELECT "p"."id" AS "project_id", "p"."project_code", '
-    '"dm"."model_name", "p"."customer", "dm"."manufacturer", '
-    '"p"."management_number", "p"."status", '
-    '"p"."fcc_grantee_code", "p"."applicant_name", "p"."applicant_address", '
-    '"p"."eut_description", "p"."test_standard", '
-    '(SELECT COUNT(*) FROM "samples" s WHERE s."project_id" = "p"."id") AS "sample_count", '
-    '"p"."created_at" '
+_PROJECT_FROM = (
     'FROM "projects" p '
     'LEFT JOIN "device_models" dm ON dm."project_id" = "p"."id" '
+)
+_PROJECT_LIST_SELECT = (
+    'SELECT ' + ', '.join(expr for _, expr in _LIST_SELECT_PAIRS) + ' ' + _PROJECT_FROM
 )
 
 # ── W3 백엔드 — 디렉터리 스케일 (검색 + keyset) ────────────────────────────────
@@ -226,14 +258,9 @@ PROJECT_LIST_SQL = PROJECT_LIST_SQL_VARIANTS[(False, False, False, False)]
 PROJECT_LIST_SQL_BY_STATUS = PROJECT_LIST_SQL_VARIANTS[(True, False, False, False)]
 
 PROJECT_DETAIL_SQL = (
-    'SELECT "p"."id" AS "project_id", "p"."project_code", "dm"."model_name", '
-    '"p"."customer", "dm"."manufacturer", "p"."management_number", "p"."status", '
-    '"p"."fcc_grantee_code", "p"."applicant_name", "p"."applicant_address", '
-    '"p"."eut_description", "p"."test_standard", '
-    '"p"."created_at" '
-    'FROM "projects" p '
-    'LEFT JOIN "device_models" dm ON dm."project_id" = "p"."id" '
-    'WHERE "p"."id" = %s LIMIT 1'
+    'SELECT ' + ', '.join(expr for _, expr in _DETAIL_SELECT_PAIRS) + ' '
+    + _PROJECT_FROM
+    + 'WHERE "p"."id" = %s LIMIT 1'
 )
 PROJECT_SAMPLES_SQL = (
     'SELECT "s"."id" AS "sample_id", "s"."sample_code", "s"."serial_number", '
@@ -243,6 +270,91 @@ PROJECT_SAMPLES_SQL = (
     '"s"."received_date", "s"."released_date" '
     'FROM "samples" s WHERE "s"."project_id" = %s ORDER BY "s"."created_at"'
 )
+
+# 신청자 디렉터리(2026-09-04) — 생성 폼 자동 채움의 읽기.
+#
+# **신청자당 한 행.** 같은 신청자로 만든 프로젝트가 여럿이면 마지막에 쓴 주소/제조사가
+# 가장 그럴듯한 기본값이므로, 정규화 이름(``lower(applicant_name)``)마다 최신 한 행을
+# 고른다. ``ROW_NUMBER() OVER (PARTITION BY ... ORDER BY created_at DESC, id DESC)``
+# 은 이 저장소가 이미 쓰는 PG≡SQLite-shim 관용구다(위 intake read-back 과 동형).
+# ``DISTINCT ON`` 은 더 짧지만 PostgreSQL 전용이라 SQLite 봉인 shim 에서 실행할 수 없다.
+#
+# 성능: 중앙 인덱스 ``idx_projects_applicant_directory``
+# ``(lower(applicant_name), created_at DESC, id DESC) WHERE applicant_name IS NOT NULL``
+# 가 이 윈도우의 PARTITION/ORDER 와 **정확히 같은 순서**로 행을 담고 있어, 후보 집합을
+# 정렬하지 않고 순서대로 훑으며 창을 계산한다. 검색어가 붙으면 trigram GIN
+# ``idx_projects_search_applicant_name`` 이 후보를 먼저 줄인다.
+#
+# ``COUNT(*) OVER (PARTITION BY ...)`` 로 신청자별 프로젝트 수를 같은 스캔에서 얻는다
+# (두 번째 집계 질의 없음 — N+1 금지).
+#
+# 바깥 ORDER BY 는 **최근 쓴 신청자 먼저**다: 자동완성에서 사용자가 찾는 값은 방금
+# 쓰던 값일 확률이 가장 높다. 알파벳순은 그 확률 구조를 버린다.
+APPLICANT_SUGGESTION_COLUMNS: tuple[str, ...] = APPLICANT_SUGGESTION_FIELDS + ('project_count',)
+
+#: 후보 행의 SELECT 항목 — 필드→테이블 별칭은 위 메타 파생과 같은 규칙을 쓴다.
+_APPLICANT_INNER_ITEMS: tuple[str, ...] = tuple(
+    f'"{_TABLE_ALIASES[PROJECT_META_FIELD_TABLES[field]]}"."{field}"'
+    for field in APPLICANT_SUGGESTION_FIELDS
+)
+_APPLICANT_IDENTITY_SQL = (
+    f'LOWER("p"."{APPLICANT_IDENTITY_FIELD}")'
+)
+
+# "가장 최근에 쓰인 신청자" 의 **최신 판정 축은 프로젝트 디렉터리와 같은 축**이다
+# (``PROJECT_DIRECTORY_ORDER_COLUMNS`` = 전순서 (created_at, id)). 여기에 ORDER BY
+# 컬럼을 다시 적으면 두 조회가 서로 다른 "최신"을 말하게 되고, 동률 시점에서
+# 그 차이가 드러난다 — 축은 도메인이 소유하고 어댑터는 절만 렌더한다.
+#
+# 바깥 SELECT 는 서브쿼리 alias 를 통해 정렬하므로 컬럼마다 alias 를 붙인다
+# (``created_at`` 은 신청자 응답에 실리지 않지만 정렬에는 필요하다).
+_RECENCY_ALIASES: Mapping[str, str] = MappingProxyType({
+    column: f'recency_{column}' for column in PROJECT_DIRECTORY_ORDER_COLUMNS
+})
+_APPLICANT_RECENCY_ORDER = 'ORDER BY ' + ', '.join(
+    f'"p"."{column}" DESC' for column in PROJECT_DIRECTORY_ORDER_COLUMNS
+)
+_APPLICANT_RECENCY_SELECT = ', '.join(
+    f'"p"."{column}" AS "{_RECENCY_ALIASES[column]}"'
+    for column in PROJECT_DIRECTORY_ORDER_COLUMNS
+)
+
+
+def _build_applicant_suggestion_sql(*, search: bool) -> str:
+    """Assemble the applicant-directory SELECT (with or without the ``q`` filter).
+
+    Param order: ``(search_pattern?, limit)``. Read-only by construction — the
+    only verb emitted is ``SELECT``.
+    """
+    predicates = [f'"p"."{APPLICANT_IDENTITY_FIELD}" IS NOT NULL',
+                  f'btrim("p"."{APPLICANT_IDENTITY_FIELD}") <> \'\'']
+    if search:
+        predicates.append(
+            f'LOWER("p"."{APPLICANT_IDENTITY_FIELD}") LIKE %s '
+            f"ESCAPE '{SEARCH_LIKE_ESCAPE_CHAR}'"
+        )
+    return (
+        'SELECT ' + ', '.join(f'"{column}"' for column in APPLICANT_SUGGESTION_COLUMNS) + ' '
+        'FROM ('
+        'SELECT ' + ', '.join(_APPLICANT_INNER_ITEMS) + ', '
+        'COUNT(*) OVER (PARTITION BY ' + _APPLICANT_IDENTITY_SQL + ') AS "project_count", '
+        'ROW_NUMBER() OVER (PARTITION BY ' + _APPLICANT_IDENTITY_SQL + ' '
+        + _APPLICANT_RECENCY_ORDER + ') AS "rn", '
+        + _APPLICANT_RECENCY_SELECT + ' '
+        + _PROJECT_FROM +
+        'WHERE ' + ' AND '.join(predicates) + ') ranked '
+        'WHERE "rn" = 1 '
+        'ORDER BY ' + ', '.join(
+            f'"{_RECENCY_ALIASES[column]}" DESC'
+            for column in PROJECT_DIRECTORY_ORDER_COLUMNS
+        ) + ' '
+        'LIMIT %s'
+    )
+
+
+APPLICANT_SUGGESTION_SQL = _build_applicant_suggestion_sql(search=False)
+APPLICANT_SUGGESTION_SQL_SEARCH = _build_applicant_suggestion_sql(search=True)
+
 
 # Phase F follow-up (2026-06-23) — compact intake read-back. The project detail
 # UI + report citation only need each sample's LATEST intake + a history count,
@@ -323,6 +435,19 @@ class PostgresCentralProjectReadAdapter:
             params += (limit,)
         statement = PROJECT_LIST_SQL_VARIANTS[(by_status, search, keyset, limited)]
         return self._query(statement, PROJECT_LIST_COLUMNS, params)
+
+    def list_applicant_suggestions(
+        self, *, q: Optional[str] = None, limit: int,
+    ) -> list[dict]:
+        # ``q`` arrives already normalized + LIKE-escaped from the service (domain
+        # SSOT ``search_like_pattern``) — the adapter never interprets the raw term.
+        # ``limit`` is REQUIRED by the port: an unbounded suggestion read would ship
+        # the whole applicant directory on every keystroke.
+        if q is None:
+            return self._query(APPLICANT_SUGGESTION_SQL, APPLICANT_SUGGESTION_COLUMNS, (limit,))
+        return self._query(
+            APPLICANT_SUGGESTION_SQL_SEARCH, APPLICANT_SUGGESTION_COLUMNS, (q, limit),
+        )
 
     def read_project_detail(self, project_id: str) -> Optional[dict]:
         header = self._query(PROJECT_DETAIL_SQL, PROJECT_DETAIL_COLUMNS, (project_id,))

@@ -20,6 +20,23 @@ if str(_ROOT / 'src') not in sys.path:
 from fcc_test_contracts.common.access_policy import ApiPrincipal  # noqa: E402
 from fcc_test_platform.application.central_project_service import CentralProjectService  # noqa: E402
 from fcc_test_platform.application.central_user_write_adapter import UPSERT_USER_SQL  # noqa: E402
+from fcc_test_kernel.domain.services.project_metadata_edit import (  # noqa: E402
+    CREATE_PROJECT_REQUIRED_FIELDS,
+)
+
+
+def _create_body(model_name: str, **overrides) -> dict:
+    """생성 요청 본문 — 필수 칸이 채워진 최소 형태(필수 집합은 도메인 SSOT)."""
+    body = {
+        'model_name': model_name,
+        'management_number': f'MGMT-{model_name}',
+        'applicant_name': 'ACME Corp',
+    }
+    body.update(overrides)
+    return body
+
+
+assert set(CREATE_PROJECT_REQUIRED_FIELDS) <= set(_create_body('X'))
 
 _FIXED_UUID = '11111111-1111-1111-1111-111111111111'
 
@@ -86,6 +103,10 @@ class _FakeRead:
         # directory — it exists so the fake stays structurally conformant.
         return []
 
+    def list_applicant_suggestions(self, *, q=None, limit):
+        # Same reason as above — the suite never reads the applicant directory.
+        return []
+
 
 def _make(user_write=None, existing=None):
     membership = _FakeMembership()
@@ -122,11 +143,7 @@ class TestApiPrincipalProfile(unittest.TestCase):
 class TestCreateProjectJit(unittest.TestCase):
     def test_new_project_provisions_creator_atomically(self):
         svc, membership, write = _make(user_write=_FakeUserWrite(), existing=None)
-        svc.create_project(
-            model_name='SM-X', actor_subject='sub-new',
-            actor_issuer='https://idp.example/tenant',
-            actor_email='new@x.com', actor_display_name='New User',
-        )
+        svc.create_project(_create_body('SM-X'), actor_subject='sub-new', actor_issuer='https://idp.example/tenant', actor_email='new@x.com', actor_display_name='New User')
         # New path commits project + creator user + admin membership + audit in ONE
         # transaction (issuer+subject identity) — no separate ensure/grant hops.
         self.assertEqual(len(write.atomic_calls), 1)
@@ -143,14 +160,14 @@ class TestCreateProjectJit(unittest.TestCase):
 
     def test_blank_issuer_falls_back_to_legacy(self):
         svc, _membership, write = _make(user_write=_FakeUserWrite(), existing=None)
-        svc.create_project(model_name='SM-X', actor_subject='sub-new')
+        svc.create_project(_create_body('SM-X'), actor_subject='sub-new')
         user_rec = write.atomic_calls[0][2]
         self.assertEqual(user_rec['issuer'], 'urn:fcc:identity:legacy')
 
     def test_reuse_path_self_heals_grant(self):
         users = _FakeUserWrite()
         svc, membership, write = _make(user_write=users, existing={'project_id': _FIXED_UUID})
-        svc.create_project(model_name='SM-X', actor_subject='sub-new')
+        svc.create_project(_create_body('SM-X'), actor_subject='sub-new')
         # Reuse must NOT create a second project (and never the atomic create)...
         self.assertEqual(write.created, [])
         self.assertEqual(write.atomic_calls, [])
@@ -166,7 +183,7 @@ class TestCreateProjectJit(unittest.TestCase):
         # it does not depend on the injected user_write_port (that port backs the
         # reuse self-heal path only).
         svc, _membership, write = _make(user_write=None, existing=None)
-        svc.create_project(model_name='SM-X', actor_subject='sub-new')
+        svc.create_project(_create_body('SM-X'), actor_subject='sub-new')
         self.assertEqual(len(write.atomic_calls), 1)
         self.assertEqual(write.atomic_calls[0][2]['subject'], 'sub-new')
 

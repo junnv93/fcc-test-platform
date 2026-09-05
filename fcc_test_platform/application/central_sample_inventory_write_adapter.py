@@ -7,6 +7,7 @@ from typing import Any, Callable, Mapping, Optional
 import uuid
 
 from fcc_test_kernel.domain.models.sample_inventory import (
+    CUSTODY_EVENT_FIELDS,
     INTAKE_FIELDS,
     SAMPLE_EDITABLE_FIELDS,
     SampleRevisionEvent,
@@ -20,6 +21,7 @@ from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnect
 from fcc_test_kernel.domain.services.sample_inventory_policy import (
     SampleExpectedVersionConflict,
     SampleInventoryPolicyError,
+    validate_custody_event,
     apply_patch,
     assert_expected_version,
     canonical_snapshot,
@@ -31,8 +33,12 @@ from fcc_test_kernel.domain.services.sample_inventory_policy import (
 )
 
 
+# ⚠️ 아래 세 SQL 의 컬럼 순서는 커널의 SAMPLE_EDITABLE_FIELDS 순서와 **묶여 있다**.
+# `_sample_update_values` 가 그 튜플을 그대로 훑어 값을 만들기 때문에, 한쪽만 고치면
+# 오류 없이 값이 옆 칸으로 밀린다(라벨넘버가 시료종류 칸에 들어가는 식). 함께 고쳐라.
 SAMPLE_SELECT_SQL = (
-    'SELECT "id", "project_id", "sample_number", "sample_code", "test_category", '
+    'SELECT "id", "project_id", "sample_number", "sample_code", '
+    '"sample_kind", "sample_description", "test_category", '
     '"label_number", "smsn", "serial_number", "intake_cert", "assigned_team", '
     '"sender", "receiver", "received_date", "released_date", "note", "status", '
     '"row_version", "deleted_at", "deleted_by", "created_at", "updated_at" FROM "samples" '
@@ -46,13 +52,15 @@ PROJECT_SELECT_SQL = (
 )
 SAMPLE_INSERT_SQL = (
     'INSERT INTO "samples" ("id", "project_id", "sample_number", "sample_code", '
+    '"sample_kind", "sample_description", '
     '"test_category", "label_number", "smsn", "serial_number", "intake_cert", '
     '"assigned_team", "sender", "receiver", "received_date", "released_date", '
     '"note", "status", "row_version", "created_at", "updated_at") '
-    'VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1, %s, %s)'
+    'VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1, %s, %s)'
 )
 SAMPLE_UPDATE_SQL = (
     'UPDATE "samples" SET "sample_number" = %s, "sample_code" = %s, '
+    '"sample_kind" = %s, "sample_description" = %s, '
     '"test_category" = %s, "label_number" = %s, "smsn" = %s, '
     '"serial_number" = %s, "intake_cert" = %s, "assigned_team" = %s, '
     '"sender" = %s, "receiver" = %s, "received_date" = %s, '
@@ -86,6 +94,21 @@ LATEST_INTAKE_SQL = (
     'FROM "sample_intakes" WHERE "sample_id" = %s '
     'ORDER BY "created_at" DESC, "id" DESC LIMIT 1'
 )
+CUSTODY_INSERT_SQL = (
+    'INSERT INTO "sample_custody_events" ("id", "sample_id", "project_id", '
+    '"event_type", "occurred_on", "counterparty", "intake_cert_number", '
+    '"reason", "note", "actor_subject", "created_at", "updated_at") '
+    'VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+)
+CUSTODY_DELETE_SQL = (
+    'DELETE FROM "sample_custody_events" WHERE "id" = %s AND "sample_id" = %s '
+    'AND "project_id" = %s'
+)
+# 시료가 이 프로젝트의 것인지 확인한다. custody 쓰기는 project_id 를 URL 에서 받으므로,
+# 확인 없이 쓰면 다른 프로젝트의 시료에 사건을 붙일 수 있다.
+SAMPLE_OWNERSHIP_SQL = (
+    'SELECT "id" FROM "samples" WHERE "project_id" = %s AND "id" = %s'
+)
 AUDIT_HARD_DELETE_SQL = (
     'INSERT INTO "audit_events" ("id", "event_type", "project_id", "actor_subject", '
     '"detail_json", "occurred_at", "created_at") VALUES (%s, %s, %s, %s, %s, %s, %s)'
@@ -93,7 +116,8 @@ AUDIT_HARD_DELETE_SQL = (
 
 PROJECT_COLUMNS = ('project_id', 'project_code', 'model_name', 'management_number', 'project_status')
 SAMPLE_COLUMNS = (
-    'id', 'project_id', 'sample_number', 'sample_code', 'test_category',
+    'id', 'project_id', 'sample_number', 'sample_code',
+    'sample_kind', 'sample_description', 'test_category',
     'label_number', 'smsn', 'serial_number', 'intake_cert', 'assigned_team',
     'sender', 'receiver', 'received_date', 'released_date', 'note', 'status',
     'row_version', 'deleted_at', 'deleted_by', 'created_at', 'updated_at',
@@ -122,6 +146,7 @@ class PostgresCentralSampleInventoryWriteAdapter:
             now = occurred_at
             cursor.execute(SAMPLE_INSERT_SQL, (
                 sample_id, project_id, value['sample_number'], value['sample_code'],
+                value['sample_kind'], value['sample_description'],
                 value['test_category'], value['label_number'], value['smsn'],
                 value['serial_number'], value['intake_cert'], value['assigned_team'],
                 value['sender'], value['receiver'], value['received_date'],
@@ -312,6 +337,7 @@ class PostgresCentralSampleInventoryWriteAdapter:
                 }, sort_keys=True, separators=(',', ':')),
                 occurred_at, occurred_at,
             ))
+            cursor.execute('DELETE FROM "sample_custody_events" WHERE "sample_id" = %s', (sample_id,))
             cursor.execute('DELETE FROM "sample_intakes" WHERE "sample_id" = %s', (sample_id,))
             cursor.execute('DELETE FROM "sample_inventory_revisions" WHERE "sample_id" = %s', (sample_id,))
             cursor.execute('DELETE FROM "samples" WHERE "id" = %s', (sample_id,))
@@ -323,6 +349,76 @@ class PostgresCentralSampleInventoryWriteAdapter:
         except Exception as exc:  # noqa: BLE001
             self._rollback(conn)
             raise CentralSampleInventoryWriteError(f'hard delete sample failed: {exc}') from exc
+        finally:
+            self._close(conn, cursor)
+
+    def append_custody_event(self, project_id: str, sample_id: str,
+                             payload: Mapping[str, Any], *, actor_subject: str,
+                             occurred_at: str) -> dict:
+        """Append one 반입/반출 사건 (ADR-0002).
+
+        ⚠️ `sample_inventory_revisions` 에는 쓰지 않고 `row_version` 도 올리지 않는다.
+        그 원장은 `samples` 현재 투영의 스냅샷이고 그 모양을 측정 세션이 함께 쓴다 —
+        custody 축의 추가마다 그 계약을 흔들 이유가 없다. 이 행이 스스로
+        `actor_subject`/`created_at` 을 갖는다. row_version 을 올리지 않으므로 편집
+        화면이 열려 있어도 헛된 409 가 나지 않는다.
+        """
+        conn, cursor = self._open()
+        try:
+            value = validate_custody_event(payload)
+            owner = self._fetchone(
+                cursor, SAMPLE_OWNERSHIP_SQL, (project_id, sample_id), ('id',))
+            if owner is None:
+                raise CentralSampleInventoryNotFoundError(f'unknown sample_id {sample_id}')
+            event_id = str(uuid.uuid4())
+            cursor.execute(CUSTODY_INSERT_SQL, (
+                event_id, sample_id, project_id, value['event_type'],
+                value['occurred_on'], value['counterparty'],
+                value['intake_cert_number'], value['reason'], value['note'],
+                actor_subject, occurred_at, occurred_at,
+            ))
+            conn.commit()
+            return {
+                'id': event_id, 'sample_id': sample_id, 'project_id': project_id,
+                **{field: value[field] for field in CUSTODY_EVENT_FIELDS},
+                'actor_subject': actor_subject,
+                'created_at': occurred_at, 'updated_at': occurred_at,
+            }
+        except CentralSampleInventoryNotFoundError:
+            self._rollback(conn)
+            raise
+        except SampleInventoryPolicyError:
+            self._rollback(conn)
+            raise
+        except Exception as exc:  # noqa: BLE001
+            self._rollback(conn)
+            raise CentralSampleInventoryWriteError(
+                f'append custody event failed: {exc}') from exc
+        finally:
+            self._close(conn, cursor)
+
+    def delete_custody_event(self, project_id: str, sample_id: str, event_id: str, *,
+                             actor_subject: str, occurred_at: str) -> dict:
+        """Remove one wrongly recorded custody event (ADR-0002).
+
+        정정 수단은 수정이 아니라 삭제다 — 수정은 흔적 없이 과거를 바꾸지만 삭제는
+        보이고, 다시 적으면 새 행위자와 시각이 붙는다.
+        """
+        conn, cursor = self._open()
+        try:
+            cursor.execute(CUSTODY_DELETE_SQL, (event_id, sample_id, project_id))
+            if getattr(cursor, 'rowcount', 1) != 1:
+                raise CentralSampleInventoryNotFoundError(
+                    f'unknown custody event {event_id}')
+            conn.commit()
+            return {'custody_event_id': event_id, 'deleted': True}
+        except CentralSampleInventoryNotFoundError:
+            self._rollback(conn)
+            raise
+        except Exception as exc:  # noqa: BLE001
+            self._rollback(conn)
+            raise CentralSampleInventoryWriteError(
+                f'delete custody event failed: {exc}') from exc
         finally:
             self._close(conn, cursor)
 
@@ -436,12 +532,14 @@ def _snapshot_for_projection(project, sample_id, projection, latest_intake,
 
 __all__ = [
     'AUDIT_HARD_DELETE_SQL',
-    'CURRENT_SAMPLE_SQL',
+    'CUSTODY_DELETE_SQL',
+    'CUSTODY_INSERT_SQL',
     'INTAKE_INSERT_SQL',
     'NEXT_REVISION_SQL',
     'PostgresCentralSampleInventoryWriteAdapter',
     'REVISION_INSERT_SQL',
     'SAMPLE_INSERT_SQL',
+    'SAMPLE_OWNERSHIP_SQL',
     'SAMPLE_UPDATE_SQL',
     'STATUS_UPDATE_SQL',
 ]

@@ -42,12 +42,10 @@
       ]
     },
     "projects": {
-      "purpose": "Customer/project-level grouping for test campaigns.",
+      "purpose": "Project-level grouping for test campaigns. The requesting party is ONE column (applicant_name); the former customer column was retired 2026-09-04 and its values merged into applicant_name (migration 032) — two columns for one party split the same company across both, and the search axis only ever indexed one of them.",
       "columns": {
         "id": {"type": "uuid", "required": true},
         "project_code": {"type": "text", "required": true, "unique": true},
-        "name": {"type": "text", "required": true},
-        "customer": {"type": "text", "required": false},
         "management_number": {"type": "text", "required": false, "unique": true},
         "status": {"type": "text", "required": false, "allowed_values": ["active", "completed"]},
         "fcc_grantee_code": {"type": "text", "required": false},
@@ -65,17 +63,17 @@
         {"name": "idx_projects_status_directory", "columns": ["status", "created_at", "id"], "purpose": "W3 backend — same keyset order under the ?status filter (the default view). Earns its keep over idx_projects_directory when the filtered status is the selective one: measured on 50k rows, ?status=completed (10%) chose this index while ?status=all chose idx_projects_directory."},
         {"name": "idx_projects_search_management_number", "using": "gin", "expressions": ["lower(management_number) gin_trgm_ops"], "purpose": "W3 backend — trigram GIN over the ?q search axis (domain SSOT project_directory_query.PROJECT_SEARCH_COLUMNS). A plain B-tree cannot serve LOWER(col) LIKE '%q%'. Measured on 50k rows: a search matching 0 rows fell from 27.6ms (Seq Scan) to 0.11ms (BitmapOr over these three indexes)."},
         {"name": "idx_projects_search_project_code", "using": "gin", "expressions": ["lower(project_code) gin_trgm_ops"], "purpose": "W3 backend — trigram GIN over the ?q search axis. project_code == model name (ADR-0017 D1), so this also covers model-name search without indexing the device_models side of the join."},
-        {"name": "idx_projects_search_customer", "using": "gin", "expressions": ["lower(customer) gin_trgm_ops"], "purpose": "W3 backend — trigram GIN over the ?q search axis."}
+        {"name": "idx_projects_search_applicant_name", "using": "gin", "expressions": ["lower(applicant_name) gin_trgm_ops"], "purpose": "W3 backend — trigram GIN over the ?q search axis (domain SSOT project_directory_query.PROJECT_SEARCH_COLUMNS). Replaced idx_projects_search_customer on 2026-09-04 when the requesting-party axis moved to applicant_name: the retired customer column held the same party, so indexing it let search see only the half of the corpus that happened to use that column."},
+        {"name": "idx_projects_applicant_directory", "expressions": ["lower(applicant_name)", "\"created_at\" DESC", "\"id\" DESC"], "orders": {"created_at": "DESC", "id": "DESC"}, "where": "applicant_name IS NOT NULL", "purpose": "Applicant suggestion lookup (GET /platform/applicants) — the query takes the MOST RECENT row per normalized applicant via ROW_NUMBER() OVER (PARTITION BY lower(applicant_name) ORDER BY created_at DESC, id DESC). This index stores rows in exactly that partition/order, so the window function runs over an ordered scan instead of sorting the candidate set. PARTIAL (applicant_name IS NOT NULL): a row with no applicant can never be a suggestion, so indexing it would only add bloat."}
       ]
     },
     "device_models": {
-      "purpose": "Device model metadata shared across providers.",
+      "purpose": "Device model metadata shared across providers. One model per project (ADR-0017 D1 1:1 overlay); model_name IS the project identity, so the project row does not repeat it.",
       "columns": {
         "id": {"type": "uuid", "required": true},
         "project_id": {"type": "uuid", "required": true, "references": "projects.id"},
         "model_name": {"type": "text", "required": true},
         "manufacturer": {"type": "text", "required": false},
-        "metadata_json": {"type": "json", "required": false},
         "created_at": {"type": "timestamp", "required": true},
         "updated_at": {"type": "timestamp", "required": true}
       },
@@ -92,6 +90,8 @@
         "sample_code": {"type": "text", "required": true},
         "serial_number": {"type": "text", "required": false},
         "sample_number": {"type": "text", "required": false},
+        "sample_kind": {"type": "text", "required": false},
+        "sample_description": {"type": "text", "required": false},
         "test_category": {"type": "text", "required": false},
         "label_number": {"type": "text", "required": false},
         "smsn": {"type": "text", "required": false},
@@ -106,7 +106,6 @@
         "row_version": {"type": "integer", "required": true, "default": "1"},
         "deleted_at": {"type": "timestamp", "required": false},
         "deleted_by": {"type": "text", "required": false},
-        "metadata_json": {"type": "json", "required": false},
         "created_at": {"type": "timestamp", "required": true},
         "updated_at": {"type": "timestamp", "required": true}
       },
@@ -135,6 +134,27 @@
       },
       "indexes": [
         {"name": "idx_sample_intakes_sample", "columns": ["sample_id"]}
+      ]
+    },
+    "sample_custody_events": {
+      "purpose": "PM 축의 반입/반출 사건 (1:N to samples, ADR-0002). 시험 실무자 축인 sample_intakes 와 대칭이다. intake_cert_number 는 시료가 아니라 이 사건의 속성이다 — 반입증은 고객사가 한 번의 납품에 한 장 발행하고 그 납품에 실린 시료 여럿(12대 단위)이 같은 번호를 공유하므로, 배치는 (project_id, intake_cert_number) 로 묶어 복원한다. occurred_on 이 text 인 것은 의도다: 이 도메인의 날짜는 전부 사람이 적는 자유 텍스트다. 현재 보유 상태는 가장 최근 사건의 event_type 이며 그 규칙은 커널의 custody_state() 한 자리에만 산다.",
+      "columns": {
+        "id": {"type": "uuid", "required": true},
+        "sample_id": {"type": "uuid", "required": true, "references": "samples.id"},
+        "project_id": {"type": "uuid", "required": true, "references": "projects.id"},
+        "event_type": {"type": "text", "required": true, "allowed_values": ["received", "released"]},
+        "occurred_on": {"type": "text", "required": false},
+        "counterparty": {"type": "text", "required": false},
+        "intake_cert_number": {"type": "text", "required": false},
+        "reason": {"type": "text", "required": false},
+        "note": {"type": "text", "required": false},
+        "actor_subject": {"type": "text", "required": true},
+        "created_at": {"type": "timestamp", "required": true},
+        "updated_at": {"type": "timestamp", "required": true}
+      },
+      "indexes": [
+        {"name": "idx_sample_custody_events_sample_created", "columns": ["sample_id", "created_at", "id"], "orders": {"created_at": "DESC", "id": "DESC"}},
+        {"name": "idx_sample_custody_events_project_cert", "columns": ["project_id", "intake_cert_number"], "where": "\"intake_cert_number\" IS NOT NULL"}
       ]
     },
     "sample_inventory_revisions": {
@@ -380,7 +400,7 @@
         {"name": "idx_measurement_attempts_session_measured_at", "columns": ["session_id", "measured_at"]},
         {"name": "idx_measurement_attempts_result", "columns": ["measurement_result_id"]},
         {"name": "idx_measurement_attempts_is_latest", "columns": ["project_id", "provider_id", "condition_hash", "is_latest"]},
-        {"name": "idx_measurement_attempts_project_provider_condition_recency", "columns": ["project_id", "provider_id", "condition_hash", "measured_at", "created_at", "id"], "orders": {"measured_at": "DESC NULLS LAST", "created_at": "DESC", "id": "DESC"}, "where": "status = 'completed'", "purpose": "Candidate seek covering index; the exact project/provider/condition identity precedes deterministic recency."},
+        {"name": "idx_measurement_attempts_project_provider_condition_recency", "columns": ["project_id", "provider_id", "condition_hash", "measured_at", "created_at", "id"], "orders": {"measured_at": "DESC NULLS LAST", "created_at": "DESC", "id": "DESC"}, "where": "\"status\" = 'completed'", "purpose": "Candidate seek covering index; the exact project/provider/condition identity precedes deterministic recency."},
         {"name": "idx_measurement_attempts_progress_join", "columns": ["project_id", "provider_id", "condition_hash", "is_latest"]},
         {"name": "idx_measurement_attempts_operator", "columns": ["operator"]}
       ]

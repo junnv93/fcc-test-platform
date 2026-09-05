@@ -49,7 +49,6 @@ async function mockInventoryApi(page: Page): Promise<void> {
       project_id: PROJECT_ID,
       project_code: 'INV-E2E',
       model_name: 'Inventory E2E',
-      customer: null,
       manufacturer: null,
       management_number: 'M-001',
       status: 'active',

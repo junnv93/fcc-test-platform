@@ -163,9 +163,9 @@ def _seed(connection, seed: str) -> dict:
             (provider_id, f'proof-{seed}'),
         )
         cursor.execute(
-            'INSERT INTO projects (id, project_code, name, created_at, updated_at)'
-            ' VALUES (%s, %s, %s, now(), now()) ON CONFLICT (id) DO NOTHING',
-            (project_id, f'PRF-{seed}'[:32], 'keyset cursor live proof'),
+            'INSERT INTO projects (id, project_code, created_at, updated_at)'
+            ' VALUES (%s, %s, now(), now()) ON CONFLICT (id) DO NOTHING',
+            (project_id, f'PRF-{seed}'[:32]),
         )
         cursor.execute(
             'INSERT INTO test_sessions (id, provider_id, provider_session_id,'

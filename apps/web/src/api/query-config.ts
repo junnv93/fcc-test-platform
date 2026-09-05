@@ -277,6 +277,28 @@ export const queryKeys = {
      * 불변인 값이 키에 섞여 무엇이 캐시를 나누는지 흐려진다.
      */
     pickerOptions: (q?: string) => ['project-list', 'options', q] as const,
+    /**
+     * 생성 폼 신청자 자동완성 (2026-09-04). `GET /platform/applicants?q=&limit=`.
+     *
+     * **프리픽스가 `'project-list'` 가 아니다.** 프로젝트 생성/편집 mutation 이
+     * `lists()` 로 무효화하는데, 신청자 디렉터리도 그 아래 두면 프로젝트를 하나
+     * 만들 때마다 열려 있지도 않은 자동완성 목록까지 다시 읽는다. 신청자는 프로젝트
+     * 행에서 **파생**되므로 새 프로젝트가 생기면 실제로 낡기는 하지만, 그 낡음은
+     * 다음에 폼을 열 때 `staleTime` 이 자연스럽게 처리한다 — 즉시성이 필요한 읽기가
+     * 아니다.
+     *
+     * `q` 가 키의 일부라 검색어마다 캐시가 나뉜다(타이핑을 되돌리면 이전 결과가
+     * 즉시 보인다).
+     */
+    /**
+     * 신청자 디렉터리 **전체**를 덮는 무효화 프리픽스 — 검색어 변형이 전부 이 아래
+     * 있으므로, 새 프로젝트가 신청자를 등록했을 때 한 번의 무효화로 모든 변형이
+     * 낡음 표시된다. 리프 팩토리를 무인자로 부르면 `[…, undefined]` 라는 **다른
+     * 키 하나**가 되어 나머지 변형이 낡은 채 남는다(`lists()` ↔ `directory()` 와
+     * 같은 관계다).
+     */
+    applicantDirectory: () => ['applicant-directory'] as const,
+    applicants: (q?: string) => ['applicant-directory', q] as const,
     /** 한 프로젝트 상세 (모델 + 샘플 목록). `GET /platform/projects/{id}`. */
     detail: (projectId: string) => ['project-detail', projectId] as const,
     coverage: (projectId: string, techQuery?: string) =>
@@ -355,6 +377,12 @@ export const queryKeys = {
       ['sample-inventory', 'detail', projectId, sampleId, asOf ?? null] as const,
     history: (projectId: string, sampleId: string, after?: string, limit?: number) =>
       ['sample-inventory', 'history', projectId, sampleId, after ?? null, limit ?? null] as const,
+    /** 시험 실무자 축의 1:N 입고 이력 — `detail` 이 싣는 최신 1건과 다른 축이다. */
+    intakes: (projectId: string, sampleId: string) =>
+      ['sample-inventory', 'intakes', projectId, sampleId] as const,
+    /** PM 축의 반입/반출 사건 (ADR-0002). */
+    custody: (projectId: string, sampleId: string) =>
+      ['sample-inventory', 'custody', projectId, sampleId] as const,
   },
   /**
    * 참조 카탈로그 (2026-08-08). 프로젝트가 아니라 **provider** 스코프다 —

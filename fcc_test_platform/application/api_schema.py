@@ -27,6 +27,14 @@ from fcc_test_contracts.common.openapi_schema_builder import (
     problem_error_response,
 )
 from fcc_test_contracts.common.ws_subprotocol_auth import WS_BEARER_SUBPROTOCOL
+from fcc_test_kernel.domain.services.project_metadata_edit import (
+    APPLICANT_SUGGESTION_FIELDS,
+    CREATE_PROJECT_REQUIRED_FIELDS,
+    EDITABLE_PROJECT_META_FIELDS,
+)
+from fcc_test_platform.domain.services.project_directory_query import (
+    PROJECT_SEARCH_COLUMNS,
+)
 from fcc_test_kernel.application.central_contract.api_contracts import (
     PLATFORM_API_COMPATIBILITY_MAJOR,
     PLATFORM_API_CONTRACT_VERSION,
@@ -58,6 +66,17 @@ __all__ = [
 
 # Per-operation natural-language summary (coverage sealed by
 # ``test_operation_summary_covers_every_operation``).
+# 요약문에 등장하는 **필드 열거는 전부 SSOT 파생**이다 (2026-09-04).
+#
+# 사람이 읽는 산문이라도 축이나 필드를 이름으로 부르는 순간 그것은 사본이다 —
+# 그리고 산문 사본은 컴파일러도 테스트도 잡아주지 않는 한 조용히 낡는다. 실제로
+# list_projects 요약은 검색 축이 ``customer`` 에서 옮겨 간 뒤에도 옛 축을 광고했을
+# 것이고, 그것은 "없는 능력을 약속하는 문장"이다(봉인 테스트가 그 형태를 금지한다).
+_SEARCH_AXIS_PROSE = ' / '.join(PROJECT_SEARCH_COLUMNS)
+_EDITABLE_META_PROSE = ' / '.join(EDITABLE_PROJECT_META_FIELDS)
+_REQUIRED_CREATE_PROSE = ' + '.join(CREATE_PROJECT_REQUIRED_FIELDS)
+_APPLICANT_FILL_PROSE = ' / '.join(APPLICANT_SUGGESTION_FIELDS)
+
 _OPERATION_SUMMARIES: dict[str, str] = {
     'list_projects': (
         'List the project directory (read-open, project-status-visibility) — one '
@@ -65,10 +84,22 @@ _OPERATION_SUMMARIES: dict[str, str] = {
         'count. Visible to ANY authenticated principal (not membership-scoped) so '
         'a team sees the projects it works on; the optional ?status filter '
         '(active|completed|all) defaults to active (in-progress) projects. '
-        '?q searches server-side (case-insensitive substring over management '
-        'number / project code / customer); ?limit and ?cursor page by keyset '
+        '?q searches server-side (case-insensitive substring over '
+        f'{_SEARCH_AXIS_PROSE}); ?limit and ?cursor page by keyset '
         '(opaque token in the X-Next-Cursor response header, never OFFSET). '
         'Omitting q/limit/cursor returns the whole directory unchanged.'
+    ),
+    'list_applicants': (
+        'List the applicant directory for the project create form (read-only, '
+        'authenticated — same class as the project directory). Applicants are '
+        'DERIVED from project rows, not a master table: one entry per distinct '
+        f'applicant carrying {_APPLICANT_FILL_PROSE} taken from that applicant\'s '
+        'MOST RECENT project, plus project_count. Selecting one pre-fills those '
+        'fields in the create form, where they stay editable — the suggestion is a '
+        'starting point, not a constraint. ?q narrows case-insensitively; ?limit '
+        'bounds the answer (there is no cursor: an autocomplete\'s top N is the '
+        'whole answer). management_number is deliberately NOT part of a suggestion: '
+        'it is UNIQUE per project, so inheriting it would be an immediate conflict.'
     ),
     'complete_project': (
         'Mark a project completed — the project leaves the default active '
@@ -90,12 +121,18 @@ _OPERATION_SUMMARIES: dict[str, str] = {
         'name matches an existing project_code reuses that project (idempotent, '
         'never a duplicate). Gated by the authenticated authorization class (a '
         'global operation, not project-scoped); the creator is auto-granted '
-        'project_admin membership (D3).'
+        'project_admin membership (D3). '
+        f'Required fields: {_REQUIRED_CREATE_PROSE} — a project without a '
+        'management number cannot produce a report number (it is the sole '
+        'ingredient of S-{management_number}-{edition}) and one without an '
+        'applicant is unreachable by search, so both are mandatory rather than '
+        'optional-but-expected. The report-stage fields (fcc_grantee_code / '
+        'eut_description / test_standard) are accepted here but are normally '
+        'filled later, when the report is written.'
     ),
     'update_project': (
-        'Partially update a project\'s 성적서 표지 메타 (customer / manufacturer / '
-        'management_number / fcc_grantee_code / applicant_name / '
-        'applicant_address / eut_description / test_standard) — FCC ID and '
+        'Partially update a project\'s 성적서 표지 메타 '
+        f'({_EDITABLE_META_PROSE}) — FCC ID and '
         'applicant are normally confirmed AFTER a project starts, so the cover '
         'metadata must stay editable. A field the request omits is left '
         'unchanged; a field sent as null is cleared. status is NOT editable here '
@@ -106,7 +143,7 @@ _OPERATION_SUMMARIES: dict[str, str] = {
         'when the project is unknown.'
     ),
     'get_project': (
-        'Project detail — model + customer/manufacturer + the sample list. '
+        'Project detail — model + 성적서 표지 메타 + the sample list. '
         'Read-open (project-status-visibility): visible to ANY authenticated '
         'principal (an internal-tool decision — note the detail includes sample '
         'serial / label / sender-receiver / latest-intake fields). 404 when the '
@@ -578,6 +615,22 @@ _OPERATION_SUMMARIES: dict[str, str] = {
         'measurement sessions and their snapshots remain preserved.'
     ),
     'list_sample_history': 'Read append-only full sample revisions with keyset pagination.',
+    'list_sample_intakes': (
+        'Read the complete 1:N intake history (시험원 입고 칸) for one sample, oldest '
+        'first; a sample re-entering after release adds another observation.'
+    ),
+    'list_sample_custody_events': (
+        'Read the complete 반입/반출 history (PM 칸) for one sample. The most recent '
+        'event is what determines whether the lab currently holds the sample.'
+    ),
+    'append_sample_custody_event': (
+        'Append one 반입 or 반출 event. 반입증 belongs to the event, not the sample: '
+        'one customer delivery document covers every sample in that shipment.'
+    ),
+    'delete_sample_custody_event': (
+        'Remove one wrongly recorded custody event. Correction is delete-and-re-enter '
+        'rather than edit, so a rewritten past is visible instead of silent.'
+    ),
     'export_sample_inventory': (
         'Export the same filtered inventory revision set as one of the two sanitized '
         'PM-status or RF-data XLSX template shapes.'

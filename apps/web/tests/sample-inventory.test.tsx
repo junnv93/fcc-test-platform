@@ -20,6 +20,12 @@ const platformApi = vi.hoisted(() => ({
   softDeleteSample: vi.fn(),
   hardDeleteSample: vi.fn(),
   fetchSampleHistory: vi.fn(),
+  // 모듈 전체를 대체하는 mock 이므로 새 함수가 여기 없으면 컴포넌트가 undefined 를
+  // 호출하고 조용히 에러 상태로 앉는다 — 테스트는 통과하면서.
+  fetchSampleIntakes: vi.fn(),
+  fetchSampleCustodyEvents: vi.fn(),
+  appendSampleCustodyEvent: vi.fn(),
+  deleteSampleCustodyEvent: vi.fn(),
   exportSampleInventory: vi.fn(),
 }));
 vi.mock('@/api/platform-client', () => platformApi);
@@ -102,6 +108,8 @@ beforeEach(() => {
   sessionStorage.clear();
   for (const mock of Object.values(platformApi)) mock.mockReset();
   platformApi.fetchProjectsPage.mockResolvedValue({ items: [], nextCursor: null });
+  platformApi.fetchSampleIntakes.mockResolvedValue({ items: [] });
+  platformApi.fetchSampleCustodyEvents.mockResolvedValue({ items: [] });
   platformApi.fetchSampleInventory.mockResolvedValue({
     items: [sample()],
     next_cursor: null,

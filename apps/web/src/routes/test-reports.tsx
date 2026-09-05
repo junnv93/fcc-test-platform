@@ -6,16 +6,28 @@ import { PERMISSION_PLATFORM_ADMIN } from '@/api/permissions';
 import {
   createProjectReport,
   type CreateReportRequest,
+  fetchProjectDetail,
   fetchProjectReports,
   fetchReportCitation,
+  type ProjectDetailEnvelope,
   type ReportCitationEnvelope,
   type ReportEnvelope,
   type ReportSampleCitation,
+  updateProject,
+  type UpdateProjectRequest,
 } from '@/api/platform-client';
 import { queryKeys, REFETCH_STRATEGIES } from '@/api/query-config';
 import { useAuthSession } from '@/auth/route-guard';
 import { useT } from '@/i18n';
 import { isValidProjectId } from '@/shared/project-id';
+import {
+  buildProjectMetaPatch,
+  isProjectMetaField,
+  projectMetaDraftFrom,
+  type ProjectMetaDraft,
+  type ProjectMetaField,
+  REPORT_META_FIELDS,
+} from '@/shared/project-meta-patch';
 import { ProjectSelectField } from '@/shared/ProjectSelectField';
 import { ROUTE_PATHS } from '@/shared/route-links';
 import {
@@ -278,6 +290,10 @@ function ProjectReportRegistry({
         onSelectEdition={onSelectEdition}
       />
       <CreateReportPanel mutation={createMutation} />
+      {/* 표지 정보 입력은 **인용 앞**에 온다. 아래 인용 패널이 보여 주는 값의 출처가
+        바로 이 폼이라, 순서가 뒤바뀌면 사용자는 빈 인용을 먼저 보고 그것을 채울 곳을
+        찾아 아래로 내려가야 한다. */}
+      <ReportCoverMetaPanel projectId={projectId} />
       <CitationPanel
         projectId={projectId}
         selectedEdition={selectedEdition}
@@ -559,6 +575,205 @@ function CreateReportPanel({
           })}
         />
       )}
+    </section>
+  );
+}
+
+/**
+ * 성적서 표지 정보 — **성적서 스테이지** 메타 입력 (2026-09-04).
+ *
+ * ## 왜 이 화면인가
+ *
+ * grantee code · 시험 대상(EUT) 설명 · 시험 규격은 프로젝트를 개설하는 시점에는 답이
+ * 없는 질문이다. grantee code 는 인증 신청이 진행되어야 나오고, 규격은 시험 범위가
+ * 정해져야 확정된다. 그런데 생성 폼이 그 셋을 함께 물었고 — 답이 없으니 — 대부분
+ * 공란으로 남았다. 그 결과 아래 인용 패널의 표지 칸과 파생값 `fcc_id` 가 영구히 비어
+ * 있었다. 이제 그 칸들은 **여기서** 묻는다. 성적서를 쓰는 지금이 답이 생긴 시점이다.
+ *
+ * 어느 칸이 여기 오는지는 화면이 고르지 않는다 — `REPORT_META_FIELDS`(스테이지 SSOT)
+ * 가 정하고, 생성 폼은 그 여집합을 렌더한다. 그래서 두 화면이 같은 칸을 두 번 묻거나
+ * 어느 화면도 묻지 않는 칸이 생길 수 없다.
+ *
+ * ## 계약은 좁아지지 않는다
+ *
+ * 스테이지는 **화면 배치이지 권한이 아니다.** 여기 있는 칸도 프로젝트 진입층의 카드
+ * 편집기에서 얼마든지 고칠 수 있고, PATCH 는 어느 칸이든 받는다. 다만 diff 순회를
+ * `REPORT_META_FIELDS` 로 좁힌다 — **화면에 없는 칸을 diff 에 넣으면 사용자가 보지도
+ * 못한 값을 저장하게 되기 때문이다**(그 사이 다른 사람이 접수 칸을 고쳤다면 내 화면의
+ * 낡은 값으로 덮어쓴다).
+ *
+ * 저장 상태는 서버 스냅샷을 미러링하지 않는다: 렌더 값은 매번
+ * `draft ?? projectMetaDraftFrom(project)` 로 파생하고, baseline 은 첫 키스트로크에서
+ * 1회만 포획한다(`my-projects` 의 편집기와 같은 규율 — 미러링하면 이 화면의 폴링/
+ * 포커스 refetch 가 타이핑을 주기적으로 지운다).
+ */
+function ReportCoverMetaPanel({ projectId }: { readonly projectId: string }): JSX.Element {
+  const { t } = useT();
+  const queryClient = useQueryClient();
+
+  const detail = useQuery<ProjectDetailEnvelope, ApiError>({
+    queryKey: queryKeys.project.detail(projectId),
+    queryFn: () => fetchProjectDetail(projectId),
+    ...REFETCH_STRATEGIES.NORMAL,
+  });
+
+  const [edit, setEdit] = useState<{
+    readonly draft: ProjectMetaDraft;
+    readonly baseline: ProjectMetaDraft;
+  } | null>(null);
+
+  const save = useMutation<ProjectDetailEnvelope, ApiError, UpdateProjectRequest>({
+    mutationFn: (patch) => updateProject(projectId, patch),
+    onSuccess: () => {
+      // 쓰기가 안착했으므로 로컬 편집은 더 이상 "지켜야 할 미저장 작업"이 아니다.
+      setEdit(null);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.project.detail(projectId) });
+      // 인용은 같은 표지 값을 조립해 보여 준다 — 함께 갱신하지 않으면 방금 저장한
+      // 값이 위에는 반영되고 아래 인용에는 반영되지 않아, 한 화면이 두 가지를 말한다.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.project.reportCitation(projectId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.project.lists() });
+    },
+  });
+
+  if (detail.isPending) {
+    return (
+      <section aria-labelledby="report-cover-meta-heading">
+        <SectionBand
+          title={t('routes.testReports.coverMetaSection')}
+          titleId="report-cover-meta-heading"
+        />
+        <BlockSkeleton lines={3} testId="report-cover-meta-loading" />
+      </section>
+    );
+  }
+  if (detail.isError || detail.data === undefined) {
+    return (
+      <section aria-labelledby="report-cover-meta-heading">
+        <SectionBand
+          title={t('routes.testReports.coverMetaSection')}
+          titleId="report-cover-meta-heading"
+        />
+        <ErrorState
+          testId="report-cover-meta-error"
+          message={describeApiError(detail.error, 'platform', {
+            forbidden: t('routes.testReports.coverMeta.forbidden'),
+            notFound: t('routes.testReports.coverMeta.notFound'),
+            network: t('routes.testReports.coverMeta.network'),
+            default: t('routes.testReports.coverMeta.failed'),
+          })}
+        />
+      </section>
+    );
+  }
+
+  const server = projectMetaDraftFrom(detail.data);
+  const draft = edit?.draft ?? server;
+  const baseline = edit?.baseline ?? server;
+  // 이 화면의 칸만 diff 에 담는다(§계약은 좁아지지 않는다).
+  const patch = buildProjectMetaPatch(baseline, draft, REPORT_META_FIELDS);
+  const dirtyCount = Object.keys(patch).length;
+  const isDirty = dirtyCount > 0;
+
+  const conflictField =
+    save.error?.status === 409 && isProjectMetaField(save.error.params?.field)
+      ? save.error.params.field
+      : null;
+
+  const change = (field: ProjectMetaField, value: string): void => {
+    setEdit((current) => ({
+      // baseline 은 첫 키스트로크에서 1회만 포획 — 이후 갱신하면 diff 가 자기 자신과
+      // 비교되어 영원히 빈다.
+      baseline: current?.baseline ?? server,
+      draft: { ...(current?.draft ?? server), [field]: value },
+    }));
+    save.reset();
+  };
+
+  return (
+    <section aria-labelledby="report-cover-meta-heading">
+      <SectionBand
+        title={t('routes.testReports.coverMetaSection')}
+        titleId="report-cover-meta-heading"
+        {...(isDirty ? { meta: t('routes.testReports.coverMeta.dirty', { n: dirtyCount }) } : {})}
+      />
+      <form
+        aria-label={t('routes.testReports.coverMeta.ariaLabel')}
+        data-testid="report-cover-meta-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (isDirty && !save.isPending) save.mutate(patch);
+        }}
+      >
+        <Toolbar ariaLabel={t('routes.testReports.coverMeta.ariaLabel')}>
+          {REPORT_META_FIELDS.map((field) => (
+            <FieldGroup
+              key={field}
+              label={t(`routes.myProjects.metaField.${field}`)}
+              htmlFor={`report-cover-${field}`}
+            >
+              <input
+                id={`report-cover-${field}`}
+                data-testid={`report-cover-${field}`}
+                value={draft[field]}
+                aria-invalid={conflictField === field ? true : undefined}
+                onChange={(event) => change(field, event.target.value)}
+              />
+            </FieldGroup>
+          ))}
+          <Button
+            type="submit"
+            variant="primary"
+            data-testid="report-cover-meta-save"
+            disabled={!isDirty || save.isPending}
+          >
+            {save.isPending
+              ? t('routes.testReports.coverMeta.saving')
+              : t('routes.testReports.coverMeta.save')}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            data-testid="report-cover-meta-discard"
+            disabled={!isDirty}
+            onClick={() => {
+              setEdit(null);
+              save.reset();
+            }}
+          >
+            {t('routes.testReports.coverMeta.discard')}
+          </Button>
+        </Toolbar>
+      </form>
+      {isDirty && (
+        <StatusMessage
+          tone="info"
+          testId="report-cover-meta-unsaved"
+          message={t('routes.testReports.coverMeta.unsaved', { n: dirtyCount })}
+        />
+      )}
+      {save.isError && (
+        <ErrorState
+          testId="report-cover-meta-save-error"
+          message={describeApiError(save.error, 'platform', {
+            badRequest: t('routes.testReports.coverMeta.invalid'),
+            forbidden: t('routes.testReports.coverMeta.saveForbidden'),
+            notFound: t('routes.testReports.coverMeta.notFound'),
+            network: t('routes.testReports.coverMeta.network'),
+            default: t('routes.testReports.coverMeta.saveFailed'),
+          })}
+        />
+      )}
+      {save.isSuccess && !isDirty && (
+        <StatusMessage
+          tone="success"
+          testId="report-cover-meta-saved"
+          message={t('routes.testReports.coverMeta.saved')}
+        />
+      )}
+      {/* FCC ID 는 **서버 파생값**이다(grantee code + 모델명 정규화). 입력 옆에
+        미리보기를 만들면 그 정규화 규칙이 TS 로 복제되어 두 번째 진실 원천이 된다.
+        저장하면 아래 인용 패널이 서버가 만든 값을 보여 준다. */}
+      <p className="section-hint">{t('routes.testReports.coverMeta.fccIdHint')}</p>
     </section>
   );
 }

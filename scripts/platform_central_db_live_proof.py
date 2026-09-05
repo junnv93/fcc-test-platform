@@ -215,8 +215,8 @@ def _provision_identity_graph(dsn: str, ids: dict, provider_code: str, proof_see
             # coexist without colliding on UNIQUE(project_code/sample_code/
             # provider_session_id), while a re-run of the same seed converges.
             cursor.execute(
-                'INSERT INTO projects(id,project_code,name,created_at,updated_at) '
-                "VALUES(%s,%s,'Central DB Live Proof',%s,%s) ON CONFLICT (id) DO NOTHING",
+                'INSERT INTO projects(id,project_code,created_at,updated_at) '
+                'VALUES(%s,%s,%s,%s) ON CONFLICT (id) DO NOTHING',
                 (ids['project'], f'PROOF-PRJ-{proof_seed}', ts, ts),
             )
             cursor.execute(
@@ -566,8 +566,8 @@ def _seed_pre_029_witnesses(
                 raise LiveProofError('pre-029 witness seed could not resolve provider id')
             provider_id = str(provider_row[0])
             cursor.execute(
-                'INSERT INTO projects(id,project_code,name,created_at,updated_at) '
-                "VALUES(%s,%s,'Pre-029 Primary Project',%s,%s)",
+                'INSERT INTO projects(id,project_code,created_at,updated_at) '
+                'VALUES(%s,%s,%s,%s)',
                 (ids['project'], f'PROOF-PRE029-{proof_seed}', ts, ts),
             )
             cursor.execute(
@@ -576,8 +576,8 @@ def _seed_pre_029_witnesses(
                 (ids['model'], ids['project'], f'PROOF-PRE029-MODEL-{proof_seed}', ts, ts),
             )
             cursor.execute(
-                'INSERT INTO projects(id,project_code,name,created_at,updated_at) '
-                "VALUES(%s,%s,'Pre-029 Other Project',%s,%s)",
+                'INSERT INTO projects(id,project_code,created_at,updated_at) '
+                'VALUES(%s,%s,%s,%s)',
                 (other_ids['project'], f'PROOF-OTHER-{proof_seed}', ts, ts),
             )
             cursor.execute(

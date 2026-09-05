@@ -30,7 +30,6 @@ function projectRow(over: Record<string, unknown> = {}): Record<string, unknown>
     sample_count: 2,
     management_number: null,
     fcc_id: null,
-    customer: null,
     applicant_name: null,
     applicant_address: null,
     manufacturer: null,
@@ -143,13 +142,20 @@ test.describe('My Projects route — model entry workbench', () => {
 
     await open(page);
     await expect(page.getByTestId('my-projects-create-panel')).toBeVisible();
+    // 폼은 기본으로 접혀 있다(2026-09-04) — 목록이 전폭을 쓰도록.
+    await page.getByTestId('new-project-toggle').click();
     await page.getByTestId('new-project-model').fill('SM-NEW1');
+    await page.getByTestId('new-project-management_number').fill('MGMT-NEW1');
+    await page.getByTestId('new-project-applicant_name').fill('ACME Corp.');
     await page.getByTestId('new-project-submit').click();
 
     // "버튼이 있다"가 아니라 "요청이 성공한다" — success 표면 + 실제 전송된 요청을 함께 본다.
     await expect(page.getByTestId('new-project-success')).toBeVisible();
     expect(captured.create?.method).toBe('POST');
     expect(captured.create?.body.model_name).toBe('SM-NEW1');
+    // 필수 3칸이 실제로 실려 나간다 — 화면의 필수 표시가 계약과 같은 것을 말한다.
+    expect(captured.create?.body.management_number).toBe('MGMT-NEW1');
+    expect(captured.create?.body.applicant_name).toBe('ACME Corp.');
   });
 
   test('surfaces a backend 5xx as a visible error, not a silent blank list', async ({ page }) => {

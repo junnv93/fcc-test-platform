@@ -23,6 +23,17 @@ from __future__ import annotations
 import re
 import sys
 import unittest
+
+# ⚠️ 2026-09-05 — 여기 있던 지역 `import yaml` + `except ImportError: skipTest` 를
+#    최상단 import 로 올렸다. PyYAML 은 `[test]` 에 **선언된** 의존성이므로(PR #64)
+#    그 부재는 「이 shard 에서는 검사하지 않는다」가 아니라 **환경 결함**이다.
+#    ⚠️ 그리고 가드는 `test_supply_closure_axis.py` 의
+#    `TestEveryUnguardedImportIsDeclared` 가 **원리적으로 볼 수 없는** 자리였다 —
+#    그 축은 이름 그대로 *unguarded* import 만 대조한다. 가드를 걷어내는 것이
+#    이 import 를 그 게이트의 관할로 넣는 유일한 방법이다.
+#    (문구 "not installed in this shard" 도 낡았다: CI 는 `pip install -e '.[test]'`
+#     단일 shard 이고 PyYAML 은 이제 거기 있다.)
+import yaml
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -69,10 +80,6 @@ def _compose_environment(case: unittest.TestCase, service: str) -> dict:
     made a legitimate refactor fail with a message naming the wrong cause. YAML is
     the thing compose reads; read that.
     """
-    try:
-        import yaml  # type: ignore
-    except ImportError:
-        case.skipTest('PyYAML not installed in this shard')
     document = yaml.safe_load(_require(case, _COMPOSE))
     raw = document['services'][service].get('environment') or {}
     if isinstance(raw, dict):

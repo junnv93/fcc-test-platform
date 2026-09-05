@@ -29,12 +29,10 @@ CREATE TABLE IF NOT EXISTS "providers" (
     "updated_at" TIMESTAMPTZ NOT NULL
 );
 
--- Customer/project-level grouping for test campaigns.
+-- Project-level grouping for test campaigns. The requesting party is ONE column (applicant_name); the former customer column was retired 2026-09-04 and its values merged into applicant_name (migration 032) — two columns for one party split the same company across both, and the search axis only ever indexed one of them.
 CREATE TABLE IF NOT EXISTS "projects" (
     "id" UUID PRIMARY KEY,
     "project_code" TEXT NOT NULL UNIQUE,
-    "name" TEXT NOT NULL,
-    "customer" TEXT,
     "management_number" TEXT UNIQUE,
     "status" TEXT CONSTRAINT "ck_projects_status" CHECK ("status" IN ('active', 'completed')),
     "fcc_grantee_code" TEXT,
@@ -46,13 +44,12 @@ CREATE TABLE IF NOT EXISTS "projects" (
     "updated_at" TIMESTAMPTZ NOT NULL
 );
 
--- Device model metadata shared across providers.
+-- Device model metadata shared across providers. One model per project (ADR-0017 D1 1:1 overlay); model_name IS the project identity, so the project row does not repeat it.
 CREATE TABLE IF NOT EXISTS "device_models" (
     "id" UUID PRIMARY KEY,
     "project_id" UUID NOT NULL REFERENCES "projects"("id"),
     "model_name" TEXT NOT NULL,
     "manufacturer" TEXT,
-    "metadata_json" JSONB,
     "created_at" TIMESTAMPTZ NOT NULL,
     "updated_at" TIMESTAMPTZ NOT NULL
 );
@@ -65,6 +62,8 @@ CREATE TABLE IF NOT EXISTS "samples" (
     "sample_code" TEXT NOT NULL,
     "serial_number" TEXT,
     "sample_number" TEXT,
+    "sample_kind" TEXT,
+    "sample_description" TEXT,
     "test_category" TEXT,
     "label_number" TEXT,
     "smsn" TEXT,
@@ -79,7 +78,6 @@ CREATE TABLE IF NOT EXISTS "samples" (
     "row_version" INTEGER NOT NULL DEFAULT 1,
     "deleted_at" TIMESTAMPTZ,
     "deleted_by" TEXT,
-    "metadata_json" JSONB,
     "created_at" TIMESTAMPTZ NOT NULL,
     "updated_at" TIMESTAMPTZ NOT NULL
 );
@@ -97,6 +95,22 @@ CREATE TABLE IF NOT EXISTS "sample_intakes" (
     "hw_rev" TEXT,
     "note" TEXT,
     "tech_group" TEXT,
+    "created_at" TIMESTAMPTZ NOT NULL,
+    "updated_at" TIMESTAMPTZ NOT NULL
+);
+
+-- PM 축의 반입/반출 사건 (1:N to samples, ADR-0002). 시험 실무자 축인 sample_intakes 와 대칭이다. intake_cert_number 는 시료가 아니라 이 사건의 속성이다 — 반입증은 고객사가 한 번의 납품에 한 장 발행하고 그 납품에 실린 시료 여럿(12대 단위)이 같은 번호를 공유하므로, 배치는 (project_id, intake_cert_number) 로 묶어 복원한다. occurred_on 이 text 인 것은 의도다: 이 도메인의 날짜는 전부 사람이 적는 자유 텍스트다. 현재 보유 상태는 가장 최근 사건의 event_type 이며 그 규칙은 커널의 custody_state() 한 자리에만 산다.
+CREATE TABLE IF NOT EXISTS "sample_custody_events" (
+    "id" UUID PRIMARY KEY,
+    "sample_id" UUID NOT NULL REFERENCES "samples"("id"),
+    "project_id" UUID NOT NULL REFERENCES "projects"("id"),
+    "event_type" TEXT NOT NULL CONSTRAINT "ck_sample_custody_events_event_type" CHECK ("event_type" IN ('received', 'released')),
+    "occurred_on" TEXT,
+    "counterparty" TEXT,
+    "intake_cert_number" TEXT,
+    "reason" TEXT,
+    "note" TEXT,
+    "actor_subject" TEXT NOT NULL,
     "created_at" TIMESTAMPTZ NOT NULL,
     "updated_at" TIMESTAMPTZ NOT NULL
 );
@@ -621,7 +635,8 @@ CREATE INDEX IF NOT EXISTS "idx_projects_directory" ON "projects" ("created_at",
 CREATE INDEX IF NOT EXISTS "idx_projects_status_directory" ON "projects" ("status", "created_at", "id");
 CREATE INDEX IF NOT EXISTS "idx_projects_search_management_number" ON "projects" USING gin (lower(management_number) gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS "idx_projects_search_project_code" ON "projects" USING gin (lower(project_code) gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS "idx_projects_search_customer" ON "projects" USING gin (lower(customer) gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS "idx_projects_search_applicant_name" ON "projects" USING gin (lower(applicant_name) gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS "idx_projects_applicant_directory" ON "projects" (lower(applicant_name), "created_at" DESC, "id" DESC) WHERE applicant_name IS NOT NULL;
 
 -- Indexes: device_models
 CREATE INDEX IF NOT EXISTS "idx_device_models_project" ON "device_models" ("project_id");
@@ -633,6 +648,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS "ux_samples_project_sample_number" ON "samples
 
 -- Indexes: sample_intakes
 CREATE INDEX IF NOT EXISTS "idx_sample_intakes_sample" ON "sample_intakes" ("sample_id");
+
+-- Indexes: sample_custody_events
+CREATE INDEX IF NOT EXISTS "idx_sample_custody_events_sample_created" ON "sample_custody_events" ("sample_id", "created_at" DESC, "id" DESC);
+CREATE INDEX IF NOT EXISTS "idx_sample_custody_events_project_cert" ON "sample_custody_events" ("project_id", "intake_cert_number") WHERE "intake_cert_number" IS NOT NULL;
 
 -- Indexes: sample_inventory_revisions
 CREATE UNIQUE INDEX IF NOT EXISTS "ux_sample_inventory_revisions_sample_revision" ON "sample_inventory_revisions" ("sample_id", "revision_number");
@@ -689,7 +708,7 @@ CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_project_provider_condition_
 CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_session_measured_at" ON "measurement_attempts" ("session_id", "measured_at");
 CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_result" ON "measurement_attempts" ("measurement_result_id");
 CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_is_latest" ON "measurement_attempts" ("project_id", "provider_id", "condition_hash", "is_latest");
-CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_project_provider_condition_recency" ON "measurement_attempts" ("project_id", "provider_id", "condition_hash", "measured_at" DESC NULLS LAST, "created_at" DESC, "id" DESC) WHERE status = 'completed';
+CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_project_provider_condition_recency" ON "measurement_attempts" ("project_id", "provider_id", "condition_hash", "measured_at" DESC NULLS LAST, "created_at" DESC, "id" DESC) WHERE "status" = 'completed';
 CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_progress_join" ON "measurement_attempts" ("project_id", "provider_id", "condition_hash", "is_latest");
 CREATE INDEX IF NOT EXISTS "idx_measurement_attempts_operator" ON "measurement_attempts" ("operator");
 

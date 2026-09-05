@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import json
 from typing import Any, Callable, Mapping, Optional
 
-from fcc_test_kernel.domain.models.sample_inventory import SampleStatus
+from fcc_test_kernel.domain.models.sample_inventory import INTAKE_FIELDS, SampleStatus
 from fcc_test_platform.domain.ports.output.central_sample_inventory_read_port import (
     CentralSampleInventoryReadPort,
 )
@@ -20,6 +20,7 @@ from fcc_test_kernel.domain.services.sample_inventory_policy import (
     SampleInvalidFilter,
     assert_expected_version,
     canonical_snapshot,
+    custody_events_projection,
     normalize_status,
     snapshot_json,
     utc_now_iso,
@@ -118,6 +119,45 @@ class CentralSampleInventoryService:
             'items': list(page.get('items') or []),
             'next_cursor': _encode_cursor(page.get('next_cursor')),
         }
+
+    def list_intakes(self, project_id: str, sample_id: str) -> dict:
+        """시험 실무자 축의 1:N 입고 이력 전체 (ADR-0002 완료조건 4).
+
+        지금까지 이 축은 DB 에 쌓이기만 하고 화면에서 읽을 수 없었다 — 시료 상세는
+        가장 최근 1건(``latest_intake``)만 보여줬고, 「반출됐다 반입되면 다시 기록」한
+        과거 행들은 보이지 않았다. 이 메서드가 그 창을 연다.
+        """
+        if self._read.get_sample(project_id, sample_id) is None:
+            raise SampleInventoryNotFoundError(f'unknown sample_id {sample_id}')
+        rows = self._read.list_intakes(project_id, [sample_id]) or []
+        return {'items': [_intake_history_item(row) for row in rows]}
+
+    def list_custody_events(self, project_id: str, sample_id: str) -> dict:
+        """PM 축의 반입/반출 사건 전체 (ADR-0002)."""
+        if self._read.get_sample(project_id, sample_id) is None:
+            raise SampleInventoryNotFoundError(f'unknown sample_id {sample_id}')
+        events = list(self._read.list_custody_events(project_id, [sample_id]) or [])
+        return {'items': custody_events_projection(events)}
+
+    def append_custody_event(self, project_id: str, sample_id: str,
+                             payload: Mapping[str, Any], *, actor_subject: str) -> dict:
+        try:
+            return self._write.append_custody_event(
+                project_id, sample_id, payload, actor_subject=_actor(actor_subject),
+                occurred_at=self._clock(),
+            )
+        except CentralSampleInventoryNotFoundError as exc:
+            raise SampleInventoryNotFoundError(str(exc)) from exc
+
+    def delete_custody_event(self, project_id: str, sample_id: str, event_id: str, *,
+                             actor_subject: str) -> dict:
+        try:
+            return self._write.delete_custody_event(
+                project_id, sample_id, event_id, actor_subject=_actor(actor_subject),
+                occurred_at=self._clock(),
+            )
+        except CentralSampleInventoryNotFoundError as exc:
+            raise SampleInventoryNotFoundError(str(exc)) from exc
 
     def create_sample(self, project_id: str, payload: Mapping[str, Any], *,
                       actor_subject: str) -> dict:
@@ -224,6 +264,21 @@ class CentralSampleInventoryService:
         # adapters receive a deterministic JSON-compatible object and cannot
         # reinterpret dates/nullable values.
         return json.loads(snapshot_json(snapshot))
+
+
+def _intake_history_item(row: Mapping[str, Any]) -> dict:
+    """Project one intake row onto the contract envelope.
+
+    읽기 어댑터의 ``list_intakes`` 는 엑셀 export 를 위해 ``sample_number`` 와
+    ``test_category`` 를 join 해 온다. 그 둘은 입고 행의 값이 아니라 시료의 값이고,
+    이 엔드포인트의 호출자는 이미 어느 시료를 물었는지 안다 — 계약이
+    ``additionalProperties: False`` 이므로 그대로 흘려보내면 위반이다.
+    """
+    keys = (
+        'intake_id', 'sample_id', 'project_id', *INTAKE_FIELDS,
+        'created_at', 'updated_at',
+    )
+    return {key: row.get(key) for key in keys}
 
 
 def _actor(value: Optional[str]) -> str:

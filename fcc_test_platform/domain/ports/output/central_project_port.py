@@ -102,10 +102,11 @@ class CentralProjectReadPort(Protocol):
 
         One row per project, joined to its 1:1 ``device_models`` model + a
         ``sample_count`` aggregate. Columns: ``project_id`` / ``project_code`` /
-        ``model_name`` / ``customer`` / ``manufacturer`` / ``management_number``
-        (PM-assigned, UNIQUE/nullable) / ``status`` (active|completed) /
-        ``fcc_grantee_code`` / ``applicant_name`` / ``applicant_address`` /
-        ``eut_description`` / ``test_standard`` (성적서 표지 메타, all nullable) /
+        ``model_name`` / every field of
+        ``project_metadata_edit.EDITABLE_PROJECT_META_FIELDS`` (성적서 표지 메타,
+        all nullable — the adapter derives both the SELECT list and its output
+        column tuple from that one kernel tuple, so this docstring names the SSOT
+        rather than re-listing it) / ``status`` (active|completed) /
         ``sample_count`` / ``created_at`` (keyset cursor 원천 — 응답 envelope 에는
         싣지 않는다: 실으면 ``limit``/``cursor`` 미전달 응답이 기존과 달라져
         계약 S11(byte-identical)이 깨진다).
@@ -117,18 +118,44 @@ class CentralProjectReadPort(Protocol):
         """
         ...
 
+    def list_applicant_suggestions(
+        self, *, q: Optional[str] = None, limit: int,
+    ) -> list[dict]:
+        """Return the applicant directory — one row per DISTINCT applicant.
+
+        생성 폼의 자동 채움 원천(2026-09-04). 신청자는 별도 마스터 테이블이 아니라
+        **프로젝트 행에서 파생**된다: 같은 신청자로 만든 프로젝트가 여럿이면 가장
+        최근 프로젝트의 주소/제조사가 가장 그럴듯한 기본값이므로, 구현은 정규화된
+        이름(``lower(applicant_name)``)마다 **최신 한 행**만 고른다.
+
+        - ``q`` — 대소문자 무관 부분일치(프로젝트 검색과 같은 ``LOWER``+``ESCAPE``
+          규약, ``search_like_pattern`` 로 이미 이스케이프된 패턴이 들어온다).
+          ``None`` ⇒ 필터 없음(최근 쓰인 신청자 순).
+        - ``limit`` — **필수**다. 자동완성 제안은 상위 N 건이 전부이고, 상한 없는
+          읽기는 신청자가 누적될수록 타이핑마다 전량을 실어 나른다.
+
+        Rows: ``applicant_name`` (non-null — 이름 없는 행은 후보가 아니다) +
+        ``project_metadata_edit.APPLICANT_SUGGESTION_FIELDS`` 의 나머지 칸 +
+        ``project_count`` (그 신청자를 쓰는 프로젝트 수 — 같은 회사가 여러 표기로
+        존재할 때 어느 표기가 실제로 쓰이는지 사용자가 판단할 근거다).
+
+        Never returns ``None``: an empty directory is an empty list, and a backend
+        failure raises :class:`CentralProjectError` (a silently-empty list would
+        make an outage look like "no applicants yet").
+        """
+        ...
+
     def read_project_detail(self, project_id: str) -> Optional[dict]:
         """Return one project's detail, or ``None`` when no such project.
 
-        ``{project_id, project_code, model_name, customer, manufacturer,
-        management_number, status, fcc_grantee_code, applicant_name,
-        applicant_address, eut_description, test_standard, created_at,
+        ``{project_id, project_code, model_name, status, created_at,
+        <every project_metadata_edit.EDITABLE_PROJECT_META_FIELDS field>,
         samples: [{sample_id, sample_code, serial_number, model_id,
         sample_number, test_category, label_number, smsn, intake_cert,
         assigned_team, sender, receiver, received_date, released_date}, ...]}``.
         ``management_number`` is PM-assigned (UNIQUE/nullable); ``status`` is
-        active|completed. The 성적서 표지 메타 (fcc_grantee_code/applicant_name/
-        applicant_address/eut_description/test_standard) are all nullable text.
+        active|completed. The 성적서 표지 메타 are all nullable text and their
+        names come from the kernel SSOT (see ``list_projects``).
         Each sample carries PM 칸 인벤토리 메타 (sample_number/test_category/
         label_number/smsn/intake_cert/assigned_team/sender/receiver/
         received_date/released_date) — all nullable text (Phase C).
@@ -181,7 +208,7 @@ class CentralProjectWritePort(Protocol):
 
         ``updates`` carries **only the fields the client actually sent**
         (``project_metadata_edit.parse_project_metadata_update`` SSOT): a key that
-        is absent stays unchanged, a key mapped to ``None`` is cleared. The 8
+        is absent stays unchanged, a key mapped to ``None`` is cleared. The
         editable fields straddle two tables (``manufacturer`` lives on
         ``device_models``, the other 7 on ``projects``), so an implementation MUST
         write both in a SINGLE transaction — a partially applied edit would leave

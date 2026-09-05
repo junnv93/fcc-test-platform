@@ -1131,7 +1131,6 @@ button.app-nav__toggle {
 .home-workbench__rail,
 .jobs-workbench__rail,
 .membership-workbench__rail,
-.my-projects-workbench__rail,
 .progress-workbench__rail,
 .projects-workbench__rail,
 .providers-workbench__rail,
@@ -1152,7 +1151,6 @@ button.app-nav__toggle {
 .home-workbench__rail,
 .jobs-workbench__rail,
 .membership-workbench__rail,
-.my-projects-workbench__rail,
 .progress-workbench__rail,
 .projects-workbench__rail,
 .providers-workbench__rail,
@@ -1254,6 +1252,40 @@ button.app-nav__toggle {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+/* 내 프로젝트 워크벤치는 rail 이 없다(2026-09-04) — 생성 폼이 목록 **위**에 접힌
+   채로 있고 목록이 전폭을 쓴다. 그래서 여기엔 그리드 트랙 선언이 없고, 세로 리듬만
+   공유 토큰으로 잡는다(트랙을 선언하면 없는 두 번째 열을 약속하는 셈이다). */
+.my-projects-workbench {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--workbench-stack-gap);
+}
+
+/* 제목과 [새 프로젝트] 토글이 한 줄에 마주 본다 — 접힌 상태에서 패널이 차지하는
+   높이가 그 한 줄이 전부여야 목록이 위로 올라온다. */
+.my-projects-create__bar {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.my-projects-create__bar .section-band {
+  margin-bottom: 0;
+}
+
+/* 필수 칸은 한 행에 선다. `auto-fit` + `minmax` 라 좁은 화면에서는 열 수가 스스로
+   줄고, 화면 폭을 React 가 알 필요가 없다(뷰포트 상태가 컴포넌트로 새지 않는다). */
+.my-projects-create__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
 }
 
 .chambers-workbench-action-panel,
@@ -3623,7 +3655,7 @@ pre {
 
 .project-card__mgmt,
 .project-card__fcc,
-.project-card__customer,
+.project-card__applicant,
 .field-card__blurb {
   width: 100%;
   color: var(--fg-secondary);
@@ -3734,6 +3766,7 @@ pre {
 }
 
 .sample-editor__grid,
+.sample-custody__grid,
 .sample-inventory-filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -3741,9 +3774,95 @@ pre {
 }
 
 .sample-editor input,
+.sample-editor select,
+.sample-editor textarea,
+.sample-custody input,
+.sample-custody select,
 .sample-inventory-filters input,
 .sample-inventory-filters select {
   width: 100%;
+}
+
+/* ── 시료 등록 버튼 · custody · 입고 이력 (ADR-0002) ───────────────────────── */
+
+/* 등록 폼이 사이드에 늘 펼쳐져 있던 것을 목록 옆 버튼이 여는 형태로 바꿨다. */
+.sample-inventory-list__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.sample-inventory-list__header .section-band {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sample-editor__legacy-hint,
+.sample-custody__description,
+.sample-intake-history__description {
+  margin: 0 0 var(--space-3);
+  color: var(--fg-muted);
+}
+
+.sample-custody__list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sample-custody__item {
+  display: grid;
+  grid-template-columns:
+    auto minmax(90px, auto) minmax(80px, 1fr) minmax(120px, 1fr)
+    minmax(120px, 2fr) minmax(100px, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+}
+
+/* 반입과 반출을 색이 아니라 굵기·테두리로도 가른다 — 색만으로 구분하면
+   색각 이상에게는 두 줄이 같은 줄로 보인다. */
+.sample-custody__type {
+  padding: 0 var(--space-2);
+  border: 1px solid currentcolor;
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.sample-custody__type[data-event-type='released'] {
+  border-style: dashed;
+  color: var(--status-stale-fg);
+}
+
+.sample-custody__actor {
+  color: var(--fg-muted);
+  font-size: 0.875em;
+}
+
+/* 넓은 표는 페이지가 아니라 표 자신이 가로로 스크롤한다. */
+.sample-intake-history__scroll {
+  overflow-x: auto;
+}
+
+.sample-intake-history__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sample-intake-history__table th,
+.sample-intake-history__table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--surface-border);
+  text-align: left;
+  white-space: nowrap;
 }
 
 .sample-inventory-filters {
@@ -3779,7 +3898,8 @@ pre {
 
 .sample-inventory-list__item {
   display: grid;
-  grid-template-columns: minmax(100px, 1fr) minmax(80px, 1fr) auto auto;
+  /* 시료번호 · 팀 · 상태 · 보유 상태 · 버전 (보유 상태는 ADR-0002 에서 늘었다). */
+  grid-template-columns: minmax(100px, 1fr) minmax(80px, 1fr) auto auto auto;
   gap: var(--space-3);
   width: 100%;
   padding: var(--space-3);
@@ -4323,7 +4443,6 @@ pre {
   .home-workbench__rail,
   .jobs-workbench__rail,
   .membership-workbench__rail,
-  .my-projects-workbench__rail,
   .progress-workbench__rail,
   .projects-workbench__rail,
   .providers-workbench__rail,

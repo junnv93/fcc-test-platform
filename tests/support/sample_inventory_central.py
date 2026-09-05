@@ -37,7 +37,7 @@ __all__ = [
 # drift past the CRUD tests.
 CENTRAL_SAMPLE_TABLES = (
     'projects', 'device_models', 'samples', 'sample_intakes',
-    'sample_inventory_revisions', 'audit_events',
+    'sample_custody_events', 'sample_inventory_revisions', 'audit_events',
 )
 CENTRAL_SAMPLE_DDL = 'derived from docs/platform/central_db_schema.v1.json'
 
@@ -83,10 +83,9 @@ def seed_project(
     connection = SqliteConnectionFactory(db_path).create()
     try:
         connection.execute(
-            'INSERT INTO projects (id, project_code, name, status, created_at, updated_at) '
-            'VALUES (?, ?, ?, ?, ?, ?)',
-            (project_id, project_code or model_name or project_id,
-             project_code or model_name or project_id, 'active',
+            'INSERT INTO projects (id, project_code, status, created_at, updated_at) '
+            'VALUES (?, ?, ?, ?, ?)',
+            (project_id, project_code or model_name or project_id, 'active',
              '2026-07-28T00:00:00+00:00', '2026-07-28T00:00:00+00:00'),
         )
         if model_name is not None:

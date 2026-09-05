@@ -179,7 +179,6 @@ const FIXED_PROJECT = {
   project_id: VISUAL_PROJECT_ID,
   project_code: 'SM-S928N',
   model_name: 'SM-S928N',
-  customer: 'Samsung MX',
   manufacturer: 'Samsung Electronics',
   management_number: '26-RF-0142',
   status: 'active',

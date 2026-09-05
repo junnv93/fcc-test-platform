@@ -12,6 +12,15 @@
    ``model_name`` 은 축에 없다 — ADR-0017 D1 이 ``project_code == model name`` 을
    못박았으므로 ``project_code`` 검색이 곧 모델명 검색이고, ``device_models`` 쪽
    컬럼을 축에 넣으면 조인 반대편에 인덱스를 하나 더 얹어야 한다(중복 비용).
+
+   **2026-09-04 — 세 번째 축이 ``customer`` 에서 ``applicant_name`` 으로 이동했다.**
+   두 컬럼은 성적서 표지에서 같은 주체(의뢰 주체)를 가리켰고, 그래서 같은 회사가
+   두 칸으로 갈라져 있었다. 축이 ``customer`` 였으므로 **신청자 칸에만 적힌 회사는
+   검색되지 않았다** — 검색이 데이터의 절반만 보고 있었던 셈이다. 폐기 결정
+   (``project_metadata_edit.RETIRED_PROJECT_META_FIELDS``)에 따라 값이
+   ``applicant_name`` 으로 합류했으므로 축도 그쪽으로 옮긴다. 인덱스 이름이 이
+   튜플에서 파생되므로(§1) 마이그레이션 032 가 같은 규칙으로 새 인덱스를 만들고
+   옛 인덱스를 지운다.
 2. **전순서 keyset** — :data:`PROJECT_DIRECTORY_ORDER_COLUMNS` = ``(created_at, id)``.
    ``created_at`` 단독은 **전순서가 아니다**(같은 초에 만들어진 두 프로젝트가 동률).
    동률이 있으면 페이지 경계에서 행이 겹치거나 통째로 건너뛰어진다 — 그래서 유일
@@ -55,7 +64,7 @@ __all__ = [
 PROJECT_SEARCH_COLUMNS: tuple[str, ...] = (
     'management_number',
     'project_code',
-    'customer',
+    'applicant_name',
 )
 
 #: keyset 정렬 키 = ``projects`` 물리 컬럼, **전순서**(유일 컬럼 ``id`` 동반).
