@@ -34,7 +34,7 @@ dependencies = [
     # The URL and the tag are DERIVED (manifest `delivery_remote` + the sibling's
     # own declared version); `TestTheSiblingPinTracksTheSiblingVersion` is what
     # keeps this copy from drifting when that version moves.
-    "fcc-test-contracts @ git+https://github.com/junnv93/fcc-test-contracts@v0.1.20",
+    "fcc-test-contracts @ git+https://github.com/junnv93/fcc-test-contracts@v0.1.21",
     # 공유 커널 1단계 (ADR-0001, 2026-09-03). 형제 레인과 **같은 저장소의 다른
     # 배포판**이라 `#subdirectory=` 가 붙는다 — 「한 저장소, 여러 배포판」은 그쪽이
     # 이미 npm `@fcc/api-artifacts` 로 하고 있던 패턴이다.
