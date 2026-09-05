@@ -9,6 +9,7 @@ too.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -20,7 +21,18 @@ for _p in (_ROOT, _ROOT / 'scripts'):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
-from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # noqa: E402
+from fcc_test_contracts.common.tree_artifacts import (  # noqa: E402
+    LAYOUT_RECORD_NAME,
+    resolve_repo_artifact,
+)
+
+
+def _ledger_paths(ledger: Path) -> dict[str, str]:
+    """원장의 ``paths`` 표. 라이브러리의 비공개 읽기와 **같은 모양**을 쓴다
+    (`tree_artifacts._layout_record`) — 검사가 원장을 다르게 읽으면 검사와 해소기가
+    서로 다른 원장을 보는 셈이 된다."""
+    payload = json.loads(ledger.read_text(encoding='utf-8'))
+    return dict(payload.get('paths') or {})
 
 from platform_db_migrate import (  # noqa: E402
     _INVALID_INDEX_SQL,
@@ -213,6 +225,51 @@ class TestRealRepoMigrations(unittest.TestCase):
         to_apply, drift = plan_migrations(migs, applied)
         self.assertEqual(to_apply, [])
         self.assertEqual(drift, [])
+
+
+class TestMigrationsRecordedInDeliveryLedger(unittest.TestCase):
+    """배송 원장은 마이그레이션 **전부**를 들고 있어야 한다.
+
+    실측 2026-09-05: `034_sample_custody_events.sql` 만 빠져 있었다(35개 중 34개).
+    031·032·033·035 는 전부 파일을 더한 **그 커밋에서** 원장에도 들어갔는데, 034 를
+    더한 커밋(`1854019`)만 원장을 건드리지 않았다 — 규약은 있었고 한 번 어긋났다.
+
+    ⚠️ **이 누락은 아무것도 빨갛게 만들지 않았다.** `resolve_repo_artifact` 는
+    디렉터리 이동을 개별 파일 기록들의 «꼬리 일치»에서 파생하므로, 나머지 34개가
+    `migrations` 를 가리키는 한 ``MIGRATIONS_DIR / '034_….sql'`` 은 멀쩡히 풀린다.
+    깨지는 것은 그 파일을 **정확 경로**로 부를 때다 — 기록이 없으면 자기 자신으로
+    해소되고, 그 경로는 이 상자에 없다. 그리고 원장의 역매핑이 모노레포 전달표이므로
+    빠진 항목은 그 표에서도 통째로 사라진다.
+
+    그래서 「파생이 우연히 답을 맞힌다」는 사실이 검사를 면제해 주지 않는다. 원장은
+    **파생의 입력**이고, 입력이 불완전하면 파생은 «조용히 부분집합»을 준다.
+    """
+
+    _LEDGER = _ROOT / LAYOUT_RECORD_NAME
+
+    def test_every_migration_file_is_recorded(self) -> None:
+        if not self._LEDGER.is_file():
+            self.skipTest(
+                f'{LAYOUT_RECORD_NAME} absent — 모노레포에는 원장이 없다(배송된 상자에만 있다)'
+            )
+        recorded = {
+            Path(delivered).name
+            for source, delivered in _ledger_paths(self._LEDGER).items()
+            if source.startswith('docs/platform/migrations/')
+        }
+        on_disk = {path.name for _, path in discover_migrations()}
+        # 「일했다는 증거」 — 0개를 대조하고 초록이 되는 것을 막는다.
+        self.assertGreater(len(on_disk), 30, 'discover_migrations() found suspiciously few files')
+        self.assertEqual(
+            sorted(on_disk - recorded),
+            [],
+            'migration(s) on disk with no delivery-ledger record',
+        )
+        self.assertEqual(
+            sorted(recorded - on_disk),
+            [],
+            'delivery-ledger record(s) naming a migration this tree does not have',
+        )
 
 
 class TestLockIdParity(unittest.TestCase):
