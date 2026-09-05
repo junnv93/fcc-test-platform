@@ -74,8 +74,18 @@ def _scope_bindings(node) -> set:
         if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             out.add(n.name)
             continue
-        if isinstance(n, (ast.Lambda, ast.ListComp, ast.SetComp, ast.DictComp,
+        if isinstance(n, ast.Lambda):
+            continue
+        if isinstance(n, (ast.ListComp, ast.SetComp, ast.DictComp,
                           ast.GeneratorExp)):
+            # ⚠️ 컴프리헨션의 «루프 표적»은 그쪽 것이라 여기서 묶지 않는다. 그러나
+            #    **왈러스(`:=`)는 다르다** — PEP 572 는 컴프리헨션 안의 대입식이
+            #    «둘러싼» 스코프에 바인딩한다고 못박는다. 그래서 통째로 건너뛰면
+            #    그 이름을 아무도 수집하지 않고, 정상 파이썬이 미해소로 신고된다.
+            #    실측 2026-09-05: `[m.group(1) for ln in t if (m := re.match(...))]`
+            #    가 `m` 을 오탐했다. 옛 봉인은 컴프리헨션 «밖»의 왈러스만 시험해
+            #    이름이 커버를 주장하면서 이 자리를 덮지 않고 있었다.
+            out.update(_comprehension_walrus_targets(n))
             continue
         if isinstance(n, ast.Import):
             for al in n.names:
@@ -91,6 +101,26 @@ def _scope_bindings(node) -> set:
             out.add(n.name)
         for child in ast.iter_child_nodes(n):
             stack.append(child)
+    return out
+
+
+def _comprehension_walrus_targets(node) -> set:
+    """컴프리헨션 안의 왈러스가 **둘러싼 스코프에** 묶는 이름들 (PEP 572).
+
+    중첩 함수/람다/클래스로는 내려가지 않는다 — 그 안의 왈러스는 그쪽 스코프 것이다.
+    중첩 «컴프리헨션»으로는 내려간다: 안쪽 컴프리헨션의 대입식도 결국 가장 바깥
+    컴프리헨션을 담은 스코프에 묶이기 때문이다.
+    """
+    out: set = set()
+    stack = [node]
+    while stack:
+        n = stack.pop()
+        if n is not node and isinstance(
+                n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            continue
+        if isinstance(n, ast.NamedExpr) and isinstance(n.target, ast.Name):
+            out.add(n.target.id)
+        stack.extend(ast.iter_child_nodes(n))
     return out
 
 
@@ -138,6 +168,9 @@ def unresolved_names(source: str, filename: str = '<source>') -> list:
             return
         if isinstance(node, (ast.ListComp, ast.SetComp, ast.DictComp,
                              ast.GeneratorExp)):
+            # 왈러스 이름은 둘러싼 스코프 소유지만 컴프리헨션 «안»에서도 보인다
+            # (조회 사슬을 타고 올라간다). 바깥 스코프에 이미 들어가 있으므로
+            # 여기서는 표적만 담으면 된다.
             child = scopes + [('function', _comprehension_targets(node))]
             for i, gen in enumerate(node.generators):
                 # 첫 iterable 만 바깥 스코프에서 평가된다 (파이썬 의미론).
@@ -269,6 +302,49 @@ class TestTheResolverItself(unittest.TestCase):
             '    with open("x") as handle:\n'
             '        return handle, keys\n'
         ), [])
+
+    def test_a_walrus_inside_a_comprehension_binds_in_the_enclosing_scope(self):
+        """⚠️ 이 팔이 이 파일의 옛 구멍이다 (2026-09-05).
+
+        위 봉인의 «이름»은 컴프리헨션과 왈러스를 함께 말하는데, 실제로 시험한 것은
+        컴프리헨션 «밖»의 왈러스뿐이었다 — 이름이 커버를 주장하면서 덮지 않는
+        자리가 있었고, `scripts/` 코드를 패키지로 옮기던 웨이브가 거기서 막혔다.
+
+        PEP 572: 컴프리헨션 안의 대입식은 **둘러싼 스코프**에 묶인다. 그러므로
+        (1) 컴프리헨션 안에서 보이고, (2) 컴프리헨션 «뒤»에서도 보인다.
+        """
+        # (1) 같은 컴프리헨션 안에서 소비 — 실측 재현(`db_migrate` 의 롤백 파서 형태)
+        self.assertEqual(self._names(
+            'import re\n'
+            'PAT = re.compile("x")\n'
+            'def rollback(text):\n'
+            '    return [m.group("sql") for line in text.splitlines()\n'
+            '            if (m := PAT.match(line))]\n'
+        ), [])
+        # (2) 컴프리헨션이 끝난 뒤에도 그 이름은 둘러싼 스코프에 남는다
+        self.assertEqual(self._names(
+            'def go(rows):\n'
+            '    kept = [1 for r in rows if (last := r)]\n'
+            '    return kept, last\n'
+        ), [])
+        # (3) 중첩 컴프리헨션의 왈러스도 결국 둘러싼 «함수» 스코프에 묶인다
+        self.assertEqual(self._names(
+            'def go(rows):\n'
+            '    grid = [[y for y in r if (seen := y)] for r in rows]\n'
+            '    return grid, seen\n'
+        ), [])
+
+    def test_a_walrus_inside_a_lambda_stays_in_the_lambda(self):
+        """반대 방향 — 넓히기가 지나치지 않았음을 못박는다.
+
+        람다는 자기 스코프를 갖는다. 컴프리헨션 예외를 람다까지 넓히면 이 검사가
+        **진짜 NameError 를 놓친다.**
+        """
+        self.assertEqual(self._names(
+            'def go():\n'
+            '    f = lambda t: (q := t)\n'
+            '    return f, q\n'
+        ), ['q'])
 
     def test_imports_defaults_decorators_and_builtins_resolve(self):
         self.assertEqual(self._names(
