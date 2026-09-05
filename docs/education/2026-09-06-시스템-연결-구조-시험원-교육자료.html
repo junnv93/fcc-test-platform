@@ -1,0 +1,1108 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>이 시스템은 어떻게 연결되어 있나 — 시험원 교육자료</title>
+    <!--
+      이 파일은 네트워크 없이 열린다 — 외부 글꼴·스크립트·이미지를 부르지 않는다.
+      시험실 PC 에서 더블클릭으로 여는 것이 이 문서의 기본 사용법이기 때문이다.
+      선례: docs/education/2026-09-05-꺼져있던-자동검사-다섯-시험원-교육자료.html
+    -->
+  </head>
+  <body>
+<style>
+  :root {
+    --ground:      #F5F7FA;
+    --surface:     #FFFFFF;
+    --surface-2:   #EDF1F6;
+    --ink:         #12171F;
+    --ink-2:       #4A5566;
+    --ink-3:       #77839A;
+    --rule:        #D3DAE4;
+    --rule-2:      #B9C3D1;
+    --accent:      #1B4F8C;
+    --accent-soft: #E4EDF8;
+    --bad:         #A93318;
+    --bad-soft:    #FBE9E4;
+    --good:        #17654A;
+    --good-soft:   #E1F0E9;
+
+    --f-sans: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+    --f-mono: "Cascadia Mono", Consolas, "D2Coding", "SFMono-Regular", monospace;
+
+    --measure: 66ch;
+    --pad: clamp(1.1rem, 4vw, 2.5rem);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0F131A;
+      --surface:     #161C25;
+      --surface-2:   #1D242F;
+      --ink:         #E7ECF3;
+      --ink-2:       #A7B2C2;
+      --ink-3:       #7C879A;
+      --rule:        #2A323E;
+      --rule-2:      #3B4553;
+      --accent:      #74AAE8;
+      --accent-soft: #182636;
+      --bad:         #EC8368;
+      --bad-soft:    #2C1D18;
+      --good:        #55C295;
+      --good-soft:   #14261F;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #0F131A;
+    --surface:     #161C25;
+    --surface-2:   #1D242F;
+    --ink:         #E7ECF3;
+    --ink-2:       #A7B2C2;
+    --ink-3:       #7C879A;
+    --rule:        #2A323E;
+    --rule-2:      #3B4553;
+    --accent:      #74AAE8;
+    --accent-soft: #182636;
+    --bad:         #EC8368;
+    --bad-soft:    #2C1D18;
+    --good:        #55C295;
+    --good-soft:   #14261F;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-sans);
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+  }
+
+  .wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: var(--pad) var(--pad) 5rem;
+  }
+
+  /* ─── 흐름: 산문은 좁게, 그림·표는 넓게 ─────────────────────── */
+  .flow > * { max-width: var(--measure); }
+  .flow > .wide { max-width: 100%; }
+
+  /* ─── 표제 ──────────────────────────────────────────────── */
+  .masthead {
+    border-top: 3px solid var(--ink);
+    padding-top: 1.1rem;
+    margin-bottom: 3rem;
+  }
+  .kicker {
+    font-family: var(--f-mono);
+    font-size: .72rem;
+    font-weight: 500;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem 1.4rem;
+    margin-bottom: 1rem;
+  }
+  h1 {
+    font-size: clamp(1.85rem, 5.2vw, 3rem);
+    font-weight: 600;
+    line-height: 1.18;
+    letter-spacing: -.02em;
+    text-wrap: balance;
+    margin: 0 0 .9rem;
+  }
+  .standfirst {
+    font-size: clamp(1rem, 2.4vw, 1.16rem);
+    color: var(--ink-2);
+    font-weight: 300;
+    max-width: 58ch;
+    margin: 0;
+  }
+  .standfirst strong { font-weight: 600; color: var(--ink); }
+
+  /* ─── 결과 스트립 ───────────────────────────────────────── */
+  .strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin: 2.5rem 0 3.5rem;
+  }
+  .strip div { background: var(--surface); padding: 1rem 1.1rem; }
+  .strip dt {
+    font-family: var(--f-mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: .45rem;
+  }
+  .strip dd {
+    margin: 0;
+    font-family: var(--f-mono);
+    font-size: 1.32rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
+  }
+  .strip dd small {
+    display: block;
+    font-family: var(--f-sans);
+    font-size: .78rem;
+    font-weight: 400;
+    color: var(--ink-2);
+    letter-spacing: 0;
+    margin-top: .2rem;
+  }
+  .n-good { color: var(--good); }
+  .n-bad  { color: var(--bad); }
+
+  /* ─── 절 ────────────────────────────────────────────────── */
+  section { margin-top: 4rem; }
+  h2 {
+    font-size: clamp(1.25rem, 3vw, 1.6rem);
+    font-weight: 600;
+    letter-spacing: -.015em;
+    line-height: 1.3;
+    text-wrap: balance;
+    margin: 0 0 .35rem;
+    padding-top: .9rem;
+    border-top: 1px solid var(--rule-2);
+  }
+  h2 .num {
+    font-family: var(--f-mono);
+    font-size: .74rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: .1em;
+    display: block;
+    margin-bottom: .5rem;
+  }
+  h3 {
+    font-size: 1.02rem;
+    font-weight: 600;
+    margin: 2.3rem 0 .5rem;
+    letter-spacing: -.005em;
+  }
+  p { margin: 0 0 1.05rem; }
+  .lede { color: var(--ink-2); margin-bottom: 1.8rem; }
+
+  code, .mono { font-family: var(--f-mono); font-size: .875em; }
+  code {
+    background: var(--surface-2);
+    padding: .1em .34em;
+    border-radius: 2px;
+    word-break: break-all;
+  }
+  strong { font-weight: 600; }
+  em { font-style: normal; background: var(--accent-soft); padding: .05em .3em; }
+
+  ul, ol { margin: 0 0 1.05rem; padding-left: 1.3rem; }
+  li { margin-bottom: .5rem; }
+  li::marker { color: var(--ink-3); }
+
+  /* ─── 그림 ──────────────────────────────────────────────── */
+  figure {
+    margin: 2rem 0 2.4rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 1.4rem 1.2rem 1rem;
+    overflow-x: auto;
+  }
+  figure svg { display: block; width: 100%; min-width: 480px; height: auto; }
+  figcaption {
+    margin-top: 1rem;
+    padding-top: .8rem;
+    border-top: 1px solid var(--rule);
+    font-size: .84rem;
+    line-height: 1.6;
+    color: var(--ink-2);
+    min-width: 480px;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  .svg-box   { fill: var(--surface-2); stroke: var(--rule-2); }
+  .svg-lbl   { fill: var(--ink); font-family: "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+  .svg-sub   { fill: var(--ink-3); color: var(--ink-3); font-family: "Noto Sans KR", "Malgun Gothic", sans-serif; font-size: 11.5px; }
+  .svg-edge  { stroke: var(--rule-2); fill: none; stroke-width: 1.6; }
+  .svg-bad   { stroke: var(--bad); fill: none; stroke-width: 2; }
+  .svg-good  { stroke: var(--good); fill: none; stroke-width: 2; }
+  .svg-badtx { fill: var(--bad); font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 600; }
+  .svg-gootx { fill: var(--good); font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 600; }
+  .svg-hd    { fill: var(--ink-3); font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; letter-spacing: .1em; }
+
+  h3 {
+    font-size: 1.06rem;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    margin: 2.4rem 0 .2rem;
+    padding-bottom: .4rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  /* ─── 표 ────────────────────────────────────────────────── */
+  .tablebox { overflow-x: auto; margin: 1.6rem 0 2rem; border: 1px solid var(--rule); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: .88rem; }
+  th, td { text-align: left; padding: .62rem .85rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th {
+    font-family: var(--f-mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .m { font-family: var(--f-mono); font-size: .84em; word-break: break-all; }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--f-mono);
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    padding: .1rem .42rem;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .tag-bad  { color: var(--bad); background: var(--bad-soft); }
+  .tag-good { color: var(--good); background: var(--good-soft); }
+
+  /* ─── 강조 블록 ─────────────────────────────────────────── */
+  .note {
+    border-left: 3px solid var(--accent);
+    background: var(--surface);
+    padding: 1.1rem 1.2rem;
+    margin: 1.8rem 0;
+  }
+  .note.warn { border-left-color: var(--bad); }
+  .note > :last-child { margin-bottom: 0; }
+  .note .hd {
+    font-family: var(--f-mono);
+    font-size: .7rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: .5rem;
+  }
+
+  /* ─── 다음 세션 멘트 ────────────────────────────────────── */
+  .prompt-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: .7rem;
+  }
+  button.copy {
+    font-family: var(--f-mono);
+    font-size: .74rem;
+    letter-spacing: .06em;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    padding: .38rem .8rem;
+    cursor: pointer;
+  }
+  button.copy:hover { background: var(--surface-2); }
+  button.copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  pre.prompt {
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    padding: 1.1rem 1.2rem;
+    margin: 0;
+    overflow-x: auto;
+    font-family: var(--f-mono);
+    font-size: .795rem;
+    line-height: 1.72;
+    white-space: pre-wrap;
+    word-break: break-word;
+    tab-size: 2;
+  }
+
+  footer {
+    margin-top: 4.5rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--rule-2);
+    font-size: .8rem;
+    color: var(--ink-3);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="kicker">
+    <span>fcc-test-platform · fcc-test-contracts · 모노레포</span>
+    <span>용어 · 구조 · 개발 흐름</span>
+    <span>2026-09-06 실측</span>
+  </div>
+  <h1>이 시스템은 어떻게 연결되어 있나</h1>
+  <p class="standfirst">
+    용어 하나하나부터 시작해서, 저장소가 왜 <strong>셋</strong>인지, 화면의 기능 하나가
+    <strong>어디서 시작해 어떻게 시험원 앞까지 오는지</strong>, 그리고
+    <strong>사람이 손으로 해야 하는 곳이 어디이고 거기서 무엇이 새는지</strong>를 실제로 측정해서 적는다.
+  </p>
+</header>
+
+<dl class="strip">
+  <div>
+    <dt>저장소</dt>
+    <dd>3<small>규약 · 웹/중앙 · 계측장비</small></dd>
+  </div>
+  <div>
+    <dt>기계가 자동으로 잇는 단계</dt>
+    <dd class="n-good">5<small>선언 → 화면</small></dd>
+  </div>
+  <div>
+    <dt>사람이 손으로 잇는 단계</dt>
+    <dd class="n-bad">4<small>여기가 새는 곳</small></dd>
+  </div>
+  <div>
+    <dt>오늘 실측한 어긋남</dt>
+    <dd class="n-bad">3곳<small>판번호가 전부 다르다</small></dd>
+  </div>
+</dl>
+
+<main class="flow">
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">00 — 용어</span>먼저 낱말부터</h2>
+
+  <p class="lede">
+    이 문서와 개발자들의 보고서에 계속 나오는 낱말들을 <strong>네 묶음</strong>으로 정리한다.
+    각 낱말은 <strong>이 프로젝트에서 실제로 어떤 모습인지</strong>를 함께 적었다.
+  </p>
+
+  <h3>A. 코드를 보관하고 옮기는 말</h3>
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>낱말</th><th>뜻</th><th>이 프로젝트에서</th></tr></thead>
+      <tbody>
+        <tr><td><b>저장소</b><br><span class="svg-sub">repository / 레포</span></td>
+            <td>코드를 보관하고 <b>모든 변경 이력</b>을 기록하는 창고. 하나의 인터넷 주소를 갖는다</td>
+            <td>셋 — 규약 · 웹/중앙 · 계측장비</td></tr>
+        <tr><td><b>커밋</b><br><span class="svg-sub">commit</span></td>
+            <td>«이 시점의 상태»를 이름 붙여 저장한 것. 되돌아갈 수 있는 지점이다</td>
+            <td><code>ede3dff</code> 같은 7글자 기호로 부른다</td></tr>
+        <tr><td><b>브랜치</b><br><span class="svg-sub">branch / 가지</span></td>
+            <td>본선을 건드리지 않고 따로 작업하는 <b>갈라진 줄</b>. 다 되면 본선에 합친다</td>
+            <td>본선 이름은 <code>main</code>. 작업마다 새 가지를 만든다</td></tr>
+        <tr><td><b>태그</b><br><span class="svg-sub">tag</span></td>
+            <td>특정 커밋에 붙인 <b>고정된 이름표</b>. 브랜치와 달리 움직이지 않는다</td>
+            <td><code>v0.1.24</code>, <code>kernel-v0.5.0</code> — <b>판번호가 곧 태그</b>다</td></tr>
+        <tr><td><b>PR</b><br><span class="svg-sub">pull request</span></td>
+            <td>«이 가지를 본선에 합쳐 달라»는 요청서. 합치기 전에 검사가 돈다</td>
+            <td><code>#75</code> 처럼 번호로 부른다</td></tr>
+        <tr><td><b>머지</b><br><span class="svg-sub">merge / 병합</span></td>
+            <td>가지의 변경을 본선에 실제로 합치는 것</td>
+            <td>어제 6건을 합쳤다</td></tr>
+        <tr><td><b>워크트리</b><br><span class="svg-sub">worktree</span></td>
+            <td>같은 저장소를 <b>여러 폴더에 동시에 펼쳐</b> 쓰는 것. 작업끼리 안 섞이게 한다</td>
+            <td>여러 작업이 동시에 돌 때 각자 자기 폴더를 쓴다</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>B. 코드를 「부품」으로 만들어 나르는 말</h3>
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>낱말</th><th>뜻</th><th>이 프로젝트에서</th></tr></thead>
+      <tbody>
+        <tr><td><b>패키지</b><br><span class="svg-sub">package</span></td>
+            <td>다른 프로그램이 <b>가져다 쓸 수 있게</b> 묶어 놓은 코드 덩어리. 이름과 판번호를 갖는다</td>
+            <td>규약 저장소 안에 <b>두 개</b>가 들어 있다</td></tr>
+        <tr><td><b>휠</b><br><span class="svg-sub">wheel · .whl</span></td>
+            <td>패키지를 <b>설치할 수 있는 형태로 미리 포장한 파일 하나</b>. 실제로는 압축 파일(zip)이다. 받는 쪽에서 다시 만들 필요 없이 그대로 풀어 넣으면 된다</td>
+            <td>실측: <code>fcc_test_contracts-0.1.24-py3-none-any.whl</code><br>555 KB · 안에 파일 91개</td></tr>
+        <tr><td><b>pip</b></td>
+            <td>패키지를 <b>내려받아 설치하는 프로그램</b></td>
+            <td><code>pip install …</code> 한 줄로 규약 패키지를 가져온다</td></tr>
+        <tr><td><b>가상환경</b><br><span class="svg-sub">venv</span></td>
+            <td>설치한 패키지들을 <b>다른 작업과 섞이지 않게</b> 담아 두는 별도 공간</td>
+            <td>작업마다 전용 가상환경을 만들어 시험한다</td></tr>
+        <tr><td><b>핀</b><br><span class="svg-sub">pin / 고정</span></td>
+            <td>«우리는 그 패키지의 <b>몇 판</b>을 쓴다»를 파일에 못박아 둔 글</td>
+            <td><code>pyproject.toml</code> 과 <code>requirements-central.txt</code> 에 적혀 있다</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <div class="hd">휠 파일 이름은 그 자체가 설명이다</div>
+    <p style="font-family:var(--f-mono); font-size:.86rem; word-break:break-all">
+      fcc_test_contracts &nbsp;-&nbsp; 0.1.24 &nbsp;-&nbsp; py3 &nbsp;-&nbsp; none &nbsp;-&nbsp; any &nbsp;.whl
+    </p>
+    <p>
+      <strong>fcc_test_contracts</strong> 패키지 이름 · <strong>0.1.24</strong> 판번호 ·
+      <strong>py3</strong> 파이썬 3 이면 됨 · <strong>none</strong> 기계어로 컴파일된 부분 없음 ·
+      <strong>any</strong> 어느 운영체제에서나 동작.
+    </p>
+    <p>
+      뒤의 세 칸이 <code>py3-none-any</code> 라는 것은 <strong>이 패키지가 순수한 글(파이썬 코드)로만 되어 있다</strong>는 뜻이다.
+      그래서 중앙 PC 든 시험 장비 PC 든 같은 파일 하나로 설치된다.
+      규약 저장소가 «외부 라이브러리를 쓰지 않는다»는 규칙을 지키는 것이 이 결과로 나타난다.
+    </p>
+  </div>
+
+  <h3>C. API 와 화면을 잇는 말</h3>
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>낱말</th><th>뜻</th><th>이 프로젝트에서</th></tr></thead>
+      <tbody>
+        <tr><td><b>API</b></td>
+            <td>프로그램끼리 «이렇게 요청하면 이렇게 답한다»고 약속한 <b>창구</b></td>
+            <td>화면이 중앙 서버에 자료를 요청할 때 쓴다</td></tr>
+        <tr><td><b>경로</b><br><span class="svg-sub">path / endpoint</span></td>
+            <td>그 창구의 <b>주소</b>. 어떤 자료를 달라는지가 주소로 구분된다</td>
+            <td><code>/platform/applicants</code> = 신청자 목록. 실측 <b>65개</b></td></tr>
+        <tr><td><b>스키마</b><br><span class="svg-sub">schema</span></td>
+            <td>주고받는 자료의 <b>모양 정의</b> — 어떤 칸이 있고 각 칸이 글자인지 숫자인지</td>
+            <td>실측 <b>132개</b></td></tr>
+        <tr><td><b>OpenAPI</b></td>
+            <td>위 «경로 + 스키마» 전체를 <b>정해진 형식의 문서 파일</b>로 적어 놓은 것</td>
+            <td><code>docs/api/platform-api.openapi.json</code></td></tr>
+        <tr><td><b>코드 생성</b><br><span class="svg-sub">codegen</span></td>
+            <td>그 문서를 읽어서 <b>프로그램이 쓸 코드를 기계가 자동으로 써 주는 것</b></td>
+            <td>화면 쪽 자료 정의를 사람이 안 적는다 — 기계가 만든다</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>D. 검사와 배포의 말</h3>
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>낱말</th><th>뜻</th><th>이 프로젝트에서</th></tr></thead>
+      <tbody>
+        <tr><td><b>CI</b><br><span class="svg-sub">지속적 통합</span></td>
+            <td>코드가 합쳐지기 전에 <b>서버가 자동으로 검사를 돌리는 장치</b></td>
+            <td>GitHub 이 검사를 돌린다</td></tr>
+        <tr><td><b>잡</b><br><span class="svg-sub">job</span></td>
+            <td>그 검사의 <b>한 덩어리</b>. 각각 초록(통과)/빨강(실패)으로 나온다</td>
+            <td><code>build</code> · <code>e2e</code> · <code>lane-check</code> 등</td></tr>
+        <tr><td><b>게이트</b><br><span class="svg-sub">gate</span></td>
+            <td>«이 조건을 못 지키면 못 들어간다»고 막아서는 검사</td>
+            <td>화면 넘침 검사, 용량 상한 검사 등</td></tr>
+        <tr><td><b>레인</b><br><span class="svg-sub">lane / 차선</span></td>
+            <td>독립적으로 개발·검사·배포되는 <b>하나의 작업 갈래</b></td>
+            <td>규약 레인 · 웹/중앙 레인 · 계측장비 레인</td></tr>
+        <tr><td><b>마이그레이션</b><br><span class="svg-sub">migration</span></td>
+            <td>데이터베이스의 <b>구조를 바꾸는 작업 파일</b>. 번호 순서대로 적용한다</td>
+            <td><code>031</code>~<code>035</code> 가 아직 중앙에 적용 대기 중</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">01 — 지도</span>저장소 셋과 그것이 설치되는 기계</h2>
+
+  <figure class="wide">
+    <svg viewBox="0 0 800 372" role="img" aria-label="규약 저장소를 웹중앙 저장소와 계측장비 저장소가 각각 가져다 쓰고, 그 둘이 중앙 PC와 시험 장비 PC에 설치된다">
+      <defs>
+        <marker id="d1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"></path></marker>
+        <marker id="d2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--rule-2)"></path></marker>
+      </defs>
+      <text class="svg-hd" x="20" y="18">저장소 (코드 창고)</text>
+      <text class="svg-hd" x="576" y="18">설치되는 기계</text>
+
+      <rect x="240" y="32" width="272" height="78" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.8"></rect>
+      <text class="svg-lbl" x="256" y="56">규약 저장소</text>
+      <text class="svg-sub" x="256" y="73">fcc-test-contracts</text>
+      <text class="svg-sub" x="256" y="89">«서로 이렇게 부르기로 한다»를 담는다</text>
+      <text class="svg-sub" x="256" y="104">외부 라이브러리를 하나도 안 쓴다</text>
+
+      <rect class="svg-box" x="20" y="184" width="230" height="78"></rect>
+      <text class="svg-lbl" x="36" y="208">웹 / 중앙 저장소</text>
+      <text class="svg-sub" x="36" y="225">fcc-test-platform</text>
+      <text class="svg-sub" x="36" y="241">시험원이 보는 화면 + 중앙 서버</text>
+      <text class="svg-sub" x="36" y="256">접수 · 시료 · 성적서</text>
+
+      <rect class="svg-box" x="290" y="184" width="230" height="78"></rect>
+      <text class="svg-lbl" x="306" y="208">계측장비 저장소</text>
+      <text class="svg-sub" x="306" y="225">FCC_mobile_test_automation</text>
+      <text class="svg-sub" x="306" y="241">장비 제어 · 측정 실행</text>
+      <text class="svg-sub" x="306" y="256">원래 모든 코드가 여기 있었다</text>
+
+      <path stroke="var(--accent)" stroke-width="1.8" fill="none" d="M135 180 L135 144 L236 144 L236 114" marker-end="url(#d1)"></path>
+      <text class="svg-sub" x="146" y="138" fill="var(--accent)">가져다 쓴다</text>
+      <path stroke="var(--accent)" stroke-width="1.8" fill="none" d="M405 180 L405 116" marker-end="url(#d1)"></path>
+      <text class="svg-sub" x="414" y="150" fill="var(--accent)">가져다 쓴다</text>
+
+      <rect class="svg-box" x="576" y="158" width="204" height="50"></rect>
+      <text class="svg-lbl" x="592" y="181">중앙 PC</text>
+      <text class="svg-sub" x="592" y="197">웹 · 서버 · 데이터베이스</text>
+      <rect class="svg-box" x="576" y="226" width="204" height="50"></rect>
+      <text class="svg-lbl" x="592" y="249">시험 장비 PC</text>
+      <text class="svg-sub" x="592" y="265">챔버에서 측정을 돌린다</text>
+
+      <line class="svg-edge" x1="254" y1="198" x2="568" y2="184" marker-end="url(#d2)" stroke-dasharray="4 3"></line>
+      <path class="svg-edge" fill="none" d="M405 266 L405 312 L666 312 L666 280" marker-end="url(#d2)" stroke-dasharray="4 3"></path>
+
+      <text class="svg-sub" x="20" y="344">진한 화살표 = 코드를 가져다 쓴다 · 점선 = 그 기계에 설치된다</text>
+      <text class="svg-sub" x="20" y="362">규약 저장소는 어느 기계에도 따로 설치되지 않는다 — 위 두 저장소 «안에» 부품으로 들어간다.</text>
+    </svg>
+    <figcaption>
+      <b>화살표가 한쪽으로만 흐른다.</b> 규약 저장소는 아무도 가져다 쓰지 않고, 나머지 둘이 그것을 가져다 쓴다.
+      규약을 고치면 두 쪽에 퍼지지만, 두 쪽에서 무엇을 하든 규약은 흔들리지 않는다.
+    </figcaption>
+  </figure>
+
+  <p>
+    중앙 PC 와 시험 장비 PC 는 <strong>서로 통신한다.</strong> 장비가 측정 결과를 중앙에 보내고,
+    중앙이 장비에 작업을 내려보낸다. 그러려면 양쪽이 <strong>똑같은 이름과 형식</strong>을 써야 한다.
+    그 정의를 양쪽에 각각 적어 두면 한쪽만 고쳐지는 순간 어긋나고,
+    <strong>어긋났다는 사실은 실제로 통신이 실패할 때 — 즉 시험 도중에 — 드러난다.</strong>
+    그래서 정의를 한 곳에만 두고 양쪽이 가져다 쓰게 만들었다.
+  </p>
+
+  <div class="note">
+    <div class="hd">규약 저장소가 스스로 못박은 1순위 규칙</div>
+    <p>
+      <strong>「외부 라이브러리를 하나도 쓰지 않는다.」</strong>
+      이유는 <strong>양쪽 모두에 설치되기 때문</strong>이다. 규약이 외부 라이브러리를 요구하면
+      그것이 <strong>시험 장비 PC 에도 함께 설치</strong>돼야 한다. 장비 프로그램은 하나의 실행 파일로 묶어
+      내보내므로, «규약을 공유한다»는 이유만으로 장비가 쓰지도 않는 것을 짊어지게 된다.
+    </p>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">02 — 두 패키지</span>규약 저장소 하나에 왜 이름이 둘인가</h2>
+
+  <p class="lede">
+    개발자 보고서에 <code>fcc-test-contracts</code> 와 <code>fcc-test-kernel</code> 이 따로 나온다.
+    <strong>둘은 같은 저장소 안에 있다.</strong> 나뉜 이유는 «무엇을 담느냐»가 다르기 때문이다.
+  </p>
+
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th></th><th>fcc-test-contracts</th><th>fcc-test-kernel</th></tr></thead>
+      <tbody>
+        <tr><td><b>담는 것</b></td>
+            <td>통신의 <b>바닥 규칙</b> — 오류 코드, 로그인 설정 읽기, 요청 추적</td>
+            <td><b>업무 규칙과 API 정의</b> — 프로젝트·시료의 칸과 경로</td></tr>
+        <tr><td><b>실측 크기</b></td><td class="num">파일 71 · 23,158줄</td><td class="num">파일 65 · 15,580줄</td></tr>
+        <tr><td><b>판번호 계열</b></td><td><code>v0.1.24</code></td><td><code>kernel-v0.5.0</code></td></tr>
+        <tr><td><b>바뀌는 빈도</b></td><td>드물다 (바닥 규칙)</td><td>잦다 (업무가 바뀔 때마다)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    나눈 실익은 <strong>판번호를 따로 올릴 수 있다</strong>는 것이다.
+    시료 화면에 칸 하나를 더하면 <b>커널</b>만 올라가고, 바닥 규칙은 그대로 둔다.
+    합쳐 두었다면 아무 상관 없는 변경에도 양쪽이 함께 올라가고,
+    가져다 쓰는 쪽은 «무엇이 바뀌었는지»를 판번호만 보고는 알 수 없게 된다.
+  </p>
+
+  <h3>핀 한 줄 해부</h3>
+  <p>이것이 웹/중앙 저장소가 «우리는 이것을 쓴다»고 적어 둔 실제 글이다.</p>
+
+  <figure class="wide">
+    <svg viewBox="0 0 800 300" role="img" aria-label="핀 문자열을 네 부분으로 나누어 각 부분의 뜻을 적은 그림">
+      <text x="20" y="22" class="svg-hd">웹/중앙 저장소가 적어 둔 실제 한 줄</text>
+      <rect x="20" y="32" width="760" height="46" fill="var(--surface-2)" stroke="var(--rule-2)" stroke-width="1"></rect>
+      <text x="34" y="52" font-family="Consolas, monospace" font-size="11.5" fill="var(--ink)">fcc-test-kernel @ git+https://github.com/junnv93/fcc-test-contracts</text>
+      <text x="34" y="68" font-family="Consolas, monospace" font-size="11.5" fill="var(--ink)">@kernel-v0.5.0#subdirectory=packages/fcc-test-kernel</text>
+
+      <text x="20" y="104" class="svg-hd">그 한 줄은 네 부분이다</text>
+
+      <rect x="20" y="116" width="760" height="40" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"></rect>
+      <text x="34" y="141" font-family="Consolas, monospace" font-size="12" font-weight="600" fill="var(--accent)">fcc-test-kernel</text>
+      <text x="230" y="141" class="svg-sub">① 우리가 이 부품을 부를 이름</text>
+
+      <rect x="20" y="160" width="760" height="40" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"></rect>
+      <text x="34" y="185" font-family="Consolas, monospace" font-size="12" font-weight="600" fill="var(--accent)">github.com/junnv93/fcc-test-contracts</text>
+      <text x="330" y="185" class="svg-sub">② 어느 저장소에서 가져오나 — 규약 저장소 주소</text>
+
+      <rect x="20" y="204" width="760" height="40" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"></rect>
+      <text x="34" y="229" font-family="Consolas, monospace" font-size="12" font-weight="600" fill="var(--accent)">@kernel-v0.5.0</text>
+      <text x="230" y="229" class="svg-sub">③ 어느 판인가 — 이름표(태그). 사람이 올리는 숫자가 여기다</text>
+
+      <rect x="20" y="248" width="760" height="40" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"></rect>
+      <text x="34" y="273" font-family="Consolas, monospace" font-size="12" font-weight="600" fill="var(--accent)">#subdirectory=packages/fcc-test-kernel</text>
+      <text x="330" y="273" class="svg-sub">④ 그 저장소의 어느 하위 폴더인가</text>
+    </svg>
+    <figcaption>
+      <b>①과 ②가 다르다.</b> 우리가 부르는 이름은 <code>fcc-test-kernel</code> 인데 가져오는 주소는
+      <code>fcc-test-contracts</code> 다 — <b>두 패키지가 한 저장소에 살기 때문</b>이고, ④의 하위 폴더 지정이 그 둘을 가른다.
+      그리고 <b>③이 이 문서 내내 「핀」이라고 부르는 숫자</b>다.
+    </figcaption>
+  </figure>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">03 — 사슬</span>화면의 기능 하나가 어디서 시작해 어떻게 오나</h2>
+
+  <p class="lede">
+    실제 예로 따라간다 — <strong>「접수 화면의 신청자 자동 채움」</strong>.
+    이 기능은 화면이 서버에 «신청자 목록을 달라»고 요청해서 만들어진다.
+    그 창구의 주소는 <code>/platform/applicants</code> 다.
+  </p>
+
+  <figure class="wide">
+    <svg viewBox="0 0 800 470" role="img" aria-label="커널의 선언 한 곳에서 서버 라우트와 OpenAPI 문서가 나오고, 문서에서 화면 타입이 생성되어 화면에 도달하는 흐름">
+      <defs>
+        <marker id="c-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--good)"></path></marker>
+      </defs>
+
+      <rect x="230" y="26" width="340" height="66" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"></rect>
+      <text class="svg-lbl" x="246" y="50">① 선언 — 사람이 쓰는 유일한 곳</text>
+      <text class="svg-sub" x="246" y="67">커널의 surface_projects.py</text>
+      <text class="svg-sub" x="246" y="83">경로 · 필요한 권한 · 자료 모양을 한 번 적는다</text>
+
+      <path stroke="var(--good)" stroke-width="2" fill="none" d="M330 96 L330 126 L180 126 L180 152" marker-end="url(#c-a)"></path>
+      <path stroke="var(--good)" stroke-width="2" fill="none" d="M470 96 L470 126 L620 126 L620 152" marker-end="url(#c-a)"></path>
+      <text class="svg-gootx" x="300" y="120">기계가 읽는다</text>
+
+      <rect class="svg-box" x="60" y="156" width="240" height="62"></rect>
+      <text class="svg-lbl" x="76" y="180">② 서버의 실제 창구</text>
+      <text class="svg-sub" x="76" y="197">platform_routes.py</text>
+      <text class="svg-sub" x="76" y="212">요청을 실제로 받는 코드</text>
+
+      <rect class="svg-box" x="500" y="156" width="240" height="62"></rect>
+      <text class="svg-lbl" x="516" y="180">③ 규격 문서</text>
+      <text class="svg-sub" x="516" y="197">platform-api.openapi.json</text>
+      <text class="svg-sub" x="516" y="212">경로 65 · 자료모양 132</text>
+
+      <line stroke="var(--good)" stroke-width="2" x1="620" y1="222" x2="620" y2="252" marker-end="url(#c-a)"></line>
+      <rect class="svg-box" x="500" y="256" width="240" height="62"></rect>
+      <text class="svg-lbl" x="516" y="280">④ 화면용 자료 정의</text>
+      <text class="svg-sub" x="516" y="297">generated/platform-api.types.ts</text>
+      <text class="svg-sub" x="516" y="312">기계가 써 준다 · 저장 안 함</text>
+
+      <line stroke="var(--good)" stroke-width="2" x1="620" y1="322" x2="620" y2="352" marker-end="url(#c-a)"></line>
+      <rect class="svg-box" x="500" y="356" width="240" height="62"></rect>
+      <text class="svg-lbl" x="516" y="380">⑤ 화면 코드</text>
+      <text class="svg-sub" x="516" y="397">접수 화면의 신청자 칸</text>
+      <text class="svg-sub" x="516" y="412">시험원이 실제로 보는 것</text>
+
+      <path stroke="var(--rule-2)" stroke-width="1.6" fill="none" stroke-dasharray="5 3" d="M496 387 L400 387 L400 246 L304 246"></path>
+      <text class="svg-sub" x="410" y="330">화면이 실행 중에</text>
+      <text class="svg-sub" x="410" y="346">서버에 요청한다</text>
+
+      <text class="svg-sub" x="20" y="452">①만 사람이 쓴다. ②③④는 ①에서 기계가 만든다 — 같은 선언에서 나오므로 서버와 화면이 어긋날 수 없다.</text>
+    </svg>
+    <figcaption>
+      <b>사람이 손으로 쓰는 곳은 ① 하나뿐이다.</b> 서버가 요청을 받는 코드(②)와 규격 문서(③)가
+      <b>같은 선언</b>에서 나오고, 화면이 쓸 자료 정의(④)는 그 문서에서 기계가 만들어 준다.
+      그래서 «서버는 신청자라고 부르는데 화면은 고객사라고 부르는» 어긋남이 <b>생길 수가 없다</b>.
+    </figcaption>
+  </figure>
+
+  <div class="note">
+    <div class="hd">④는 저장소에 저장하지 않는다</div>
+    <p>
+      화면용 자료 정의 파일은 <strong>보관하지 않고 필요할 때마다 다시 만든다.</strong>
+      보관해 두면 규격 문서는 바뀌었는데 그 파일만 옛것으로 남을 수 있기 때문이다.
+      그리고 검사 서버가 «지금 다시 만들면 같은 것이 나오는가»를 확인한다 —
+      다르면 그 자리에서 막는다.
+    </p>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">04 — 판올림</span>「판올림」이 무엇이고 왜 필요한가</h2>
+
+  <p class="lede">
+    <strong>판올림</strong>은 «우리가 쓰는 판번호를 더 높은 것으로 바꾸는 일»이다.
+    영어로는 version bump 라고 한다.
+  </p>
+
+  <p>
+    앞에서 <strong>핀</strong>은 «우리는 이 판을 쓴다»를 못박은 것이라고 했다.
+    그런데 규약 쪽에 새 기능이 생기면(예: 신청자 목록 창구가 새로 생김),
+    그것을 쓰려면 <strong>못박아 둔 숫자를 사람이 올려야 한다.</strong> 그 행위가 판올림이다.
+  </p>
+
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>단계</th><th>누가</th><th>무엇을</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td>규약 레인</td><td>새 기능을 규약에 더하고 본선에 합친다</td></tr>
+        <tr><td class="num">2</td><td>규약 레인</td><td>그 시점에 <b>이름표(태그)</b>를 붙인다 — 예: <code>v0.1.24</code></td></tr>
+        <tr><td class="num">3</td><td><b>웹/중앙 레인</b></td><td>자기 파일의 핀 숫자를 <b>손으로</b> 그 이름표로 바꾼다 ← <b>판올림</b></td></tr>
+        <tr><td class="num">4</td><td><b>계측장비 레인</b></td><td>자기 파일의 핀 숫자를 <b>손으로</b> 바꾼다 ← <b>판올림</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <div class="hd">왜 그냥 「항상 최신」으로 두지 않는가</div>
+    <p>
+      가져다 쓰는 코드가 <strong>말없이 바뀌면</strong>, 우리 쪽은 아무것도 안 고쳤는데
+      어제 되던 것이 오늘 안 될 수 있다. 그리고 그것이 <strong>시험 도중에</strong> 드러난다.
+    </p>
+    <p>
+      핀은 그것을 막는다 — <strong>바뀌는 시점을 사람이 정한다.</strong>
+      대신 대가가 있다: <strong>올리는 일을 사람이 기억해야 한다.</strong>
+      다음 절이 그 대가에 관한 것이다.
+    </p>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">05 — 이음매</span>기계가 잇는 곳과 사람이 잇는 곳</h2>
+
+  <p class="lede">
+    이 시스템에서 <strong>기계가 자동으로 이어 주는 구간</strong>과
+    <strong>사람이 손으로 이어야 하는 구간</strong>은 분명히 갈린다.
+    그리고 <strong>새는 곳은 전부 뒤쪽</strong>이다.
+  </p>
+
+  <figure class="wide">
+    <svg viewBox="0 0 800 330" role="img" aria-label="규약 저장소 안쪽은 기계가 자동으로 잇고, 저장소 사이는 사람이 손으로 이어야 한다">
+      <defs>
+        <marker id="s-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--good)"></path></marker>
+        <marker id="s-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--bad)"></path></marker>
+      </defs>
+
+      <rect x="20" y="30" width="360" height="150" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.6"></rect>
+      <text class="svg-lbl" x="36" y="54" fill="var(--good)">저장소 «안쪽» — 기계가 잇는다</text>
+      <text class="svg-sub" x="36" y="78">선언 → 서버 창구</text>
+      <text class="svg-sub" x="36" y="98">선언 → 규격 문서</text>
+      <text class="svg-sub" x="36" y="118">규격 문서 → 화면 자료 정의</text>
+      <text class="svg-sub" x="36" y="138">문서 사본끼리 일치 확인</text>
+      <text class="svg-sub" x="36" y="158">어긋나면 검사가 그 자리에서 막는다</text>
+
+      <rect x="420" y="30" width="360" height="150" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.8"></rect>
+      <text class="svg-lbl" x="436" y="54" fill="var(--bad)">저장소 «사이» — 사람이 잇는다</text>
+      <text class="svg-sub" x="436" y="78">① 새 이름표(태그)를 붙인다</text>
+      <text class="svg-sub" x="436" y="98">② 새 이름표가 나왔다는 걸 «안다»</text>
+      <text class="svg-sub" x="436" y="118">③ 웹/중앙의 핀 숫자를 고친다</text>
+      <text class="svg-sub" x="436" y="138">④ 계측장비의 핀 숫자를 고친다</text>
+      <text class="svg-badtx" x="436" y="160">넷 다 알려 주는 장치가 없다</text>
+
+      <line stroke="var(--good)" stroke-width="2" x1="384" y1="105" x2="416" y2="105" marker-end="url(#s-g)"></line>
+
+      <text class="svg-hd" x="20" y="216">사람이 잇는 구간에서 무엇이 없나 — 실측</text>
+      <rect x="20" y="228" width="760" height="34" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"></rect>
+      <text class="svg-sub" x="36" y="250">· 새 판이 나왔을 때 알려 주는 자동 도구 — <tspan fill="var(--bad)" font-weight="600">설정돼 있지 않다</tspan></text>
+      <rect x="20" y="266" width="760" height="34" fill="var(--surface)" stroke="var(--rule)" stroke-width="1"></rect>
+      <text class="svg-sub" x="36" y="288">· 핀이 적힌 두 파일이 서로 같은지 보는 검사 — <tspan fill="var(--bad)" font-weight="600">없다</tspan> (오늘은 우연히 같다)</text>
+    </svg>
+    <figcaption>
+      <b>왼쪽은 튼튼하고 오른쪽은 사람에게 달려 있다.</b> 규약 저장소 «안쪽»에서는 어긋남이
+      구조적으로 생길 수 없게 만들어져 있는데, 저장소 «사이»를 잇는 네 단계는 전부 사람의 기억에 의존한다.
+    </figcaption>
+  </figure>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">06 — 실측</span>⚠️ 오늘 실제로 새고 있는 것</h2>
+
+  <p class="lede">
+    위의 이야기가 이론이 아니라는 것을 오늘 숫자로 확인했다.
+    <strong>같은 규약을 쓰기로 한 세 곳의 판번호가 전부 다르다.</strong>
+  </p>
+
+  <figure class="wide">
+    <svg viewBox="0 0 800 220" role="img" aria-label="규약 최신은 v0.1.24, 계측장비는 v0.1.23, 웹중앙은 v0.1.22로 세 곳이 모두 다르다">
+      <text class="svg-hd" x="20" y="20">2026-09-06 실측 — 같은 규약을 쓰기로 한 세 곳</text>
+
+      <rect x="20" y="36" width="300" height="46" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"></rect>
+      <text class="svg-lbl" x="36" y="58">규약 레인이 발행한 최신</text>
+      <text x="290" y="66" text-anchor="end" font-family="Consolas, monospace" font-size="17" font-weight="600" fill="var(--accent)">v0.1.24</text>
+
+      <rect x="20" y="94" width="300" height="46" fill="var(--surface)" stroke="var(--rule-2)" stroke-width="1.4"></rect>
+      <text class="svg-lbl" x="36" y="116">계측장비 저장소가 쓰는 판</text>
+      <text x="290" y="124" text-anchor="end" font-family="Consolas, monospace" font-size="17" font-weight="600" fill="var(--ink-2)">v0.1.23</text>
+
+      <rect x="20" y="152" width="300" height="46" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.8"></rect>
+      <text class="svg-lbl" x="36" y="174">웹/중앙 저장소가 쓰는 판</text>
+      <text x="290" y="182" text-anchor="end" font-family="Consolas, monospace" font-size="17" font-weight="600" fill="var(--bad)">v0.1.22</text>
+
+      <text class="svg-badtx" x="350" y="66">← 1판 뒤</text>
+      <text class="svg-badtx" x="350" y="124">← 2판 뒤</text>
+
+      <text class="svg-sub" x="350" y="160">셋이 다르다는 사실을</text>
+      <text class="svg-sub" x="350" y="178">빨갛게 만드는 검사는</text>
+      <text class="svg-badtx" x="350" y="196">한 곳도 없다.</text>
+    </svg>
+    <figcaption>
+      <b>어제 인계문서에 적힌 숫자와도 다르다.</b> 어제는 «계측장비가 11판 뒤처졌다»였는데,
+      그 사이 누군가 계측장비 쪽 핀을 올려서 지금은 <b>웹/중앙이 가장 뒤처져 있다.</b>
+      아무도 틀리지 않았고 아무 검사도 실패하지 않았는데 <b>세 숫자가 서로 벌어졌다</b> —
+      이것이 사람이 잇는 구간의 성질이다.
+    </figcaption>
+  </figure>
+
+  <div class="note warn">
+    <div class="hd">그리고 저장소가 «스스로 선언한» 누수가 하나 더 있다</div>
+    <p>
+      저장소를 분리하던 커밋이 이렇게 적고 있다:
+    </p>
+    <p style="border-left:2px solid var(--rule-2); padding-left:1rem; color:var(--ink-2)">
+      «휠이 못 싣는 146개(scripts 46 · docs 84 · infra 16)는 모노레포에 남겼다. …
+      <strong>그 사본들이 지금부터 드리프트하며, 장부 항목이다.</strong>»
+    </p>
+    <p>
+      패키지(휠)로는 <strong>실행 가능한 코드만</strong> 옮길 수 있고, 운영 스크립트·문서·설치 설정
+      <strong>146개</strong>는 옮길 수 없어 양쪽에 <b>같은 사본이 두 벌</b> 남았다.
+      그 둘이 서서히 달라지는 것을 <strong>알면서 받아들인</strong> 것이고,
+      기록해 두었다는 점이 이 팀의 강점이지만 <strong>새는 것 자체는 여전히 샌다.</strong>
+    </p>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">07 — 배경</span>왜 이렇게 만들었나 · 왜 다시 합치지 않나</h2>
+
+  <p class="lede">
+    <strong>원래는 저장소가 하나였다.</strong> 2026-08-30 에 웹·규약 부분을 떼어냈고,
+    다음 날 그 분리를 확정했다. 그 커밋이 이유를 직접 적고 있다.
+  </p>
+
+  <div class="note">
+    <div class="hd">분리를 확정한 커밋(2026-08-31)의 첫 문장</div>
+    <p style="border-left:2px solid var(--rule-2); padding-left:1rem; color:var(--ink-2)">
+      «<strong>운영자 결정(팀원이 platform 레포에서 직접 개발)</strong>의 남은 절반을 실행한다.
+      공유 레인의 import 가능한 코드와 프론트엔드가 이 저장소를 떠나고 … 모노레포는 이제 두 패키지를 pip 로 소비한다.»
+    </p>
+    <p>
+      <strong>기술적 이유가 아니라 «누가 어디서 일하는가»라는 조직 결정</strong>이 출발점이다.
+      팀원이 웹 저장소에서 직접 개발하도록 하려면 그 저장소가 독립적으로 존재해야 했다.
+    </p>
+  </div>
+
+  <h3>그럼 왜 다시 하나로 합치지 않나</h3>
+
+  <p>
+    <strong>기술적으로는 합칠 수 있다.</strong> 분리 자체가 기계적이었고, 그 커밋도
+    «다섯 번 고쳤고 다섯 번 다 되돌릴 수 있었다»고 적는다. 합치기가 불가능한 것이 아니다.
+    합치지 않는 이유는 셋이다.
+  </p>
+
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>이유</th><th>내용</th></tr></thead>
+      <tbody>
+        <tr><td><b>① 조직</b></td>
+            <td>분리의 출발점인 «팀원이 웹 저장소에서 직접 개발한다»가 아직 유효하다.
+                합치면 그 접근 구조가 되돌아간다 — <b>이것은 개발자가 정할 문제가 아니라 운영자가 정할 문제다</b></td></tr>
+        <tr><td><b>② 배포 형태</b></td>
+            <td>시험 장비 프로그램은 <b>하나의 실행 파일</b>로 묶여 나간다.
+                한 저장소로 합치면 «웹 코드는 그 실행 파일에 안 들어간다»를 <b>따로 증명</b>해야 한다.
+                지금은 저장소가 다르다는 사실 자체가 그 증명이다</td></tr>
+        <tr><td><b>③ 비용</b></td>
+            <td>합치는 작업은 코드 이동이 아니라 <b>양쪽의 검사 체계를 다시 세우는 일</b>이다.
+                분리할 때도 검사 744건이 «트리»에 대해 단언하고 있어서 재조준해야 했다</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <div class="hd">그러나 정직하게 — 합치면 사라지는 문제가 있다</div>
+    <p>
+      <strong>이 문서의 05·06 절에 적은 누수는 «저장소가 둘 이상이라서» 생기는 것이다.</strong>
+      핀도, 판올림도, 세 숫자가 벌어지는 것도, 사본 146개가 드리프트하는 것도
+      <strong>하나의 저장소였다면 존재하지 않는다.</strong> 한 저장소 안에서는 규약을 고치는 변경과
+      그것을 쓰는 변경이 <strong>같은 커밋에 들어가므로</strong> 어긋날 구간 자체가 없다.
+    </p>
+    <p>
+      즉 지금 구조는 <strong>조직적 이점을 얻는 대신 기술적 대가를 치르는 거래</strong>다.
+      그 거래가 옳은지는 «팀원이 어디서 일해야 하는가»에 달려 있고, 그건 운영 판단이다.
+    </p>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">08 — 대안</span>비용을 무시한다면 업계는 어떻게 하나</h2>
+
+  <p class="lede">
+    «여러 저장소가 공통 규약을 공유한다»는 상황은 흔하고, 표준적인 처방이 셋 있다.
+    지금 이 프로젝트에는 <strong>셋 다 없다.</strong>
+  </p>
+
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>처방</th><th>무엇을 하나</th><th>없앨 수 있는 누수</th><th>현재</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>자동 판올림 봇</b><br><span class="svg-sub">Renovate · Dependabot</span></td>
+          <td>새 판이 나오면 <b>봇이 핀을 올린 PR 을 자동으로 만든다.</b> 사람은 검토만 한다</td>
+          <td>②「새 판이 나온 줄 모른다」<br>③④「올리는 걸 잊는다」</td>
+          <td><span class="tag tag-bad">설정 없음</span></td>
+        </tr>
+        <tr>
+          <td><b>발행 자동화</b><br><span class="svg-sub">release automation</span></td>
+          <td>본선에 합쳐지면 <b>이름표(태그)를 기계가 붙인다.</b> 사람이 판번호를 정하지 않는다</td>
+          <td>①「태그를 손으로 붙인다」<br>같은 번호를 둘이 가져가는 사고</td>
+          <td><span class="tag tag-bad">워크플로 없음</span></td>
+        </tr>
+        <tr>
+          <td><b>합류 대기열</b><br><span class="svg-sub">merge queue</span></td>
+          <td>합치기 직전에 <b>«합친 결과»로 검사를 다시 돌린다.</b> 각자 초록이었는데 합치니 빨간 경우를 막는다</td>
+          <td>어제 실제로 겪은 «둘 다 빨간 채로 합쳐도 결과는 초록» 상황</td>
+          <td><span class="tag tag-bad">요금제 제약</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    세 번째는 이 팀이 <strong>이미 알고 있고 문서에 적어 두었다</strong> —
+    검사 설정 파일에 «정공은 합류 대기열인데 <strong>비공개 저장소는 상위 요금제 아래에서 쓸 수 없다</strong>»고 적혀 있고,
+    대신 <strong>매일 새벽 한 번 전체 검사를 돌리는 것</strong>으로 대체하고 있다.
+    <strong>한계를 알고 차선을 고른 것</strong>이지 모르고 빠뜨린 것이 아니다.
+  </p>
+
+  <h3>더 근본적인 선택지 — 하나의 저장소 + 전용 빌드 도구</h3>
+
+  <p>
+    큰 회사들이 이 문제를 푸는 방식은 <strong>저장소를 하나로 두되, «무엇이 무엇에 의존하는지»를
+    빌드 도구가 강제</strong>하게 하는 것이다. 그러면 «장비 실행 파일에 웹 코드가 안 들어간다»를
+    저장소를 나누지 않고도 증명할 수 있다.
+  </p>
+
+  <p>
+    <strong>대가는 크다.</strong> 그 도구는 배우고 유지하는 비용이 상당하고,
+    저장소 하나로 합치는 이사 작업 자체가 큰 웨이브다. 그리고 <strong>①의 조직 이유는 그대로 남는다</strong> —
+    도구가 «팀원이 어디서 일하는가»를 정해 주지는 않는다.
+  </p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">09 — 평가</span>이 아키텍처를 어떻게 보는가</h2>
+
+  <p class="lede">
+    한 문장으로 말하면 — <strong>저장소 «안쪽»은 제가 본 것 중 상당히 잘 만들어져 있고,
+    저장소 «사이»가 약하다.</strong> 그리고 약한 쪽은 <strong>고치는 비용이 크지 않다.</strong>
+  </p>
+
+  <h3>강한 점 — 실측으로 확인한 것</h3>
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th></th><th>내용</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag tag-good">강점</span></td>
+            <td><b>한 번 선언하면 서버·문서·화면이 전부 거기서 나온다.</b> 이것을 실제로 해내는 팀은 많지 않다.
+                덕분에 «서버와 화면이 다른 이름을 쓰는» 종류의 사고가 <b>구조적으로 불가능</b>하다</td></tr>
+        <tr><td><span class="tag tag-good">강점</span></td>
+            <td><b>기계가 만든 파일은 보관하지 않고, 다시 만들어 같은지 확인한다.</b>
+                «문서는 바뀌었는데 코드만 옛것»이 생길 자리를 없앤다</td></tr>
+        <tr><td><span class="tag tag-good">강점</span></td>
+            <td><b>검사가 «베껴 적은 것끼리 비교»가 아니라 «원본에서 다시 계산한 것과 비교»다.</b>
+                목록을 손으로 유지하는 검사는 목록이 낡으면 조용히 약해지는데, 이 팀은 그것을 피한다</td></tr>
+        <tr><td><span class="tag tag-good">강점</span></td>
+            <td><b>틀린 것을 지우지 않고 기록한다.</b> 규약 저장소 안내문에는 «이 안내문의 옛 판이 설계 오류를 낳았다»가
+                그대로 남아 있고, 분리 때 잃은 검사 두 개의 이름을 적은 파일이 따로 있다.
+                <b>다음 사람이 같은 자리에서 넘어지지 않게 하는 장치</b>다</td></tr>
+        <tr><td><span class="tag tag-good">강점</span></td>
+            <td><b>한계를 알고 차선을 골랐다는 기록이 있다.</b> 합류 대기열을 못 쓰는 이유와
+                그래서 매일 검사를 도는 이유가 설정 파일에 적혀 있다</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>약한 점 — 전부 「저장소 사이」에 있다</h3>
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th></th><th>내용</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag tag-bad">약점</span></td>
+            <td><b>판올림 전체가 사람의 기억에 달려 있다.</b> 알림도, 자동 PR 도, 어긋남을 잡는 검사도 없다.
+                오늘 세 곳의 숫자가 전부 다른 것이 그 결과다</td></tr>
+        <tr><td><span class="tag tag-bad">약점</span></td>
+            <td><b>핀이 두 파일에 적히는데 서로 같은지 아무도 안 본다.</b> 오늘은 우연히 같다</td></tr>
+        <tr><td><span class="tag tag-bad">약점</span></td>
+            <td><b>저장소를 건너온 산출물을 «받은 그대로» 믿는다.</b> 어제 실측한 예 —
+                건너온 화면 기준 사진이 <b>도착한 시점에 이미 그쪽 코드와 안 맞았다</b>.
+                안쪽 검사는 촘촘한데 <b>경계를 넘는 순간 검사가 끊긴다</b></td></tr>
+        <tr><td><span class="tag tag-bad">약점</span></td>
+            <td><b>사본 146개가 «설계상» 어긋나 간다.</b> 알고 받아들인 것이지만, 시간이 갈수록 벌어진다</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <div class="hd">제 판단</div>
+    <p>
+      약점 넷 중 <strong>셋은 아키텍처 문제가 아니라 «설정하지 않은» 문제다.</strong>
+      자동 판올림 봇은 설정 파일 하나이고, 핀 두 파일 대조는 검사 하나다.
+      <strong>구조를 바꾸지 않고 오늘 넣을 수 있다.</strong>
+    </p>
+    <p>
+      나머지 하나 — <strong>저장소를 나눈 것 자체</strong> — 는 조직 결정에서 나왔고,
+      그 결정이 유효한 한 대가는 계속 치러야 한다.
+      <strong>다만 그 대가를 «사람의 기억»으로 치를 필요는 없다.</strong> 위 셋을 넣으면
+      같은 구조에서 대가의 대부분이 기계로 넘어간다.
+    </p>
+  </div>
+
+  <h3>넣는다면 이 순서</h3>
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>순서</th><th>무엇을</th><th>드는 일</th><th>없어지는 문제</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td>자동 판올림 봇</td><td>설정 파일 1개</td><td>세 숫자가 벌어지는 것</td></tr>
+        <tr><td class="num">2</td><td>핀 두 파일 일치 검사</td><td>검사 1개</td><td>한 파일만 고치고 끝내는 것</td></tr>
+        <tr><td class="num">3</td><td>경계를 넘어온 산출물 검증</td><td>검사 1~2개</td><td>어제 겪은 «틀린 채로 도착»</td></tr>
+        <tr><td class="num">4</td><td>발행(태그) 자동화</td><td>워크플로 1개</td><td>같은 번호를 둘이 가져가는 사고</td></tr>
+        <tr><td class="num">5</td><td>합류 대기열 또는 저장소 병합</td><td><b>운영 판단</b></td><td>남은 근본 대가</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    <strong>1~4 는 개발 판단이고 5 는 운영 판단이다.</strong>
+    그리고 1~4 를 넣으면 5 를 하지 않아도 지금 새는 것의 대부분이 멎는다.
+  </p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">10 — 요약</span>세 문장</h2>
+
+  <p class="lede">
+    <strong>①</strong> 저장소가 셋인 이유는 기술이 아니라 «팀원이 어디서 일하는가»라는 운영 결정이고,
+    그 결정의 대가로 <strong>저장소 사이를 잇는 일이 사람 몫</strong>이 되었다.
+  </p>
+  <p class="lede">
+    <strong>②</strong> 저장소 «안쪽»은 한 번 선언하면 서버·문서·화면이 전부 거기서 나오도록 잘 짜여 있어
+    <strong>어긋남이 구조적으로 생기지 않는다.</strong>
+  </p>
+  <p class="lede">
+    <strong>③</strong> 오늘 실측하면 <strong>세 곳의 판번호가 전부 다르고 아무 검사도 그것을 잡지 않는다</strong> —
+    이것은 구조를 바꾸지 않고 <strong>설정 하나와 검사 하나로</strong> 대부분 막을 수 있다.
+  </p>
+</section>
+
+<footer>
+  fcc-test-platform · fcc-test-contracts · FCC_mobile_test_automation ·
+  모든 수치는 2026-09-06 실측 ·
+  규약 최신 <span class="mono">v0.1.24</span> / 계측장비 <span class="mono">v0.1.23</span> / 웹·중앙 <span class="mono">v0.1.22</span>
+</footer>
+
+</main>
+</div>
+
+  </body>
+</html>
