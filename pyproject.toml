@@ -18,46 +18,57 @@ name = "fcc-test-platform"
 # version = 이 레인이 이미 소유한 npm 배포물 apps/web/package.json 과 상등.
 #
 # ⚠️ **「상등」은 2026-09-05 현재 거짓이고 그것을 재는 검사가 0건이다** — 이 값은
-# `0.1.9`, npm 쪽은 `0.1.4` 다. 형제 레인(`fcc-test-contracts`)이 2026-09-04 에
+# `0.1.10`, npm 쪽은 `0.1.4` 다. 형제 레인(`fcc-test-contracts`)이 2026-09-04 에
 # 자기 자리에서 같은 사실을 이미 적었다. 이번 판올림에서 npm 을 끌어올려 맞추지
 # **않았다**: 그러면 둘이 보조를 맞춰 온 것처럼 보이게 되고, 갈라진 사실 자체가
 # 사라진다. 위 한 줄은 지금 산문 주장이지 게이트가 아니다. 소유 웨이브 미정.
 #
-# ⚠️ **0.1.9 는 wire 파손을 담는다** — 소비 레인은 이 번호로 pin 하기 전에 접수
-# 축을 함께 옮겨야 한다. 형제 레인의 v0.1.22 가 자기 자리에 같은 문장을 적는
-# 관례를 세웠고, 이 레인에는 그 기록이 없었다(그래서 아래 수치는 문서가 아니라
-# `git diff v0.1.8..v0.1.9 -- docs/api/platform-api.openapi.json` 실측이다):
+# ⚠️ **0.1.10 은 wire 파손을 담는다** — 소비 레인은 이 번호로 pin 하기 전에 측정
+# job 축을 함께 옮겨야 한다. 파손은 `headless-api` 에만 있고 `platform-api` 는
+# **표면 변화가 0** 이다(아래 수치는 문서가 아니라 `git diff v0.1.9..v0.1.10` 실측):
 #
-#     CreateProjectRequest      `customer` 삭제
-#                               `applicant_name`·`management_number` 가
-#                               nullable optional → **required**
-#     UpdateProjectRequest      `customer` 삭제
-#     ProjectEnvelope           `customer` 삭제
-#     ProjectDetailEnvelope     `customer` 삭제
+#     /headless/jobs/{job_id}        → /headless/jobs/{job_uuid}
+#     /headless/jobs/{job_id}/stop   → /headless/jobs/{job_uuid}/stop
 #
-# 커밋 a592e66(PR #68, 「접수 화면」). ⚠️ **이 상자의 `apps/web` 은 같은 커밋에서
-# 함께 옮겨졌다** — 즉 상자는 자기 안에서 정합하고, 갈라지는 것은 백엔드 핀만
-# 올리고 웹 이미지를 그대로 두는 **부분 배포**다.
+#     MeasurementJobSnapshot         `id` 삭제 · `job_uuid` **required**
+#     MeasurementJobSubmitted        `id` 삭제
+#     StopMeasurementJobResponse     `job_id` → `job_uuid` (**required**)
+#     TestPlanGenerationJobResponse       `job_id` → `generation_job_id` (**required**)
+#     TestPlanGenerationMetadataResponse  동상
+#     TestPlanGenerationSubmittedResponse 동상
 #
-# 나머지 커밋의 HTTP 표면 변화는 **순수 추가**다:
-#     오퍼레이션 74 → 79 (삭제 0 · operationId 변경 0)
-#     스키마     124 → 132 (삭제 0)
-#     경로       61 → 65
+# 커밋 c14e653(PR #70, 계약 v0.1.22 추종). ⚠️ **이 상자의 `apps/web` 은 같은
+# 커밋에서 함께 옮겨졌다** — 상자는 자기 안에서 정합하고, 갈라지는 것은 백엔드
+# 핀만 올리고 웹 이미지를 그대로 두는 **부분 배포**다.
 #
-# ⚠️ **판올림은 의존 선언도 옮긴다.** 두 공유 레인은 `--no-deps` 로 설치되므로
-# 전이 의존의 소유자가 **소비 레인**이다 — 그 목록에 커널 핀을 새로 적어야 한다
-# (안 적으면 `fcc_test_platform` 의 71개 파일이 import 하는 이름이 없어
-# `ModuleNotFoundError` 가 런타임에서 난다):
+# ⚠️ 파손을 «이름 집합»으로 재면 안 보인다 — operationId 40 → 40, 스키마 이름
+# 80 → 80, 삭제 0 이다. 바뀐 것은 **경로 템플릿과 속성 키**이므로 v0.1.9 가
+# 세운 「오퍼레이션·스키마 수」 형태의 차분만으로는 이 표가 나오지 않는다.
+# 경로·파라미터·속성 축을 따로 재라.
 #
-#     fcc-test-contracts   v0.1.11 → v0.1.21
-#     fcc-test-kernel      (선언 없음) → kernel-v0.5.0
+# ■ 나머지는 순수 추가다
 #
-# ⚠️ 그리고 이 휠이 싣던 최상위 이름 `domain`·`infrastructure`·
-# `application.central_contract`·`application.session` 이 **전부 반납됐다**
-# (아래 `[tool.setuptools.packages.find]` 주석이 그 웨이브를 적는다).
-# 그 이름들을 이 배포판에서 받아 쓰던 소비자가 있으면 그날 끊긴다 — 실측
-# 2026-09-05: 모노레포는 `fcc_test_platform.*` 만 부르므로 해당 없다.
-version = "0.1.9"
+#     platform-api  오퍼레이션 79 → 79 · 스키마 132 → 132 (변화 0)
+#     import 표면   모듈 175 → 211 · **삭제 0** · 신규 36
+#                   (`*_cli` 35 + `keycloak_chamber_admin`)
+#
+# ■ 이 판이 처음으로 «명령»을 싣는다 — 진입점 0 → 37
+#
+# `scripts/` 알맹이 38건이 패키지로 들어오고(PR #84·#87·#88) 그 위에 진입점
+# 표가 섰다(PR #86). 그래서 소비 레인은 **이 저장소 없이** 도구를 부를 수 있다:
+#
+#     fcc-platform-db-migrate · fcc-platform-central-db-live-proof · …(37개)
+#
+# 휠 실측: `fcc_test_platform/*_cli.py` **37** 실림 · `scripts/` **0** 실림 ·
+# `entry_points.txt` **37**.
+#
+# ⚠️ **의존 선언이 또 옮겨졌다.** 두 공유 레인은 `--no-deps` 로 설치되므로 전이
+# 의존의 소유자가 **소비 레인**이다:
+#
+#     fcc-test-contracts   v0.1.21 → v0.1.22   (⚠️ 그 판도 wire 파손을 담는다)
+#     fcc-test-kernel      kernel-v0.5.0       (v0.1.9 와 같음 — 새로 적을 것 없음)
+#
+version = "0.1.10"
 description = "Central DB, backend API, auth/RBAC, frontend shell, provider registry, deployment composition, and report/artifact browsing workflows."
 # requires-python = infra/central/Dockerfile.api 의 `FROM python:3.11-slim`.
 requires-python = ">=3.11"
