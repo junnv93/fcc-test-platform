@@ -16,7 +16,7 @@ from fcc_test_contracts.common.sqlite_connection_factory import (  # noqa: E402
 from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # noqa: E402
 
 # Reuse the production `--rollback` convention parser SSOT.
-from platform_db_migrate import parse_rollback_statements  # noqa: E402
+from fcc_test_platform.db_migrate_cli import parse_rollback_statements  # noqa: E402
 
 MIGRATIONS_DIR = resolve_repo_artifact(__file__, 'docs/platform/migrations')
 

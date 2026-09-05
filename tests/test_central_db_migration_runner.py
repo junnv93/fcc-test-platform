@@ -34,7 +34,7 @@ def _ledger_paths(ledger: Path) -> dict[str, str]:
     payload = json.loads(ledger.read_text(encoding='utf-8'))
     return dict(payload.get('paths') or {})
 
-from platform_db_migrate import (  # noqa: E402
+from fcc_test_platform.db_migrate_cli import (  # noqa: E402
     _INVALID_INDEX_SQL,
     MigrationApplyError,
     MigrationDriftError,
@@ -281,7 +281,7 @@ class TestLockIdParity(unittest.TestCase):
     """
 
     def test_lock_id_matches_evidence_runner(self) -> None:
-        from platform_db_migrate import advisory_lock_id as migrate_lock_id
+        from fcc_test_platform.db_migrate_cli import advisory_lock_id as migrate_lock_id
         from fcc_test_platform.db_migration_runner_cli import advisory_lock_id as evidence_lock_id
 
         for key in ('fcc-platform:central-db-migrate', 'fcc-platform:001_initial_central_db', 'x'):
@@ -421,7 +421,7 @@ class TestRollbackCommand(unittest.TestCase):
             )
             fake = FakeConnection({'001_a': checksum_sql(path.read_text(encoding='utf-8'))})
 
-            with patch('platform_db_migrate._connect', return_value=fake):
+            with patch('fcc_test_platform.db_migrate_cli._connect', return_value=fake):
                 result = rollback(
                     dsn='postgresql://example',
                     migrations_dir=dp,
@@ -520,7 +520,7 @@ class TestMigrateTransactionRouting(unittest.TestCase):
 
     def _run(self, tmp: Path, *, invalid_index_snapshots=None):
         fake = FakeConnection({}, invalid_index_snapshots=invalid_index_snapshots)
-        with patch('platform_db_migrate._connect', return_value=fake):
+        with patch('fcc_test_platform.db_migrate_cli._connect', return_value=fake):
             result = migrate(
                 dsn='postgresql://example',
                 migrations_dir=tmp,
@@ -599,7 +599,7 @@ class TestMigrateTransactionRouting(unittest.TestCase):
             _write(dp, '002_c.sql', 'CREATE INDEX CONCURRENTLY IF NOT EXISTS ux ON a (id);')
             # ONE snapshot per CONCURRENTLY apply: post-apply INVALID set = {'ux'}.
             fake = FakeConnection({}, invalid_index_snapshots=[['ux']])
-            with patch('platform_db_migrate._connect', return_value=fake):
+            with patch('fcc_test_platform.db_migrate_cli._connect', return_value=fake):
                 with self.assertRaises(MigrationApplyError):
                     migrate(
                         dsn='postgresql://example',
@@ -631,7 +631,7 @@ class TestMigrateTransactionRouting(unittest.TestCase):
             _write(dp, '001_a.sql', 'CREATE TABLE a (id INT);')
             _write(dp, '002_c.sql', 'CREATE INDEX CONCURRENTLY IF NOT EXISTS ux ON a (id);')
             fake = FakeConnection({}, invalid_index_snapshots=[['ux']])
-            with patch('platform_db_migrate._connect', return_value=fake):
+            with patch('fcc_test_platform.db_migrate_cli._connect', return_value=fake):
                 with self.assertRaises(MigrationApplyError):
                     migrate(
                         dsn='postgresql://example',
@@ -655,7 +655,7 @@ class TestMigrateTransactionRouting(unittest.TestCase):
             _write(dp, '001_a.sql', 'CREATE TABLE a (id INT);')
             _write(dp, '002_c.sql', 'CREATE INDEX CONCURRENTLY IF NOT EXISTS ux ON a (id);')
             fake = FakeConnection({}, invalid_index_snapshots=[['unrelated']])
-            with patch('platform_db_migrate._connect', return_value=fake):
+            with patch('fcc_test_platform.db_migrate_cli._connect', return_value=fake):
                 with self.assertRaises(MigrationApplyError):
                     migrate(
                         dsn='postgresql://example',
@@ -678,7 +678,7 @@ class TestMigrateTransactionRouting(unittest.TestCase):
             _write(dp, '001_a.sql', 'CREATE TABLE a (id INT);')
             _write(dp, '002_c.sql', 'CREATE INDEX CONCURRENTLY IF NOT EXISTS ux ON a (id);')
             fake = FakeConnection({})
-            with patch('platform_db_migrate._connect', return_value=fake):
+            with patch('fcc_test_platform.db_migrate_cli._connect', return_value=fake):
                 result = migrate(
                     dsn='postgresql://example',
                     migrations_dir=dp,
@@ -774,7 +774,7 @@ class TestReconcileCommand(unittest.TestCase):
 
     def _run(self, tmp: Path, applied: dict[str, str]):
         fake = FakeConnection(applied)
-        with patch('platform_db_migrate._connect', return_value=fake):
+        with patch('fcc_test_platform.db_migrate_cli._connect', return_value=fake):
             result = reconcile(
                 dsn='postgresql://example',
                 migrations_dir=tmp,
@@ -852,7 +852,7 @@ class TestMigrateDriftPolicyUnchanged(unittest.TestCase):
             _write(dp, '001_a.sql', 'CREATE TABLE a;')
             _write(dp, '002_b.sql', 'CREATE TABLE b;')
             fake = FakeConnection({'001_a': 'stale-bootstrap'})
-            with patch('platform_db_migrate._connect', return_value=fake):
+            with patch('fcc_test_platform.db_migrate_cli._connect', return_value=fake):
                 with self.assertRaises(MigrationDriftError):
                     migrate(
                         dsn='postgresql://example',

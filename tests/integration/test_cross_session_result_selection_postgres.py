@@ -91,7 +91,7 @@ def test_legacy_and_provider_scoped_conflict_indexes_exist_in_both_lanes(live_pr
 
 
 def test_migration_rerun_is_a_noop_and_ledger_checksums_are_current(live_proof):
-    from platform_db_migrate import checksum_sql, discover_migrations, migrate
+    from fcc_test_platform.db_migrate_cli import checksum_sql, discover_migrations, migrate
 
     expected = {
         version: checksum_sql(path.read_text(encoding='utf-8'))

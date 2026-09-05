@@ -9,7 +9,7 @@ from fcc_test_platform.infrastructure.adapters.driven.central_project_reference_
     PostgresCentralProjectReferenceAdapter,
 )
 from fcc_test_kernel.domain.models.project_result_reference import canonical_payload_hash
-from scripts import cross_session_result_selection_evidence as evidence
+from fcc_test_platform import cross_session_result_selection_evidence_cli as evidence
 
 
 def test_evidence_runner_requires_both_independent_lanes_and_never_skips_missing_dsns(tmp_path, monkeypatch):

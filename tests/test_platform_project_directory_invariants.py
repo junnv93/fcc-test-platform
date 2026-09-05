@@ -1935,7 +1935,7 @@ class TestProjectDirectoryMigration010(unittest.TestCase):
     def setUp(self):
         self.sql = _MIGRATION_010.read_text(encoding='utf-8')
         sys.path.insert(0, str(PROJECT_ROOT / 'scripts'))
-        import platform_db_migrate
+        import fcc_test_platform.db_migrate_cli as platform_db_migrate
 
         self.runner = platform_db_migrate
         # **적용 완료된 마이그레이션은 과거의 사실이다.** 러너가 파일 checksum 을
@@ -2190,7 +2190,7 @@ class TestApplicantSearchAxisMigration(unittest.TestCase):
 
     def setUp(self):
         sys.path.insert(0, str(PROJECT_ROOT / 'scripts'))
-        import platform_db_migrate
+        import fcc_test_platform.db_migrate_cli as platform_db_migrate
 
         self.runner = platform_db_migrate
         self.expand = _MIGRATION_031.read_text(encoding='utf-8')
