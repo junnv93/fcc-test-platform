@@ -78,7 +78,6 @@ CREATE TABLE IF NOT EXISTS "samples" (
     "row_version" INTEGER NOT NULL DEFAULT 1,
     "deleted_at" TIMESTAMPTZ,
     "deleted_by" TEXT,
-    "metadata_json" JSONB,
     "created_at" TIMESTAMPTZ NOT NULL,
     "updated_at" TIMESTAMPTZ NOT NULL
 );

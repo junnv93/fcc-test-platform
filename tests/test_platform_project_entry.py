@@ -717,7 +717,6 @@ class TestSamplesSqlMatchesDdl(unittest.TestCase):
                     receiver TEXT,
                     received_date TEXT,
                     released_date TEXT,
-                    metadata_json TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
@@ -727,9 +726,9 @@ class TestSamplesSqlMatchesDdl(unittest.TestCase):
                 "INSERT INTO samples (id, project_id, model_id, sample_code, "
                 "serial_number, sample_number, test_category, label_number, smsn, "
                 "intake_cert, assigned_team, sender, receiver, received_date, "
-                "released_date, metadata_json, created_at, updated_at) VALUES "
+                "released_date, created_at, updated_at) VALUES "
                 "('s1','p1','m1','SC-1','SN-1','#2','Radiation','L-1','SMSN-1',"
-                "'CERT-1','SAR','PM','Tester','2026-06-20','2026-06-25',NULL,"
+                "'CERT-1','SAR','PM','Tester','2026-06-20','2026-06-25',"
                 "'2026-06-20T00:00:00Z','2026-06-20T00:00:00Z')"
             )
             # psycopg uses %s; SQLite uses ?. Swap the single placeholder.

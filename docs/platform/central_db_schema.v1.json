@@ -106,7 +106,6 @@
         "row_version": {"type": "integer", "required": true, "default": "1"},
         "deleted_at": {"type": "timestamp", "required": false},
         "deleted_by": {"type": "text", "required": false},
-        "metadata_json": {"type": "json", "required": false},
         "created_at": {"type": "timestamp", "required": true},
         "updated_at": {"type": "timestamp", "required": true}
       },

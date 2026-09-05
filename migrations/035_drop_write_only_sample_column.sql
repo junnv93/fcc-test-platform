@@ -1,0 +1,69 @@
+-- 035_drop_write_only_sample_column.sql
+-- Drop `samples.metadata_json` — an extension slot nothing ever filled (2026-09-05).
+--
+-- ## The evidence
+--
+-- This is the same shape 033 retired as `device_models.metadata_json`, and the
+-- case here is STRONGER. That column at least appeared in the project service's
+-- INSERT column list (it wrote a literal NULL). This one does not appear in the
+-- write adapter's column list AT ALL:
+--
+--     central_sample_inventory_write_adapter.SAMPLE_INSERT_SQL / SAMPLE_UPDATE_SQL
+--
+-- so every row has carried the DEFAULT NULL since 001. Measured 2026-09-05 across
+-- the whole box: no SELECT names it, no API envelope carries it, no screen renders
+-- it, and it is absent from the domain SSOTs that drive the sample surface
+-- (`SAMPLE_EDITABLE_FIELDS` · `REVISION_SNAPSHOT_FIELDS` in
+-- fcc_test_kernel.domain.models.sample_inventory). The only occurrence outside the
+-- DDL is a hand-written test fixture that inserts NULL into it — this migration
+-- removes that too, so the fixture keeps mirroring the schema.
+--
+-- ⚠️ Do NOT confuse it with `test_sessions.metadata_json` (001 line 221), which is
+-- LIVE — scripts/platform_central_db_live_proof.py writes it and
+-- scripts/cross_session_result_selection_evidence.py declares it a protected
+-- column. Same name, different table, opposite verdict. That is exactly why the
+-- evidence above is per-column and not per-name.
+--
+-- ## Why now, and why it is not RESERVED
+--
+-- 033 deliberately kept `users.azure_ad_id` / `employee_id` / `department` /
+-- `phone_number` though they are equally unread here: the provider lane seals them
+-- as "Azure 승인 전 대기 칸" (test_ems_schema_parity) — someone has COMMITTED to
+-- filling them, which makes them reserved rather than dead.
+--
+-- Nobody has committed to this one. The strongest available evidence is that the
+-- sample domain was **redesigned from scratch** on 2026-09-04 (ADR-0002, migration
+-- 034 — PM custody events + sample classification), the redesign added two new
+-- columns for values that had nowhere to live (`sample_kind`, `sample_description`),
+-- and it still did not reach for this slot. An extension point that a full domain
+-- redesign walks past is not reserved; it is unused.
+--
+-- The cost of keeping it is not zero: it appears in the schema contract, in the
+-- generated 001, and in every fixture that mirrors the DDL. If a sample ever needs
+-- structured metadata, adding a column then is a one-line additive migration.
+--
+-- ## Ordering
+--
+-- INDEPENDENT of 031-033. Those three straddle a deploy boundary because live code
+-- reads/writes the columns they touch; this one touches a column NO code names, in
+-- either direction, so it can be applied online at any point in the sequence and
+-- needs no stop window of its own. It is numbered 035 because 034 is taken
+-- (sample custody events) — verified 2026-09-05 across every remote branch and
+-- every local worktree.
+--
+-- Dialect: PostgreSQL only (like 001-034). Transactional: no CONCURRENTLY, so
+-- scripts/platform_db_migrate.py runs the whole file in one transaction.
+--
+-- ## Reversibility
+--
+-- LOSSLESS, on the same reasoning 033 used for `device_models.metadata_json`: the
+-- column was always NULL, so an empty column IS its prior content. Restoring the
+-- shape restores the data.
+--
+--rollback ALTER TABLE "samples" ADD COLUMN IF NOT EXISTS "metadata_json" JSONB;
+
+BEGIN;
+
+ALTER TABLE "samples" DROP COLUMN IF EXISTS "metadata_json";
+
+COMMIT;
