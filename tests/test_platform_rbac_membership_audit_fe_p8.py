@@ -39,6 +39,84 @@ sys.path.insert(0, str(project_root / 'src'))
 from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # noqa: E402
 from fcc_test_contracts.common.sqlite_connection_factory import SqliteConnectionContext  # noqa: E402
 
+
+def _platform_application_roots() -> tuple[Path, ...]:
+    """이 파일의 세 AST 봉인이 훑는 자리 — **두 디렉터리**다.
+
+    ⚠️ 오랫동안 `src/application/platform` **하나**였다. S3(2026-09-05, PR #78)가
+    DB 어댑터를 `infrastructure/adapters/driven/` 으로 옮기면서 그 접두사 «밖»에
+    application 관심사가 살 수 있는 길이 열렸고, `.importlinter` 계약 3 주석이
+    그 위험을 적어 두었다: 감사 이벤트나 role 리터럴을 쓰는 어댑터를 그리로 옮기면
+    **조용히 스캔 밖으로 나간다.**
+
+    ⚠️ **세 봉인이 균질하지 않다** — 실측으로 갈랐다(어댑터 하나를 driven 으로
+    옮겼다고 가정하고 세 검사를 돌렸다):
+
+        검사                        형태                    이동했을 때
+        role 리터럴 부재            offenders == []         **조용히 초록**
+        audit_events 금지 동사      offenders == []         **조용히 초록**
+        event_type 등호             emitted == allowed      빨강(누락 토큰을 댄다)
+
+    공집합형 둘은 파일이 빠지면 위반도 함께 빠져 초록이 유지된다. 등호형 하나만
+    스스로 시끄럽다. 그러므로 **범위를 넓히는 일은 앞의 둘을 위해 필요하다.**
+
+    ⚠️ **모노레포 경로로 순진하게 넓히면 넓혀지지 않는다.** 이 레인에는 driven 에
+    대응하는 장부 항목이 없어 `resolve_repo_artifact` 가 «실재하지 않는» 경로를
+    문자열 그대로 돌려주고, `Path.rglob()` 은 없는 디렉터리에 **예외 없이 빈 목록**을
+    준다 — 안 넓히면서 넓힌 것처럼 보인다. 그래서 후보를 **실재로 거른다**.
+    (장부 자체는 고치지 않는다: 한 디렉터리에서 파일 하나만 옮기면 해소기가
+    `RelocationAmbiguity` 로 거부한다 — `.importlinter` 계약 3 주석 참조.)
+
+    실측 2026-09-05 — 넓혀도 방출 집합이 안 변한다(등호 유지):
+        레인    : application 73파일 + driven 5파일  → role 0 · 동사 0 · 토큰 7/7
+        모노레포: application  0파일 + driven 42파일 → role 0 · 동사 0
+    """
+    candidates = (
+        resolve_repo_artifact(__file__, 'src/application/platform'),
+        # 모노레포 배치. 이 레인에서는 장부에 항목이 없어 그대로 돌아오고 실재하지 않는다.
+        resolve_repo_artifact(__file__, 'src/infrastructure/adapters/driven'),
+        # 레인 배치. S3 가 어댑터를 옮긴 실제 자리.
+        project_root / 'fcc_test_platform' / 'infrastructure' / 'adapters' / 'driven',
+    )
+    return tuple(c for c in candidates if c.is_dir())
+
+
+_FORBIDDEN_AUDIT_VERBS = (
+    'UPDATE "AUDIT_EVENTS"',
+    'DELETE FROM "AUDIT_EVENTS"',
+    'MERGE INTO "AUDIT_EVENTS"',
+    'TRUNCATE "AUDIT_EVENTS"',
+)
+
+
+def _forbidden_audit_verbs(source: str) -> list[str]:
+    """`audit_events` 를 append-only 로 깨뜨리는 SQL 동사를 찾는다.
+
+    ⚠️ **이 매처는 2026-09-05 까지 «죽어 있었다».** 금지 동사를 소문자
+    (`'DELETE FROM "audit_events"'`)로 적어 놓고 말뭉치는 `source.upper()` 로
+    대문자화해 비교했다 — 대문자 건초더미에서 소문자 바늘을 찾으니 **어떤 입력에도
+    매치되지 않는다.** 그래서 그 봉인은 「위반 0건」을 «영원히» 보고했고, 그것은
+    「아무것도 검사하지 않았다」와 같은 값이었다(설계서 §7 교훈 ③).
+
+    적대적 실측: driven 어댑터에 `DELETE FROM "audit_events"` 를 주입했는데 봉인이
+    **초록이었다**. 같은 주입으로 role 리터럴 검사는 빨개졌다 — 그 대조가 이 결함을
+    드러냈다.
+
+    그래서 매칭을 순수 함수로 빼냈다. 아래 `TestTheAuditVerbMatcherHasTeeth` 의
+    양팔이 이 함수를 «직접» 부른다: 하나는 알려진 위반에서 «듣는가», 다른 하나는
+    정당한 append-only 에서 «안 듣는가». 매처가 다시 공허해지면 첫째 팔이 빨개진다.
+    """
+    if 'audit_events' not in source.lower():
+        return []
+    haystack = source.upper().replace("'", '"')
+    return [verb for verb in _FORBIDDEN_AUDIT_VERBS if verb in haystack]
+
+
+def _iter_scanned_sources():
+    """`_platform_application_roots()` 아래 모든 `*.py` — 세 봉인의 공통 말뭉치."""
+    for root in _platform_application_roots():
+        yield from root.rglob('*.py')
+
 from fcc_test_contracts.common.access_policy import ApiAccessPolicy, ApiPrincipal  # noqa: E402
 from fcc_test_kernel.application.central_contract.api_contracts import (  # noqa: E402
     PLATFORM_API_OPERATIONS,
@@ -278,9 +356,7 @@ class TestRbacRoleCatalogSsot(unittest.TestCase):
         # allowed in src/application/platform/ is the rbac_role_catalog loader
         # (which reads them FROM the schema). A drift back into hardcoded
         # grants would re-introduce the very SSOT violation FE-P8 closes.
-        roots = (
-            resolve_repo_artifact(__file__, 'src/application/platform'),
-        )
+        roots = _platform_application_roots()
         offenders: list[str] = []
         for root in roots:
             for path in root.rglob('*.py'):
@@ -297,6 +373,82 @@ class TestRbacRoleCatalogSsot(unittest.TestCase):
                     ):
                         offenders.append(f'{path.name}: hardcoded grant for {role_key!r}')
         self.assertEqual(offenders, [], offenders)
+
+
+class TestTheAuditVerbMatcherHasTeeth(unittest.TestCase):
+    """⚠️ **매처가 «일하는지»를 매처에게 직접 묻는다** (2026-09-05).
+
+    `test_audit_events_table_append_only_in_application_paths` 는 실제 소스를 훑어
+    「offenders 가 공집합인가」를 본다. 그 형태는 **매처가 죽어도 초록**이다 —
+    빈 결과가 「위반 없음」과 구별되지 않기 때문이다. 실제로 그 매처는 대소문자
+    불일치로 어떤 입력에도 매치되지 않는 채 오래 초록을 냈다.
+
+    설계서 §7 이 적은 두 팔을 여기에 쓴다:
+
+        첫째 팔  알려진 위반에서 **듣는가**      ← 공허해지면 이 팔이 빨개진다
+        둘째 팔  정당한 append-only 에서 **안 듣는가**  ← 과잉 탐지를 막는다
+
+    둘째가 없으면 「전부 위반」이라고 답하는 매처도 첫째 팔을 통과한다.
+    """
+
+    def test_the_matcher_fires_on_each_forbidden_verb(self):
+        for verb, sql in (
+            ('UPDATE "AUDIT_EVENTS"', 'UPDATE "audit_events" SET actor = %s'),
+            ('DELETE FROM "AUDIT_EVENTS"', 'DELETE FROM "audit_events" WHERE id = %s'),
+            ('MERGE INTO "AUDIT_EVENTS"', 'MERGE INTO "audit_events" USING src ON ...'),
+            ('TRUNCATE "AUDIT_EVENTS"', 'TRUNCATE "audit_events"'),
+        ):
+            with self.subTest(verb=verb):
+                source = f"def purge(conn):\n    conn.execute('{sql}')\n"
+                self.assertIn(
+                    verb, _forbidden_audit_verbs(source),
+                    f'매처가 {verb} 를 놓쳤다 — 이 봉인은 공허하다')
+
+    def test_the_matcher_is_silent_on_append_only_writes(self):
+        source = (
+            "def record(conn, row):\n"
+            "    conn.execute('INSERT INTO \"audit_events\" (event_type) VALUES (%s)', row)\n"
+        )
+        self.assertEqual(
+            [], _forbidden_audit_verbs(source),
+            'append-only INSERT 를 위반으로 읽었다 — 과잉 탐지는 이 봉인을 끄게 만든다')
+
+    def test_the_matcher_ignores_sources_that_never_mention_the_table(self):
+        self.assertEqual([], _forbidden_audit_verbs('x = 1\n'))
+
+
+class TestTheSealScopeSurvivesTheAdapterMove(unittest.TestCase):
+    """⚠️ **넓힌 범위가 «실재»하는지 검사한다** (2026-09-05).
+
+    이 파일의 세 AST 봉인은 디렉터리를 훑는다. 훑을 디렉터리가 없으면
+    `Path.rglob()` 은 **예외 없이 빈 목록**을 주고, 「위반 0건」과 「아무것도 안
+    봤다」가 같은 초록이 된다 — 설계서 §7 교훈 ③ 이 다루는 바로 그 값이다.
+
+    S3 가 어댑터를 `infrastructure/adapters/driven/` 으로 옮기며 그 위험이 실물이
+    됐다. 범위를 넓히는 것만으로는 부족하다: 넓힌 «대상»이 사라지거나 이름이 바뀌면
+    스캔은 조용히 원래 크기로 돌아간다. 이 봉인이 그날 이름을 대며 멈춘다.
+
+    ⚠️ 스캔한 파일이 «0개가 아님»만 보면 부족하다 — application 쪽 73파일이
+    그 조건을 혼자 만족시켜 driven 이 통째로 빠져도 초록이 된다. 그래서 **driven
+    자체가 말뭉치 안에 있는지**를 본다.
+    """
+
+    def test_the_driven_adapter_directory_is_in_scope(self):
+        roots = _platform_application_roots()
+        self.assertTrue(roots, '훑을 디렉터리가 하나도 없다 — 세 봉인이 공허하다')
+        self.assertTrue(
+            any(r.name == 'driven' for r in roots),
+            f"S3 가 어댑터를 옮긴 `infrastructure/adapters/driven/` 이 스캔 범위에 "
+            f"없다 — 그리로 옮겨진 코드의 role 리터럴·감사 동사 위반은 «조용히» "
+            f"빠진다(두 검사 모두 `offenders == []` 형태라 파일이 빠지면 위반도 "
+            f"함께 빠진다). 현재 범위: {[str(r) for r in roots]}")
+
+    def test_the_scan_corpus_is_not_empty(self):
+        files = list(_iter_scanned_sources())
+        self.assertGreater(
+            len(files), 0,
+            '스캔 대상 *.py 가 0개다 — 세 봉인이 「위반 없음」을 「안 봤음」으로 '
+            '바꿔치기하고 있다')
 
 
 # ── 2. Authorize union (token + membership) ────────────────────────────────
@@ -594,16 +746,10 @@ class TestAuditAtomicity(_AuthorizeFixture):
     def test_audit_events_table_append_only_in_application_paths(self):
         """AST guard — application/platform/ never emits UPDATE/DELETE/MERGE
         against audit_events."""
-        root = resolve_repo_artifact(__file__, 'src/application/platform')
         offenders: list[str] = []
-        for path in root.rglob('*.py'):
-            source = path.read_text(encoding='utf-8')
-            if 'audit_events' not in source:
-                continue
-            for verb in ('UPDATE "audit_events"', 'DELETE FROM "audit_events"',
-                         'MERGE INTO "audit_events"', 'TRUNCATE "audit_events"'):
-                if verb in source.upper().replace("'", '"'):
-                    offenders.append(f'{path.name}: forbidden {verb}')
+        for path in _iter_scanned_sources():
+            for verb in _forbidden_audit_verbs(path.read_text(encoding='utf-8')):
+                offenders.append(f'{path.name}: forbidden {verb}')
         self.assertEqual(offenders, [])
 
 
@@ -1041,7 +1187,7 @@ class TestAuditEventTypeAlignment(unittest.TestCase):
         # membership service (assigned/revoked). The grep scope is the
         # platform application package.
         emitted: set[str] = set()
-        for path in (resolve_repo_artifact(__file__, 'src/application/platform')).rglob('*.py'):
+        for path in _iter_scanned_sources():
             source = path.read_text(encoding='utf-8')
             for token in allowed:
                 if f"'{token}'" in source or f'"{token}"' in source:
