@@ -4,6 +4,16 @@ Status: Active operations contract (B4 — backend architecture roadmap, 2026-06
 
 Last updated: 2026-06-13
 
+> ⚠️ **2026-09-05 정합 확인 — 이 문서는 `platform-api-node` 를 모릅니다.**
+> 2026-09-04 에 평문 HTTP 대응으로 `platform-api` 가 **두 인스턴스**로 나뉘었습니다
+> (`platform-api` = `local_jwt` 브라우저용 · `platform-api-node` = `oidc_jwt` 챔버
+> 노드용). 이 문서의 규칙·SLO 는 그 이전에 쓰였습니다.
+> **미확인 사항**: 새 인스턴스가 스크레이프 대상에 등록됐는지, 알림이 그것의 장애를
+> 잡는지 — 이 저장소에는 Prometheus 배포가 없어 여기서 판정할 수 없습니다.
+> 중앙 PC 실사가 필요하며 설계서 §9 에 등재돼 있습니다.
+> 근거: [`.claude/evaluations/2026-09-04-http-dual-auth-node-lane.md`](../../.claude/evaluations/2026-09-04-http-dual-auth-node-lane.md)
+
+
 ## Purpose
 
 This document is the single source of truth for the service-level objectives of

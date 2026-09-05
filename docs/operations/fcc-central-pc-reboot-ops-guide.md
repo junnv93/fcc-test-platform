@@ -78,6 +78,25 @@ docker compose -f infra/docker-compose.central.yml \
   --env-file infra/central/central.env up -d
 ```
 
+### 🔴 `platform-api` 는 **둘**입니다 (2026-09-04 이후)
+
+평문 HTTP 에서 브라우저와 챔버 노드가 요구하는 인증 모드가 **서로 반대**라, 인증
+모드별로 인스턴스를 나누고 nginx 가 경로로 가릅니다. `profiles` 가 없으므로 위
+`up -d` 로 **둘 다 자동 기동**됩니다 — 다만 `ps` 에서 **둘 다 올라왔는지 확인**하십시오.
+
+| 컨테이너 | 인증 모드 | 누가 쓰나 |
+|---|---|---|
+| `fcc-central-platform-api` | `local_jwt` | **브라우저** — `/platform/*` |
+| `fcc-central-platform-api-node` | `oidc_jwt` | **챔버 노드** — heartbeat · reference-bundle · result-ingestions |
+
+⚠️ **하나만 떠 있으면 다른 쪽이 조용히 401 을 받습니다.** 브라우저는 되는데 챔버
+heartbeat 가 안 되면(또는 그 반대) 먼저 이 둘을 의심하십시오.
+
+⚠️ **이것은 임시 형상입니다.** 운영자 판정은 「HTTPS 는 결과이지 전제가 아니다」이고,
+**인증서가 발급되면 노드 인스턴스·nginx 블록을 지우고 단일 `oidc_jwt` 로 되돌립니다.**
+영구 구조로 읽고 늘리지 마십시오.
+근거: [`.claude/evaluations/2026-09-04-http-dual-auth-node-lane.md`](../../.claude/evaluations/2026-09-04-http-dual-auth-node-lane.md)
+
 ### ⚠️ `up -d` 는 이미지가 있으면 **재빌드하지 않는다**
 
 `web` 서비스는 compose 에서 `build:` 와 `image:` 를 **둘 다** 갖는다. 그래서 태그가
@@ -162,6 +181,16 @@ curl -fsS http://10.206.34.233:8080/health
 curl -fsS http://10.206.34.233:8081/realms/fcc-dev/.well-known/openid-configuration \
   >/dev/null
 ```
+
+두 인스턴스가 **각각** 살아 있는지도 봅니다(2026-09-04 이후):
+
+```bash
+docker compose -f infra/docker-compose.central.yml \
+  --env-file infra/central/central.env ps platform-api platform-api-node
+```
+
+둘 다 `healthy` 여야 합니다. 하나만 올라와 있으면 브라우저와 챔버 노드 중 한쪽이
+반드시 401 을 받습니다.
 
 두 명령이 성공하면 브라우저에서 다음 주소로 접속한다.
 
