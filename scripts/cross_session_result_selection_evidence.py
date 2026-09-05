@@ -795,7 +795,14 @@ def _run_live_proof(dsn: str, *, lane: str, run_id: str) -> dict[str, Any]:
         seed_connection.close()
         seed_connection = None
 
-        from fcc_test_platform.application.central_project_reference_adapter import (
+        # ⚠️ 이 지연 import 들은 위 `try:` 의 `except Exception` 안이다(l.783 · l.997).
+        #    경로가 낡으면 ModuleNotFoundError 가 `status: 'FAIL'` 의 `error` 필드로
+        #    접히므로, `status` 만 보는 소비자에게는 「모듈이 사라졌다」와 「라이브
+        #    증명이 실패했다」가 같은 값이다. 게다가 이 자리는 라이브 DB 가 있어야
+        #    도달하므로 CI 는 밟지 않는다 — 즉 낡은 경로가 정적으로도 동적으로도
+        #    조용하다. 경로를 옮길 때는 import 대상이 실제로 해소되는지 따로 확인하라
+        #    (2026-09-05 S3 에서 이 줄이 옮겨졌다: application/ → infrastructure/…/driven/).
+        from fcc_test_platform.infrastructure.adapters.driven.central_project_reference_adapter import (
             PostgresCentralProjectReferenceAdapter,
         )
         from fcc_test_platform.application.central_project_reference_service import (

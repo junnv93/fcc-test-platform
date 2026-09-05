@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from fcc_test_platform.application.central_project_reference_adapter import (
+from fcc_test_platform.infrastructure.adapters.driven.central_project_reference_adapter import (
     PostgresCentralProjectReferenceAdapter,
 )
 from fcc_test_kernel.domain.models.project_result_reference import canonical_payload_hash
