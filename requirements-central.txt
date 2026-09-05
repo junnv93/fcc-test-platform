@@ -83,7 +83,7 @@ psycopg[binary]>=3.1      # PostgreSQL driver for the platform read API + sync
 #    지금은 `tests/test_lane_pin_matches_installed.py` 가 본다 — 레인 목록을 손으로
 #    나열하지 않고 **이 파일에서 파생**하므로 레인이 늘어도 따라간다.
 #    같은 검사가 「태그가 아닌 움직이는 ref」도 막는다(위 규칙을 산문에서 게이트로).
-fcc-test-contracts @ git+https://github.com/junnv93/fcc-test-contracts@v0.1.19
+fcc-test-contracts @ git+https://github.com/junnv93/fcc-test-contracts@v0.1.21
 # 공유 커널 (ADR-0001 1단계, 2026-09-03). 같은 저장소의 다른 배포판이라
 # `#subdirectory=` 가 붙는다. ⚠️ 이 줄이 필요한 이유: Dockerfile 이 레인을
 # `--no-deps` 로 설치하므로 전이 의존으로는 오지 않는다. 선언이 곧 설치다.

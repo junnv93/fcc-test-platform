@@ -22,11 +22,23 @@ from fcc_test_platform.extraction_evidence import (  # noqa: E402
 )
 from fcc_test_contracts.common.extraction_lane_policy import ExtractionLanePolicy  # noqa: E402
 from fcc_test_contracts.common.tree_artifacts import discover_tree_artifact  # noqa: E402
-from check_extraction_import_boundaries import (  # noqa: E402
+# ⚠️ **형제 스크립트 이름이 아니라 배포되는 패키지 경로로 부른다** (2026-09-05).
+#
+# 직전까지 이 자리는 `from check_extraction_import_boundaries import ...` 였다. 그 두
+# 이름은 계약 레인의 `scripts/` 에 살고, 그 디렉터리는 **휠이 나르지 못한다** — 그래서
+# 이 러너는 배송된 상자에서 `ModuleNotFoundError` 로 즉사했고, 그런데
+# `fcc_test_platform/cutover_workflow_hints.py` 는 운영자에게 그 명령을 안내했다.
+# 공급 폐포 게이트(`tests/test_supply_closure_axis.py`)가 그 둘을 계급 B 로 이름 댔다.
+#
+# 모노레포 매니페스트가 옛 답을 적어 뒀다 — *"형제의 `scripts/` 를 PYTHONPATH 에 얹어라.
+# platform conftest 는 자기 것만 얹을 수 있다."* 그것은 **스테이징 시점의 우회**이고,
+# 형제 디렉터리가 없는 배송 상자에서는 성립하지 않는다. 계약 레인이 알맹이를 배포되는
+# 패키지로 올렸고(`fcc-test-contracts` v0.1.19), 이제 휠이 그것을 나른다.
+from fcc_test_contracts.extraction_import_boundaries import (  # noqa: E402
     check_dependency_resolution,
     check_import_boundaries,
 )
-from prepare_headless_extraction_package import (  # noqa: E402
+from fcc_test_contracts.extraction_package import (  # noqa: E402
     build_extraction_plan,
     stage_extraction_package,
 )
