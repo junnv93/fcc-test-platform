@@ -11,11 +11,17 @@ score with a stated basis.
 - **Measurement tool**: `node apps/web/scripts/measure-bundle.mjs --build` — runs
   `vite build`, gzips each `dist/assets/*.js` chunk, writes
   `dist/bundle-size.json` (`totalGzipBytes`).
-- **Baseline (2026-05-26)**: `measuredGzipBytes = 236284` (≈ 231 KB gzip).
-  Dominant chunks: `observability` (OpenTelemetry + Sentry) ≈ 100 KB, `react`
-  vendor ≈ 65 KB, app `index` ≈ 37 KB. The FE-P5 `control` + FE-P6 `reports`
-  routes are lazy code-split (≈ 2.3 KB / 2.2 KB gzip each), so feature growth
-  does not bloat the initial chunk.
+- **Baseline**: ⚠️ the numbers live in `bundle-budget.json`, not here. This
+  document went stale once already (it kept quoting the 2026-05-26 figure
+  `236284` long after the JSON had moved on), so it now names the *shape* and
+  points at the SSOT for the values.
+  **Current (2026-09-05, main `275069b`)**: `measuredGzipBytes = 402509`
+  → ceiling `483011`. Dominant chunks: `index` 83,298 · `sentry-runtime` 77,502
+  · `react` 64,913 · `tracing` 36,415 — those four are 65% of the total, and the
+  two SDKs (113,917 B, 28%) are **lazy**, which is exactly why a total-only
+  budget is not enough (see the second metric below). Route chunks are lazy
+  code-split (`my-projects` 4,347 · `test-reports` 4,236 · `projects` 8,082),
+  so feature growth does not bloat the entry graph.
 - **Derivation**: `maxGzipBytes = ceil(measuredGzipBytes * headroomFactor)` with
   `headroomFactor = 1.2` (20% headroom for normal dependency/feature drift)
   → `283541` bytes. The gate (`scripts/check-bundle-budget.mjs`) **re-derives**
@@ -28,6 +34,30 @@ score with a stated basis.
   bumps (a transitive dep patch, a small route) without churn, small enough to
   surface a genuine regression (e.g. an accidental non-lazy heavy import).
   Re-measure when a deliberate large change lands (e.g. a new vendor lib).
+
+## Initial-load-path budget — the metric users feel
+
+⚠️ **This gate enforces TWO budgets and this document used to describe only one.**
+`check-bundle-budget.mjs` fails on either.
+
+- **SSOT**: `bundle-budget.json` → `initialLoadPathJs`.
+- **Metric**: the entry `<script type="module">` in `dist/index.html` plus every
+  `<link rel="modulepreload">` it declares — exactly the JavaScript a user must
+  download before the app can run. Lazily `import()`ed route and observability
+  chunks are excluded by construction (Vite only preloads the entry's static
+  import graph).
+- **Why a second metric**: `totalGzipBytes` is blind to *when* a chunk is
+  fetched. The 2026-07-31 wave moved 114,561 B gzip off the initial path and the
+  total barely moved — a total-only budget scores that win and its exact
+  regression as "no change", which is how the defect it was meant to catch
+  survived two months.
+- **Current (2026-09-05)**: `measuredGzipBytes = 177967` → ceiling `195764`
+  (headroom 1.1). Entry graph is 8 chunks; **neither SDK is among them.**
+- **Why 10% and not 20%**: the headroom (17,797 B) is deliberately smaller than
+  the smallest chunk the 2026-07-31 wave removed (`tracing`, 36,415 B), so
+  re-gluing either SDK into the entry graph trips the gate immediately instead
+  of being absorbed. Ratchet: lower it when a wave measurably shrinks the
+  initial path; raising it needs a recorded justification.
 
 ## Lighthouse CI gate (normalized category scores)
 
@@ -61,8 +91,8 @@ score with a stated basis.
 
 | Workflow | Gate |
 |----------|------|
-| `frontend-build.yml` | codegen drift + typecheck + lint + unit tests + build + **bundle budget** |
-| `frontend-e2e.yml` | Playwright e2e (incl. axe-core a11y) + Lighthouse CI (a11y/best-practices error, perf warn) |
+| `frontend.yml` → `build` | format check + **api-artifacts mirror drift** + codegen + codegen drift + lint + unit tests + production build (typechecks) + measure + **both bundle budgets** |
+| `frontend.yml` → `e2e` / `lighthouse` / `oidc-conformance` | Playwright e2e (incl. axe-core a11y) · Lighthouse CI (a11y/best-practices error, perf warn) · real-OIDC conformance. All three consume the `frontend-dist` artifact `build` uploads, so **they do not run when `build` fails** |
 | `frontend-deploy.yml` | manual dispatch — re-gates then publishes `frontend-dist` artifact behind the protected `frontend-production` environment (deploy target is env-configured, not fabricated) |
 | `frontend-qa-evidence.yml` | validates committed browser-QA / deployment evidence manifests against their schemas + emits canonical templates |
 
@@ -71,7 +101,24 @@ score with a stated basis.
 ```bash
 cd apps/web
 node scripts/measure-bundle.mjs --build      # writes dist/bundle-size.json
-# update bundle-budget.json: measuredGzipBytes = new totalGzipBytes,
-# maxGzipBytes = ceil(measuredGzipBytes * headroomFactor), bump measuredAt.
-node scripts/check-bundle-budget.mjs          # must pass (derivation + budget)
+# Update BOTH budgets in bundle-budget.json — the gate checks both:
+#   total   : measuredGzipBytes = totalGzipBytes
+#             maxGzipBytes      = ceil(measuredGzipBytes * headroomFactor)
+#   initial : initialLoadPathJs.measuredGzipBytes = initialLoadPathJs.gzipBytes
+#             initialLoadPathJs.maxGzipBytes      = ceil(measured * headroomFactor)
+# Bump measuredAt on both, and record WHY in measuredCommitNote.
+node scripts/check-bundle-budget.mjs          # must pass (derivation + both budgets)
 ```
+
+⚠️ **Re-deriving is not the default answer to a red gate.** Before bumping a
+baseline, establish that the growth is not a regression — the cheapest checks
+are (a) is either SDK back in `initialLoadPathJs.chunks`, and (b) does a build
+of the previous main show the same number. Record what you found. A baseline
+overwritten with the observed value is a gate turned off, which is what the
+`_doc` field in the JSON is there to prevent.
+
+⚠️ **A gate that cannot run is worse than a gate that fails.** Measured
+2026-09-05: this budget had not executed in CI since 2026-08-31 because an
+earlier step in the same job died on a path bug, so five days of drift
+accumulated with nobody able to see it. When you fix a red step, check what was
+*behind* it.
