@@ -127,12 +127,8 @@ const APPLICANT_SUGGESTION_LIMIT = 20;
  * 더 중요한 것은 이 자리가 파생의 **단일 지점**이라는 사실이다: 화면이 필드 이름을
  * 적지 않으므로, 새 접수 칸이 생기면 필수 여부에 따라 알아서 어느 한쪽에 나타난다.
  */
-const REQUIRED_INTAKE_FIELDS = INTAKE_META_FIELDS.filter((field) =>
-  isRequiredCreateField(field),
-);
-const OPTIONAL_INTAKE_FIELDS = INTAKE_META_FIELDS.filter(
-  (field) => !isRequiredCreateField(field),
-);
+const REQUIRED_INTAKE_FIELDS = INTAKE_META_FIELDS.filter((field) => isRequiredCreateField(field));
+const OPTIONAL_INTAKE_FIELDS = INTAKE_META_FIELDS.filter((field) => !isRequiredCreateField(field));
 
 function MyProjectsRoute(): JSX.Element {
   const { t } = useT();
@@ -288,165 +284,168 @@ function MyProjectsRoute(): JSX.Element {
       <div className="my-projects-workbench" data-testid="my-projects-workbench">
         <ProjectCreatePanel />
 
-        <main className="my-projects-workbench__main" aria-label={t('routes.myProjects.listSection')}>
-            <Card
-              as="section"
-              className="my-projects-workbench-panel"
-              aria-labelledby="my-projects-search-heading"
-            >
-              <SectionBand
-                title={t('routes.myProjects.searchSection')}
-                titleId="my-projects-search-heading"
-              />
-              {/* 검색은 **서버측** `q` 한 축이고 훑는 컬럼은 백엔드
+        <main
+          className="my-projects-workbench__main"
+          aria-label={t('routes.myProjects.listSection')}
+        >
+          <Card
+            as="section"
+            className="my-projects-workbench-panel"
+            aria-labelledby="my-projects-search-heading"
+          >
+            <SectionBand
+              title={t('routes.myProjects.searchSection')}
+              titleId="my-projects-search-heading"
+            />
+            {/* 검색은 **서버측** `q` 한 축이고 훑는 컬럼은 백엔드
                 `PROJECT_SEARCH_COLUMNS` 가 단독으로 정한다 — 관리번호 ·
                 프로젝트 코드(= 모델명, ADR-0017 D1) · 고객사. 로드된 배열을 다시
                 거르지 않으므로 "없음"은 **현재 상태 필터 안의** 중앙 디렉토리에
                 없다는 뜻이다 — 같은 요청이 `status` 로도 좁혀지므로 그보다 넓게
                 말하면 딱 그 필터 폭만큼 거짓이 된다(넓히려면 아래 [전체] 토글). */}
-              <form
-                aria-label={t('routes.myProjects.search.ariaLabel')}
-                onSubmit={(e) => e.preventDefault()}
-              >
-                <Toolbar ariaLabel={t('routes.myProjects.search.ariaLabel')} inline>
-                  <FieldGroup label={t('routes.myProjects.search.label')} htmlFor="project-search">
-                    <input
-                      id="project-search"
-                      data-testid="project-search"
-                      type="search"
-                      value={searchDraft}
-                      placeholder={t('routes.myProjects.search.placeholder')}
-                      onChange={(e) => setSearchDraft(e.target.value)}
-                    />
-                  </FieldGroup>
-                </Toolbar>
-              </form>
-            </Card>
+            <form
+              aria-label={t('routes.myProjects.search.ariaLabel')}
+              onSubmit={(e) => e.preventDefault()}
+            >
+              <Toolbar ariaLabel={t('routes.myProjects.search.ariaLabel')} inline>
+                <FieldGroup label={t('routes.myProjects.search.label')} htmlFor="project-search">
+                  <input
+                    id="project-search"
+                    data-testid="project-search"
+                    type="search"
+                    value={searchDraft}
+                    placeholder={t('routes.myProjects.search.placeholder')}
+                    onChange={(e) => setSearchDraft(e.target.value)}
+                  />
+                </FieldGroup>
+              </Toolbar>
+            </form>
+          </Card>
 
-            {/* 진행 중 / 완료 / 전체 토글 (project-status-visibility) — 기본 active. */}
-            <Toolbar ariaLabel={t('routes.myProjects.statusFilter.ariaLabel')} inline>
-              <div
-                className="status-filter"
-                role="group"
-                aria-label={t('routes.myProjects.statusFilter.ariaLabel')}
-                data-testid="project-status-filter"
-              >
-                {(['active', 'completed', 'all'] as const).map((value) => (
-                  <Button
-                    key={value}
-                    type="button"
-                    variant={statusFilter === value ? 'primary' : 'ghost'}
-                    data-testid={`project-status-${value}`}
-                    aria-pressed={statusFilter === value}
-                    onClick={() => setStatusFilter(value)}
-                  >
-                    {t(`routes.myProjects.statusFilter.${value}`)}
-                  </Button>
-                ))}
-              </div>
-            </Toolbar>
+          {/* 진행 중 / 완료 / 전체 토글 (project-status-visibility) — 기본 active. */}
+          <Toolbar ariaLabel={t('routes.myProjects.statusFilter.ariaLabel')} inline>
+            <div
+              className="status-filter"
+              role="group"
+              aria-label={t('routes.myProjects.statusFilter.ariaLabel')}
+              data-testid="project-status-filter"
+            >
+              {(['active', 'completed', 'all'] as const).map((value) => (
+                <Button
+                  key={value}
+                  type="button"
+                  variant={statusFilter === value ? 'primary' : 'ghost'}
+                  data-testid={`project-status-${value}`}
+                  aria-pressed={statusFilter === value}
+                  onClick={() => setStatusFilter(value)}
+                >
+                  {t(`routes.myProjects.statusFilter.${value}`)}
+                </Button>
+              ))}
+            </div>
+          </Toolbar>
 
-            {lifecycleMutation.isError && (
+          {lifecycleMutation.isError && (
+            <ErrorState
+              testId="project-lifecycle-error"
+              message={describeApiError(lifecycleMutation.error, 'platform', {
+                forbidden: t('routes.myProjects.lifecycle.forbidden'),
+                notFound: t('routes.myProjects.lifecycle.notFound'),
+                network: t('routes.myProjects.lifecycle.network'),
+                default: t('routes.myProjects.lifecycle.failed'),
+              })}
+            />
+          )}
+
+          <section
+            className="my-projects-workbench-panel"
+            aria-labelledby="my-projects-list-heading"
+          >
+            <SectionBand
+              title={t('routes.myProjects.listSection')}
+              titleId="my-projects-list-heading"
+            />
+            {projects.isLoading && <BlockSkeleton lines={4} testId="my-projects-loading" />}
+            {projects.isError && (
               <ErrorState
-                testId="project-lifecycle-error"
-                message={describeApiError(lifecycleMutation.error, 'platform', {
-                  forbidden: t('routes.myProjects.lifecycle.forbidden'),
-                  notFound: t('routes.myProjects.lifecycle.notFound'),
-                  network: t('routes.myProjects.lifecycle.network'),
-                  default: t('routes.myProjects.lifecycle.failed'),
+                testId="projects-error"
+                message={describeApiError(projects.error, 'platform', {
+                  forbidden: t('routes.myProjects.list.forbidden'),
+                  network: t('routes.myProjects.list.network'),
+                  default: t('routes.myProjects.list.failed'),
                 })}
               />
             )}
-
-            <section
-              className="my-projects-workbench-panel"
-              aria-labelledby="my-projects-list-heading"
-            >
-              <SectionBand
-                title={t('routes.myProjects.listSection')}
-                titleId="my-projects-list-heading"
-              />
-              {projects.isLoading && <BlockSkeleton lines={4} testId="my-projects-loading" />}
-              {projects.isError && (
-                <ErrorState
-                  testId="projects-error"
-                  message={describeApiError(projects.error, 'platform', {
-                    forbidden: t('routes.myProjects.list.forbidden'),
-                    network: t('routes.myProjects.list.network'),
-                    default: t('routes.myProjects.list.failed'),
-                  })}
-                />
-              )}
-              {/* 빈 상태는 **잔여 페이지가 없을 때만** 주장한다. 커서가 남아 있는데
+            {/* 빈 상태는 **잔여 페이지가 없을 때만** 주장한다. 커서가 남아 있는데
                 "없습니다"를 띄우면 클라이언트 필터가 하던 거짓말이 페이지 경계에서
                 재발한다(아래 [더보기]가 그 잔여를 드러낸다). */}
-              {projects.isSuccess &&
-                rows.length === 0 &&
-                !projects.hasNextPage &&
-                (searchQuery !== undefined ? (
-                  <EmptyState
-                    testId="projects-empty"
-                    title={t('routes.myProjects.list.emptyFilteredTitle', { query: searchQuery })}
-                    description={t('routes.myProjects.list.emptyFilteredDescription')}
-                  />
-                ) : (
-                  <EmptyState
-                    testId="projects-empty"
-                    title={t('routes.myProjects.list.emptyTitle')}
-                    description={t('routes.myProjects.list.emptyDescription')}
+            {projects.isSuccess &&
+              rows.length === 0 &&
+              !projects.hasNextPage &&
+              (searchQuery !== undefined ? (
+                <EmptyState
+                  testId="projects-empty"
+                  title={t('routes.myProjects.list.emptyFilteredTitle', { query: searchQuery })}
+                  description={t('routes.myProjects.list.emptyFilteredDescription')}
+                />
+              ) : (
+                <EmptyState
+                  testId="projects-empty"
+                  title={t('routes.myProjects.list.emptyTitle')}
+                  description={t('routes.myProjects.list.emptyDescription')}
+                />
+              ))}
+            {projects.isSuccess && rows.length > 0 && (
+              <ul className="project-card-list" data-testid="project-card-list">
+                {rows.map((project) => (
+                  <ProjectCard
+                    key={project.project_id}
+                    project={project}
+                    canManage={canManage}
+                    lifecyclePending={lifecycleMutation.isPending}
+                    onLifecycle={(action) =>
+                      lifecycleMutation.mutate({ projectId: project.project_id, action })
+                    }
+                    edit={edits[project.project_id]}
+                    onMetaChange={(field, value) => updateMetaDraft(project, field, value)}
+                    onMetaSave={(patch) =>
+                      metaMutation.mutate({ projectId: project.project_id, patch })
+                    }
+                    onMetaDiscard={() => {
+                      discardEdit(project.project_id);
+                      metaMutation.reset();
+                    }}
+                    // 쓰기 상태는 **이 카드 몫만** 보인다. 단일 mutation 인스턴스가
+                    // 모든 카드를 처리하므로, 대상 프로젝트로 좁히지 않으면 A 카드의
+                    // 409 가 B 카드에도 뜬다.
+                    metaPending={
+                      metaMutation.isPending &&
+                      metaMutation.variables?.projectId === project.project_id
+                    }
+                    metaError={
+                      metaMutation.variables?.projectId === project.project_id
+                        ? metaMutation.error
+                        : null
+                    }
+                    metaSaved={
+                      metaMutation.isSuccess &&
+                      metaMutation.variables?.projectId === project.project_id
+                    }
                   />
                 ))}
-              {projects.isSuccess && rows.length > 0 && (
-                <ul className="project-card-list" data-testid="project-card-list">
-                  {rows.map((project) => (
-                    <ProjectCard
-                      key={project.project_id}
-                      project={project}
-                      canManage={canManage}
-                      lifecyclePending={lifecycleMutation.isPending}
-                      onLifecycle={(action) =>
-                        lifecycleMutation.mutate({ projectId: project.project_id, action })
-                      }
-                      edit={edits[project.project_id]}
-                      onMetaChange={(field, value) => updateMetaDraft(project, field, value)}
-                      onMetaSave={(patch) =>
-                        metaMutation.mutate({ projectId: project.project_id, patch })
-                      }
-                      onMetaDiscard={() => {
-                        discardEdit(project.project_id);
-                        metaMutation.reset();
-                      }}
-                      // 쓰기 상태는 **이 카드 몫만** 보인다. 단일 mutation 인스턴스가
-                      // 모든 카드를 처리하므로, 대상 프로젝트로 좁히지 않으면 A 카드의
-                      // 409 가 B 카드에도 뜬다.
-                      metaPending={
-                        metaMutation.isPending &&
-                        metaMutation.variables?.projectId === project.project_id
-                      }
-                      metaError={
-                        metaMutation.variables?.projectId === project.project_id
-                          ? metaMutation.error
-                          : null
-                      }
-                      metaSaved={
-                        metaMutation.isSuccess &&
-                        metaMutation.variables?.projectId === project.project_id
-                      }
-                    />
-                  ))}
-                </ul>
-              )}
-              {/* 잔여 존재를 사용자에게 드러내는 유일한 수단. `hasNextPage` 는
+              </ul>
+            )}
+            {/* 잔여 존재를 사용자에게 드러내는 유일한 수단. `hasNextPage` 는
                 `X-Next-Cursor` 헤더에서 파생되므로(=`nextCursor !== null`), 버튼의
                 존재 자체가 "서버에 더 있다"는 서버측 사실이다. */}
-              {projects.isSuccess && projects.hasNextPage && (
-                <LoadMoreButton
-                  testId="project-load-more"
-                  onClick={projects.fetchNextPage}
-                  isFetching={projects.isFetchingNextPage}
-                />
-              )}
-            </section>
+            {projects.isSuccess && projects.hasNextPage && (
+              <LoadMoreButton
+                testId="project-load-more"
+                onClick={projects.fetchNextPage}
+                isFetching={projects.isFetchingNextPage}
+              />
+            )}
+          </section>
         </main>
       </div>
     </section>
@@ -513,8 +512,7 @@ function ProjectCreatePanel(): JSX.Element {
   // 나므로(동명 모델은 멱등 재사용이라 실제로는 관리번호 쪽이 대부분이다), 모르는
   // 값을 억지로 붙이면 사용자가 엉뚱한 칸을 고치려 한다.
   const conflictField =
-    createMutation.error?.status === 409
-    && isProjectMetaField(createMutation.error.params?.field)
+    createMutation.error?.status === 409 && isProjectMetaField(createMutation.error.params?.field)
       ? createMutation.error.params.field
       : null;
 
@@ -893,9 +891,9 @@ function ProjectCard({
         {/* 의뢰 주체는 이제 한 칸이다(2026-09-04) — 고객사/신청자 두 칸이 같은 주체를
           가리키다 갈라지던 것을 신청자로 합쳤다. 카드에 싣는 이유는 이것이 모델명
           다음으로 프로젝트를 알아보는 축이자 검색 축이기 때문이다. */}
-        {project.applicant_name !== null
-          && project.applicant_name !== undefined
-          && project.applicant_name !== '' && (
+        {project.applicant_name !== null &&
+          project.applicant_name !== undefined &&
+          project.applicant_name !== '' && (
             <span className="project-card__applicant" data-testid="project-card-applicant">
               {project.applicant_name}
             </span>

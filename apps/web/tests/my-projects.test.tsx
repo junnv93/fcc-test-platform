@@ -7,10 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERMISSION_PLATFORM_ADMIN } from '@/api/permissions';
 import { applyTokenSet, CLAIM_PERMISSIONS, __resetAuthStateForTests } from '@/auth/session';
 import { MyProjectsRoute } from '@/routes/my-projects';
-import {
-  EDITABLE_PROJECT_FIELDS,
-  REPORT_META_FIELDS,
-} from '@/shared/project-meta-patch';
+import { EDITABLE_PROJECT_FIELDS, REPORT_META_FIELDS } from '@/shared/project-meta-patch';
 import { SEARCH_DEBOUNCE_MS } from '@/shared/search-debounce';
 
 import type { ReactElement } from 'react';
@@ -239,7 +236,9 @@ describe('MyProjectsRoute', () => {
       applicant_name: 'ACME Corp.',
     });
     expect(Object.keys(body).sort()).toStrictEqual([
-      'applicant_name', 'management_number', 'model_name',
+      'applicant_name',
+      'management_number',
+      'model_name',
     ]);
   });
 
@@ -282,7 +281,9 @@ describe('MyProjectsRoute', () => {
       applicant_name: 'ACME Corp.',
     });
     expect(Object.keys(body).sort()).toStrictEqual([
-      'applicant_name', 'management_number', 'model_name',
+      'applicant_name',
+      'management_number',
+      'model_name',
     ]);
     expect(await screen.findByTestId('new-project-success')).toBeInTheDocument();
   });
@@ -797,7 +798,9 @@ describe('MyProjectsRoute 표지 메타 편집 (W3-B M2)', () => {
     );
 
     // 새 페이지가 착지해 카드가 다시 마운트된 뒤에도 draft 가 그대로다.
-    await waitFor(() => expect(screen.getByTestId('project-meta-applicant_address')).toHaveValue('ACME2'));
+    await waitFor(() =>
+      expect(screen.getByTestId('project-meta-applicant_address')).toHaveValue('ACME2'),
+    );
     expect(screen.getByTestId('project-meta-save')).toBeEnabled();
   });
 
@@ -821,7 +824,9 @@ describe('MyProjectsRoute 표지 메타 편집 (W3-B M2)', () => {
       ),
     );
     // 다른 칸에는 붙지 않는다 — 붙으면 사용자가 엉뚱한 칸을 고친다.
-    expect(screen.getByTestId('project-meta-applicant_address')).not.toHaveAttribute('aria-invalid');
+    expect(screen.getByTestId('project-meta-applicant_address')).not.toHaveAttribute(
+      'aria-invalid',
+    );
     expect(screen.getByTestId('project-meta-error')).toBeInTheDocument();
   });
 
@@ -858,7 +863,9 @@ describe('MyProjectsRoute 표지 메타 편집 (W3-B M2)', () => {
     await userEvent.click(screen.getByTestId('project-meta-save'));
 
     expect(await screen.findByTestId('project-meta-error')).toBeInTheDocument();
-    expect(screen.getByTestId('project-meta-applicant_address')).not.toHaveAttribute('aria-invalid');
+    expect(screen.getByTestId('project-meta-applicant_address')).not.toHaveAttribute(
+      'aria-invalid',
+    );
   });
 
   it('hides the edit form from an unauthenticated visitor', async () => {

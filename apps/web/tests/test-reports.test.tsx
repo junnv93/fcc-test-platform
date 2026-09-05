@@ -4,9 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import koMessages from '@/locales/ko.json';
 import { queryKeys } from '@/api/query-config';
 import { applyTokenSet, CLAIM_PERMISSIONS, __resetAuthStateForTests } from '@/auth/session';
+import koMessages from '@/locales/ko.json';
 import {
   absentReportNumberReason,
   buildCreateReportRequest,

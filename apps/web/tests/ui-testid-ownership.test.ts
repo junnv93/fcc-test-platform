@@ -21,10 +21,11 @@
  * 보호가 조용히 빠진다. 여기서는 덮어쓰는 프리미티브 집합 자체를 **소스에서 파생**하므로,
  * 내일 누가 같은 패턴의 프리미티브를 새로 만들어도 그 순간부터 함께 지켜진다.
  */
-import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { describe, expect, it } from 'vitest';
 
 // 다른 시험과 같은 관용구 — `import.meta.url` 을 파일 경로로 풀어 apps/web 루트를 잡는다.
 const APPS_WEB_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -98,7 +99,9 @@ describe('UI 프리미티브의 testid 소유권', () => {
           const index = match.index ?? 0;
           if (!ownOpeningTag(source, index).includes('data-testid=')) continue;
           const line = source.slice(0, index).split('\n').length;
-          offenders.push(`${file.replace(APPS_WEB_ROOT + '/', '')}:${line}  <${primitive} … data-testid=…>`);
+          offenders.push(
+            `${file.replace(APPS_WEB_ROOT + '/', '')}:${line}  <${primitive} … data-testid=…>`,
+          );
         }
       }
     }

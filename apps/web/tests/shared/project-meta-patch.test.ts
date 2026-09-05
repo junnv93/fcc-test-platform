@@ -164,7 +164,9 @@ describe('projectMetaDraftFrom — 목록 행에서 스냅샷 (N+1 없음)', () 
   });
 
   it('folds explicit null (미기재) to the empty string', () => {
-    const draft = projectMetaDraftFrom(project({ applicant_address: null, management_number: null }));
+    const draft = projectMetaDraftFrom(
+      project({ applicant_address: null, management_number: null }),
+    );
     expect(draft.applicant_address).toBe('');
     expect(draft.management_number).toBe('');
   });
@@ -189,7 +191,10 @@ describe('projectMetaDraftFrom — 목록 행에서 스냅샷 (N+1 없음)', () 
 describe('S1 — 미변경 필드는 키 자체가 붙지 않는다', () => {
   it('sends ONLY the changed key, verbatim', () => {
     const baseline = projectMetaDraftFrom(project());
-    const patch = buildProjectMetaPatch(baseline, withField(baseline, 'applicant_address', 'ACME2'));
+    const patch = buildProjectMetaPatch(
+      baseline,
+      withField(baseline, 'applicant_address', 'ACME2'),
+    );
 
     // 2겹 1 — 값 동등.
     expect(patch).toStrictEqual({ applicant_address: 'ACME2' });
@@ -209,13 +214,19 @@ describe('S1 — 미변경 필드는 키 자체가 붙지 않는다', () => {
 
   it('treats a whitespace-only edit as no change (no key)', () => {
     const baseline = projectMetaDraftFrom(project());
-    const patch = buildProjectMetaPatch(baseline, withField(baseline, 'applicant_address', '  1 Main St  '));
+    const patch = buildProjectMetaPatch(
+      baseline,
+      withField(baseline, 'applicant_address', '  1 Main St  '),
+    );
     expect(Object.keys(patch)).toStrictEqual([]);
   });
 
   it('trims the transmitted value', () => {
     const baseline = projectMetaDraftFrom(project());
-    const patch = buildProjectMetaPatch(baseline, withField(baseline, 'applicant_address', '  ACME2  '));
+    const patch = buildProjectMetaPatch(
+      baseline,
+      withField(baseline, 'applicant_address', '  ACME2  '),
+    );
     expect(patch).toStrictEqual({ applicant_address: 'ACME2' });
   });
 
