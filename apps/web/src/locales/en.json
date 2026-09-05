@@ -513,7 +513,7 @@
         "sampleCount": "{n} samples",
         "statusActive": "In progress",
         "statusCompleted": "Completed",
-        "mgmtLabel": "Mgmt no. {value}",
+        "mgmtLabel": "Project no. {value}",
         "fccLabel": "FCC ID {value}",
         "nextProgress": "Progress",
         "nextCoverage": "Coverage",
@@ -1755,7 +1755,7 @@
         "cite": "Citation"
       },
       "reportNumberAbsent": {
-        "managementNumber": "No report number — the project has no management number",
+        "managementNumber": "No report number — the project has no project number",
         "edition": "No report number — no edition selected"
       },
       "list": {
@@ -1819,7 +1819,7 @@
       "citationSamplesEmptyDescription": "This project has no sample yet. Register samples under [Samples] and their SN and firmware will appear here.",
       "citation": {
         "reportNumber": "Report number",
-        "managementNumber": "Management number",
+        "managementNumber": "Project number",
         "fccId": "FCC ID",
         "applicantName": "Applicant",
         "applicantAddress": "Applicant address",

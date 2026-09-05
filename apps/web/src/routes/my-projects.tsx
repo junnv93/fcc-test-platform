@@ -595,7 +595,7 @@ function ProjectCreatePanel(): JSX.Element {
       as="section"
       className="my-projects-create"
       aria-labelledby="my-projects-create-heading"
-      data-testid="my-projects-create-panel"
+      testId="my-projects-create-panel"
     >
       <div className="my-projects-create__bar">
         <SectionBand

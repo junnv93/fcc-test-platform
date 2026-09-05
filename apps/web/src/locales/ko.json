@@ -513,7 +513,7 @@
         "sampleCount": "샘플 {n}개",
         "statusActive": "진행중",
         "statusCompleted": "완료",
-        "mgmtLabel": "관리번호 {value}",
+        "mgmtLabel": "프로젝트 번호 {value}",
         "fccLabel": "FCC ID {value}",
         "nextProgress": "진행률",
         "nextCoverage": "측정 현황",
@@ -1755,7 +1755,7 @@
         "cite": "인용"
       },
       "reportNumberAbsent": {
-        "managementNumber": "관리번호가 없어 성적서 번호가 만들어지지 않았습니다",
+        "managementNumber": "프로젝트 번호가 없어 성적서 번호가 만들어지지 않았습니다",
         "edition": "판(edition)이 없어 성적서 번호가 만들어지지 않았습니다"
       },
       "list": {
@@ -1819,7 +1819,7 @@
       "citationSamplesEmptyDescription": "이 프로젝트에 아직 시료가 등록되지 않았습니다. [시료 목록]에서 시료를 먼저 등록하면 SN과 펌웨어가 여기에 함께 나옵니다.",
       "citation": {
         "reportNumber": "성적서 번호",
-        "managementNumber": "관리번호",
+        "managementNumber": "프로젝트 번호",
         "fccId": "FCC ID",
         "applicantName": "신청인",
         "applicantAddress": "신청인 주소",
