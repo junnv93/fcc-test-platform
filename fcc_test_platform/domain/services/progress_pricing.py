@@ -26,7 +26,7 @@ from fcc_test_platform.domain.models.progress_time_catalog import (
 )
 
 
-def canonical_test_type(raw_test_type) -> Optional[MeasurementType]:
+def canonical_test_type(raw_test_type: str) -> Optional[MeasurementType]:
     """Canonicalize a raw ``Col.TEST`` label to a ``MeasurementType``.
 
     Reuses ``normalize_dispatch_token`` (the existing label→dispatch-token SSOT)
@@ -42,7 +42,7 @@ def canonical_test_type(raw_test_type) -> Optional[MeasurementType]:
 
 
 def price_test_type(
-    raw_test_type,
+    raw_test_type: str,
     catalog: StandardTimeCatalog,
 ) -> PricedTestType:
     """Price one raw test label against the catalog.

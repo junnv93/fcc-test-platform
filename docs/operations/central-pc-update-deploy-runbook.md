@@ -326,6 +326,19 @@ docker compose -f infra/docker-compose.central.yml \
 
 ## 5. 이미지 재빌드와 스택 기동
 
+> 🔴 **`platform-api` 는 둘입니다 (2026-09-04 이후).** `platform-api-node` 는
+> `build:` 가 없고 `platform-api` 가 만든 **같은 이미지**를 씁니다 — 누락이 아니라
+> 의도입니다(두 번째 `build:` 를 두면 같은 컨텍스트를 두 번 빌드합니다).
+> `up -d --build` 는 둘 다 재기동하므로 추가 명령은 필요 없지만, **완료 후 둘 다
+> `healthy` 인지 확인**하십시오:
+> ```bash
+> docker compose -f infra/docker-compose.central.yml \
+>   --env-file infra/central/central.env ps platform-api platform-api-node
+> ```
+> 인증 모드가 서로 반대(`local_jwt` / `oidc_jwt`)라 하나만 뜨면 브라우저나 챔버 노드
+> 중 한쪽이 조용히 401 을 받습니다. 근거:
+> [`.claude/evaluations/2026-09-04-http-dual-auth-node-lane.md`](../../.claude/evaluations/2026-09-04-http-dual-auth-node-lane.md)
+
 ```bash
 cd /path/to/fcc-test-platform
 
@@ -341,7 +354,7 @@ docker compose -f infra/docker-compose.central.yml \
 > 그 축을 `UNKNOWN` 으로 답한다(통과가 아니다).
 
 > ⚠️ **`--build` 는 필수다.** 이 저장소가 빌드하는 태그
-> (`fcc-central-platform-api:latest` — platform-api · central-migrate 가 공유,
+> (`fcc-central-platform-api:latest` — platform-api · **platform-api-node** · central-migrate 가 공유,
 > 그리고 `fcc-central-web:latest`)가 **고정**이라, `--build` 없이 `up -d` 하면
 > compose 는 같은 태그의 **로컬 캐시 이미지를 그대로 재사용**한다. `git pull` 로
 > 소스가 바뀌어도 컨테이너 안의 코드는 옛 코드인 채로 스택이 "정상 기동" 한다 —

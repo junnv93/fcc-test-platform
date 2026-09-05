@@ -1,6 +1,11 @@
 # ADR-0006: Observability backend selection
 
-**Status**: Proposed
+**Status**: Accepted — 구현됨
+
+> ⚠️ **상태 갱신 2026-09-05** — 원문은 `Proposed` 였으나 **이 결정은 이미 구현돼 있다.**
+> 프론트 `@sentry/browser` + OTel 실재. 백엔드는 `fcc_test_contracts/common/{metrics_registry,metrics_middleware,trace_sampler,logging_channel,correlation}.py` 총 1,520줄 자체 구현이 담당하고 `docs/operations/{slo,prometheus-alert-rules,runbook-api-observability}.md` 가 운영 계약이다.
+> 재구현하지 말 것. 현황은 `docs/architecture/2026-09-04-플랫폼-리팩토링-설계서.md` 참조.
+
 **Date**: 2026-05-23
 **Deciders**: shared web/platform maintainers + user
 **Depends on**: ADR-0004 (distributed tracing SDK)

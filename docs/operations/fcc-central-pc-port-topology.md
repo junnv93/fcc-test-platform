@@ -19,6 +19,24 @@
 | FCC Platform | `http://10.206.34.233:8080` | 시험원이 브라우저에서 접속하는 주소 |
 | FCC 로그인 | `http://10.206.34.233:8081` | Keycloak 로그인·토큰 발급 |
 
+### 🔴 `:8080` 안에서 경로가 두 인스턴스로 갈립니다 (2026-09-04 이후)
+
+포트는 하나지만 **뒤에 `platform-api` 인스턴스가 둘**입니다. 평문 HTTP 에서 브라우저와
+챔버 노드가 요구하는 인증 모드가 반대라, nginx 가 경로로 가릅니다.
+
+| 요청 경로 | 도달 인스턴스 | 인증 모드 |
+|---|---|---|
+| `/platform/*` (일반) | `platform-api` | `local_jwt` |
+| `/platform/chambers/heartbeat` | `platform-api-node` | `oidc_jwt` |
+| `/platform/chambers/{id}/reference-bundle` | `platform-api-node` | `oidc_jwt` |
+| `/platform/chambers/{id}/result-ingestions` | `platform-api-node` | `oidc_jwt` |
+
+⚠️ **챔버 PC 설정은 바뀌지 않았습니다** — 노드는 계속 `:8080` 만 봅니다. 분기는
+중앙 nginx 안에서만 일어납니다.
+
+⚠️ **임시 형상입니다.** 인증서가 발급되면 노드 인스턴스와 nginx 블록을 지우고 단일
+`oidc_jwt` 로 되돌립니다.
+
 `10.206.34.233`은 FCC 중앙 PC의 고정 LAN IP로 사용한다. FCC의
 `PUBLIC_HOST`도 같은 IP를 사용해야 로그인 issuer와 브라우저 origin이 일치한다.
 
