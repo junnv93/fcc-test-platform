@@ -140,6 +140,29 @@ def _sibling_lane() -> Path:
     return REPO_ROOT.parent / 'fcc-test-contracts'
 
 
+def _contracts_are_reachable() -> bool:
+    """형제 레인의 패키지에 «도달할 수 있는가».
+
+    ⚠️ 이 질문에 「형제 «디렉터리»가 있는가」로 답하면 CI 에서 틀린다. 개발자
+    체크아웃에서는 형제 트리가 곧 도달 경로라 둘이 우연히 같은 값이지만, CI 러너는
+    자기 레포 하나만 체크아웃하고 형제 레인은 **pip 로** 받는다:
+
+        CI 실측 2026-09-05 (run 33964514082):
+          Collecting fcc-test-contracts @ git+...@v0.1.21 (from fcc-test-platform==0.1.9)
+          Collecting fcc-test-kernel   @ git+...@kernel-v0.5.0
+          REPO_ROOT.parent / 'fcc-test-contracts'  → 없음
+
+    즉 필요한 것을 **가지고 있으면서** 디렉터리가 없다는 이유로 게이트가 빠지고
+    있었다. 이 레인이 `fcc-test-contracts` 를 정식 의존으로 «선언»하므로
+    (`[project].dependencies`, 아래 `TestTheSiblingLaneIsADeclaredDependency` 가
+    봉인) 올바르게 설치된 환경이라면 임포트가 언제나 답이다.
+
+    실측: 형제 디렉터리 없이 설치본만으로 `Analyzed 213 files, 927 dependencies`
+    · 3 kept, 0 broken — `.importlinter` 가 기록한 수치와 같다.
+    """
+    return importlib.util.find_spec('fcc_test_contracts') is not None
+
+
 def _tool_env() -> dict[str, str]:
     """이 레인은 혼자 돌지 않는다 — 형제 레인이 sys.path 에 있어야 한다.
 
@@ -285,6 +308,41 @@ class TestTheGatesCanActuallyRunHere(unittest.TestCase):
                     f"영구히 skip 되고, 계약이 깨져도 아무도 보지 못한다.")
 
 
+class TestTheSiblingLaneIsADeclaredDependency(unittest.TestCase):
+    """⚠️ **선행조건이 「트리」를 보면 CI 에서 조용히 빠진다** (2026-09-05).
+
+    `TestTheGatesActuallyRun.test_the_three_contracts_hold` 은 형제 레인이 필요한데,
+    그 «필요»를 오랫동안 `REPO_ROOT.parent / 'fcc-test-contracts'` 디렉터리의 존재로
+    확인했다. 개발자 체크아웃에서는 맞는 답이다 — 형제 트리가 실제 도달 경로다.
+
+    **CI 에서는 틀린 답이다.** 러너는 자기 레포 하나만 체크아웃하므로 그 디렉터리가
+    없고, 형제 레인은 `pip install -e '.[test]'` 가 git URL 로 받아 온다. 그래서
+    게이트는 필요한 것을 **가진 채로** 「없다」며 빠졌고, 경계 계약 세 개가 CI 에서
+    한 번도 검사되지 않았다. 84e0960 이 도구 선언을 고친 뒤에도 이 팔만 계속 빠져
+    사유만 「미설치」에서 「형제 레인 없다」로 바뀐다 — 두 사유 모두 초록으로 보인다.
+
+    이 봉인은 완화의 **근거**를 지킨다: 임포트로 답해도 되는 이유는 이 레인이 형제
+    레인을 정식 의존으로 선언하기 때문이다. 누군가 그 선언을 지우면 임포트 기반
+    선행조건은 근거를 잃고, 그날 이 팔이 이름을 대며 멈춘다.
+
+    ⚠️ 도구의 «존재»가 아니라 **선언**을 본다 — `TestTheGatesCanActuallyRunHere` 와
+    같은 이유다(존재를 보면 설치된 기계에서만 초록이 되어 같은 함정을 되풀이한다).
+    """
+
+    def test_the_contracts_lane_is_declared_as_a_dependency(self):
+        import tomllib
+        data = tomllib.loads((REPO_ROOT / 'pyproject.toml').read_text(encoding='utf-8'))
+        names = {
+            re.split(r'[<>=!\[@ ]', item, 1)[0].strip().lower()
+            for item in data['project']['dependencies']
+        }
+        self.assertIn(
+            'fcc-test-contracts', names,
+            "`[project].dependencies` 에 fcc-test-contracts 가 없다 — 그러면 "
+            "`_contracts_are_reachable()` 이 참이라는 보장이 사라지고, 경계 계약 "
+            "게이트가 형제 트리를 가진 기계에서만 돌게 된다(= CI 에서는 안 돈다).")
+
+
 class TestTheGatesActuallyRun(unittest.TestCase):
     """선언이 아니라 «실행». 도구가 없으면 skip 하되, 그 skip 이 보이게 한다.
 
@@ -319,8 +377,10 @@ class TestTheGatesActuallyRun(unittest.TestCase):
     @unittest.skipIf(importlib.util.find_spec('importlinter') is None,
                      'import-linter 미설치 — 게이트를 돌리려면: pip install import-linter')
     def test_the_three_contracts_hold(self):
-        if not _sibling_lane().is_dir():
-            self.skipTest(f'형제 레인이 없다: {_sibling_lane()} (이 상자는 혼자 돌지 않는다)')
+        if not (_sibling_lane().is_dir() or _contracts_are_reachable()):
+            self.skipTest(
+                f'형제 레인에 도달할 수 없다 — 트리도 없고({_sibling_lane()}) '
+                f'설치본도 없다. 이 상자는 혼자 돌지 않는다')
         done = self._run([sys.executable, '-c', _LINT_IMPORTS_ENTRY, '--no-cache'])
         report = f'{done.stdout}\n{done.stderr}'
         analyzed = re.search(r'Analyzed (\d+) files, (\d+) dependencies', done.stdout)
