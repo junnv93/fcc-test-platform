@@ -1,0 +1,96 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "description": [
+    "공유 레인 핀을 사람이 아니라 봇이 올린다 (2026-09-06).",
+    "",
+    "실측 2026-09-06 — 같은 규약을 쓰기로 한 세 곳의 판번호가 전부 달랐다:",
+    "규약 레인 최신 v0.1.24 / 계측장비 v0.1.23 / 이 상자 v0.1.22.",
+    "아무도 틀리지 않았고 아무 검사도 실패하지 않았는데 벌어졌다 — 새 판이 나온 것을",
+    "알려 주는 장치가 없기 때문이다.",
+    "",
+    "⚠️ 아래 customManagers 가 없으면 이 저장소의 핀은 봇에게 보이지 않는다. 실측",
+    "(renovate 42.99.0, --platform=local --dry-run=lookup): 기본 관리자는 54개 의존을",
+    "추출하면서 우리가 필요한 둘만 건너뛴다 —",
+    "  'Dependency fcc-test-contracts has unsupported/unversioned value",
+    "   @ git+https://github.com/junnv93/fcc-test-contracts@v0.1.22 (versioning=pep440)'",
+    "  'Skipping fcc-test-contracts because no currentDigest or pinDigests'",
+    "PEP 508 직접 URL 참조(name @ git+…@tag)는 pip/poetry 관리자의 versioning 축에",
+    "들어오지 않는다. 그래서 정규식 관리자로 따로 집는다.",
+    "",
+    "⚠️ 규칙이 둘인 이유 — 한 저장소에 태그 계열이 둘이다. fcc-test-contracts 는",
+    "'v0.1.24', fcc-test-kernel 은 'kernel-v0.5.0' 이고 둘 다 같은 저장소",
+    "(junnv93/fcc-test-contracts)에 산다. 하나의 규칙으로 두 계열을 집으면",
+    "extractVersion 이 한쪽에서 틀린 판번호를 뽑는다.",
+    "",
+    "⚠️ 이 설정이 실제로 무언가를 집는지는 tests/test_renovate_covers_every_lane_pin.py",
+    "가 본다 — '설정 파일이 있다'와 '그 설정이 이 저장소의 핀을 본다'는 다른 명제이고,",
+    "정규식이 아무것도 매치하지 않아도 봇은 조용히 초록으로 돈다.",
+    "",
+    "실측된 동작(dry-run): fcc-test-contracts v0.1.22 → v0.1.24 (patch) 갱신을 만들었다.",
+    "",
+    "⚠️ 세 번째 규칙은 이 상자 «자신»의 배포 핀이다(requirements-central.txt 의",
+    "fcc-test-platform). 실측: 989c04e 에서 v0.1.8 로 박힌 뒤 한 번도 움직이지 않았고",
+    "그 사이 v0.1.9 · v0.1.10 이 발행됐다. 「중앙은 마지막으로 검증된 판을 쓴다」는",
+    "의도적 지연인지, 그냥 잊힌 것인지 **기록이 없다.**",
+    "봇 PR 은 변경이 아니라 «제안»이므로 이 규칙은 그 질문을 사람 앞에 놓는다.",
+    "의도적 지연이라면 아래 규칙을 지우고 그 이유를 여기 적어라 — 그러면 다음 사람이",
+    "같은 자리에서 다시 묻지 않는다."
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "계약 패키지 핀 — 태그 계열 v<semver>",
+      "managerFilePatterns": [
+        "/(^|/)pyproject\\.toml$/",
+        "/(^|/)requirements-central\\.txt$/"
+      ],
+      "matchStrings": [
+        "fcc-test-contracts @ git\\+https://github\\.com/(?<packageName>[^@\\s\"]+)@(?<currentValue>v[0-9]+\\.[0-9]+\\.[0-9]+)"
+      ],
+      "depNameTemplate": "fcc-test-contracts",
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "커널 패키지 핀 — 같은 저장소의 다른 태그 계열 kernel-v<semver>",
+      "managerFilePatterns": [
+        "/(^|/)pyproject\\.toml$/",
+        "/(^|/)requirements-central\\.txt$/"
+      ],
+      "matchStrings": [
+        "fcc-test-kernel @ git\\+https://github\\.com/(?<packageName>[^@\\s\"]+)@(?<currentValue>kernel-v[0-9]+\\.[0-9]+\\.[0-9]+)"
+      ],
+      "depNameTemplate": "fcc-test-kernel",
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^kernel-v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "이 상자 자신의 중앙 배포 핀 — 의도적 지연이라면 이 규칙을 지우고 이유를 _doc 에 적어라",
+      "managerFilePatterns": [
+        "/(^|/)requirements-central\\.txt$/"
+      ],
+      "matchStrings": [
+        "fcc-test-platform @ git\\+https://github\\.com/(?<packageName>[^@\\s\"]+)@(?<currentValue>v[0-9]+\\.[0-9]+\\.[0-9]+)"
+      ],
+      "depNameTemplate": "fcc-test-platform",
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "공유 레인 핀은 한 PR 로 묶지 않는다 — 두 패키지의 판올림은 서로 다른 웨이브다",
+      "matchPackageNames": [
+        "fcc-test-contracts",
+        "fcc-test-kernel",
+        "fcc-test-platform"
+      ],
+      "groupName": null
+    }
+  ]
+}
