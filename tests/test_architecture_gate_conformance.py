@@ -88,6 +88,13 @@ STRICT_SECTIONS = (
         'reference', 'report', 'test_equipment_list', 'artifact_custody',
         'sample_inventory',
     )
+) + (
+    # 어댑터 계열의 «나머지» 3개 (2026-09-06). read/write 규약 밖의 이름이라
+    # 파생이 만들 수 없어 **열거**한다 — 여기가 파생과 열거가 갈리는 자리이고,
+    # 그 갈림 자체가 이름 규약이 균일하지 않다는 실측이다.
+    'mypy-fcc_test_platform.application.central_result_selection_adapter',
+    'mypy-fcc_test_platform.application.central_rekey_ingest_adapter',
+    'mypy-fcc_test_platform.application.published_plan_identity_adapter',
 )
 
 #: 절 이름에서 **mypy 호출 인자**를 파생한다 — 두 번 적으면 갈라진다.

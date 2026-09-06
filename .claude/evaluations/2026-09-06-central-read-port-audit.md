@@ -234,6 +234,59 @@ CI 에서 조용히 0개가 되고 rbac 짝이 사라진다. `pkgutil.iter_modul
 
 ---
 
+---
+
+## 추가 — 어댑터 계열의 «나머지» 3개 (같은 PR, 별도 커밋)
+
+`central_result_selection_adapter` 9 · `central_rekey_ingest_adapter` 6 ·
+`published_plan_identity_adapter` 1 = **16건**(rig A). rig B 에서 하나 더 —
+`published_plan_identity_adapter:78` 의 `DbCursor.fetchall`. 셋 다 0건으로 처분했다.
+
+이것으로 **central 어댑터 계열이 완주**한다. 잔여는 서비스/스토어군이다
+(`chamber_measurement_staging_evidence` 19 · `local_user_store` 14 ·
+`local_auth_service` 10 …) — 포트가 없는 계열이라 「감사」라는 축이 성립하지 않는다.
+
+### 이 묶음이 찾은 것 — `**record` 는 포트를 «안 보는» 서명이었다
+
+`PostgresCentralResultSelectionAdapter.append_selection_event` 는 `**record` 였다.
+포트는 아홉을 **이름으로** 약속한다. 호출부를 전수로 셌다 — **넷 전부가 정확히 그
+아홉만** 넘긴다(`central_result_selection_service` ·
+`cross_session_result_selection_evidence_cli` 둘 · `test_provider_id_uuid_slot_seal`).
+즉 포트가 진실이고 자루는 아무것도 사지 않으면서 둘을 잃고 있었다:
+
+* 오타는 런타임 `KeyError` 로 미뤄지고,
+* 이 어댑터를 **구체 타입으로** 잡은 소비자(위 CLI·테스트가 그렇다)는 검사를 못 받는다.
+
+포트에서 베껴 아홉을 적었다. 처분 뒤 시그니처가 **문자열로 일치**한다(실측):
+
+    append_selection_event  일치      list_attempts    일치
+    list_effective_results  일치      selected_source  일치
+
+⚠️ 처음 시도는 아홉을 받아 `Mapping[str, object]` 자루로 «다시 묶는» 형태였고,
+   그러자 `object` 가 네 자리에서 red 를 냈다 — 자루가 타입을 지우는 것이 정확히
+   이 결함이므로, 본문이 이름을 직접 쓰게 고쳤다. 자루를 남기는 처분은 결함을
+   **보존**한다.
+
+### 감사 진도 갱신 — 봉인 22 + 손 감사 2 = **24 / 33**
+
+| 포트 | 어떻게 감사됐나 |
+|---|---|
+| write 12 · read 10 | **봉인**(`test_write_port_conformance` · `test_read_port_conformance`) |
+| `CentralResultSelectionPort` | **손** — 메서드 4 · 갭 0 · 시그니처 4/4 일치(처분 후) |
+| `CentralRekeyIngestPort` | **손** — 메서드 1 · 갭 0 · 시그니처 일치 |
+
+⚠️ **둘은 봉인되지 않았다.** 기계가 아니라 이 세션이 한 번 본 것이고, 내일 갈라져도
+아무 데서도 소리가 나지 않는다. 봉인으로 옮기려면 두 어댑터에 짝짓기 규약이 필요하다 —
+`Postgres<X>Adapter` ↔ `<X>Port` 로 넓히면 read/write 봉인의 대상도 함께 넓어지므로,
+그 판정은 다음 웨이브의 것이다.
+
+⚠️ 그리고 `PostgresPublishedPlanIdentityAdapter` 는 **포트가 아예 없다**(실측: 포트
+패키지에 `published_plan`/`plan_identity` 모듈 0건). 그 어댑터를 타입으로 받는 자리는
+구체 클래스를 잡을 수밖에 없고, 그래서 이번 처분(반환 타입 선언)이 그 자리의 «유일한»
+계약이다.
+
+---
+
 ## 재현
 
 ### lane_check — 대조군과 «이름 집합» 동일

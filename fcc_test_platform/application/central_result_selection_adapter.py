@@ -14,6 +14,7 @@ from fcc_test_kernel.application.central_contract.pagination import (
     decode_cursor,
     encode_cursor,
 )
+from fcc_test_platform.application.central_db_surfaces import RowConnection, RowCursor
 from fcc_test_platform.domain.ports.output.central_result_selection_port import (
     CentralResultSelectionError,
     CentralResultSelectionPort,
@@ -24,7 +25,6 @@ from fcc_test_platform.domain.ports.output.central_result_selection_port import 
     SelectedSource,
     SelectionRevisionConflictError,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = [
@@ -244,7 +244,7 @@ SELECTED_SOURCE_QUERY_SQL = (
 
 
 class PostgresCentralResultSelectionAdapter(CentralResultSelectionPort):
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], RowConnection]) -> None:
         if not callable(connection_factory):
             raise ValueError('connection_factory must be callable')
         self._connection_factory = connection_factory
@@ -341,32 +341,49 @@ class PostgresCentralResultSelectionAdapter(CentralResultSelectionPort):
             ])
         return {'items': rows, 'next_cursor': next_cursor}
 
-    def append_selection_event(self, **record) -> Mapping:
+    # ⚠️ 옛 선언은 ``**record`` 였다 — 「아무 키워드나 받는다」는 뜻이고 그것은
+    #    거짓이다: 포트는 아홉을 **이름으로** 약속하고, 호출부 넷 전부가 정확히 그
+    #    아홉만 넘긴다(실측: service · CLI 둘 · 봉인 테스트 하나). 이름 없는 자루는
+    #    오타를 KeyError 로 미루고, 이 어댑터를 «구체 타입»으로 잡은 소비자에게는
+    #    아무 검사도 주지 않는다. 포트에서 베꼈다 — 발명하지 않았다.
+    def append_selection_event(
+        self,
+        *,
+        project_id: str,
+        provider_id: str,
+        condition_hash: str,
+        action: str,
+        attempt_id: Optional[str],
+        expected_revision: int,
+        actor_subject: str,
+        reason: Optional[str],
+        event_id: str,
+    ) -> Mapping:
         connection = self._open()
         try:
             cursor = connection.cursor()
             try:
                 self._set_serializable(cursor)
                 provider_uuid = self._resolve_provider_id(
-                    cursor, record['provider_id'],
+                    cursor, provider_id,
                 )
                 self._lock_partition(
                     cursor,
-                    record['project_id'], provider_uuid, record['condition_hash'],
+                    project_id, provider_uuid, condition_hash,
                 )
                 latest = self._fetch_one(
                     cursor,
                     'SELECT "revision", "id" FROM "project_result_selection_events" '
                     'WHERE "project_id" IS NOT DISTINCT FROM %s AND "provider_id" = %s '
                     'AND "condition_hash" = %s ORDER BY "revision" DESC LIMIT 1 FOR UPDATE',
-                    (record['project_id'], provider_uuid, record['condition_hash']),
+                    (project_id, provider_uuid, condition_hash),
                     ('revision', 'id'),
                 )
                 current_revision = int(latest.get('revision') or 0) if latest else 0
-                expected = int(record['expected_revision'])
+                expected = int(expected_revision)
                 if current_revision != expected:
                     raise SelectionRevisionConflictError('selection revision is stale')
-                if record['action'] == 'selected':
+                if action == 'selected':
                     source = self._fetch_one(
                         cursor,
                         'SELECT a."id" AS "attempt_id" '
@@ -382,8 +399,8 @@ class PostgresCentralResultSelectionAdapter(CentralResultSelectionPort):
                         'AND s."project_id" IS NOT DISTINCT FROM %s '
                         'AND s."provider_id" = %s',
                         (
-                            record['attempt_id'], record['project_id'], provider_uuid,
-                            record['condition_hash'], record['project_id'], provider_uuid,
+                            attempt_id, project_id, provider_uuid,
+                            condition_hash, project_id, provider_uuid,
                         ),
                         ('attempt_id',),
                     )
@@ -391,10 +408,10 @@ class PostgresCentralResultSelectionAdapter(CentralResultSelectionPort):
                         raise SelectionCandidateNotFoundError('selection candidate not found')
                 revision = expected + 1
                 values = (
-                    record['event_id'], record['project_id'], provider_uuid,
-                    record['condition_hash'], record['action'], record['attempt_id'],
+                    event_id, project_id, provider_uuid,
+                    condition_hash, action, attempt_id,
                     revision, latest.get('id') if latest else None, expected,
-                    record['actor_subject'], record.get('reason'),
+                    actor_subject, reason,
                 )
                 try:
                     inserted = self._fetch_one(
@@ -433,17 +450,17 @@ class PostgresCentralResultSelectionAdapter(CentralResultSelectionPort):
                         f'central selection commit failed: {exc}'
                     ) from exc
                 return {
-                    'id': record['event_id'],
-                    'project_id': record['project_id'],
-                    'provider_id': record['provider_id'],
-                    'condition_hash': record['condition_hash'],
-                    'action': record['action'],
-                    'attempt_id': record['attempt_id'],
+                    'id': event_id,
+                    'project_id': project_id,
+                    'provider_id': provider_id,
+                    'condition_hash': condition_hash,
+                    'action': action,
+                    'attempt_id': attempt_id,
                     'revision': revision,
                     'expected_revision': expected,
-                    'actor_subject': record['actor_subject'],
+                    'actor_subject': actor_subject,
                     'occurred_at': inserted['occurred_at'],
-                    'reason': record.get('reason'),
+                    'reason': reason,
                 }
             finally:
                 cursor.close()
@@ -537,20 +554,22 @@ class PostgresCentralResultSelectionAdapter(CentralResultSelectionPort):
         finally:
             self._close(connection)
 
-    def _open(self):
+    def _open(self) -> RowConnection:
         try:
             return self._connection_factory()
         except Exception as exc:  # noqa: BLE001
             raise SelectionBackendError(f'central selection connection failed: {exc}') from exc
 
     @staticmethod
-    def _fetch_one(cursor, sql: str, params: tuple, columns: tuple[str, ...]) -> Optional[dict]:
+    def _fetch_one(
+        cursor: RowCursor, sql: str, params: tuple, columns: tuple[str, ...],
+    ) -> Optional[dict]:
         cursor.execute(sql, params)
         rows = list(cursor.fetchall())
         return dict(zip(columns, rows[0], strict=True)) if rows else None
 
     @staticmethod
-    def _resolve_provider_id(cursor, provider_id: str):
+    def _resolve_provider_id(cursor: RowCursor, provider_id: str) -> str:
         """Resolve the public natural key before it reaches a UUID FK query."""
         row = PostgresCentralResultSelectionAdapter._fetch_one(
             cursor,
@@ -566,7 +585,7 @@ class PostgresCentralResultSelectionAdapter(CentralResultSelectionPort):
         return row['id']
 
     @staticmethod
-    def _set_serializable(cursor) -> None:
+    def _set_serializable(cursor: RowCursor) -> None:
         try:
             cursor.execute('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE', ())
         except Exception as exc:  # noqa: BLE001
@@ -578,7 +597,9 @@ class PostgresCentralResultSelectionAdapter(CentralResultSelectionPort):
             ) from exc
 
     @staticmethod
-    def _lock_partition(cursor, project_id: str, provider_id: str, condition_hash: str) -> None:
+    def _lock_partition(
+        cursor: RowCursor, project_id: str, provider_id: str, condition_hash: str,
+    ) -> None:
         """Lock a partition even when it has no selection-event row yet."""
         cursor.execute(
             _PARTITION_LOCK_SQL,
@@ -596,7 +617,7 @@ class PostgresCentralResultSelectionAdapter(CentralResultSelectionPort):
         return any(str(code or '').upper() in {'23505', '40001'} for code in candidates)
 
     @staticmethod
-    def _rollback(connection) -> None:
+    def _rollback(connection: RowConnection) -> None:
         rollback = getattr(connection, 'rollback', None)
         if callable(rollback):
             try:
@@ -605,7 +626,7 @@ class PostgresCentralResultSelectionAdapter(CentralResultSelectionPort):
                 pass
 
     @staticmethod
-    def _close(connection) -> None:
+    def _close(connection: RowConnection) -> None:
         close = getattr(connection, 'close', None)
         if callable(close):
             close()
