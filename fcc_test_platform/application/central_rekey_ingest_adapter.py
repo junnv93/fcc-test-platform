@@ -13,7 +13,7 @@ the forbidden hashing / envelope-builder tokens.)
 
 Design (mirrors ``PostgresCentralClaimWriteAdapter``):
 
-- **injected ``connection_factory``** (``() -> DbConnection``). The concrete
+- **injected ``connection_factory``** (``() -> RowConnection``). The concrete
   PostgreSQL connection is built lazily by the composition root; this module
   imports no driver (frozen-exe safe).
 - **verbatim UPDATE only**: the sole mutation of ``measurement_attempts`` is
@@ -53,6 +53,7 @@ from __future__ import annotations
 import json
 from typing import Callable, List, Mapping, Optional, Tuple
 
+from fcc_test_platform.application.central_db_surfaces import RowConnection, RowCursor
 from fcc_test_platform.domain.ports.output.central_audit_write_port import CentralAuditWritePort
 from fcc_test_platform.domain.ports.output.central_rekey_ingest_port import (
     RekeyIngestAudit,
@@ -61,7 +62,6 @@ from fcc_test_platform.domain.ports.output.central_rekey_ingest_port import (
     RekeyIngestError,
     RekeyMappingEnvelopeLike,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = [
@@ -132,7 +132,7 @@ class PostgresCentralRekeyIngestAdapter:
 
     def __init__(
         self,
-        connection_factory: Callable[[], DbConnection],
+        connection_factory: Callable[[], RowConnection],
         audit_writer: Optional[CentralAuditWritePort] = None,
     ) -> None:
         if not callable(connection_factory):
@@ -148,7 +148,7 @@ class PostgresCentralRekeyIngestAdapter:
     ) -> RekeyIngestAudit:
         pairs: Tuple[Tuple[str, str], ...] = tuple(envelope.pairs)
 
-        def _txn(cursor) -> Tuple[int, int]:
+        def _txn(cursor: RowCursor) -> Tuple[int, int]:
             # (1) conflict pre-scan ALL pairs BEFORE any write → cheap early abort (write 0).
             pre_conflicts = self._scan_conflicts(cursor, pairs)
             if pre_conflicts:
@@ -187,7 +187,7 @@ class PostgresCentralRekeyIngestAdapter:
 
     def _maybe_audit(
         self,
-        cursor,
+        cursor: RowCursor,
         envelope: RekeyMappingEnvelopeLike,
         audit_meta: Optional[Mapping],
         *,
@@ -220,7 +220,10 @@ class PostgresCentralRekeyIngestAdapter:
 
     # ── transaction plumbing (mirrors PostgresCentralClaimWriteAdapter) ─────────
 
-    def _run_once(self, body: Callable[[object], Tuple[int, int]]) -> Tuple[int, int]:
+    # ⚠️ 옛 선언은 ``Callable[[object], …]`` 였다 — 「본문에 아무거나 넘긴다」는 뜻이고
+    #    그것은 거짓이다: 이 러너는 언제나 **커서**를 넘긴다. write 어댑터 여덟이
+    #    같은 거짓을 갖고 있었고 PR #115 가 같은 형태로 고쳤다.
+    def _run_once(self, body: Callable[[RowCursor], Tuple[int, int]]) -> Tuple[int, int]:
         try:
             connection = self._connection_factory()
         except Exception as exc:  # noqa: BLE001 — wrap as loud RekeyIngestError
@@ -247,7 +250,7 @@ class PostgresCentralRekeyIngestAdapter:
                 close()
 
     def _scan_conflicts(
-        self, cursor, pairs: Tuple[Tuple[str, str], ...],
+        self, cursor: RowCursor, pairs: Tuple[Tuple[str, str], ...],
     ) -> Tuple[RekeyIngestConflict, ...]:
         """Scan every pair for a present-but-different ``condition_hash_v2``.
 
@@ -268,7 +271,7 @@ class PostgresCentralRekeyIngestAdapter:
         return tuple(conflicts)
 
     @staticmethod
-    def _affected_rows(cursor) -> int:
+    def _affected_rows(cursor: RowCursor) -> int:
         """Actual rows changed by the last UPDATE (DB-API ``rowcount``).
 
         Truthful — a concurrent same-value fill between count and write cannot
@@ -278,7 +281,7 @@ class PostgresCentralRekeyIngestAdapter:
         return int(rowcount) if isinstance(rowcount, int) and rowcount >= 0 else 0
 
     @staticmethod
-    def _scalar(cursor, statement: str, params: tuple) -> int:
+    def _scalar(cursor: RowCursor, statement: str, params: tuple) -> int:
         cursor.execute(statement, params)
         rows = list(cursor.fetchall())
         if not rows or rows[0] is None:
@@ -287,7 +290,7 @@ class PostgresCentralRekeyIngestAdapter:
         return int(value) if value is not None else 0
 
 
-def _safe_rollback(connection) -> None:
+def _safe_rollback(connection: RowConnection) -> None:
     rollback = getattr(connection, 'rollback', None)
     if callable(rollback):
         try:

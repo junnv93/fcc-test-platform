@@ -7,7 +7,7 @@ expectation sync service loads the provider's catalog once per run and prices th
 published-plan conditions against it.
 
 Mirrors the other central adapters: injected ``connection_factory``
-(``() -> DbConnection``), ``%s`` paramstyle (psycopg / QmarkConnection shim),
+(``() -> RowConnection``), ``%s`` paramstyle (psycopg / QmarkConnection shim),
 loud-fail via ``CentralProgressCatalogReadError``. The canonical test-type token
 is resolved through the existing ``normalize_dispatch_token`` → ``MeasurementType``
 SSOT (no re-implemented canonicalization); a row whose token is not a known
@@ -17,15 +17,15 @@ a version; a partial re-seed is collapsed to its newest).
 """
 from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from fcc_test_kernel.domain.models.enums import MeasurementType, normalize_dispatch_token
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 from fcc_test_platform.domain.models.progress_time_catalog import CatalogSource, StandardTimeCatalog
 from fcc_test_platform.domain.ports.output.central_progress_catalog_read_port import (
     CentralProgressCatalogReadError,
     CentralProgressCatalogReadPort,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = ['CATALOG_READ_SQL', 'PostgresCentralProgressCatalogReadAdapter']
@@ -44,7 +44,7 @@ def _measurement_type(raw: str) -> Optional[MeasurementType]:
         return None
 
 
-def _catalog_source(raw) -> CatalogSource:
+def _catalog_source(raw: Any) -> CatalogSource:
     try:
         return CatalogSource(str(raw))
     except ValueError:
@@ -54,7 +54,7 @@ def _catalog_source(raw) -> CatalogSource:
 
 
 class PostgresCentralProgressCatalogReadAdapter(CentralProgressCatalogReadPort):
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], RowConnection]) -> None:
         self._connect = connection_factory
 
     def load_catalog(self, provider_id: str) -> Optional[StandardTimeCatalog]:

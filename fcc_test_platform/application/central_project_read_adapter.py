@@ -6,7 +6,7 @@ against the central ``projects`` / ``device_models`` / ``samples`` /
 
 Design (mirrors ``PostgresCentralReadAdapter``):
 
-- **injected ``connection_factory``** (``() -> DbConnection``) — psycopg built
+- **injected ``connection_factory``** (``() -> RowConnection``) — psycopg built
   lazily by the composition root; this module imports no PostgreSQL driver.
 - **read-only**: only ``SELECT`` statements.
 - **``%s`` paramstyle** (psycopg) — subject / project_id are bound parameters
@@ -25,11 +25,11 @@ from types import MappingProxyType
 from typing import Callable, Mapping, Optional
 
 from fcc_test_kernel.application.central_contract.pagination import CursorValueDomain
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 from fcc_test_platform.domain.ports.output.central_sample_inventory_read_port import (
     CentralSampleInventoryReadPort,
 )
 from fcc_test_platform.domain.ports.output.central_project_port import CentralProjectError
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 from fcc_test_kernel.domain.services.project_metadata_edit import (
     APPLICANT_IDENTITY_FIELD,
     APPLICANT_SUGGESTION_FIELDS,
@@ -394,7 +394,7 @@ class PostgresCentralProjectReadAdapter:
 
     def __init__(
         self,
-        connection_factory: Callable[[], DbConnection],
+        connection_factory: Callable[[], RowConnection],
         *,
         sample_inventory_read_port: Optional[CentralSampleInventoryReadPort] = None,
     ) -> None:

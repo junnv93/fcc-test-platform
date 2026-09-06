@@ -19,9 +19,9 @@ id, so a code lookup would resolve nothing. This checks existence only.
 from __future__ import annotations
 
 import uuid as _uuid
-from typing import Callable, Optional
+from typing import Callable, Optional, Sequence
 
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 
 
 __all__ = [
@@ -45,7 +45,7 @@ class PublishedPlanIdentityError(Exception):
 
 
 class PostgresPublishedPlanIdentityAdapter:
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], RowConnection]) -> None:
         self._connect = connection_factory
 
     def resolve_provider_uuid(self, provider_id: str) -> Optional[str]:
@@ -66,7 +66,7 @@ class PostgresPublishedPlanIdentityAdapter:
             return False
         return self._fetch_one(PROJECT_EXISTS_SQL, (candidate,)) is not None
 
-    def _fetch_one(self, sql: str, params: tuple):
+    def _fetch_one(self, sql: str, params: tuple) -> Optional[Sequence]:
         try:
             conn = self._connect()
         except Exception as exc:  # noqa: BLE001 — loud-fail boundary

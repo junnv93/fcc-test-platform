@@ -23,13 +23,13 @@
 from __future__ import annotations
 
 import json
-from typing import Callable, Optional
+from typing import Any, Callable, Optional, Sequence, TypeVar
 
+from fcc_test_platform.application.central_db_surfaces import RowConnection, RowCursor
 from fcc_test_platform.domain.ports.output.central_artifact_custody_port import (
     ArtifactCustodyNotFoundError,
     CentralArtifactCustodyError,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = [
@@ -127,6 +127,8 @@ LIST_FINDINGS_SQL = (
     'WHERE "snapshot_id" = %s ORDER BY "relative_path"'
 )
 
+_T = TypeVar('_T')
+
 _FINDING_COLUMNS = (
     'relative_path', 'status', 'artifact_type',
     'expected_sha256', 'observed_sha256', 'reason',
@@ -136,20 +138,20 @@ _FINDING_COLUMNS = (
 class PostgresCentralArtifactCustodyReadAdapter:
     """``CentralArtifactCustodyReadPort`` — 프로젝트 축 조인 읽기."""
 
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], RowConnection]) -> None:
         if not callable(connection_factory):
             raise ValueError('connection_factory must be callable')
         self._connection_factory = connection_factory
 
     def list_project_snapshots(self, project_id: str) -> list[dict]:
-        def _query(cursor) -> list[dict]:
+        def _query(cursor: RowCursor) -> list[dict]:
             cursor.execute(LIST_PROJECT_SNAPSHOTS_SQL, (project_id,))
             return [_snapshot_row(row) for row in cursor.fetchall()]
 
         return self._read(_query)
 
     def count_unresolved_snapshots(self, project_id: str) -> int:
-        def _query(cursor) -> int:
+        def _query(cursor: RowCursor) -> int:
             cursor.execute(COUNT_UNRESOLVED_SQL, (project_id,))
             rows = list(cursor.fetchall())
             return int(rows[0][0]) if rows else 0
@@ -157,7 +159,7 @@ class PostgresCentralArtifactCustodyReadAdapter:
         return self._read(_query)
 
     def count_sessions_without_snapshot(self, project_id: str) -> int:
-        def _query(cursor) -> int:
+        def _query(cursor: RowCursor) -> int:
             cursor.execute(COUNT_SESSIONS_WITHOUT_SNAPSHOT_SQL, (project_id,))
             rows = list(cursor.fetchall())
             return int(rows[0][0]) if rows else 0
@@ -165,7 +167,7 @@ class PostgresCentralArtifactCustodyReadAdapter:
         return self._read(_query)
 
     def get_snapshot(self, project_id: str, snapshot_id: str) -> dict:
-        def _query(cursor) -> dict:
+        def _query(cursor: RowCursor) -> dict:
             cursor.execute(GET_SNAPSHOT_SQL, (project_id, snapshot_id))
             rows = list(cursor.fetchall())
             if not rows:
@@ -182,7 +184,11 @@ class PostgresCentralArtifactCustodyReadAdapter:
 
         return self._read(_query)
 
-    def _read(self, body: Callable[[object], object]):
+    # ⚠️ 옛 선언은 ``Callable[[object], object]`` 였다 — 「본문에 **아무거나** 넘기고
+    #    **아무거나** 돌려준다」는 뜻이고 둘 다 거짓이다: 이 러너는 언제나 **커서**를
+    #    넘기고 **본문이 돌려준 것 그대로**를 돌려준다. write 쪽 `_in_transaction` 이
+    #    같은 거짓을 갖고 있었고 PR #115 가 같은 형태로 고쳤다.
+    def _read(self, body: Callable[[RowCursor], _T]) -> _T:
         try:
             connection = self._connection_factory()
         except Exception as exc:  # noqa: BLE001
@@ -202,13 +208,18 @@ class PostgresCentralArtifactCustodyReadAdapter:
                 f'central artifact custody read failed: {exc}'
             ) from exc
         finally:
-            try:
-                connection.close()
-            except Exception:  # noqa: BLE001
-                pass
+            # ⚠️ ``close`` 는 커널 ``DbConnection`` 도 이 레인의 ``RowConnection`` 도
+            #    약속하지 «않는» 표면이다(선택 표면 — `central_db_surfaces` 참조).
+            #    write 어댑터 11개 중 아홉이 이미 이 형태다: 있으면 닫고, 없으면 넘긴다.
+            close = getattr(connection, 'close', None)
+            if close is not None:
+                try:
+                    close()
+                except Exception:  # noqa: BLE001
+                    pass
 
 
-def _snapshot_row(row) -> dict:
+def _snapshot_row(row: Sequence) -> dict:
     record = dict(zip(SNAPSHOT_SELECT_COLUMNS, row, strict=True))
     record['roots'] = _decode_roots(record.pop('roots_json', None))
     for key in ('snapshot_id', 'provider_session_id', 'chamber_id',
@@ -219,7 +230,7 @@ def _snapshot_row(row) -> dict:
     return record
 
 
-def _decode_roots(raw) -> list:
+def _decode_roots(raw: Any) -> list:
     """``roots_json`` → 목록. 깨진 JSON 은 **빈 목록**이지 예외가 아니다.
 
     이 필드는 진단 보조(어디를 봤는가)이고 판정에 쓰이지 않는다. 노드가 이상한 값을
@@ -238,7 +249,7 @@ def _decode_roots(raw) -> list:
     return [str(item) for item in parsed] if isinstance(parsed, list) else []
 
 
-def _text(value) -> Optional[str]:
+def _text(value: Any) -> Optional[str]:
     if value is None:
         return None
     return value if isinstance(value, str) else str(value)

@@ -23,12 +23,12 @@ from __future__ import annotations
 
 from typing import Callable, Sequence
 
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 from fcc_test_platform.domain.models.progress_rollup import ProgressBucketRollup
 from fcc_test_platform.domain.ports.output.central_progress_read_port import (
     CentralProgressReadError,
     CentralProgressReadPort,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = ['PROGRESS_ROLLUP_SQL', 'PostgresCentralProgressReadAdapter']
@@ -90,7 +90,7 @@ PROGRESS_ROLLUP_SQL = (
 
 
 class PostgresCentralProgressReadAdapter(CentralProgressReadPort):
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], RowConnection]) -> None:
         self._connect = connection_factory
 
     def get_project_progress(
