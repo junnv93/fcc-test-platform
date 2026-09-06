@@ -11,8 +11,10 @@ import {
   buildInfraUpCommand,
   loadDevStackConfig,
   loadDevRuntimeConfig,
+  partitionSurfacesByLane,
   resolveVenvPython,
   selectDevStackSurfaces,
+  THIS_LANE,
   toWslPath,
 } from './dev-stack.mjs';
 import {
@@ -38,14 +40,54 @@ describe('dev-stack SSOT', () => {
   it('declares the three API surfaces with backend ASGI factories', () => {
     const keys = config.surfaces.map((s) => s.key);
     expect(keys).toEqual(['session', 'headless', 'platform']);
+    // ⚠️ `platform_api_app` was the PRE-SPLIT top-level module name. It is not
+    // importable from this repository — measured 2026-09-06:
+    // `Error loading ASGI app. Could not import module "platform_api_app"`.
+    // The same correction is already stated by the production gateway seal
+    // (`tests/test_central_docker_compose.py`): "fcc_test_platform.api_app,
+    // 옛 top-level platform_api_app 이 아니다". This assertion agreed with the
+    // config and with tests/test_apps_web_scaffold.py, so all three were green
+    // while all three named a module that does not exist.
     expect(config.surfaces.map((s) => s.uvicornFactory)).toEqual([
       'session_api_app:create_app',
       'headless_api_app:create_app',
-      'platform_api_app:create_app',
+      'fcc_test_platform.api_app:create_app',
     ]);
     // Only the session surface carries the WebSocket (/session/events).
     expect(config.surfaces.find((s) => s.key === 'session').ws).toBe(true);
     expect(config.surfaces.filter((s) => s.ws).map((s) => s.key)).toEqual(['session']);
+  });
+});
+
+describe('surface lanes', () => {
+  const config = loadDevStackConfig(APP_ROOT);
+
+  it('declares, for every surface, which repository holds its ASGI app', () => {
+    for (const s of config.surfaces) {
+      expect(typeof s.lane, `${s.key} must declare a lane`).toBe('string');
+      expect(s.lane.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('spawns only the surfaces this repository actually holds', () => {
+    const { local, foreign } = partitionSurfacesByLane(config.surfaces, THIS_LANE);
+    // Only the platform surface's ASGI app lives here; session and headless
+    // stayed in the monorepo when apps/web was extracted.
+    expect(local.map((s) => s.key)).toEqual(['platform']);
+    expect(foreign.map((s) => s.key)).toEqual(['session', 'headless']);
+    for (const s of local) expect(s.lane).toBe(THIS_LANE);
+    for (const s of foreign) expect(s.lane).not.toBe(THIS_LANE);
+  });
+
+  it('keeps the proxy covering every surface even though two are not spawned', () => {
+    // The launcher narrows what it STARTS; it must not narrow what the gateway
+    // PROXIES — a developer running the monorepo backends separately still
+    // reaches them through the same Vite gateway.
+    const { foreign } = partitionSurfacesByLane(config.surfaces, THIS_LANE);
+    for (const s of foreign) {
+      expect(s.pathPrefixes.length).toBeGreaterThan(0);
+      expect(s.targetEnv).toMatch(/^VITE_/);
+    }
   });
 });
 
@@ -67,6 +109,10 @@ describe('buildBackendCommands', () => {
       '--port',
       '8001',
     ]);
+    // ⚠️ cwd is the REPO ROOT, not `<repo>/src`. The pre-split layout put all
+    // three ASGI apps under `src/`; this repository has no `src/` at all, so
+    // the old cwd made uvicorn start in a directory that does not exist.
+    for (const c of cmds) expect(c.cwd.endsWith('/src')).toBe(false);
     // Ports come only from the config (no literals in the launcher).
     for (const c of cmds) {
       const surface = config.surfaces.find((s) => s.key === c.key);

@@ -1054,14 +1054,29 @@ class TestDevCspSeparation(unittest.TestCase):
         # Each surface's OWN prefix must be present; the full required set is
         # derived from the backend route tables by
         # TestDevStackProxyCoversEveryBackendPrefix (a surface may carry more).
-        for key, prefix, factory, env_key in (
-            ("session", "/session", "session_api_app:create_app", "VITE_SESSION_API_TARGET"),
-            ("headless", "/headless", "headless_api_app:create_app", "VITE_HEADLESS_API_TARGET"),
-            ("platform", "/platform", "platform_api_app:create_app", "VITE_PLATFORM_API_TARGET"),
+        # ⚠️ ``platform_api_app`` 은 **분리 전** top-level 모듈 이름이다. 이 저장소에서
+        #    import 되지 않는다 — 실측 2026-09-06:
+        #    ``Error loading ASGI app. Could not import module "platform_api_app"``.
+        #    같은 정정을 운영 게이트웨이 봉인이 이미 적어 두었다
+        #    (``tests/test_central_docker_compose.py``: "fcc_test_platform.api_app,
+        #    옛 top-level platform_api_app 이 아니다"). 그런데 이 단언과
+        #    ``dev-stack.config.json`` 과 ``apps/web/scripts/dev-stack.test.mjs`` 셋이
+        #    **서로 맞았기 때문에** 셋 다 초록인 채로 없는 모듈을 가리키고 있었다.
+        #    가짜가 죽은 계약을 보존한 형태다 — 사본이 셋이면 합의도 셋이 된다.
+        for key, prefix, factory, env_key, lane in (
+            ("session", "/session", "session_api_app:create_app",
+             "VITE_SESSION_API_TARGET", "FCC_mobile_test_automation"),
+            ("headless", "/headless", "headless_api_app:create_app",
+             "VITE_HEADLESS_API_TARGET", "FCC_mobile_test_automation"),
+            ("platform", "/platform", "fcc_test_platform.api_app:create_app",
+             "VITE_PLATFORM_API_TARGET", "fcc-test-platform"),
         ):
             self.assertIn(prefix, surfaces[key]["pathPrefixes"])
             self.assertEqual(surfaces[key]["uvicornFactory"], factory)
             self.assertEqual(surfaces[key]["targetEnv"], env_key)
+            # 어느 저장소가 그 ASGI 앱을 갖고 있는가. 분리 전에는 셋 다
+            # ``<repo>/src`` 아래였으므로 물을 필요가 없던 축이다.
+            self.assertEqual(surfaces[key].get("lane"), lane)
             # Backend port must not be re-hardcoded in vite.config (SSOT-derived).
             self.assertNotIn(f":{surfaces[key]['port']}'", text)
 
