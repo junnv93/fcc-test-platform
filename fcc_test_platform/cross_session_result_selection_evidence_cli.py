@@ -1303,8 +1303,14 @@ def observe_code_changes(
     사이의 diff 는 «옮겨왔는가» 라는 질문에 답하지 않는다. git 이 답하지 못해도 같다.
     """
     def _git(*argv: str) -> subprocess.CompletedProcess[str]:
+        # ⚠️ **이 `env=` 가 빠져 있었다** (실측 2026-09-06). 위 두 `_git` 헬퍼는 넘기는데
+        #    이 하나만 빠져서, 주변 환경의 `GIT_DIR` 이 살아 있으면 이 걷기가 **엉뚱한
+        #    저장소에** 「조상인가」를 묻고 `CarryOverUnobservable` 로 답한다. 모노레포
+        #    사본에는 이 줄이 있었다 — 2026-08-31 에 배송 장치가 폐지된 뒤 두 사본이
+        #    각자 움직인 자리이고, 사본을 지우기만 했다면 이 수리가 조용히 사라졌다.
         return subprocess.run(
             ['git', *argv], cwd=ROOT, capture_output=True, text=True, check=True,
+            env=git_env_pinned_to_root(),
         )
 
     try:
