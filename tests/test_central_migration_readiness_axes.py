@@ -38,6 +38,8 @@ from fcc_test_platform.central_migration_readiness_cli import (
     VERDICT_READY,
     VERDICT_UNKNOWN,
     AxisResult,
+    _box_markers_from_source,
+    collect_box_markers,
     judge_checkout,
     judge_deploy_class,
     judge_ledger,
@@ -145,6 +147,49 @@ class TestEachAxisBlocksOnItsDefectShape(unittest.TestCase):
     def test_checkout_passes_with_both_markers(self) -> None:
         self.assertEqual(
             judge_checkout(['pyproject.toml', '.extraction-layout.json']).verdict, VERDICT_READY)
+
+
+class TestTheCheckoutAxisAnswersBeforeAnythingIsInstalled(unittest.TestCase):
+    '''⚠️ 이 도구의 «대상»은 설치 전이다.
+
+    중앙 세션은 `git pull` 직후 맨 `python3` 로 이것을 돌린다. 그때
+    `fcc_test_platform.repository_anchor` 는 import 되지 않는다 — 그 모듈이
+    `fcc_test_contracts` 에서 상수를 가져오는데 그 배포판이 없기 때문이다.
+    실측 2026-09-06: 그 상태에서 이 축이 UNKNOWN 이었고, **하필 그 축이 exit 2 를
+    막아 주는 축이다.** 도구가 가장 필요한 순간에 가장 값진 축이 침묵하면 없는 것과 같다.
+    '''
+
+    def test_the_source_reader_finds_the_marker_symbol(self) -> None:
+        markers = _box_markers_from_source()
+        self.assertIsNotNone(markers, 'repository_anchor.py 에서 BOX_MARKERS 를 못 읽었다')
+        self.assertIn(
+            'LAYOUT_RECORD_NAME', markers,
+            '소스 모드는 «이름»을 낸다 — 값을 여기서 해소하면 두 SSOT 가 된다',
+        )
+
+    def test_source_mode_is_accepted_by_the_judge(self) -> None:
+        result = judge_checkout(['pyproject.toml', 'LAYOUT_RECORD_NAME'], 'source')
+        self.assertEqual(result.verdict, VERDICT_READY)
+        self.assertIn('source', result.detail, '무엇을 쟀는지 감추지 않는다')
+
+    def test_source_mode_still_blocks_on_the_defect_shape(self) -> None:
+        result = judge_checkout(['pyproject.toml'], 'source')
+        self.assertEqual(result.verdict, VERDICT_BLOCKED)
+        self.assertIn('source', result.detail)
+
+    def test_installed_mode_is_labelled_as_such(self) -> None:
+        markers, how = collect_box_markers()
+        self.assertEqual(how, 'installed', '이 시험은 설치된 환경에서 돈다')
+        self.assertIn('.extraction-layout.json', markers)
+
+    def test_both_modes_agree_on_this_tree(self) -> None:
+        '''두 모드가 같은 답을 내야 한다 — 아니면 하나가 거짓말한다.'''
+        installed, _ = collect_box_markers()
+        source = _box_markers_from_source()
+        self.assertEqual(
+            judge_checkout(installed, 'installed').verdict,
+            judge_checkout(source, 'source').verdict,
+        )
 
     def test_refusal_guard_blocks_and_names_the_projects(self) -> None:
         result = judge_refusal_guard(1, "SM-X (customer='가', applicant_name='나')", True)

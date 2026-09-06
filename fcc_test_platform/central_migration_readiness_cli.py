@@ -56,6 +56,7 @@ docker 없이 시험할 수 있게 하고, 봉인이 실제 판정 코드를 부
 from __future__ import annotations
 
 import argparse
+import ast
 import base64
 import json
 import re
@@ -159,7 +160,7 @@ def judge_machine(computer_name: str | None, central_name: str) -> AxisResult:
     )
 
 
-def judge_checkout(box_markers: Sequence[str] | None) -> AxisResult:
+def judge_checkout(box_markers: Sequence[str] | None, how: str = 'installed') -> AxisResult:
     """이 체크아웃이 **컨테이너 안에서 죽지 않는** 코드를 담고 있는가.
 
     실측 2026-09-06: 이미지는 설치 뒤 `pyproject.toml` 을 지운다(휠을 가리지 않으려고).
@@ -172,16 +173,22 @@ def judge_checkout(box_markers: Sequence[str] | None) -> AxisResult:
     if box_markers is None:
         return AxisResult(
             'checkout', VERDICT_UNKNOWN,
-            'fcc_test_platform.repository_anchor 를 읽지 못했다 — 설치되지 않았거나 트리가 다르다',
+            'fcc_test_platform/repository_anchor.py 를 설치본으로도 소스로도 읽지 못했다 — '
+            '이 저장소 트리에서 돌리고 있는지 확인하라',
         )
-    if any(marker.endswith('.extraction-layout.json') for marker in box_markers):
+    # 설치본이면 «값»이, 소스 모드면 «이름»이 온다. 둘 다 같은 성질을 답한다.
+    knows_layout = any(
+        marker.endswith('.extraction-layout.json') or marker == _LAYOUT_SYMBOL
+        for marker in box_markers
+    )
+    seen = f'{", ".join(box_markers)} ({how})'
+    if knows_layout:
         return AxisResult(
-            'checkout', VERDICT_READY,
-            f'해소기가 배송 기록을 상자 표식으로 센다 ({", ".join(box_markers)})',
+            'checkout', VERDICT_READY, f'해소기가 배송 기록을 상자 표식으로 센다 — {seen}',
         )
     return AxisResult(
         'checkout', VERDICT_BLOCKED,
-        f'상자 표식이 {list(box_markers)} 뿐이다. 이미지는 pip 설치 뒤 pyproject.toml 을 '
+        f'상자 표식이 {seen} 뿐이다. 이미지는 pip 설치 뒤 pyproject.toml 을 '
         '지우므로 컨테이너 안에서 해소가 실패하고 central-migrate 가 exit 2 로 죽는다. '
         '이 수리를 담은 main 을 받아라.',
     )
@@ -286,12 +293,61 @@ def collect_computer_name(runner: Runner) -> str | None:
     return name or None
 
 
-def collect_box_markers() -> Sequence[str] | None:
+#: `repository_anchor` 가 배송 기록을 가리킬 때 쓰는 이름. **값이 아니라 이름**이다 —
+#: 값(`.extraction-layout.json`)을 여기 적으면 그 순간 두 SSOT 가 된다.
+_LAYOUT_SYMBOL = 'LAYOUT_RECORD_NAME'
+
+
+def collect_box_markers() -> tuple[Sequence[str] | None, str]:
+    """상자 표식 목록과 **어떻게 알아냈는지**.
+
+    ⚠️ 두 모드가 필요한 이유는 이 도구의 «대상»이다. 중앙 세션은 `git pull` 직후
+    아직 아무것도 설치하지 않은 상태에서 이것을 돌린다. 그때
+    `fcc_test_platform.repository_anchor` 는 import 되지 않는다 — 그 모듈이
+    `fcc_test_contracts` 에서 상수를 가져오는데 그 배포판이 없기 때문이다.
+    실측 2026-09-06: 맨 `python3` 로 돌리자 이 축이 UNKNOWN 이 됐다.
+
+    ⚠️ **그리고 하필 그 축이 exit 2 를 막아 주는 축이다.** 도구가 가장 필요한 순간에
+    가장 값진 축이 침묵하면 그 도구는 없는 것과 같다.
+
+    그래서 설치본이 없으면 **소스를 읽는다**. 값을 다시 적지 않고 «이름»을 본다 —
+    `BOX_MARKERS` 가 `LAYOUT_RECORD_NAME` 을 참조하는가. 어느 모드였는지는 판정이
+    말한다(무엇을 쟀는지 감추지 않는다).
+    """
     try:
         from fcc_test_platform.repository_anchor import BOX_MARKERS
-    except Exception:  # noqa: BLE001 — 못 읽은 것은 UNKNOWN 재료다
+    except Exception:  # noqa: BLE001 — 설치본이 없다. 소스로 내려간다.
+        return _box_markers_from_source(), 'source'
+    return [str(marker) for marker in BOX_MARKERS], 'installed'
+
+
+def _box_markers_from_source() -> Sequence[str] | None:
+    """설치 없이 — `BOX_MARKERS` 대입문을 AST 로 읽는다.
+
+    문자열 리터럴은 그대로, 이름 참조는 **그 식별자**로 낸다. `LAYOUT_RECORD_NAME` 의
+    값을 여기서 해소하지 않는 것이 요점이다 — 해소하려면 그 값을 적어야 하고, 그러면
+    두 SSOT 다.
+    """
+    path = REPO_ROOT / 'fcc_test_platform' / 'repository_anchor.py'
+    try:
+        tree = ast.parse(path.read_text(encoding='utf-8'))
+    except (OSError, SyntaxError):
         return None
-    return [str(marker) for marker in BOX_MARKERS]
+    for node in tree.body:
+        targets = node.targets if isinstance(node, ast.Assign) else []
+        if not any(isinstance(t, ast.Name) and t.id == 'BOX_MARKERS' for t in targets):
+            continue
+        value = node.value
+        if not isinstance(value, (ast.Tuple, ast.List)):
+            return None
+        out: list[str] = []
+        for element in value.elts:
+            if isinstance(element, ast.Constant) and isinstance(element.value, str):
+                out.append(element.value)
+            elif isinstance(element, ast.Name):
+                out.append(element.id)
+        return out
+    return None
 
 
 def collect_deploy_class(runner: Runner) -> str | None:
@@ -372,7 +428,7 @@ def run_all_axes(
     count, detail, column_present = collect_refusal_guard(runner, compose_file, env_file)
     return [
         judge_machine(collect_computer_name(runner), central_name),
-        judge_checkout(collect_box_markers()),
+        judge_checkout(*collect_box_markers()),
         judge_deploy_class(collect_deploy_class(runner)),
         judge_refusal_guard(count, detail, column_present),
         judge_ledger(collect_ledger(runner, compose_file, env_file)),
