@@ -115,5 +115,37 @@ PR #132 이 «드러내기만» 하고 남긴 🔴 ⓒ(`2026-09-06-api-strict-th
 
 - `fcc_test_platform.api_composition` 은 strict 집합 밖이다. 그 모듈에는 지금 오류가
   둘 있고(위 Verification), 위 `_PrincipalResolver` 축도 거기서 검사된다. 소유 웨이브 미정.
+
+  ### ⚠️ 그 웨이브를 위해 — 다섯째 절의 «이름»에 함정이 있다 (2026-09-07 실측)
+
+  최상위가 게이트 밖이라는 사실은 형제 세션이 독립으로 확인했고, 범위를 재 봤다.
+  아래는 이 병합 커밋(`ae7d7d4`) 위에서 같은 리그로 잰 값이다:
+
+  | 설정 | `-p fcc_test_platform` | `api_composition` 단독 |
+  |---|---|---|
+  | 현행 네 절 | 44건 / 16파일 | 2건 |
+  | `+ [mypy-fcc_test_platform]` | **44건 (변화 0)** | **2건 (변화 0)** |
+  | `+ [mypy-fcc_test_platform.*]` | 227건 / 47파일 | 7건 |
+
+  **`[mypy-fcc_test_platform]` 은 no-op 이다.** 그 절은 `fcc_test_platform` 이라는
+  **모듈 하나**(패키지 `__init__`)에만 매치되고 `fcc_test_platform.api_composition`
+  에는 걸리지 않는다. `.*` 가 있어야 최상위를 덮는다 — `[mypy-fcc_test_platform.api.*]`
+  가 `api_composition` 을 못 잡는 것(`api.` vs `api_`)과 같은 부류의 이름 함정이
+  **한 층 위에서 반복**된다.
+
+  ⚠️ 그리고 이 레인에서는 그것이 «부재»가 아니라 **위장**이 된다. 게이트는 절 이름에서
+  mypy 호출 인자를 파생하므로(`tests/test_architecture_gate_conformance.py:92-93`),
+  `[mypy-fcc_test_platform]` 을 넣으면 게이트가 `-m fcc_test_platform` 을 **부르긴
+  하고** `checked 1 source file` 을 성실히 보고한다. 「돌았고 초록」인데 본 것은
+  `__init__.py` 하나다. 지금 그 게이트(`:459`)는 파일 수를 **보고했는지**만 보고 그
+  수가 1인지 218인지는 묻지 않는다 — 절을 더할 때 그 축을 같이 세우는 것을 권한다.
+
+  ⚠️ **이 커밋은 `mypy.ini` 도 그 게이트 파일도 고치지 않는다.** 45건(이 병합 뒤 44건)의
+  처리 판정 — 게이트 수리와 수리를 한 PR 에 넣을지, 이름 집합형 baseline 을 둘지 —
+  은 그 웨이브의 것이다. 다만 `.importlinter` 의 *「답은 등재가 아니라 코드다」* 는
+  **import-linter 계약 셋**에 대한 못박음이고, 이 상자에는 이미 다른 종류의 baseline 이
+  정당하게 산다(`delivered_test_run_baseline.json` — 개수가 아니라 **이름 집합**이고,
+  고쳐진 실패도 red 라 낡으면 스스로 빨개진다). 「baseline」이 한 단어로 두 가지를
+  가리키고 있으니 판정 전에 어느 쪽인지 먼저 가르라.
 - 설계서 §9(`platform_routes.py` 분해 여부)는 이번에도 **답하지 않았다** — 여전히
   다른 작업이 걸려 있지 않은 순수한 설계 질문이다.

@@ -1,0 +1,15 @@
+{
+  "task": "the-fifth-mypy-section-name-is-a-noop-20260907",
+  "branch": "docs/the-fifth-mypy-section-name-is-a-noop-20260907",
+  "owner": "fcc-delivery-final-97",
+  "status": "active",
+  "base": "origin/main@ae7d7d4",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/1f581e35-7bd3-40a9-852a-32878f4b1f22/scratchpad/wt-chk",
+  "scope": [
+    ".claude/evaluations/2026-09-07-progress-port-declares-its-real-contract.md",
+    ".claude/work-claims/the-fifth-mypy-section-name-is-a-noop-20260907.json"
+  ],
+  "shared_outputs": [],
+  "conflicts_with": [],
+  "sequencing": "문서 전용. PR #138 의 후속 문단에 실측 하나를 더한다 — 게이트 범위 웨이브(형제 bf 가 시작했으나 그 세션이 종료됐다)가 쓸 다섯째 mypy 절의 «이름»에 함정이 있다는 것. 코드 무변경. ⚠️ mypy.ini 도 tests/test_architecture_gate_conformance.py 도 건드리지 «않는다» — 그 수리의 소유는 그 웨이브다."
+}
