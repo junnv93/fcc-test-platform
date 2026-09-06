@@ -117,7 +117,10 @@ class CentralTestEquipmentListService:
         self,
         project_id: str,
         *,
-        test_item_key: str,
+        # `object`: 이 값을 받는 `_require_test_item_key` 가 스스로 `object` 로
+        # 선언하고 docstring 이 「전송 계층의 느슨한 타입(None/숫자/공백)을 좁히는
+        # 얇은 어댑터」라고 적는다. `str` 은 그 몸이 부정하는 선언이었다.
+        test_item_key: object,
         test_item_name: Optional[str] = None,
         test_report_id: Optional[str] = None,
         source_profile_key: Optional[str] = None,
@@ -178,7 +181,9 @@ class CentralTestEquipmentListService:
         }
 
     def attach_to_report(
-        self, project_id: str, equipment_list_id: str, *, test_report_id: str
+        # `Optional[str]`: `_require_report_in_project` 가 그렇게 선언하고,
+        # 아래 본문이 `rid is None` 을 명시적으로 처리한다.
+        self, project_id: str, equipment_list_id: str, *, test_report_id: Optional[str]
     ) -> dict:
         """초안 목록을 이 프로젝트의 성적서 판에 붙인다.
 

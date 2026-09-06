@@ -162,7 +162,10 @@ class CentralChamberWriteService:
         return _equipment_config_envelope(row, cid)
 
     def patch_equipment_config(
-        self, *, chamber_id: str, equipment_config: Mapping,
+        # `object`: `_require_equipment_patch` 가 `object` 로 선언하고 non-Mapping 을
+        # `equipment_config must be an object` 로 거절한다. 라우트에서 `{}` 로
+        # 접으면 그 거절이 «빈 패치 성공»으로 바뀐다.
+        self, *, chamber_id: str, equipment_config: object,
     ) -> dict:
         """Merge an operator's edits into this chamber's instrument settings.
 
