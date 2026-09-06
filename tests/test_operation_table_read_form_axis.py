@@ -111,7 +111,9 @@ def _optional_keys() -> frozenset[str]:
     여기서는 그것이 **선언에 더 가까운 쪽**이다.
 
     ⚠️ 오늘 이 레인·계약 레인 어디에도 ``__required_keys__`` 소비자가 없어 위 어긋남은
-    잠복이다. 생기는 날 그것은 80건 중 최대 79건을 「필수 키 누락」으로 거절한다.
+    잠복이다. 🔴 생기는 날 그것이 거절하는 것은 **`80/80`** 이다 — 실측 내역:
+    `response_media_type` 없음 79 · `allowed_during_password_change` 없음 77 ·
+    `error_responses` 없음 16. **여섯을 다 갖춘 operation 은 0개다.**
     """
     import fcc_test_kernel.application.central_contract.api_contracts as contracts
     tree = ast.parse(Path(contracts.__file__).read_text(encoding='utf-8'))
