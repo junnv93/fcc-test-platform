@@ -61,7 +61,7 @@ class TestPlatformSampleInventoryCrud:
         assert sample['row_version'] == 1
         assert sample['latest_intake']['bl'] == 'BL-1'
 
-        history = self.service.list_history(PROJECT_ID, sample['id'])
+        history = self.service.list_history(PROJECT_ID, sample['sample_id'])
         assert len(history['items']) == 1
         revision = history['items'][0]
         assert revision['revision_number'] == 1
@@ -76,14 +76,14 @@ class TestPlatformSampleInventoryCrud:
             'receiver', 'received_date', 'released_date', 'note', 'status',
             'row_version', 'latest_intake',
         }
-        assert revision['snapshot']['sample']['sample_id'] == sample['id']
+        assert revision['snapshot']['sample']['sample_id'] == sample['sample_id']
         assert revision['snapshot']['sample']['serial_number'] == 'SYNTHETIC-SERIAL'
 
     def test_patch_is_atomic_append_only_and_uses_expected_version(self):
         sample = _create(self.service)
         updated = self.service.patch_sample(
             PROJECT_ID,
-            sample['id'],
+            sample['sample_id'],
             {'note': 'operator note', 'latest_intake': {'ap': 'AP-2'}},
             expected_version=1,
             actor_subject='user:tester',
@@ -93,15 +93,15 @@ class TestPlatformSampleInventoryCrud:
         assert updated['note'] == 'operator note'
         assert updated['latest_intake']['bl'] == 'BL-1'
         assert updated['latest_intake']['ap'] == 'AP-2'
-        assert self.service.list_history(PROJECT_ID, sample['id'])['items'][0]['revision_number'] == 2
+        assert self.service.list_history(PROJECT_ID, sample['sample_id'])['items'][0]['revision_number'] == 2
 
         with pytest.raises(SampleInventoryConflictError):
             self.service.patch_sample(
-                PROJECT_ID, sample['id'], {'note': 'stale'},
+                PROJECT_ID, sample['sample_id'], {'note': 'stale'},
                 expected_version=1, actor_subject='user:tester',
             )
 
-        history = self.service.list_history(PROJECT_ID, sample['id'])['items']
+        history = self.service.list_history(PROJECT_ID, sample['sample_id'])['items']
         assert len(history) == 2
         assert history[0]['changed_fields'] == ['note', 'latest_intake']
 
@@ -109,7 +109,7 @@ class TestPlatformSampleInventoryCrud:
         sample = _create(self.service)
         self.service.patch_sample(
             PROJECT_ID,
-            sample['id'],
+            sample['sample_id'],
             {'note': 'sample-only-edit', 'latest_intake': {'bl': 'BL-1'}},
             expected_version=1,
             actor_subject='user:tester',
@@ -121,7 +121,7 @@ class TestPlatformSampleInventoryCrud:
 
     def test_soft_delete_restore_and_hard_delete_preserve_only_tombstone_audit(self):
         sample = _create(self.service, serial_number='PII-FREE-SYNTHETIC')
-        snapshot = self.service.build_measurement_snapshot(PROJECT_ID, sample['id'])
+        snapshot = self.service.build_measurement_snapshot(PROJECT_ID, sample['sample_id'])
 
         def fk_connection():
             connection = QmarkConnection(self.db_path)
@@ -156,7 +156,7 @@ class TestPlatformSampleInventoryCrud:
                 '"sample_snapshot_json", "sample_snapshot_schema_version") '
                 'VALUES (%s, %s, %s, %s, %s, %s)',
                 (
-                    'session-fk-proof', PROJECT_ID, sample['id'], 'WEB_SESSION',
+                    'session-fk-proof', PROJECT_ID, sample['sample_id'], 'WEB_SESSION',
                     snapshot_bytes, snapshot.get('schema_version'),
                 ),
             )
@@ -165,7 +165,7 @@ class TestPlatformSampleInventoryCrud:
             connection.close()
 
         deleted = self.service.soft_delete(
-            PROJECT_ID, sample['id'], expected_version=1, actor_subject='user:pm',
+            PROJECT_ID, sample['sample_id'], expected_version=1, actor_subject='user:pm',
         )
         assert deleted['status'] == 'deleted'
         assert deleted['deleted_at']
@@ -176,7 +176,7 @@ class TestPlatformSampleInventoryCrud:
         )['items'][0]['status'] == 'deleted'
 
         restored = self.service.restore(
-            PROJECT_ID, sample['id'], expected_version=2, actor_subject='user:pm',
+            PROJECT_ID, sample['sample_id'], expected_version=2, actor_subject='user:pm',
         )
         assert restored['status'] == 'active'
         assert restored['deleted_at'] is None
@@ -187,13 +187,13 @@ class TestPlatformSampleInventoryCrud:
             PostgresCentralSampleInventoryWriteAdapter(fk_connection),
             clock=lambda: '2026-07-28T00:00:00+00:00',
         )
-        receipt = fk_service.hard_delete(sample['id'], actor_subject='system-admin')
-        assert receipt == {'sample_id': sample['id'], 'hard_deleted': True}
+        receipt = fk_service.hard_delete(sample['sample_id'], actor_subject='system-admin')
+        assert receipt == {'sample_id': sample['sample_id'], 'hard_deleted': True}
 
         connection = fk_connection()
         try:
             cursor = connection.cursor()
-            cursor.execute('SELECT COUNT(*) FROM samples WHERE id = %s', (sample['id'],))
+            cursor.execute('SELECT COUNT(*) FROM samples WHERE id = %s', (sample['sample_id'],))
             assert cursor.fetchone()[0] == 0
             cursor.execute(
                 'SELECT sample_id, sample_snapshot_json, sample_snapshot_schema_version '
@@ -215,7 +215,7 @@ class TestPlatformSampleInventoryCrud:
                 'project_id': PROJECT_ID,
                 'reason': 'system_admin_request',
                 'revision_count': 3,
-                'sample_id': sample['id'],
+                'sample_id': sample['sample_id'],
             }
         finally:
             connection.close()
