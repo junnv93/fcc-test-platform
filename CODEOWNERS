@@ -1,0 +1,58 @@
+# CODEOWNERS — 방아쇠 T1 의 SSOT (경로 축)
+#
+# 이 파일은 「리드가 상시 승인자가 아니라 예외 판단자」라는 모델을 실현합니다.
+# 규칙 본문 SSOT → intent/README.md §방아쇠
+#
+# ⚠️ 여기 «적히지 않은» 경로는 아무도 막지 않습니다. 기본값은 「리드 불필요」입니다.
+#    그것이 의도입니다 — 기본을 리드로 두면 리드가 병목이 되고, 병목이 된 승인은
+#    읽지 않고 누르는 승인이 되며, 그것은 승인이 아니라 서명입니다.
+#
+# ⚠️ 이 파일은 branch protection 의 "Require review from Code Owners" 가
+#    켜져 있을 때만 발화합니다. 그것이 꺼져 있으면 이 파일은 장식입니다.
+#
+# ⚠️ scripts/human_judgment_triggers.py 가 이 파일을 «파싱»합니다.
+#    T1 경로를 그쪽에 하드코딩하지 마십시오 — 두 곳이 갈라지면
+#    「서버가 막는 것」과 「검사가 말하는 것」이 달라집니다.
+
+# ── ① 게이트 자신 ─────────────────────────────────────────────
+# 게이트를 고치는 권한은 그 게이트가 막는 것보다 세다.
+# 기준선에 이름 하나만 추가하면 새 실패가 「알려진 부채」가 되어 조용히 통과한다.
+/githooks/                              @junnv93
+/scripts/lane_check.py                  @junnv93
+/scripts/lane_check_plugin.py           @junnv93
+/scripts/self_audit_message.py          @junnv93
+/scripts/work_claim_branch_guard.py     @junnv93
+/scripts/merge_readiness_guard.py       @junnv93
+/scripts/hook_bypass_guard.py           @junnv93
+/delivered_test_run_baseline.json       @junnv93
+/.github/workflows/                     @junnv93
+/CODEOWNERS                             @junnv93
+/CLAUDE.md                              @junnv93
+/.claude/                               @junnv93
+
+# ── ② 인증 · 권한 ─────────────────────────────────────────────
+# 잘못되면 되돌려도 이미 새어 나간 뒤다.
+/fcc_test_platform/rbac.py                                  @junnv93
+/fcc_test_platform/rbac_assignment_evidence.py              @junnv93
+/fcc_test_platform/application/local_auth_service.py        @junnv93
+/fcc_test_platform/application/central_rbac_read_service.py @junnv93
+/fcc_test_platform/application/central_rbac_read_adapter.py @junnv93
+/fcc_test_platform/application/rbac_role_catalog.py         @junnv93
+/fcc_test_platform/application/chamber_token_provisioning.py @junnv93
+/fcc_test_platform/application/chamber_token_evidence.py    @junnv93
+/fcc_test_platform/domain/services/token_revocation_policy.py @junnv93
+
+# ── ③ 되돌릴 수 없는 것 — DB · 배포 · 커널 핀 ──────────────────
+# 커널 핀이 «두 곳»이다. 한쪽만 올리면 조용히 갈라진다.
+/migrations/                            @junnv93
+/infra/                                 @junnv93
+/requirements-central.txt               @junnv93
+/requirements.txt                       @junnv93
+/pyproject.toml                         @junnv93
+
+# ── ④ 설계 판단 ───────────────────────────────────────────────
+# intent.md 는 «일부러» 빠져 있다 — 동료끼리 승인한다.
+# 「이 문제가 진짜인가」는 그 문제를 겪는 사람이 리드보다 잘 판단한다.
+/intent/*/spec.md                       @junnv93
+/intent/README.md                       @junnv93
+/intent/_templates/                     @junnv93
