@@ -41,11 +41,44 @@ from fcc_test_kernel.application.central_contract.envelope_helpers import (
     require_uuid,
     text,
 )
-from fcc_test_kernel.application.central_contract.pagination import clamp_limit, decode_cursor, encode_cursor
+from fcc_test_kernel.application.central_contract.pagination import (
+    CursorError,
+    clamp_limit,
+    decode_cursor,
+    encode_cursor,
+)
 from fcc_test_kernel.domain.ports.output.central_rbac_read_port import CentralRbacReadPort
 
 
 __all__ = ['CentralRbacReadService']
+
+
+def _text_keyset(values: tuple[Optional[str], ...]) -> tuple[str, ...]:
+    """`decode_cursor` 의 «넓은» 반환을 이 키셋이 아는 만큼 좁힌다.
+
+    `decode_cursor` 는 `tuple[str | None, ...]` 를 돌려준다. 그 넓이는 이 키셋
+    때문이 아니라 `NULLABLE_TIMESTAMP` 도메인을 쓰는 «다른» 키셋 때문이고, 반환
+    타입은 `domains` **인자**에 의존할 수 없다 — 그러므로 그 선언은 거짓말이 아니라
+    필요한 상한이다.
+
+    이 자리의 사실은 다르다. 실측 2026-09-06 (`kernel-v0.5.1`):
+    `MEMBERSHIP_KEYSET_DOMAINS` 는 세 열 모두 `TEXT` 이고, 커널의 도메인 검사가
+    TEXT 열의 JSON `null` 을 «이미» 거절한다 —
+    `CursorError: null is not allowed for this key`. 즉 여기서 `None` 은 올 수 없다.
+    그것은 **적히지 않은 앎**이었고, 이 함수가 그 앎에 이름을 붙인다.
+
+    ⚠️ `cast` 로 적지 않는 이유: 도메인이 언젠가 `NULLABLE_TIMESTAMP` 로 바뀌면
+    `cast` 는 **거짓말이 되고 조용하다.** 아래 가드는 그날 400 으로 말한다.
+
+    ⚠️ 그 침묵이 왜 비싼지는 하류에 있다. 어댑터가
+    `(project_id, *after, limit)` 로 값을 SQL 에 펼치므로(`central_rbac_read_adapter`)
+    `None` 하나는 예외가 아니라 **빈 페이지**가 된다 — NULL 과의 `>` 비교는 참이
+    되지 않는다. 즉 실패 모드가 「터진다」가 아니라 **「조용히 틀린 답」**이고,
+    포트가 `after: Optional[Sequence[str]]` 로 좁게 선언한 이유가 그것이다.
+    """
+    if any(value is None for value in values):
+        raise CursorError('invalid pagination cursor: null is not allowed for this key')
+    return tuple(value for value in values if value is not None)
 
 
 class CentralRbacReadService:
@@ -107,9 +140,9 @@ class CentralRbacReadService:
             return {'items': [_membership_envelope(row) for row in rows], 'next_cursor': None}
         size = clamp_limit(limit)
         after = (
-            decode_cursor(
+            _text_keyset(decode_cursor(
                 cursor, arity=len(MEMBERSHIP_KEYSET), domains=MEMBERSHIP_KEYSET_DOMAINS,
-            )
+            ))
             if cursor else None
         )
         rows = self._read.read_project_memberships(pid, limit=size + 1, after=after)
