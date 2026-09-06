@@ -14,13 +14,13 @@
 사용::
 
     # 운영자 env 파일을 그대로 판정 (가장 흔한 사용)
-    python3 scripts/check_auth_mode_pairing.py --env-file infra/central/central.env
+    fcc-platform-check-auth-mode-pairing --env-file infra/central/central.env
 
     # 값 두 개를 직접
-    python3 scripts/check_auth_mode_pairing.py --auth-mode local_jwt --web-auth-mode local
+    fcc-platform-check-auth-mode-pairing --auth-mode local_jwt --web-auth-mode local
 
     # 실제로 떠 있는 배포에 물어본다 (SPA 가 받는 runtime-config 를 읽는다)
-    python3 scripts/check_auth_mode_pairing.py --env-file infra/central/central.env \\
+    fcc-platform-check-auth-mode-pairing --env-file infra/central/central.env \\
         --runtime-config-url http://10.206.34.233:8080/runtime-config.js
 
 종료 코드: 짝이면 ``0``, 어긋나면 ``1``, 판정할 값이 없으면 ``2``.

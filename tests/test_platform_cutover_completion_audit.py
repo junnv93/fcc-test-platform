@@ -168,9 +168,12 @@ class TestPlatformCutoverCompletionAudit(unittest.TestCase):
         self.assertEqual(len(audit['next_commands']), len(EVIDENCE_FILENAMES))
         ingestion_command = next(item for item in audit['next_commands'] if item['evidence_key'] == 'ingestion_execution')
         self.assertEqual(ingestion_command['step_id'], 'ingestion-execution')
+        # ⚠️ 중앙 단계이므로 «명령 이름»이다 — 경로가 아니다 (2026-09-06).
+        #    `scripts/` 는 휠에 실리지 않으므로, 이 체크리스트를 받는 사람이
+        #    설치본만 갖고 있으면 경로는 없는 파일을 가리킨다.
         self.assertEqual(
-            ingestion_command['suggested_command'][:3],
-            ['python', 'scripts/platform_ingestion_execution_evidence.py', 'execute'],
+            ingestion_command['suggested_command'][:2],
+            ['fcc-platform-ingestion-execution-evidence', 'execute'],
         )
         self.assertIn('postgres-dsn', ingestion_command['placeholder_tokens'])
         self.assertIn('ingestion-evidence-id', ingestion_command['placeholder_tokens'])

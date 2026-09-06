@@ -24,6 +24,22 @@ from fcc_test_contracts.common.tree_artifacts import resolve_dependency_artifact
 project_root = Path(__file__).parent.parent
 
 
+def _declared_console_commands() -> set[str]:
+    """이 배포판이 «선언한» 콘솔 명령 이름 — 목록을 여기 적지 않는다.
+
+    적어 두면 진입점을 개명한 날 이 검사가 조용히 옛 목록을 검사한다. 휠이
+    무엇을 설치하는지 정하는 바로 그 값(`[project.scripts]`)을 읽는다.
+    """
+    import tomllib
+
+    table = tomllib.loads(
+        (project_root / 'pyproject.toml').read_text(encoding='utf-8')
+    )['project']['scripts']
+    if not table:
+        raise AssertionError('`[project.scripts]` 가 비었다 — 이 검사가 공허해진다')
+    return set(table)
+
+
 class TestPlatformCutoverLiveWorkflow(unittest.TestCase):
     def test_default_suggested_commands_match_existing_cli_entrypoints(self):
         required_flags = {
@@ -142,31 +158,42 @@ class TestPlatformCutoverLiveWorkflow(unittest.TestCase):
         for evidence_key, filename in EVIDENCE_FILENAMES.items():
             with self.subTest(evidence_key=evidence_key):
                 command = suggested_command(evidence_key, f'artifacts/cutover/evidence/{filename}')
-                self.assertEqual(command[0], 'python')
                 self.assertIn(f'artifacts/cutover/evidence/{filename}', command)
                 self.assertTrue(required_flags[evidence_key].issubset(set(command)))
 
-                # ⚠️ **존재 판정은 레인마다 방향이 반대다** (2026-09-03).
+                # ⚠️ **명령의 «종»이 레인마다 다르다** (2026-09-06).
                 #
-                # 여기 있던 것은 `assertTrue((project_root / command[1]).is_file())`
-                # 하나였고, 힌트 14개 중 **넷이 챔버 PC 스크립트**라 red 였다.
-                # 그 넷은 계측기·단말이 붙은 기계에서만 참인 증거를 만든다 —
-                # 중앙 PC 에 그 파일이 **없는 것이 정상**이다.
+                # 2026-09-03 판은 두 레인 모두 `command[0] == 'python'` 이고
+                # `command[1]` 이 «경로»라고 보았고, 존재 판정만 방향을 갈랐다.
+                # 그 전제가 틀렸다 — 중앙 단계가 가리키던 `scripts/*.py` 는
+                # **휠에 실리지 않는다**. 설치본 v0.1.11 안에서 그 경로 32종 중
+                # 실재하는 것은 0/32 였다. 이 레인 안에서는 껍데기가 남아 있어
+                # 존재 판정이 초록이었을 뿐이다(소비 레인에서만 보이는 결함).
                 #
-                # 그래서 두 방향을 각각 붙잡는다. 챔버 쪽을 그냥 면제하면
-                # **사본이 몰래 돌아와도 아무것도 붉지 않는다.**
-                script = project_root / command[1]
+                # 그래서 이제 두 레인은 **다른 종**을 준다:
+                #     중앙   `[project.scripts]` 에 선언된 콘솔 «명령 이름»
+                #     챔버   provider 저장소의 «경로» (그쪽 소유이므로 경로가 맞다)
                 if runs_on(evidence_key) == RUNS_ON_CENTRAL:
-                    self.assertTrue(
-                        script.is_file(),
-                        f'{evidence_key} 는 중앙에서 도는데 그 스크립트가 없다: {command}',
+                    self.assertIn(
+                        command[0], _declared_console_commands(),
+                        f'{evidence_key} 는 중앙 단계인데 선언되지 않은 것을 치라고 '
+                        f'말한다: {command[0]!r}. `[project.scripts]` 에 있는 이름이라야 '
+                        '설치본을 받은 사람이 실제로 실행할 수 있다.',
+                    )
+                    self.assertNotIn(
+                        'scripts/', ' '.join(command),
+                        f'{evidence_key} 는 중앙 단계인데 경로를 준다 — `scripts/` 는 '
+                        f'휠에 실리지 않는다: {command}',
                     )
                 else:
+                    # 챔버 쪽은 경로가 맞는 값이다. 다만 **중앙에 사본이 있으면**
+                    # 안 된다 — 사본은 갈라지고, 중앙에서 돌면 실패가 아니라
+                    # 거짓 증거가 된다. 그냥 면제하면 사본이 몰래 돌아와도 조용하다.
+                    self.assertEqual(command[0], 'python')
                     self.assertFalse(
-                        script.is_file(),
+                        (project_root / command[1]).is_file(),
                         f'{evidence_key} 는 챔버 PC 단계인데 중앙에 사본이 있다: '
-                        f'{command[1]} — 사본은 갈라지고, 중앙에서 돌면 실패가 아니라 '
-                        '거짓 증거가 된다.',
+                        f'{command[1]}',
                     )
 
     def test_every_evidence_step_declares_which_machine_runs_it(self):
@@ -840,6 +867,10 @@ class TestPlatformCutoverLiveWorkflow(unittest.TestCase):
         self.assertIn('ingestion_execution', summary['completion_audit']['workflow_hints'])
 
     def test_template_covers_all_cutover_evidence_keys_and_is_config_valid(self):
+        from fcc_test_platform.cutover_workflow_hints import (
+            RUNS_ON_CENTRAL, RUNS_ON_CHAMBER, runs_on,
+        )
+
         config = build_workflow_template(
             evidence_root='artifacts/cutover/evidence',
             provider_id='fcc-unlicensed-conducted',
@@ -865,24 +896,20 @@ class TestPlatformCutoverLiveWorkflow(unittest.TestCase):
         self.assertEqual({step['reuse_verified_output'] for step in config['steps']}, {True})
         self.assertEqual({step['retry_backoff_seconds'] for step in config['steps']}, {0})
         by_key = {step['evidence_key']: step for step in config['steps']}
-        self.assertEqual(by_key['db_migration']['suggested_command'][1], 'scripts/platform_db_migration_runner.py')
-        self.assertIn('artifacts/cutover/evidence/db_migration.json', by_key['db_migration']['suggested_command'])
-        self.assertEqual(by_key['hardware_smoke']['suggested_command'][1], 'scripts/headless_hardware_smoke_evidence.py')
-        self.assertIn('artifacts/cutover/evidence/hardware_smoke.json', by_key['hardware_smoke']['suggested_command'])
-        self.assertEqual(by_key['performance_smoke']['suggested_command'][1], 'scripts/headless_api_benchmark.py')
-        self.assertIn('artifacts/cutover/evidence/performance_smoke.json', by_key['performance_smoke']['suggested_command'])
-        self.assertEqual(by_key['artifact_sync']['suggested_command'][1], 'scripts/platform_artifact_sync_worker.py')
-        self.assertEqual(by_key['backup_restore_drill']['suggested_command'][1], 'scripts/platform_backup_restore_runner.py')
-        self.assertEqual(by_key['identity_policy']['suggested_command'][1], 'scripts/platform_identity_policy.py')
-        self.assertEqual(by_key['rbac_assignment']['suggested_command'][1], 'scripts/platform_rbac_assignment_collect.py')
-        self.assertEqual(by_key['service_deployment']['suggested_command'][1], 'scripts/provider_service_deployment_evidence.py')
-        self.assertIn('artifacts/cutover/evidence/provider_service_deployment.json', by_key['service_deployment']['suggested_command'])
-        self.assertEqual(by_key['idp_deployment']['suggested_command'][1], 'scripts/platform_idp_deployment_collect.py')
-        self.assertIn('artifacts/cutover/evidence/idp_deployment.json', by_key['idp_deployment']['suggested_command'])
-        self.assertEqual(by_key['frontend_deployment']['suggested_command'][1], 'scripts/platform_frontend_deployment_collect.py')
-        self.assertIn('artifacts/cutover/evidence/frontend_deployment.json', by_key['frontend_deployment']['suggested_command'])
-        self.assertEqual(by_key['frontend_browser_qa']['suggested_command'][1], 'scripts/platform_frontend_browser_qa.py')
-        self.assertIn('artifacts/cutover/evidence/frontend_browser_qa.json', by_key['frontend_browser_qa']['suggested_command'])
+        # 템플릿의 힌트가 **두 종**을 정확히 갈라 싣는지. 열넷을 손으로 나열하던
+        # 자리였는데, 그러면 새 단계가 들어와도 조용하다 — 분류표를 순회한다.
+        for key, filename in EVIDENCE_FILENAMES.items():
+            with self.subTest(evidence_key=key):
+                hint = by_key[key]['suggested_command']
+                self.assertIn(f'artifacts/cutover/evidence/{filename}', hint)
+                if runs_on(key) == RUNS_ON_CENTRAL:
+                    self.assertIn(hint[0], _declared_console_commands())
+                else:
+                    self.assertEqual(hint[0], 'python')
+                    self.assertTrue(hint[1].startswith('scripts/'))
+        # 두 종이 모두 실제로 나타났는가 — 한쪽이 0개면 위 순회가 반쪽만 시험한다.
+        kinds = {runs_on(key) for key in EVIDENCE_FILENAMES}
+        self.assertEqual({RUNS_ON_CENTRAL, RUNS_ON_CHAMBER}, kinds)
 
     def test_full_template_reports_complete_required_evidence_coverage(self):
         config = build_workflow_template(

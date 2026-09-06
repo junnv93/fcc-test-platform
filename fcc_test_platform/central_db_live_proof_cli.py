@@ -515,9 +515,13 @@ def _runner_result(
             f'migration runner returned non-JSON for {lane}/{command}: '
             f'exit={result.returncode} stdout={result.stdout!r} stderr={result.stderr!r}'
         ) from exc
+    # ⚠️ 영수증에 «기록되는» 값이다 — 운영자가 재현할 때 이 문자열을 그대로 친다.
+    #    위 `actual_command` 는 이 레인 안에서 트리 산출물을 찾아 돌리지만, 영수증을
+    #    받는 쪽은 **설치본**이고 거기엔 `scripts/` 가 없다(휠이 안 나른다). 그래서
+    #    재현 지시는 `[project.scripts]` 에 선언된 콘솔 명령으로 적는다 —
+    #    `fcc-platform-db-migrate` 는 아래 인자를 그대로 받는다(db_migrate_cli).
     invocation = [
-        Path(sys.executable).name,
-        'scripts/platform_db_migrate.py',
+        'fcc-platform-db-migrate',
         command,
         '--dsn', f'<{lane}-dsn>',
         '--migrations-dir', migrations_label,

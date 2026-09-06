@@ -319,6 +319,28 @@ def runs_on(evidence_key: str) -> str:
 
 
 def suggested_command(evidence_key: str, output_path: str) -> list[str]:
+    """운영자에게 «주는» 다음 단계 명령. 형태가 실행 기계에 따라 갈린다.
+
+    ⚠️ **이것은 산문이 아니라 값이다** — 영수증에 적히고 운영자가 그대로 친다.
+    그러므로 「이 저장소 안에서 참인가」가 아니라 **「그 기계에서 참인가」**로
+    판정해야 한다. 두 축의 답이 반대다:
+
+        중앙 PC   이 배포판이 «싣는» 것을 돌린다. 그런데 `scripts/` 는 휠에
+                  실리지 않으므로(`packages.find` 가 `fcc_test_platform*` 만 잡는다)
+                  경로를 주면 소비자의 기계에서 **그 파일이 없다.** 그래서
+                  `[project.scripts]` 에 «선언된» 콘솔 명령 이름을 준다.
+        챔버 PC   provider 저장소의 도구를 돌린다. 그것은 이 배포판의 소유가
+                  아니므로 경로가 정확한 값이고, 여기서 콘솔 명령으로 바꾸면
+                  **없는 명령을 치라고 말하게 된다.**
+
+    실측 2026-09-06 — 이 갈래가 서기 전, 설치된 v0.1.11 안에는 `scripts/*.py`
+    리터럴 32종이 있었고 **상자 안에 실재하는 것은 0/32** 였다. 그 경로들은
+    「모노레포 루트에서 실행할 때만 참」인 문자열이었고, 모노레포가 사본을 접으면서
+    마지막으로 참이던 경우가 사라져 드러났다.
+
+    ⚠️ 중앙 쪽 이름은 `tests/test_platform_cutover_catalog.py` 가
+    `[project.scripts]` 와 대조한다 — 진입점을 개명하면 그 자리에서 빨개진다.
+    """
     catalog_entry(evidence_key)
     if evidence_key == 'hardware_smoke':
         return [
@@ -331,8 +353,7 @@ def suggested_command(evidence_key: str, output_path: str) -> list[str]:
         ]
     if evidence_key == 'db_migration':
         return [
-            'python',
-            'scripts/platform_db_migration_runner.py',
+            'fcc-platform-db-migration-runner',
             '--dsn', '<postgres-dsn>',
             '--output', output_path,
             '--applied-by', '<operator-or-automation-id>',
@@ -340,8 +361,7 @@ def suggested_command(evidence_key: str, output_path: str) -> list[str]:
         ]
     if evidence_key == 'ingestion_execution':
         return [
-            'python',
-            'scripts/platform_ingestion_execution_evidence.py',
+            'fcc-platform-ingestion-execution-evidence',
             'execute',
             '--dsn', '<postgres-dsn>',
             '--plan', '<ingestion-plan.json>',
@@ -353,8 +373,7 @@ def suggested_command(evidence_key: str, output_path: str) -> list[str]:
         ]
     if evidence_key == 'artifact_sync':
         return [
-            'python',
-            'scripts/platform_artifact_sync_worker.py',
+            'fcc-platform-artifact-sync-worker',
             '--source-root', '<lab-artifact-root>',
             '--destination-root', '<platform-artifact-root>',
             '--source-root-id', '<source-root-id>',
@@ -402,8 +421,7 @@ def suggested_command(evidence_key: str, output_path: str) -> list[str]:
         # `fcc_test_contracts.extraction_import_boundaries` / `.extraction_package`
         # 로 올려 휠이 나르게 했다(v0.1.19).
         return [
-            'python',
-            'scripts/platform_extraction_runner.py',
+            'fcc-platform-extraction-runner',
             '--target-root', 'artifacts/extraction/staged',
             '--output', output_path,
             '--evidence-id', '<extraction-evidence-id>',
@@ -423,8 +441,7 @@ def suggested_command(evidence_key: str, output_path: str) -> list[str]:
         ]
     if evidence_key == 'backup_restore_drill':
         return [
-            'python',
-            'scripts/platform_backup_restore_runner.py',
+            'fcc-platform-backup-restore-runner',
             '--restore-point-id', '<restore-point-id>',
             '--database-name', '<database-name>',
             '--db-backup-file', '<db-backup-file>',
@@ -438,8 +455,7 @@ def suggested_command(evidence_key: str, output_path: str) -> list[str]:
         ]
     if evidence_key == 'identity_policy':
         return [
-            'python',
-            'scripts/platform_identity_policy.py',
+            'fcc-platform-identity-policy',
             'publish',
             '--manifest', '<validated-identity-policy.json>',
             '--output', output_path,
@@ -465,8 +481,7 @@ def suggested_command(evidence_key: str, output_path: str) -> list[str]:
         ]
     if evidence_key == 'idp_deployment':
         return [
-            'python',
-            'scripts/platform_idp_deployment_collect.py',
+            'fcc-platform-idp-deployment-collect',
             '--evidence-id', '<idp-evidence-id>',
             '--provider-key', '<idp-provider-key>',
             '--issuer', '<idp-issuer-url>',
@@ -486,8 +501,7 @@ def suggested_command(evidence_key: str, output_path: str) -> list[str]:
         ]
     if evidence_key == 'frontend_deployment':
         return [
-            'python',
-            'scripts/platform_frontend_deployment_collect.py',
+            'fcc-platform-frontend-deployment-collect',
             '--evidence-id', '<frontend-deployment-evidence-id>',
             '--app-url', '<deployed-frontend-app-url>',
             '--backend-base-url', '<deployed-platform-api-url>',
@@ -502,8 +516,7 @@ def suggested_command(evidence_key: str, output_path: str) -> list[str]:
         ]
     if evidence_key == 'frontend_browser_qa':
         return [
-            'python',
-            'scripts/platform_frontend_browser_qa.py',
+            'fcc-platform-frontend-browser-qa',
             '--app-url', '<deployed-frontend-app-url>',
             '--provider-api-url', '<deployed-platform-api-url>',
             '--evidence-id', '<frontend-browser-qa-evidence-id>',
@@ -516,8 +529,7 @@ def suggested_command(evidence_key: str, output_path: str) -> list[str]:
         ]
     if evidence_key == 'rbac_assignment':
         return [
-            'python',
-            'scripts/platform_rbac_assignment_collect.py',
+            'fcc-platform-rbac-assignment-collect',
             '--dsn', '<postgres-dsn>',
             '--output', output_path,
             '--evidence-id', '<rbac-evidence-id>',

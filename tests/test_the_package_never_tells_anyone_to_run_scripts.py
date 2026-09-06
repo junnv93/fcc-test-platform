@@ -17,17 +17,31 @@
 레인 안에서는 그 경로가 **실재**하므로(껍데기가 남아 있다) 어떤 시험도 이것을 못 잡는다 —
 소비 레인이 설치본으로 그 값을 단언하고 나서야 드러났다.
 
-■ ⚠️ 이 봉인은 **공집합형이 아니라 ratchet 이다** — 그리고 그 이유를 적는다
+■ 이 봉인은 **공집합형**이다 — ratchet 이던 기간과 그것이 끝난 자리를 적는다
 
-2026-09-06 에 «재현 명령» 축(영수증에 적혀 운영자가 그대로 치는 값) 셋을 고쳤다. 남은
-자리는 `cutover_workflow_hints` 의 `suggested_command` 표와 두 docstring 인데, 그것을
-같이 옮기면 **이 레인의 시험 계약 하나가 통째로 바뀐다** — `command[0] == 'python'` 이고
-`command[1]` 이 실재 파일이라는 계약을, 「중앙 단계는 선언된 콘솔 명령 · 챔버 단계는
-provider 경로」로 갈라야 한다. 옳은 변경이지만 별개의 웨이브이고, 그 웨이브 없이 값만
-바꾸면 시험 여덟이 빨개진 채 남는다(실측).
+처음(2026-09-06 오전)에는 ratchet 이었다. «재현 명령» 축 셋을 고치고 나서 남은 자리가
+`cutover_workflow_hints` 의 `suggested_command` 표와 두 파일이었는데, 그것을 같이 옮기면
+**이 레인의 시험 계약 하나가 통째로 바뀌기** 때문이다 — `command[0] == 'python'` 이고
+`command[1]` 이 실재 파일이라는 계약을 갈라야 했다.
 
-그래서 **줄어들기만 하는 기준선**으로 둔다. 새 위반은 즉시 붉고, 아래 목록에서 하나라도
-사라지면 그것도 붉다(선언을 관측값으로 덮어써서 초록을 만드는 길을 막는다).
+그 웨이브를 같은 날 돌렸다. 갈래는 실행 «기계»다 — 그 분류는 이미
+`EVIDENCE_RUNS_ON` 에 있었고, 위반 10건이 중앙 단계 10개와 정확히 1:1 이었다:
+
+    중앙 PC 단계 10  →  `[project.scripts]` 에 «선언된» 콘솔 명령 이름
+    챔버 PC 단계 4   →  provider 저장소의 «경로» (그쪽 소유라 경로가 맞는 값)
+
+⚠️ 그 과정에서 위 목록의 분류 하나가 틀렸음이 드러났다 — `central_db_live_proof_cli` 를
+「docstring 의 산문」으로 적어 뒀는데 실제로는 **영수증의 `command` 필드에 기록되는 값**
+이었다. 이미 고친 셋과 같은 계급이다. **예외 목록은 읽고 믿을 것이 아니라 열어 볼 것이다.**
+
+그래서 기준선이 비었고, 이 검사는 이제 **전면 적용**된다. 다시 예외를 더하지 마라 —
+이름 하나를 더하는 것은 「이 자리는 봐주기로 했다」는 선언이고, 그 순간 소비자의
+기계에서 죽는 지시가 하나 산다.
+
+⚠️ **공집합형은 말뭉치가 줄면 조용해진다** — 패키지 루트가 사라지거나 파일이 0개가 되면
+「위반 0」과 「아무것도 안 봤다」가 같은 출력을 낸다. 그래서 `_declared_package_files` 가
+루트마다 비지 않았음을 요구하고, 아래 `scanned > 0` 과
+`test_the_detector_would_see_a_violation` 이 함께 선다.
 """
 from __future__ import annotations
 
@@ -140,26 +154,14 @@ class TestNoRunnableScriptsPathEscapesIntoTheDistribution(unittest.TestCase):
             f'{[str(r) for r in _package_roots()]} 아래에 파이썬 파일이 없다 — 이 검사는 공집합을 훑고 '
             '«참이지만 아무것도 재지 않는 참»이 된다.',
         )
-        declared = {
-            # `suggested_command` 표 — 운영자에게 다음 단계로 «주는» 값.
-            # 옮기려면 이 레인의 시험 계약(`command[0] == 'python'`)을 함께 갈라야 한다.
-            'cutover_workflow_hints.py',
-            # 두 docstring 의 운영자 절차 — 값이 아니라 산문이지만 형태가 같아 여기 든다.
-            'check_auth_mode_pairing_cli.py',
-            'central_db_live_proof_cli.py',
-        }
-        unexpected = [o for o in offenders if o.split(':')[0] not in declared]
+        # ⚠️ **기준선이 비었다 — 이 봉인은 이제 공집합 등호다** (2026-09-06 상환).
+        #    ratchet 이던 동안 남아 있던 셋을 전부 처분했으므로 예외가 없다.
+        #    다시 채우지 마라: 여기 이름 하나를 더하는 것은 「이 자리는 봐주기로
+        #    했다」는 선언이고, 그 순간 소비자의 기계에서 죽는 지시가 하나 산다.
         self.assertEqual(
-            [], unexpected,
+            [], offenders,
             '배포판이 자기가 싣지 않는 `scripts/…` 를 실행 지시로 내놓는다. '
-            f'명령 이름(`fcc-platform-…`)을 써라: {unexpected}',
-        )
-        still_here = {o.split(':')[0] for o in offenders}
-        self.assertEqual(
-            declared, declared & still_here,
-            '선언된 자리 중 일부가 사라졌다 — 고쳐졌다면 위 `declared` 에서 빼라. '
-            '남겨 두면 이 ratchet 이 다시 느슨해진다: '
-            f'{sorted(declared - still_here)}',
+            f'명령 이름(`fcc-platform-…`)을 써라: {offenders}',
         )
 
     def test_the_detector_would_see_a_violation(self):

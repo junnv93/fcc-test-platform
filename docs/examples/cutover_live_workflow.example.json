@@ -92,8 +92,7 @@
       "retry_backoff_seconds": 0,
       "reuse_verified_output": true,
       "suggested_command": [
-        "python",
-        "scripts/platform_db_migration_runner.py",
+        "fcc-platform-db-migration-runner",
         "--dsn",
         "<postgres-dsn>",
         "--output",
@@ -118,8 +117,7 @@
       "retry_backoff_seconds": 0,
       "reuse_verified_output": true,
       "suggested_command": [
-        "python",
-        "scripts/platform_ingestion_execution_evidence.py",
+        "fcc-platform-ingestion-execution-evidence",
         "execute",
         "--dsn",
         "<postgres-dsn>",
@@ -152,8 +150,7 @@
       "retry_backoff_seconds": 0,
       "reuse_verified_output": true,
       "suggested_command": [
-        "python",
-        "scripts/platform_artifact_sync_worker.py",
+        "fcc-platform-artifact-sync-worker",
         "--source-root",
         "<lab-artifact-root>",
         "--destination-root",
@@ -231,8 +228,7 @@
       "retry_backoff_seconds": 0,
       "reuse_verified_output": true,
       "suggested_command": [
-        "python",
-        "scripts/platform_backup_restore_runner.py",
+        "fcc-platform-backup-restore-runner",
         "--restore-point-id",
         "<restore-point-id>",
         "--database-name",
@@ -269,8 +265,7 @@
       "retry_backoff_seconds": 0,
       "reuse_verified_output": true,
       "suggested_command": [
-        "python",
-        "scripts/platform_identity_policy.py",
+        "fcc-platform-identity-policy",
         "publish",
         "--manifest",
         "<validated-identity-policy.json>",
@@ -294,8 +289,7 @@
       "retry_backoff_seconds": 0,
       "reuse_verified_output": true,
       "suggested_command": [
-        "python",
-        "scripts/platform_idp_deployment_collect.py",
+        "fcc-platform-idp-deployment-collect",
         "--evidence-id",
         "<idp-evidence-id>",
         "--provider-key",
@@ -336,8 +330,7 @@
       "retry_backoff_seconds": 0,
       "reuse_verified_output": true,
       "suggested_command": [
-        "python",
-        "scripts/platform_rbac_assignment_collect.py",
+        "fcc-platform-rbac-assignment-collect",
         "--dsn",
         "<postgres-dsn>",
         "--output",
@@ -362,8 +355,7 @@
       "retry_backoff_seconds": 0,
       "reuse_verified_output": true,
       "suggested_command": [
-        "python",
-        "scripts/platform_extraction_runner.py",
+        "fcc-platform-extraction-runner",
         "--target-root",
         "artifacts/extraction/staged",
         "--output",
@@ -423,8 +415,7 @@
       "retry_backoff_seconds": 0,
       "reuse_verified_output": true,
       "suggested_command": [
-        "python",
-        "scripts/platform_frontend_deployment_collect.py",
+        "fcc-platform-frontend-deployment-collect",
         "--evidence-id",
         "<frontend-deployment-evidence-id>",
         "--app-url",
@@ -463,8 +454,7 @@
       "retry_backoff_seconds": 0,
       "reuse_verified_output": true,
       "suggested_command": [
-        "python",
-        "scripts/platform_frontend_browser_qa.py",
+        "fcc-platform-frontend-browser-qa",
         "--app-url",
         "<deployed-frontend-app-url>",
         "--provider-api-url",
