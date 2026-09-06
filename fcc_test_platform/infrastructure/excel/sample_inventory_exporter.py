@@ -6,11 +6,14 @@ from copy import copy
 from datetime import datetime
 from importlib.resources import as_file as _resource_as_file
 from importlib.resources import files as _resource_files
+from importlib.resources.abc import Traversable
 from pathlib import Path
 import tempfile
 from typing import Any, Mapping, Sequence
 
 import openpyxl
+from openpyxl.workbook import Workbook
+from openpyxl.worksheet.worksheet import Worksheet
 
 from fcc_test_kernel.infrastructure.excel.atomic_write import atomic_xlsx_write
 
@@ -52,7 +55,7 @@ TEMPLATE_FILES = {
 }
 
 
-def template_resource(template: str):
+def template_resource(template: str) -> Traversable:
     """Return the Traversable for one export template (source tree or wheel)."""
     return (
         _resource_files(TEMPLATE_PACKAGE)
@@ -162,7 +165,7 @@ def _write_rf(temp_path: str, records: Sequence[Mapping[str, Any]], project: Map
     workbook.close()
 
 
-def _load_template(template: str):
+def _load_template(template: str) -> Workbook:
     # openpyxl 은 실제 파일 경로를 요구하므로 `as_file` 로 잠깐 실체화한다. 설치된
     # 휠이 디렉터리로 풀려 있으면 그 자리 그대로이고, 압축된 배포에서는 임시 사본이
     # 만들어진다 — 부르는 쪽은 어느 쪽인지 알 필요가 없다.
@@ -190,13 +193,19 @@ def _load_template(template: str):
     return workbook
 
 
-def _replace_model_in_title(worksheet, model: str) -> None:
+def _replace_model_in_title(worksheet: Worksheet, model: str) -> None:
     title = worksheet['B1'].value
     if isinstance(title, str) and title:
         worksheet['B1'] = title.replace('SM-TEST1', model)
 
 
-def _clear_dynamic_rows(worksheet, *, start_row: int):
+# ⚠️ ``styles`` 는 openpyxl 의 내부 스타일 객체 목록이다. 그 라이브러리는 타입을
+#    싣지 않으므로(py.typed 없음) 원소는 ``Any`` 일 수밖에 없다 — 그 사실을
+#    ``Any`` 로 «적는» 것과 주석을 통째로 비워 두는 것은 다르다. 목록이라는 것,
+#    높이가 없을 수 있다는 것은 여기서 확정된다.
+def _clear_dynamic_rows(
+    worksheet: Worksheet, *, start_row: int,
+) -> tuple[list[Any], float | None]:
     styles = [copy(cell._style) for cell in worksheet[start_row]]
     row_dimension = worksheet.row_dimensions[start_row]
     row_height = row_dimension.height
@@ -205,7 +214,9 @@ def _clear_dynamic_rows(worksheet, *, start_row: int):
     return styles, row_height
 
 
-def _copy_row_style(worksheet, row: int, styles, row_height) -> None:
+def _copy_row_style(
+    worksheet: Worksheet, row: int, styles: Sequence[Any], row_height: float | None,
+) -> None:
     if row_height is not None:
         worksheet.row_dimensions[row].height = row_height
     for column, style in enumerate(styles, start=1):

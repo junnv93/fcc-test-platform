@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+from types import TracebackType
 from typing import AsyncIterator, Optional
 
 from fcc_test_kernel.domain.models.chamber_node import ChamberProgressEvent
@@ -202,7 +203,12 @@ class _SubscriptionScope:
         self._sub = self._bus._register()
         return self
 
-    async def __aexit__(self, exc_type, exc, tb) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         if self._sub is not None:
             self._bus._unregister(self._sub)
             self._sub = None
