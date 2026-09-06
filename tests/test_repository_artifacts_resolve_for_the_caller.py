@@ -14,8 +14,12 @@
 from __future__ import annotations
 
 import ast
+import contextlib
+import json
 import os
 import pathlib
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -132,6 +136,171 @@ class TestTheAnchorFollowsTheCallerNotTheModule(unittest.TestCase):
                 self.assertEqual(repository_anchor(__file__), pathlib.Path(__file__))
             finally:
                 os.chdir(previous)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 저장소 «밖» 축 — 위의 검사들이 구조적으로 못 보는 자리
+# ─────────────────────────────────────────────────────────────────────────────
+
+_PROBE = r"""
+import importlib, json, os, pkgutil, sys
+import fcc_test_platform
+root = [p for p in fcc_test_platform.__path__ if os.path.isdir(p)][0]
+out = {}
+for info in sorted(pkgutil.iter_modules([root]), key=lambda i: i.name):
+    name = 'fcc_test_platform.' + info.name
+    try:
+        importlib.import_module(name)
+        out[info.name] = 'ok'
+    except RuntimeError:
+        out[info.name] = 'refused'
+    except BaseException as exc:      # 설치 축(ImportError 등) — 이 봉인의 축이 아니다
+        out[info.name] = 'other:' + type(exc).__name__
+print(json.dumps(out))
+"""
+
+
+def _probe(cwd: pathlib.Path) -> dict[str, str]:
+    """별도 프로세스에서 최상위 모듈을 전부 import 하고 결과를 이름별로 돌려준다.
+
+    ⚠️ 서브프로세스여야 한다 — 모듈 «수준» 에서 죽는 것을 재는데, 같은 프로세스에서는
+    앞선 import 가 ``sys.modules`` 에 남아 두 번째 측정이 첫 번째의 답을 되돌려 준다.
+    """
+    result = subprocess.run(
+        [sys.executable, '-c', _PROBE], cwd=cwd, capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        raise AssertionError(f'probe 자체가 실패했다 (cwd={cwd}):\n{result.stderr[-2000:]}')
+    return json.loads(result.stdout)
+
+
+def _bare_directory(stack: contextlib.ExitStack) -> pathlib.Path | None:
+    """어떤 조상도 ``pyproject.toml`` 을 갖지 않는 임시 디렉터리, 없으면 ``None``."""
+    raw = stack.enter_context(tempfile.TemporaryDirectory())
+    bare = pathlib.Path(raw).resolve()
+    if any((c / 'pyproject.toml').is_file() for c in (bare, *bare.parents)):
+        return None
+    return bare
+
+
+class TestToolsThatRequireARepositoryRefuseLoudlyOutsideOne(unittest.TestCase):
+    """이 패키지가 「저장소 밖」에 어떻게 답하는지를 **이름 집합으로** 고정한다.
+
+    ⚠️ 위의 검사들은 pytest 가 저장소 «안»에서 돌기 때문에 이 축을 못 본다 —
+    관측자가 관측 대상 안에 있다. 그래서 여기만 서브프로세스로 cwd 를 옮긴다.
+
+    ⚠️ **개수가 아니라 이름 집합이다.** 하나가 조용해지고 하나가 새로 거부하면 개수는 같다.
+
+    ⚠️ 그리고 이 봉인은 「거부하지 마라」가 아니라 **「거부가 조용히 바뀌지 마라」**를
+    요구한다. ``_repository_root`` 의 거부는 옳다 — 틀린 뿌리 위에서 파일을 세면
+    「대상이 없다」와 「경로가 맞다」가 구별되지 않는다. 문제는 그 정책이 이 패키지 안에
+    **여러 벌** 있고(``repository_anchor`` 는 조용히 물러서고 ``_repository_root`` 사본
+    넷은 거부한다) 어느 쪽이 도는지가 모듈마다 다르다는 것이다. 그 지도를 여기 고정한다.
+    """
+
+    #: 저장소 «안»에서는 import 되는데 «밖»에서는 RuntimeError 로 거부하는 모듈.
+    #:
+    #: 실측 2026-09-06, platform ``84f2955`` · **선언된 핀만으로 만든 venv**
+    #: (``fcc-test-contracts@v0.1.22`` · ``fcc-test-kernel@kernel-v0.5.0``):
+    #: 안 77/77 · 밖 69/77. 늘거나 줄면 이 줄을 사유와 함께 고쳐라.
+    DECLARED_REFUSERS = frozenset({
+        'bench_project_result_selection_cli',
+        'central_db_live_proof_cli',
+        'cross_session_result_selection_evidence_cli',
+        'cutover_live_workflow_cli',
+        'db_migration_collect_cli',
+        'db_migration_runner_cli',
+        'export_central_db_ddl_cli',
+        'extraction_runner_cli',
+    })
+
+    #: ⚠️ 「안에서 import 되지 않아 이 축을 잴 수 없는」 모듈 — «이름으로» 선언한다.
+    #:
+    #: 선언대로 설치하면 **비어 있다**(77/77). 비었다고 검사를 빼지 마라 — 이 축은
+    #: «설치 축»이고, 비어 있음 자체가 「이 환경이 선언대로다」라는 진술이다.
+    #:
+    #: ⚠️ 이 집합이 차면 red 인데, 그 red 의 뜻은 「트리가 깨졌다」가 아니라
+    #: **「이 환경이 선언과 다르다」**일 수 있다. 실측 2026-09-06 — 소비 레인의 공용
+    #: venv 에서 이 축을 재면 셋이 찬다(``central_db_live_proof_cli`` ·
+    #: ``extraction_runner_cli`` · ``api_composition``). 그 venv 에는
+    #: ``fcc-test-kernel 0.3.0`` · ``fcc-test-contracts 0.1.12`` 가 있었다. 그것을
+    #: 「배포판이 자기 핀보다 앞선 형제를 요구한다」로 읽으면 틀린다 — 태그를 열어 보면
+    #: 그 이름들이 **핀 안에 있다**. 실패 메시지가 이 갈림을 먼저 묻는 이유다.
+    DECLARED_UNMEASURABLE: frozenset[str] = frozenset()
+
+    @classmethod
+    def setUpClass(cls):
+        with contextlib.ExitStack() as stack:
+            bare = _bare_directory(stack)
+            if bare is None:
+                raise unittest.SkipTest(
+                    '임시 디렉터리의 조상이 pyproject.toml 을 갖는다 — 이 축을 못 잰다'
+                )
+            cls.outside = _probe(bare)
+        cls.inside = _probe(pathlib.Path(__file__).resolve().parents[1])
+
+    def _refusers(self) -> set[str]:
+        """«안»에서 import 되는 것만 본다 — 설치 축의 실패를 이 축으로 세지 않는다."""
+        return {
+            name for name, verdict in self.outside.items()
+            if verdict == 'refused' and self.inside.get(name) == 'ok'
+        }
+
+    def test_the_set_of_modules_that_refuse_outside_a_repository_is_declared(self):
+        observed = self._refusers()
+        self.assertEqual(
+            self.DECLARED_REFUSERS, observed,
+            '저장소 밖에서 거부하는 모듈 집합이 선언과 다르다.\n'
+            f'  새로 거부  : {sorted(observed - self.DECLARED_REFUSERS)}\n'
+            f'  조용해짐   : {sorted(self.DECLARED_REFUSERS - observed)}\n'
+            '⚠️ 「조용해짐」도 소식이다 — 큰 거부가 조용한 fallback 으로 바뀌면 그 모듈은 '
+            '틀린 뿌리 위에서 파일을 세고 「대상이 없다」로 답한다.',
+        )
+
+    def test_no_module_newly_fails_to_import_inside_the_repository(self):
+        """⚠️ 못 재는 것을 «이름으로» 고정한다 — 말뭉치가 줄어도 조용해지지 않게."""
+        unmeasurable = {
+            name: verdict for name, verdict in self.inside.items()
+            if verdict.startswith('other:')
+        }
+        surprises = {k: v for k, v in unmeasurable.items() if k not in self.DECLARED_UNMEASURABLE}
+        self.assertEqual(
+            {}, surprises,
+            '저장소 «안»에서 import 되지 않는 모듈이 선언에 없다 — 이 축을 못 재게 됐다.\n'
+            f'  새로 못 잼 : {surprises}\n'
+            '⚠️ 이것은 「초록」도 「빨강」도 아닌 «잴 수 없음» 이다. **먼저 설치 축을 물어라** — '
+            '`pip list` 로 fcc-test-contracts/kernel 이 이 배포판의 선언과 같은지 본다. 다르면 '
+            '트리가 아니라 환경이 원인이고, 선언대로 세운 venv 에서 다시 재라. 같은데도 죽으면 '
+            '트리 축이니 고치고, 고칠 수 없는 사유라면 DECLARED_UNMEASURABLE 에 이름을 추가하라.',
+        )
+
+    def test_the_probe_is_not_vacuous_inside_the_repository(self):
+        """이빨 ① — «안»에서는 아무도 거부하지 않아야 한다. 그래야 위 집합이 밖의 성질이다."""
+        refused_inside = sorted(n for n, v in self.inside.items() if v == 'refused')
+        self.assertEqual(
+            [], refused_inside,
+            f'저장소 «안»에서도 거부한다 — 측정이 cwd 축을 재고 있지 않다: {refused_inside}',
+        )
+
+    def test_the_probe_actually_imported_something(self):
+        """이빨 ② — 전부 죽으면 위 검사들이 공허하게 초록이 된다."""
+        ok_inside = [n for n, v in self.inside.items() if v == 'ok']
+        self.assertGreater(
+            len(ok_inside), len(self.DECLARED_REFUSERS),
+            f'«안»에서 import 된 모듈이 {len(ok_inside)}개뿐이다 — 설치가 깨졌다면 이 봉인의 '
+            '답은 「초록」이 아니라 「잴 수 없음」이다.',
+        )
+
+    def test_some_modules_survive_outside_the_repository(self):
+        """이빨 ③ — 밖에서 «전부» 죽으면 이름 집합이 자명해져 아무것도 안 묻는다."""
+        survived = sorted(
+            n for n, v in self.outside.items() if v == 'ok' and self.inside.get(n) == 'ok'
+        )
+        self.assertNotEqual(
+            [], survived,
+            '저장소 밖에서 살아남는 모듈이 하나도 없다 — 그러면 이 축은 「전부 거부」라는 '
+            '한 문장이고 집합을 고정할 이유가 없다.',
+        )
 
 
 if __name__ == '__main__':
