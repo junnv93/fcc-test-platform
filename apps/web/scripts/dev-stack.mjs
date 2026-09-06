@@ -36,7 +36,23 @@ import { applyOidcDefaults } from './derive-oidc-env.mjs';
 
 const APP_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const REPO_ROOT = resolve(APP_ROOT, '..', '..');
-const SRC_DIR = resolve(REPO_ROOT, 'src');
+/**
+ * Where a backend is spawned from.
+ *
+ * ⚠️ This was `resolve(REPO_ROOT, 'src')` until 2026-09-06 — the pre-split
+ * layout, where all three ASGI apps were top-level modules under `<repo>/src`.
+ * **This repository has no `src/`.** Its ASGI app is a package module
+ * (`fcc_test_platform.api_app`) that resolves from the repo root, so that is
+ * what uvicorn is given as its working directory.
+ */
+const BACKEND_CWD = REPO_ROOT;
+
+/**
+ * The lane this repository IS. A surface whose `lane` is something else has its
+ * ASGI app in another repository and cannot be spawned from here — `dev:stack`
+ * says so by name instead of letting uvicorn die on an opaque import error.
+ */
+export const THIS_LANE = 'fcc-test-platform';
 
 /** Dev IdP (Keycloak) compose file — single SSOT path (mirrors preview-web.sh). */
 export const INFRA_COMPOSE_FILE = 'infra/docker-compose.idp.yml';
@@ -80,8 +96,27 @@ export function buildBackendCommands(config, { pythonBin = 'python', host } = {}
       '--port',
       String(s.port),
     ],
-    cwd: SRC_DIR,
+    cwd: BACKEND_CWD,
+    lane: s.lane,
   }));
+}
+
+/**
+ * Pure: split the surfaces into the ones this repository can spawn and the ones
+ * whose ASGI app lives in another lane.
+ *
+ * Before the split every surface was a module under `<repo>/src`, so "is it
+ * launchable" was never a question the launcher had to ask. It is now: two of
+ * the three ASGI apps stayed in the monorepo. Without this split, `dev:stack`
+ * spawns uvicorn for them and the developer sees
+ * `Error loading ASGI app. Could not import module "session_api_app"` — a
+ * message that names neither the cause nor where the app went.
+ */
+export function partitionSurfacesByLane(surfaces, thisLane = THIS_LANE) {
+  const local = [];
+  const foreign = [];
+  for (const s of surfaces) (s.lane === thisLane ? local : foreign).push(s);
+  return { local, foreign };
 }
 
 export function selectDevStackSurfaces(config, selection) {
@@ -242,11 +277,17 @@ export function main() {
   // — no per-developer hardcoding, no drift. Explicit env values always win
   // (applyOidcDefaults only fills gaps + sets oidc_jwt where not opted out).
   const backendEnv = applyOidcDefaults(process.env, loadDevRuntimeConfig());
-  const selectedConfig = {
-    ...config,
-    surfaces: selectDevStackSurfaces(config, process.env.FCC_DEV_STACK_SURFACES),
-  };
-  for (const cmd of buildBackendCommands(selectedConfig, { pythonBin })) {
+  const selected = selectDevStackSurfaces(config, process.env.FCC_DEV_STACK_SURFACES);
+  const { local, foreign } = partitionSurfacesByLane(selected);
+  for (const s of foreign) {
+    console.warn(
+      `[dev:stack] ${s.key}: not started — its ASGI app (${s.uvicornFactory}) lives ` +
+        `in ${s.lane}, not in this repository. The Vite proxy still forwards ` +
+        `${s.pathPrefixes.join(' ')} to ${config.host}:${s.port}, so run it from that ` +
+        `repository (or point ${s.targetEnv} at a running instance).`,
+    );
+  }
+  for (const cmd of buildBackendCommands({ ...config, surfaces: local }, { pythonBin })) {
     start(cmd.key, cmd.pythonBin, cmd.args, cmd.cwd, backendEnv);
   }
   // The Vite dev server is the gateway itself (no backend OIDC env needed).
