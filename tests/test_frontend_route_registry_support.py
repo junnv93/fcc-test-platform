@@ -85,7 +85,7 @@ class TestTheMaskIsLengthPreserving(unittest.TestCase):
         for source in _MASK_CORPUS:
             with self.subTest(source[:32]):
                 masked = mask_ts_noncode(source)
-                for index, (original, rendered) in enumerate(zip(source, masked)):
+                for index, (original, rendered) in enumerate(zip(source, masked, strict=True)):
                     if rendered not in (" ", "\n", "\r"):
                         self.assertEqual(
                             rendered,
@@ -116,7 +116,7 @@ class TestTheMaskIsLengthPreserving(unittest.TestCase):
                 (len(text), text.count("\n")),
                 f"{path}: 마스크가 오프셋 또는 줄 번호를 옮긴다",
             )
-            for index, (original, rendered) in enumerate(zip(text, masked)):
+            for index, (original, rendered) in enumerate(zip(text, masked, strict=True)):
                 if rendered not in (" ", "\n", "\r"):
                     self.assertEqual(
                         rendered, original, f"{path}:{index}: 마스크가 코드 문자를 바꿨다"

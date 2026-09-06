@@ -150,7 +150,7 @@ def _payload(family: CatalogFamily, row: int, *, value: float = 1.5) -> dict:
             else value if kind == 'number'
             else f'{field}-{row}'
         )
-        for field, kind in zip(fields, kinds)
+        for field, kind in zip(fields, kinds, strict=True)
     }
 
 
