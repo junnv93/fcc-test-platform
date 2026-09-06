@@ -31,7 +31,20 @@ concurrency:
   # ci-minutes-root-cause (2026-08-07): supersede pull-request iterations,
   # never abandon a main/scheduled run half-verified — a cancelled
   # post-merge run leaves that commit with no verification record.
-  group: ${{ github.workflow }}-${{ github.ref }}
+  #
+  # ⚠️ 2026-09-06 — 위 마지막 문장이 **이 설정이 막지 못하는 것을 서술한다.**
+  #    `cancel-in-progress: false` 는 「달리는 런을 취소하지 마라」만 말하고
+  #    **대기 중인 런은 지키지 않는다.** 한 그룹의 대기 자리는 하나뿐이라,
+  #    셋 이상을 연달아 머지하면 가운데 커밋들이 `cancelled` 로 끝난다.
+  #    `checks.yml` 에서 실측했다(main 커밋 넷: 8c33bc3·4ba0585·7827b50·64abb7b).
+  #    이 워크플로도 `push: branches: [main]` 에 걸리므로 같은 결함을 공유한다.
+  #
+  # ✅ push 는 커밋마다 그룹을 달리한다 — 다툴 그룹이 없으면 취소도 없다.
+  #    PR 축은 그대로 ref 별로 묶인다.
+  #    이 형태는 `tests/test_ci_leaves_a_record_for_every_pushed_commit.py` 가
+  #    지킨다. 그 검사는 워크플로 «선언»에서 대상 집합을 파생하므로, 새
+  #    워크플로가 `push` 트리거를 달면 손대지 않아도 따라간다.
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
