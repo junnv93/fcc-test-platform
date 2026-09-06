@@ -18,10 +18,47 @@ name = "fcc-test-platform"
 # version = 이 레인이 이미 소유한 npm 배포물 apps/web/package.json 과 상등.
 #
 # ⚠️ **「상등」은 2026-09-05 현재 거짓이고 그것을 재는 검사가 0건이다** — 이 값은
-# `0.1.11`, npm 쪽은 `0.1.4` 다. 형제 레인(`fcc-test-contracts`)이 2026-09-04 에
+# `0.1.12`, npm 쪽은 `0.1.4` 다. 형제 레인(`fcc-test-contracts`)이 2026-09-04 에
 # 자기 자리에서 같은 사실을 이미 적었다. 이번 판올림에서 npm 을 끌어올려 맞추지
 # **않았다**: 그러면 둘이 보조를 맞춰 온 것처럼 보이게 되고, 갈라진 사실 자체가
 # 사라진다. 위 한 줄은 지금 산문 주장이지 게이트가 아니다. 소유 웨이브 미정.
+#
+# ■ v0.1.12 — 소비 레인의 설치를 «가능하게» 만드는 판 (2026-09-06)
+#
+# ⚠️ **이 판의 존재 이유는 형제 핀 하나다.** 모노레포(`FCC_mobile_test_automation`)는
+# 2026-09-05 에 `fcc-test-contracts` 를 `v0.1.22 → v0.1.23` 으로 올렸는데(공급 폐포
+# 게이트가 그 판의 수리를 요구했다) 이 상자는 v0.1.22 에 머물렀다. 그 조합은
+# **해석 불가**다 — 실측 2026-09-06, 선언대로 만든 새 venv 에서:
+#
+#     pip install -r requirements-web.txt   (모노레포)
+#       → ResolutionImpossible
+#         The user requested fcc-test-contracts 0.1.23
+#         fcc-test-platform 0.1.11 depends on fcc-test-contracts 0.1.22
+#
+# 즉 모노레포의 `backend-invariants` · `backend-routine` 은 **설치 단계에서** 죽는다.
+# 러너가 배정되지 않는 동안 아무것도 그것을 재지 않았고, 러너가 돌아와도 그대로였을
+# 것이다. 이 판이 형제 핀을 v0.1.23 으로 맞춰 그 자리를 연다.
+#
+#     fcc-test-contracts   v0.1.22 → v0.1.23
+#     fcc-test-kernel      kernel-v0.5.0      (변화 없음)
+#
+# ⚠️ **v0.1.23 은 계약 레인의 최신이 아니다**(오늘 최신은 v0.1.25). 최신이 아니라
+# **모노레포가 든 것과 같은 판**을 고른 것이고, 그것이 이 결함을 닫는 최소 변경이다.
+# 최신으로 함께 올리는 것은 양쪽을 다시 재야 하는 별도 웨이브다.
+#
+# ■ 표면 (v0.1.11 → 이 판, 실측 2026-09-06)
+#
+#     HTTP        `docs/api/*` 차분 **0**
+#     import      모듈 212 → 215 · **삭제 0** · 신규 3
+#                   application.central_db_surfaces
+#                   application.declared_defaults
+#                   central_migration_readiness_cli
+#     진입점      37 → 38 (`fcc-platform-central-migration-readiness` 하나 추가)
+#
+# 즉 파손 없는 순증이다. 소비 레인은 이 번호로 바로 pin 해도 된다.
+#
+# 실측(격리 venv, `pip install -e '.[test]'` + `scripts/lane_check.py`):
+# **3,277 passed · 27 skipped · 선언된 실패 0 / 관측된 실패 0.**
 #
 # ⚠️ **0.1.11 은 wire 파손을 담는다** — 소비 레인은 이 번호로 pin 하기 전에 측정
 # job 축을 함께 옮겨야 한다. 파손은 `headless-api` 에만 있고 `platform-api` 는
@@ -95,7 +132,7 @@ name = "fcc-test-platform"
 #     fcc-test-contracts   v0.1.21 → v0.1.22   (⚠️ 그 판도 wire 파손을 담는다)
 #     fcc-test-kernel      kernel-v0.5.0       (v0.1.9 와 같음 — 새로 적을 것 없음)
 #
-version = "0.1.11"
+version = "0.1.12"
 description = "Central DB, backend API, auth/RBAC, frontend shell, provider registry, deployment composition, and report/artifact browsing workflows."
 # requires-python = infra/central/Dockerfile.api 의 `FROM python:3.11-slim`.
 requires-python = ">=3.11"
@@ -113,7 +150,7 @@ dependencies = [
     # The URL and the tag are DERIVED (manifest `delivery_remote` + the sibling's
     # own declared version); `TestTheSiblingPinTracksTheSiblingVersion` is what
     # keeps this copy from drifting when that version moves.
-    "fcc-test-contracts @ git+https://github.com/junnv93/fcc-test-contracts@v0.1.22",
+    "fcc-test-contracts @ git+https://github.com/junnv93/fcc-test-contracts@v0.1.23",
     # 공유 커널 1단계 (ADR-0001, 2026-09-03). 형제 레인과 **같은 저장소의 다른
     # 배포판**이라 `#subdirectory=` 가 붙는다 — 「한 저장소, 여러 배포판」은 그쪽이
     # 이미 npm `@fcc/api-artifacts` 로 하고 있던 패턴이다.
