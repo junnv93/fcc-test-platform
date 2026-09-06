@@ -943,6 +943,155 @@ PC 가 바쁘면 실패하고, **실패하는 시험 이름이 매번 다르다.
 
 push 전에 사용자 승인을 받을 것. 착수 직후와 완료 후 보고할 것.</pre>
 
+<h2 id="epilogue">그래서 어떻게 끝났나 — 2026-09-06 후속</h2>
+
+<p class="lede">위 지시문은 <strong>완주했다</strong>(모노레포 PR #801 · 36/36 · 13,554줄).
+그런데 <strong>지시문이 예상하지 못한 것이 그 값어치의 절반이었다</strong>. 그것을 여기
+적는다 — 다음에 같은 형태의 웨이브를 하는 사람을 위해서다.</p>
+
+<div class="callout warn">
+  <p><strong>⚠️ 위 지시문의 수치 네 개가 틀렸고, 방향이 전부 «과소»였다.</strong></p>
+  <table>
+    <tr><th>지시문 (2026-09-05)</th><th>실측 (2026-09-06)</th></tr>
+    <tr><td>사본을 부르는 시험 28 중 23 중복</td><td>소비 시험 <b>49</b> · 같은 이름 <b>29</b> · 진짜 지울 것 <b>26</b></td></tr>
+    <tr><td>런북 16 문서</td><td>살아있는 표면 <b>40</b> · <b>127곳</b></td></tr>
+    <tr><td>「<code>bench_*</code> 는 남는다」</td><td><code>bench_project_result_selection.py</code> 는 <b>장부가 플랫폼에 예약</b></td></tr>
+    <tr><td>36 files / 13,554 lines</td><td>✅ 이것만 맞았다</td></tr>
+  </table>
+  <p>원인은 하나다 — <strong>재는 축이 좁았다.</strong> 「import 하는 시험」만 세면
+  <code>subprocess.run([… 'scripts/x.py'])</code> 로 부르는 시험이 안 잡힌다. 형태가
+  여덟인 이유가 그것이고, <b>한 축으로 세면 항상 적게 나온다.</b></p>
+</div>
+
+<h3>형태가 여덟이 아니라 «열»이었다</h3>
+
+<p>위 목록의 여덟에 둘이 더 있었고, 둘 다 <strong>「경로와 명령은 종이 다르다」</strong>는
+한 사실의 두 얼굴이다.</p>
+
+<table>
+  <tr><th>형태</th><th>처방</th><th>왜</th></tr>
+  <tr>
+    <td>⑨ CI <code>paths:</code> 필터 · SKILL <code>trigger_patterns</code> · 셸 <code>case</code> 라벨</td>
+    <td><strong>지운다</strong></td>
+    <td>명령 이름은 파일 경로와 절대 매치되지 않는다 — 「있을 수 없는 사건을 기다리는」
+        <b>죽은 트리거</b>가 된다. 실측: 첫 시도가 <code>frontend-qa-evidence.yml</code> 의
+        <code>paths:</code> 두 줄을 그렇게 바꿔 <b>워크플로 트리거를 죽였다</b></td>
+  </tr>
+  <tr>
+    <td>⑩ 라우팅 키 · <code>mapped_invariants</code> · 옮겨간 시험 이름</td>
+    <td><code>fcc-test-platform:&lt;경로&gt;</code></td>
+    <td>지우면 「이 검사가 어디서 도는가」의 답이 사라진다. 저장소가 이미 쓰는 문법이다</td>
+  </tr>
+</table>
+
+<div class="callout">
+  <p><strong>⚠️ 그리고 시험은 콘솔 명령이 아니라 <code>-m</code> 을 쓴다.</strong>
+  <code>[sys.executable, '-m', 'fcc_test_platform.x_cli']</code> — 「어느 인터프리터로
+  도는가」를 명시해야 PATH 에 다른 venv 가 있어도 답이 흔들리지 않는다. 운영자 문서는
+  반대로 명령 이름을 쓴다(인터프리터를 고르는 일 자체가 도구의 몫이므로).</p>
+</div>
+
+<h3>「같은 이름이면 지울 중복」이 <em>네 번</em> 거짓이었다</h3>
+
+<p>지시문은 *"23개가 이미 같은 이름으로 플랫폼 레인에 있다 — 옮길 것이 아니라 지울
+중복이다"* 라고 적었다. <strong>파일 이름만으로는 판정할 수 없다.</strong></p>
+
+<ol>
+  <li><b>시험 이름 집합까지 대조하라.</b> 파일 29개가 같은 이름이었지만 <b>3개</b>는
+      모노레포에만 있는 시험 <b>6개</b>를 담고 있었다.</li>
+  <li><b>레인이 이미 판정을 «글로» 남겼을 수 있다.</b> 그중 런북 시험 둘은
+      <code>fcc-test-platform</code> 이 2026-09-03 에 자기 쪽 <code>TestRunbookExists</code> 를
+      지우며 <em>"그 런북은 provider 저장소에만 있다 · 이관이 아니라 중복 제거다 ·
+      <b>그쪽 사본이 더 강하다</b>"</em> 고 적어 둔 것이었다. 이름으로 지웠다면 그 판정을
+      되돌렸다.</li>
+  <li><b>이름 집합이 같아도 부족하다.</b> <code>test_platform_chamber_api_p2.py</code> 는
+      96 대 97 로 <b>레인이 더 넓은데도</b> 지우면 안 됐다 — 그 파일이
+      <code>CentralChamberReadPort</code>/<code>WritePort</code> 의 conformance 봉인을
+      담고 있고 <b>그 Port 는 이 저장소 소유</b>였다.</li>
+  <li><b>지운 시험의 «내용»을 읽는 시험이 있다</b>(형태 ⑦의 새 축).
+      <code>test_ambient_env_hermeticity</code> 가 진짜 중복이던 파일을
+      <code>read_text()</code> 해서 「운영자의 opt-in 이 scrub 을 통과한다」를 시연했다.
+      지우자 <b>명제의 주어가 없어졌다.</b></li>
+</ol>
+
+<h3>🔴 이 웨이브의 값어치는 삭제가 «드러낸» 것에 있었다</h3>
+
+<p>지시문은 고장 하나(<code>(나)</code>)를 예고했다. <strong>실제로는 넷이었고, 셋은
+배포판 쪽이었다.</strong> 넷 다 사본이 있는 동안 <b>전부 초록</b>이었다 — 사본이 답을
+갖고 있었으니까.</p>
+
+<table>
+  <tr><th>#</th><th>결함</th><th>왜 아무도 못 봤나</th></tr>
+  <tr><td>①</td><td>예고된 <code>(나)</code> — 사라진 import 경로</td>
+      <td>모듈 레벨 import 라 <b>수집 단계에서 죽었는데</b>, 전량이 거기서 멈추는 것을
+          아무도 원인까지 보지 않았다</td></tr>
+  <tr><td>②</td><td>배포판이 산출물을 <code>site-packages</code> 기준으로 찾음 — <b>10자리 / 5모듈</b></td>
+      <td>레인 «안»에서는 정답이다(<code>__file__</code> 의 조상이 곧 그 저장소).
+          <b>레인 전량 3,108건이 그 위에서 초록이었다</b></td></tr>
+  <tr><td>③</td><td>사본이 «한 줄» 갈라짐 — <b>모노레포 쪽이 더 강했다</b></td>
+      <td>그 시험이 모노레포에만 있었다. <b>파일째 지웠다면 빨개지는 것도 없이 사라졌다</b></td></tr>
+  <tr><td>④</td><td>영수증이 배포판에 없는 경로를 <b>재현 명령</b>으로 기록</td>
+      <td>레인 안에는 껍데기가 남아 그 경로가 실재한다 — 어떤 단언도 안 어긋난다</td></tr>
+</table>
+
+<div class="callout warn">
+  <p><strong>갈라짐은 «양방향»이었다.</strong> 모노레포에는 레인에 없는
+  <code>GIT_DIR</code> 고정이, 레인에는 모노레포에 없는 <code>_LOCAL_JWT_ENV</code> 부팅
+  검사가 있었다. <b>「어느 쪽이 원본인가」를 한 방향으로만 물으면 절반을 놓친다.</b></p>
+</div>
+
+<h3>ADR 조건 4 는 «절반만» 참이었다</h3>
+
+<p>2026-09-05 에 <em>"진입점 37개 · 실제 휠로 검증 · 하나는 체크아웃 밖에서 완주"</em> 로
+✅ 닫힌 조건이다. 그것이 잰 것은 <strong>「부를 수 있는가」</strong>였고, 물어야 할 것은
+<strong>「소비 레인에서 자기 일을 하는가」</strong>였다. 진입점은 있었고 import 도 됐고
+<code>--help</code> 도 돌았지만, 네 상수가 <code>exists() == False</code> 였다.</p>
+
+<p class="lede">오늘 이 사슬에서 세 번 나온 한 형태다 — <strong>검사가 답한 질문이 물어야
+할 질문보다 좁았다.</strong> 답은 참이었고, 좁았다.</p>
+
+<h3>도구를 만들 때 조심할 것 — 하루에 네 번 밟았다</h3>
+
+<p><strong>줄 단위로 파이썬을 읽으면 여러 줄 표현을 「없다」고 보고한다.</strong>
+못 본 것은 실패가 아니라 <b>침묵</b>으로 나타나므로, 이 웨이브가 겨눈
+「초록인데 아무것도 안 재는 검사」와 같은 종이다.</p>
+
+<pre>① 찾기   read_text 와 파일명이 다른 줄에 있으면 못 본다
+② 고치기  resolve_repo_artifact(\n  __file__, …) 는 문자열 치환에 안 걸린다
+③ 삽입   「마지막 import 줄」을 `^import ` 로 찾으면 삼중따옴표 «안»과
+          여러 줄 `from X import (` «안»이 걸린다 → SyntaxError
+④ 범위   「이미 import 되었나」를 «문자열이 있나»로 물으면, 다른 함수 «안»의
+          지역 import 를 「있다」로 오인한다 → NameError</pre>
+
+<div class="callout">
+  <p><strong>⚠️ 탐지기의 «표본»이 일괄 치환에 지워진다.</strong> 「위반의 모양」을 문자열로
+  들고 있는 검사는, 그 모양을 고치는 도구가 훑으면 <b>초록인 채로 눈이 먼다.</b>
+  조각으로 조립해 두어라(<code>'scripts/' + 'x' + '.py'</code>).</p>
+  <p><strong>⚠️ 집합은 «선언»에서 파생하라.</strong> 「무엇이 있나」는 파생하면서
+  「어디 사나」는 적어 두면 그것이 이사한 날 조용해진다. 이 저장소에는 답이 이미 선언돼
+  있다 — <code>[tool.setuptools.packages.find].include</code> ·
+  <code>[project.scripts]</code>. 그리고 비-공허 팔은 <b>합계가 아니라 루트별로</b> 물어라.</p>
+  <p><strong>⚠️ <code>grep '^FAILED '</code> 는 subtest 를 못 본다</strong>
+  (<code>CLAUDE.md:83</code> 이 적어 두었다). 실패 이름 집합은
+  <code>scripts/run_test_lanes.py --report-json</code> 으로 받아라 — 그쪽은
+  <code>tree_sha</code> 도 함께 적어서 <b>어느 트리에서 잰 값인지 파일 자체가 말한다.</b></p>
+</div>
+
+<h3>남긴 것 하나 — 덮지 않았다</h3>
+
+<p>매니페스트의 <code>shared_kernel_closure</code> 두 항목(<code>src/domain/</code> ·
+<code>src/application/central_contract/</code>)의 폐포가 <strong>공집합</strong>이 됐다.
+이 레인이 그 커널에 닿던 파일이 반납된 36건이었기 때문이다. 게이트 문구가 그 순간을
+예고해 두었다 — <em>"this is the genuinely missing source the expected ones used to
+hide."</em></p>
+
+<p><strong>선언을 바꾸지 않았다.</strong> <code>ownership: monorepo</code> 는 맞다 —
+파일은 여기 있고 git 도 그렇게 말하며, <code>relinquished</code> 로 적으면 소유권 게이트가
+「삭제 증거가 없다」로 빨개진다(그 게이트는 <b>작업트리가 아니라 커밋 이력</b>에 묻는다).
+어긋난 것은 선언이 아니라 <b>이 항목이 아직 필요한가</b>이고, 그 판정은 배송 기계가
+2026-08-31 에 퇴역한 뒤로 아무도 하지 않았다. <code>src/domain/</code> 을 옮기는
+PR #789 가 임자다.</p>
+
 </section>
 
 <footer>

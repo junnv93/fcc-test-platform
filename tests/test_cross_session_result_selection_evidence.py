@@ -62,7 +62,7 @@ def test_fresh_lane_is_collected_when_upgrade_lane_is_unavailable(tmp_path, monk
     assert calls == [('postgresql://fresh.example/db', 'fresh')]
     assert seam_arguments[0][0] is None
     assert seam_arguments[0][1].startswith(
-        'python scripts/cross_session_result_selection_evidence.py '
+        'fcc-platform-cross-session-result-selection-evidence '
     )
     assert receipt['lanes']['fresh']['status'] == 'PASS'
     assert receipt['lanes']['upgrade']['status'] == 'BLOCKED'

@@ -16,6 +16,7 @@ import sys
 from typing import Mapping
 
 
+from fcc_test_platform.repository_anchor import repository_anchor
 from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # noqa: E402
 from fcc_test_platform.db_migration_evidence import (  # noqa: E402
     EXPECTED_MIGRATION_ID,
@@ -33,9 +34,9 @@ from fcc_test_platform.db_migration_collect_cli import (  # noqa: E402
 # relocated today (docs/platform/migrations/ -> migrations/ at the box root) but
 # they are the same question about the same tree, and a file that answers it two
 # ways invites the next reader to pick the wrong one.
-DEFAULT_SCHEMA_PATH = resolve_repo_artifact(__file__, 'docs/platform/central_db_schema.v1.json')
+DEFAULT_SCHEMA_PATH = resolve_repo_artifact(repository_anchor(__file__), 'docs/platform/central_db_schema.v1.json')
 DEFAULT_MIGRATION_PATH = resolve_repo_artifact(
-    __file__, 'docs/platform/migrations/001_initial_central_db.sql',
+    repository_anchor(__file__), 'docs/platform/migrations/001_initial_central_db.sql',
 )
 
 

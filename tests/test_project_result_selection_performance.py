@@ -78,7 +78,7 @@ def _bound_receipt() -> dict:
             'status_sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
             'status_entries': 0,
         },
-        'command': 'python scripts/bench_project_result_selection.py --seed --explain',
+        'command': 'fcc-platform-bench-project-result-selection --seed --explain',
         'started_at': '2026-08-26T07:28:28+00:00',
         'completed_at': '2026-08-26T07:29:02+00:00',
         'fixture': {'expected_attempts': 96_000, 'no_offset': True},
@@ -162,7 +162,7 @@ def test_the_blocked_receipt_still_records_its_provenance(tmp_path, monkeypatch)
         'head', 'requested_cutoff', 'cutoff_matches_head', 'clean',
         'status_sha256', 'status_entries',
     }
-    assert receipt['command'].startswith('python scripts/bench_project_result_selection.py')
+    assert receipt['command'].startswith('fcc-platform-bench-project-result-selection')
     assert receipt['started_at'] and receipt['completed_at']
     assert receipt['binds_cutoff'] is False  # no --cutoff was supplied
 
