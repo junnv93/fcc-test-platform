@@ -148,7 +148,7 @@ from fcc_test_platform.domain.ports.output.central_sample_inventory_read_port im
     CentralSampleInventoryReadError,
 )
 from fcc_test_contracts.common.login_throttle_policy import spraying_source_key
-from fcc_test_contracts.common.rate_limit_policy import RATE_LIMIT_DETAIL
+from fcc_test_contracts.common.rate_limit_policy import RATE_LIMIT_DETAIL, RateLimitPolicy
 from fcc_test_contracts.web.rate_limit_middleware import (
     RATE_LIMIT_LIMIT_HEADER,
     RATE_LIMIT_REMAINING_HEADER,
@@ -630,8 +630,12 @@ class PlatformApiAdapter:
         subject = (self._principal.subject or '').strip()
         if not subject or subject == 'anonymous':
             return False
-        contract = PLATFORM_API_OPERATIONS.get(operation) or {}
-        required = str(contract.get('permission') or '').strip()
+        # ⚠️ ``or {}`` 로 부재를 빈 dict 로 접으면 그 뒤의 ``.get`` 이 «키 이름»을 전혀
+        # 검사하지 않는다(커널 ``OperationSpec`` 의 docstring이 적는 함정 — 오타는
+        # 영원히 조용하다). 부재는 부재로 두고, 있을 때만 첨자로 읽는다:
+        # ``permission`` 은 ``Required`` 라 이 형태가 «검사되면서 안전한» 유일한 형태다.
+        spec = PLATFORM_API_OPERATIONS.get(operation)
+        required = (spec['permission'] if spec is not None else '').strip()
         if not required:
             return False
         # Token-borne wildcard/admin already short-circuited at the token path;
@@ -3659,7 +3663,11 @@ def create_platform_app(
     principal_resolver: Optional[_PrincipalResolver] = None,
     lifespan: Optional[Callable[..., Any]] = None,
     ws_heartbeat_seconds: float = 20.0,
-    rate_limit_policy: object = None,
+    # 실측 2026-09-06 — 이 인자를 넘기는 자리 전수(생산 api_composition.py:883 의
+    # ``config.rate_limit`` 은 ``RateLimitPolicy``, 시험은 ``None`` 또는
+    # ``RateLimitPolicy``). 아래 세 소비자가 모두 ``RateLimitPolicy | None`` 을
+    # 요구하므로 ``object`` 는 선언만 넓고 아무도 그 넓이를 쓰지 않는다.
+    rate_limit_policy: Optional[RateLimitPolicy] = None,
     rate_limit_subject_header: Optional[str] = None,
     credential_secret: Optional[str] = None,
 ) -> 'FastAPI':

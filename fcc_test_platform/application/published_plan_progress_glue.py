@@ -37,6 +37,18 @@ def published_conditions_from_rows(
     """
     conditions: List[PublishedConditionRow] = []
     for row in rows:
+        # ⚠️ 커널이 `TestPlanRow.condition_hash` 를 **Optional** 로 두는 것은
+        # *"materialize 전에는 None 으로 남긴다"* 는 뜻이다(그 모델의 docstring).
+        # 이 모듈의 전제는 「materialized published rows」인데 지금까지 그 전제가
+        # **산문으로만** 있었다 — 미materialize 행이 하나 섞이면 `None` 이 진행률
+        # ingest 의 조인 키로 조용히 실려 간다(`PublishedConditionRow.condition_hash`
+        # 는 `str` 로 선언돼 있고 그 조인 키는 P6.2 봉인의 대상이다).
+        # 전제를 실행 가능하게 만든다: 위반은 여기서 죽고, 아래로 내려가지 않는다.
+        if row.condition_hash is None:
+            raise ValueError(
+                'published rows must carry a materialized condition_hash; '
+                f'row test_type={row.test_type!r} has none'
+            )
         technology, band = progress_condition_tokens(row)
         conditions.append(
             PublishedConditionRow(

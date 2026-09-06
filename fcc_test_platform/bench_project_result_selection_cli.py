@@ -37,6 +37,7 @@ machine-readable ``BLOCKED`` receipt instead of silently passing.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import shlex
@@ -508,7 +509,9 @@ def _seed(connection, *, run_id: str) -> SeedManifest:
         project_id=str(project_uuid),
         project_code=project_code,
         provider_ids=provider_ids,
-        provider_uuids=tuple(str(value) for value in provider_uuids),
+        # 선언이 ``tuple[str, str]`` 인 것은 장식이 아니다 — 아래에서 [0]·[1] 로
+        # 읽는다. 제너레이터로 만들면 «가변 길이»가 되어 그 사실이 사라진다.
+        provider_uuids=(str(provider_uuids[0]), str(provider_uuids[1])),
         attempt_count=attempt_count,
         manual_pin_count=pin_count,
         session_count=PROVIDER_COUNT * SESSIONS_PER_PROVIDER,
@@ -598,7 +601,8 @@ def _measure(manifest: SeedManifest, *, iterations: int, warmup: int, trials: in
     samples: dict[str, dict[str, float]] = {}
     for provider_id in manifest.provider_ids:
         effective = measure_latency_us_robust(
-            lambda provider_id=provider_id: adapter.list_effective_results(
+            functools.partial(
+                adapter.list_effective_results,
                 manifest.project_id, provider_id, limit=PAGE_LIMIT,
             ),
             iters=iterations,
@@ -608,8 +612,9 @@ def _measure(manifest: SeedManifest, *, iterations: int, warmup: int, trials: in
         samples[f'effective_page:{provider_id}'] = effective
         provider_index = manifest.provider_ids.index(provider_id)
         baseline = measure_latency_us_robust(
-            lambda provider_uuid=manifest.provider_uuids[provider_index]: _run_baseline_effective_page(
-                manifest, provider_uuid,
+            functools.partial(
+                _run_baseline_effective_page,
+                manifest, manifest.provider_uuids[provider_index],
             ),
             iters=iterations,
             warmup=warmup,

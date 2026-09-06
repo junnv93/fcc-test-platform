@@ -62,7 +62,10 @@ try:
     )
 except Exception as _exc:  # noqa: BLE001 — 원인을 실어 2 로 내린다
     _CONTRACT_IMPORT_ERROR = _exc
-    WEB_AUTH_STRATEGIES = {}
+    # ⚠️ 진짜 선언은 ``frozenset`` 이다(계약 레인 auth_config.py). 폴백을 ``{}`` 로
+    # 두면 「비었다」는 같지만 «종»이 달라져, 이 이름을 집합으로 읽는 다음 사람이
+    # 폴백 경로에서만 다른 것을 받는다.
+    WEB_AUTH_STRATEGIES = frozenset()
 
     def deployment_auth_defects(*_a, **_k):  # type: ignore[misc]
         raise RuntimeError('contract package unavailable')
@@ -266,14 +269,22 @@ def main(argv=None) -> int:
                     label: tuple(env.get(key) for key in keys)
                     for label, keys in _LOCAL_JWT_ENV.items()
                 }
-                if any(value is None for values in read.values() for value in values):
-                    local_jwt_configs = None
-                else:
-                    local_jwt_configs = [
+                # ⚠️ 「하나라도 없으면 판정하지 않는다」는 위 산문의 규율을 **한
+                # 자리에서** 검사하고 그 자리에서 쓴다. 검사와 사용이 갈라져 있으면
+                # (예전 형태) 검사기는 사용 지점에서 여전히 `None` 을 본다 —
+                # 그리고 `or ''` 로 접는 순간 위 주석이 경고한 회귀가 돌아온다.
+                declared: list[tuple[str, LocalJwtConfig]] = []
+                for label, values in read.items():
+                    secret, issuer, audience = values
+                    if secret is None or issuer is None or audience is None:
+                        local_jwt_configs = None
+                        break
+                    declared.append(
                         (label, LocalJwtConfig(secret=secret, issuer=issuer,
                                                audience=audience))
-                        for label, (secret, issuer, audience) in read.items()
-                    ]
+                    )
+                else:
+                    local_jwt_configs = declared
 
     if not auth_mode:
         print(

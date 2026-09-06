@@ -52,7 +52,8 @@ import threading
 import time as _time
 import uuid
 from collections import OrderedDict
-from typing import Any, Callable, Mapping, Optional, Protocol, Tuple
+from datetime import datetime
+from typing import Any, Callable, Mapping, Optional, Protocol, Tuple, TypedDict
 
 from fcc_test_contracts.common.access_policy import ApiPrincipal
 from fcc_test_contracts.common.api_error_codes import ErrorCode
@@ -875,6 +876,22 @@ class _RotationThrottle(Protocol):
         ...
 
 
+class _SharedTokenClaims(TypedDict):
+    """접근·갱신 토큰이 **같은 값**으로 받아야 하는 넷.
+
+    ⚠️ 이 묶음이 존재하는 이유는 편의가 아니라 «한 자리에서 만든 같은 값»이라는
+    불변식이다 — 두 호출부에 풀어 적으면 한쪽만 고치는 날 두 토큰이 갈라진다.
+    그래서 dict 로 두되, 그 dict 의 «모양»을 여기 적는다. 익명 dict 는 값 종류가
+    섞여 ``dict[str, object]`` 로 합류하고, ``**`` 로 펼치는 순간 검사기가
+    ``issue_token`` 의 ``int``/``bool``/``str`` 과 대조할 수 없게 된다.
+    """
+
+    subject: str
+    issued_at: int
+    session_version: int
+    force_password_change: bool
+
+
 class LocalAuthService:
     """비밀번호 로그인 유스케이스."""
 
@@ -888,7 +905,12 @@ class LocalAuthService:
         store: Any,
         hasher: Any,
         jwt_config: LocalJwtConfig,
-        clock: Callable[[], object],
+        # ⚠️ ``store``/``hasher`` 와 달리 이것은 **좁힐 수 있다.** 실측 2026-09-06 —
+        # 이 클래스를 만드는 자리는 셋뿐이고(api_composition.py:772 · 시험 둘)
+        # 셋 다 ``datetime`` 을 돌려준다. 넓게 두면 ``is_lock_active`` 가 비-datetime 을
+        # ``TypeError`` → **「잠김」** 으로 접으므로(총함수, 계약 레인) 오배선이
+        # 타입이 아니라 «전원 로그인 실패»로 나타난다.
+        clock: Callable[[], datetime],
         revocation_list: Optional[TokenRevocationList] = None,
         spraying_detector: Optional[LoginSprayingDetector] = None,
         rotation_throttle: Optional['_RotationThrottle'] = None,
@@ -1511,12 +1533,12 @@ class LocalAuthService:
                 # complete SSOT-backed resolver above.
                 permissions = self._store.global_permissions(user.get('id'))
         subject = str(user.get('subject') or '')
-        common = dict(
-            subject=subject,
-            issued_at=issued_at,
-            session_version=version,
-            force_password_change=force_change,
-        )
+        common: _SharedTokenClaims = {
+            'subject': subject,
+            'issued_at': issued_at,
+            'session_version': version,
+            'force_password_change': force_change,
+        }
         access_id = self._id_factory()
         access = issue_token(
             self._jwt, token_type=TOKEN_TYPE_ACCESS, token_id=access_id,
@@ -1590,8 +1612,8 @@ class LocalAuthService:
         if self._spraying is not None:
             self._spraying.record_failure(fingerprint, identifier)
 
-    def _now_for_compare(self) -> object:
-        """잠금 비교용 '지금'. ``clock`` 이 무엇을 돌려주든 그것으로 비교한다."""
+    def _now_for_compare(self) -> datetime:
+        """잠금 비교용 '지금'. ``clock`` 이 약속한 ``datetime`` 그대로 비교한다."""
         return self._clock()
 
 

@@ -13,6 +13,9 @@ reason.
 """
 import json, sys
 import psycopg
+from fcc_test_platform.infrastructure.adapters.driven.central_db_connection import (
+    build_central_db_connection_factory,
+)
 from fcc_test_platform.application.central_reference_read_adapter import PostgresCentralReferenceReadAdapter
 from fcc_test_platform.application.central_reference_write_adapter import PostgresCentralReferenceWriteAdapter
 from fcc_test_platform.application.central_reference_service import CentralReferenceService
@@ -83,7 +86,10 @@ def main(argv: list[str] | None = None) -> int:
     DSN = args[0]
 
     UNLICENSED_PROVIDER_ID = offered_provider_ids()[0]
-    factory = lambda: psycopg.connect(DSN)
+    # ⚠️ 익명 람다로 연결을 열지 않는다. 어댑터들이 요구하는 것은 «포트»이고,
+    # 그 포트를 만족하는 팩토리는 이미 생산 배선이 갖고 있다 — 라이브 증명이
+    # 증명해야 하는 것도 바로 그 배선이다(여기서 따로 열면 증명 대상이 갈린다).
+    factory = build_central_db_connection_factory(DSN)
     read = PostgresCentralReferenceReadAdapter(factory)
     OFFERED = (UNLICENSED_PROVIDER_ID, 'fcc-mmwave-conducted')
     svc = CentralReferenceService(
@@ -93,7 +99,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     out = {}
     with psycopg.connect(DSN) as c:
-        out['server_version'] = c.execute('SHOW server_version').fetchone()[0]
+        # ⚠️ ``fetchone()`` 은 ``None`` 을 돌려줄 수 있다. ``SHOW`` 가 항상 한 행을
+        # 준다는 것은 사실이지만 **여기 적혀 있지 않은** 사실이고, 비면 첨자에서
+        # ``TypeError`` 로 죽어 「무엇이 없었는지」를 말하지 못한다.
+        server_version_row = c.execute('SHOW server_version').fetchone()
+        if server_version_row is None:
+            raise RuntimeError('SHOW server_version returned no row')
+        out['server_version'] = server_version_row[0]
         out['registered_providers'] = [r[0] for r in c.execute(
             'SELECT provider_id FROM providers').fetchall()]
     out['offered_by_picker'] = list(OFFERED)
