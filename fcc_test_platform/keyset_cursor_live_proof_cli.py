@@ -47,9 +47,9 @@ Target must be a **throwaway database** (see the migration-runner precedent):
 
     createdb fcc_keyset_proof
     FCC_CENTRAL_DB_URL=postgresql://.../fcc_keyset_proof \\
-        python scripts/platform_db_migrate.py migrate
+        fcc-platform-db-migrate migrate
     FCC_KEYSET_PROOF_DB_URL=postgresql://.../fcc_keyset_proof \\
-        python scripts/platform_keyset_cursor_live_proof.py
+        fcc-platform-keyset-cursor-live-proof
 
 ⚠️ 이것은 `scripts/platform_keyset_cursor_live_proof.py` 의 **알맹이**다. `scripts/` 는 패키지가 아니라
 **휠이 나르지 못한다** — 이 레인을 핀으로 받는 소비자에게 그 파일은 오지 않는다.

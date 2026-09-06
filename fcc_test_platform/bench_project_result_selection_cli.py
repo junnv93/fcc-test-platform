@@ -23,7 +23,7 @@ opaque result payload is written to the receipt.
 Usage::
 
     FCC_CENTRAL_DB_BENCHMARK_URL="$FCC_CENTRAL_DB_BENCHMARK_URL" \
-      PYTHONPATH=src:. python scripts/bench_project_result_selection.py \
+      fcc-platform-bench-project-result-selection \
       --seed --explain --json-output path/to/receipt.json
 
 When the dedicated DSN is unavailable the command exits 2 and emits a
@@ -724,7 +724,9 @@ def _redacted_command(argv: Sequence[str] | None, *, dsn: str) -> str:
             redact_next = True
             continue
         redacted.append('<redacted-dsn>' if dsn and item == dsn else item)
-    return shlex.join(['python', 'scripts/bench_project_result_selection.py', *redacted])
+    # ⚠️ 영수증에 «기록되는» 값이다 — 운영자가 재현할 때 이 문자열을 그대로 친다.
+    #    이 배포판에는 `scripts/` 가 실리지 않으므로 경로를 적으면 재현이 죽는다.
+    return shlex.join(['fcc-platform-bench-project-result-selection', *redacted])
 
 
 def _write_receipt(path: str | None, receipt: Mapping[str, Any]) -> None:

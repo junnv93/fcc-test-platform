@@ -13,7 +13,7 @@ The runner is suitable for the SHA-scoped evidence directory once a code cutoff
 has been frozen::
 
     FCC_CENTRAL_DB_URL=... FCC_CENTRAL_DB_UPGRADE_URL=... \
-      PYTHONPATH=src:. python scripts/cross_session_result_selection_evidence.py \
+      fcc-platform-cross-session-result-selection-evidence \
       --json-output .claude/evidence/.../migration-030-fresh.json
 
 DSNs are redacted in receipts. Migration and generated proof-row application are
@@ -364,7 +364,9 @@ def _redacted_command(argv: Sequence[str] | None, *, fresh_dsn: str, upgrade_dsn
             redact_next = True
             continue
         redacted.append('<redacted-dsn>' if item in values else item)
-    return shlex.join(['python', 'scripts/cross_session_result_selection_evidence.py', *redacted])
+    # ⚠️ 영수증에 «기록되는» 값이다 — 운영자가 재현할 때 이 문자열을 그대로 친다.
+    #    이 배포판에는 `scripts/` 가 실리지 않으므로 경로를 적으면 재현이 죽는다.
+    return shlex.join(['fcc-platform-cross-session-result-selection-evidence', *redacted])
 
 
 def _file_hash(path: Path) -> str:
