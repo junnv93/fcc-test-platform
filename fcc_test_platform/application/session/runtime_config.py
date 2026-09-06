@@ -23,6 +23,7 @@ from fcc_test_contracts.common.env_loaders import (
     read_int,
     read_text,
 )
+from fcc_test_platform.application.declared_defaults import declared_default
 from fcc_test_contracts.common.operator_subject import LOCAL_GUI_OPERATOR_SUBJECT
 from fcc_test_contracts.common.rate_limit_config import (
     load_rate_limit_policy,
@@ -255,57 +256,57 @@ class SessionApiConfig:
             switchbox_enabled=read_bool(
                 env,
                 _NON_AUTH_FCC_SESSION_ENV['switchbox_enabled'],
-                default=defaults['switchbox_enabled'].default,
+                default=declared_default(defaults, 'switchbox_enabled', bool),
             ),
             device_less=read_bool(
                 env,
                 _NON_AUTH_FCC_SESSION_ENV['device_less'],
-                default=defaults['device_less'].default,
+                default=declared_default(defaults, 'device_less', bool),
             ),
             manual_bt_call=read_bool(
                 env,
                 _NON_AUTH_FCC_SESSION_ENV['manual_bt_call'],
-                default=defaults['manual_bt_call'].default,
+                default=declared_default(defaults, 'manual_bt_call', bool),
             ),
             ble_minimal_reconfig=read_bool(
                 env,
                 _NON_AUTH_FCC_SESSION_ENV['ble_minimal_reconfig'],
-                default=defaults['ble_minimal_reconfig'].default,
+                default=declared_default(defaults, 'ble_minimal_reconfig', bool),
             ),
             app_title=(
                 read_text(env, _NON_AUTH_FCC_SESSION_ENV['app_title'])
-                or defaults['app_title'].default
+                or declared_default(defaults, 'app_title', str)
             ),
             app_version=read_text(env, _NON_AUTH_FCC_SESSION_ENV['app_version']),
             auth=HttpAuthConfig.from_env(env, prefix=FCC_SESSION_AUTH_ENV_PREFIX),
             event_buffer_size=read_int(
                 env,
                 _NON_AUTH_FCC_SESSION_ENV['event_buffer_size'],
-                default=defaults['event_buffer_size'].default,
+                default=declared_default(defaults, 'event_buffer_size', int),
             ),
             attach_event_bridge=read_bool(
                 env,
                 _NON_AUTH_FCC_SESSION_ENV['attach_event_bridge'],
-                default=defaults['attach_event_bridge'].default,
+                default=declared_default(defaults, 'attach_event_bridge', bool),
             ),
             cors_origins=read_csv(env, _NON_AUTH_FCC_SESSION_ENV['cors_origins']),
             cors_allow_credentials=read_bool(
                 env,
                 _NON_AUTH_FCC_SESSION_ENV['cors_allow_credentials'],
-                default=defaults['cors_allow_credentials'].default,
+                default=declared_default(defaults, 'cors_allow_credentials', bool),
             ),
             ws_heartbeat_seconds=read_float(
                 env,
                 _NON_AUTH_FCC_SESSION_ENV['ws_heartbeat_seconds'],
-                default=defaults['ws_heartbeat_seconds'].default,
+                default=declared_default(defaults, 'ws_heartbeat_seconds', float),
             ),
             operator=(
                 read_text(env, _NON_AUTH_FCC_SESSION_ENV['operator'])
-                or defaults['operator'].default
+                or declared_default(defaults, 'operator', str)
             ),
             runtime_dir=(
                 read_text(env, _NON_AUTH_FCC_SESSION_ENV['runtime_dir'])
-                or defaults['runtime_dir'].default
+                or declared_default(defaults, 'runtime_dir', str)
             ),
             allowed_storage_roots=read_csv(
                 env, _NON_AUTH_FCC_SESSION_ENV['allowed_storage_roots'],
@@ -326,22 +327,22 @@ class SessionApiConfig:
             rate_limit=load_rate_limit_policy(env, prefix=FCC_SESSION_AUTH_ENV_PREFIX),
             node_host=(
                 read_text(env, _NON_AUTH_FCC_SESSION_ENV['node_host'])
-                or defaults['node_host'].default
+                or declared_default(defaults, 'node_host', str)
             ),
             node_port=read_int(
                 env,
                 _NON_AUTH_FCC_SESSION_ENV['node_port'],
-                default=defaults['node_port'].default,
+                default=declared_default(defaults, 'node_port', int),
             ),
             node_readiness_timeout_seconds=read_float(
                 env,
                 _NON_AUTH_FCC_SESSION_ENV['node_readiness_timeout_seconds'],
-                default=defaults['node_readiness_timeout_seconds'].default,
+                default=declared_default(defaults, 'node_readiness_timeout_seconds', float),
             ),
             node_readiness_interval_seconds=read_float(
                 env,
                 _NON_AUTH_FCC_SESSION_ENV['node_readiness_interval_seconds'],
-                default=defaults['node_readiness_interval_seconds'].default,
+                default=declared_default(defaults, 'node_readiness_interval_seconds', float),
             ),
         )
 
