@@ -59,6 +59,20 @@ import 도 되므로 어떤 게이트도 이것을 잡지 못한다 — 실제�
 갈린다. 하나로 모으는 것은 이 파일의 범위가 아니지만, 그 사실을 모르면 여기만 고치고
 「닫혔다」고 읽게 된다.
 
+⚠️ **그리고 「두 자리」로도 부족하다 — rig 자체가 답을 바꾸는 자리가 있다.** 형제 세션
+``fcc-delivery-final-91`` 이 다른 rig(비-editable 설치 + 트리 «밖» venv)로 재서 찾았다:
+``api_composition`` 은 저장소 밖에서 ``FileNotFoundError`` 로 죽는데, **내 rig 에서는
+성공한다**. ``rbac_role_catalog._discover_schema_path`` 가 SSOT 를 «모듈의 조상» 다음
+«cwd 의 조상» 순으로 찾으므로, 모듈이 소스 트리에 있으면(editable) 찾고 site-packages 에
+있으면 못 찾는다. 배포 이미지에서는 ``FCC_PLATFORM_SCHEMA_PATH`` 가 답한다.
+
+    editable (CI: ``pip install -e '.[test]'``)   밖 68+1 실패 중 api_composition 성공
+    비-editable + 트리 밖 venv                    api_composition 실패
+
+⚠️ 그 자리는 두 집합(거부 · 못 잼) **사이로 빠진다** — 안에서 import 되고 밖에서 거부가
+아닌 예외로 죽으므로 어느 쪽도 아니다. 봉인은 두 rig 모두에서 초록이었고, 그 초록이
+차이를 가렸다. 그래서 세 번째 집합(``DECLARED_OUTSIDE_OTHER_FAILURES``)을 두었다.
+
 ⚠️ **검증은 두 자리에서 해야 한다.** 이 헬퍼를 겨누는 봉인
 (``tests/test_repository_artifacts_resolve_for_the_caller.py``)은 pytest 가 저장소 «안»에서
 돌기 때문에 위 표의 아랫줄을 **구조적으로 못 본다** — 관측자가 관측 대상 안에 있다.

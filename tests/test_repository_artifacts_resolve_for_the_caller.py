@@ -274,6 +274,46 @@ class TestToolsThatRequireARepositoryRefuseLoudlyOutsideOne(unittest.TestCase):
             '트리 축이니 고치고, 고칠 수 없는 사유라면 DECLARED_UNMEASURABLE 에 이름을 추가하라.',
         )
 
+    #: ⚠️ 저장소 «밖»에서 **RuntimeError 가 아닌 것으로** 죽는 모듈 — 이름으로 선언한다.
+    #:
+    #: 위 두 집합만으로는 이 자리가 **조용하다**: 이 모듈은 «안»에서 import 되므로
+    #: UNMEASURABLE 이 아니고, 밖에서 거부가 아니라 다른 예외로 죽으므로 REFUSERS 도
+    #: 아니다. 형제 세션 ``fcc-delivery-final-91`` 이 다른 rig 로 재다가 찾았다 —
+    #: 내 rig 에서는 «성공»하고 그쪽에서는 실패하는데, 봉인은 양쪽 다 초록이었다.
+    #:
+    #: ``api_composition`` → ``rbac_role_catalog._discover_schema_path`` 가
+    #: ``docs/platform/central_db_schema.v1.json`` 을 «모듈의 조상» 다음 «cwd 의 조상»
+    #: 순으로 찾고, 못 찾으면 import 시점에 시끄럽게 죽는다(의도다 — 빈 카탈로그로 모든
+    #: authz 를 조용히 403 내는 것보다 낫다). 그래서 답이 **rig 에 달려 있다**:
+    #:
+    #:     editable 설치 (CI: ``pip install -e '.[test]'``)  → 모듈 조상에 소스 트리 → 성공
+    #:     비-editable + 트리 «밖» venv                       → 조상에 아무것도 없음 → 실패
+    #:     배포 이미지                                        → ``FCC_PLATFORM_SCHEMA_PATH`` 가 답한다
+    #:
+    #: ⚠️ 그래서 «포함»으로 묻는다. 등호로 묻으면 rig 를 바꾼 사람이 무관한 red 를 본다.
+    #: 그리고 이 이름이 여기 적혀 있다는 것 자체가 **「이 축은 rig 에 의존한다」는 진술**이다 —
+    #: 빼면 다음 사람이 자기 rig 의 초록을 전체의 답으로 읽는다.
+    DECLARED_OUTSIDE_OTHER_FAILURES = frozenset({
+        'api_composition',
+    })
+
+    def test_outside_failures_that_are_not_the_deliberate_refusal_are_declared(self):
+        """⚠️ 「거부」도 「못 잼」도 아닌 세 번째 모양 — 두 집합 사이로 빠지는 자리."""
+        others = {
+            name: verdict for name, verdict in self.outside.items()
+            if verdict.startswith('other:') and self.inside.get(name) == 'ok'
+        }
+        surprises = {
+            k: v for k, v in others.items() if k not in self.DECLARED_OUTSIDE_OTHER_FAILURES
+        }
+        self.assertEqual(
+            {}, surprises,
+            '저장소 밖에서 «의도된 거부가 아닌» 예외로 죽는 모듈이 선언에 없다.\n'
+            f'  새로 발견 : {surprises}\n'
+            '⚠️ RuntimeError 는 "저장소 안에서 실행하라"는 의도된 거부다. 다른 예외는 그것이 '
+            '아니다 — 자원을 못 찾았거나 rig 에 의존한다는 뜻이고, 어느 쪽인지 갈라야 한다.',
+        )
+
     def test_the_probe_is_not_vacuous_inside_the_repository(self):
         """이빨 ① — «안»에서는 아무도 거부하지 않아야 한다. 그래야 위 집합이 밖의 성질이다."""
         refused_inside = sorted(n for n, v in self.inside.items() if v == 'refused')
