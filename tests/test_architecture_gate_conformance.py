@@ -54,7 +54,22 @@ IMPORTLINTER_INI = REPO_ROOT / '.importlinter'
 
 #: strict 를 강제하는 범위. 저장소 전체가 아니라 domain/* 이다 — 도메인이 순수
 #: (서드파티 의존 0)이라 타입이 가장 잘 서고, 거기서 얻는 규율이 가장 싸다.
-STRICT_SECTION = 'mypy-fcc_test_platform.domain.*'
+#: strict 를 강제하는 절 — **집합이다.**
+#:
+#: ⚠️ 2026-09-06 까지 이것은 문자열 하나(`domain.*`)였다. 그 형태에서는 범위를 한 층
+#:    넓히는 순간 아래 검사가 빨개지고, 그 red 는 「회귀」가 아니라 **「장부를 같이
+#:    고치라」**는 신호다. 그런데 문자열 하나짜리 장부는 그 신호를 「고쳐야 할 검사」로
+#:    보이게 만들어, 다음 사람이 범위를 넓히는 대신 검사를 되돌리도록 유도한다.
+#:    집합으로 두면 층을 더하는 일이 **한 줄 추가**가 되고, 그 한 줄이 곧 선언이다.
+STRICT_SECTIONS = (
+    'mypy-fcc_test_platform.domain.*',
+    'mypy-fcc_test_platform.infrastructure.*',
+)
+
+#: 절 이름에서 패키지 이름을 «파생»한다 — 두 번 적으면 갈라진다.
+STRICT_PACKAGES = tuple(
+    section[len('mypy-'):-len('.*')] for section in STRICT_SECTIONS
+)
 
 #: 예외를 가져서는 안 되는 계약 — 즉 **전부**다. 2026-09-05 S3 착지로 마지막
 #: 등재 2건(`app-no-db`)이 해소되면서 세 계약이 나란히 예외 0건이 됐다.
@@ -227,13 +242,17 @@ class TestTheMypyGateIsDeclared(unittest.TestCase):
             '[tool.mypy]', pyproject,
             '배송이 관리하는 pyproject.toml 에 mypy 설정이 들어갔다 — 배송이 거부한다')
 
-    def test_the_domain_is_strict_and_the_rest_is_not_yet(self):
+    def test_the_declared_layers_are_strict_and_the_rest_is_not_yet(self):
         cfg = _read(MYPY_INI)
-        self.assertIn(STRICT_SECTION, cfg.sections(),
-                      f'{STRICT_SECTION} 절이 없다 — domain 에 strict 가 걸리지 않는다')
-        self.assertTrue(
-            cfg.getboolean(STRICT_SECTION, 'disallow_untyped_defs'),
-            'domain/* 의 disallow_untyped_defs 가 켜져 있지 않다')
+        self.assertTrue(STRICT_SECTIONS, 'strict 절이 하나도 선언되지 않았다 (판정이 vacuous)')
+        for section in STRICT_SECTIONS:
+            with self.subTest(section=section):
+                self.assertIn(
+                    section, cfg.sections(),
+                    f'{section} 절이 없다 — 그 층에 strict 가 걸리지 않는다')
+                self.assertTrue(
+                    cfg.getboolean(section, 'disallow_untyped_defs'),
+                    f'{section} 의 disallow_untyped_defs 가 켜져 있지 않다')
         self.assertFalse(
             cfg.getboolean('mypy', 'disallow_untyped_defs'),
             '저장소 전체 strict 는 아직 합의된 범위가 아니다 — 범위를 넓히려면 '
@@ -396,18 +415,29 @@ class TestTheGatesActuallyRun(unittest.TestCase):
 
     @unittest.skipIf(importlib.util.find_spec('mypy') is None,
                      'mypy 미설치 — 게이트를 돌리려면: pip install mypy')
-    def test_the_domain_has_no_untyped_defs(self):
-        done = self._run([sys.executable, '-m', 'mypy', '-p', 'fcc_test_platform.domain'])
-        report = f'{done.stdout}\n{done.stderr}'
-        # 증거 먼저 — 「한 파일도 안 봤다」가 「오류 없다」로 읽히지 않게.
-        checked = re.search(r'(\d+) source files?', done.stdout)
-        self.assertIsNotNone(
-            checked, f'mypy 가 검사한 파일 수를 보고하지 않았다 — 돌지 않았다:\n{report}')
-        self.assertGreater(
-            int(checked.group(1)), 0, f'mypy 가 0개를 검사했다 — 게이트가 공허하다:\n{report}')
-        self.assertEqual(
-            0, done.returncode, f'domain/* strict 가 깨졌다 (설계서 S1):\n{report}')
-        _publish_evidence(f'mypy 게이트가 돌았다 — {checked.group(0)}')
+    def test_the_strict_layers_have_no_untyped_defs(self):
+        """선언된 «모든» strict 층을 실제로 돌린다.
+
+        ⚠️ 층 목록은 여기 다시 적지 않고 ``STRICT_PACKAGES`` 에서 파생한다. 손으로
+        두 번 적으면 `mypy.ini` 에 층을 더하고 이 검사는 옛 층만 돌리는 날이 온다 —
+        그때 게이트는 **초록인 채로 새 층을 안 본다.**
+        """
+        for package in STRICT_PACKAGES:
+            with self.subTest(package=package):
+                done = self._run([sys.executable, '-m', 'mypy', '-p', package])
+                report = f'{done.stdout}\n{done.stderr}'
+                # 증거 먼저 — 「한 파일도 안 봤다」가 「오류 없다」로 읽히지 않게.
+                checked = re.search(r'(\d+) source files?', done.stdout)
+                self.assertIsNotNone(
+                    checked,
+                    f'{package}: mypy 가 검사한 파일 수를 보고하지 않았다 — 돌지 않았다:\n{report}')
+                self.assertGreater(
+                    int(checked.group(1)), 0,
+                    f'{package}: mypy 가 0개를 검사했다 — 게이트가 공허하다:\n{report}')
+                self.assertEqual(
+                    0, done.returncode,
+                    f'{package} strict 가 깨졌다 (설계서 S1):\n{report}')
+                _publish_evidence(f'mypy 게이트가 돌았다 — {package}: {checked.group(0)}')
 
     @unittest.skipIf(importlib.util.find_spec('importlinter') is None,
                      'import-linter 미설치 — 게이트를 돌리려면: pip install import-linter')
