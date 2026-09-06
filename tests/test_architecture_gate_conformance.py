@@ -64,6 +64,8 @@ IMPORTLINTER_INI = REPO_ROOT / '.importlinter'
 STRICT_SECTIONS = (
     'mypy-fcc_test_platform.domain.*',
     'mypy-fcc_test_platform.infrastructure.*',
+    'mypy-fcc_test_platform.application.session.*',
+    'mypy-fcc_test_platform.application.headless.*',
 )
 
 #: 절 이름에서 패키지 이름을 «파생»한다 — 두 번 적으면 갈라진다.

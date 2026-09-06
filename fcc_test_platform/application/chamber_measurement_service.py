@@ -126,22 +126,30 @@ class ChamberMeasurementService:
             )
         item = self._resolve_idle_chamber(chamber_id)
         try:
-            kwargs = {'published_plan_id': published_plan_id}
-            if snapshot is not None:
-                kwargs.update({
-                    'project_id': project,
-                    'sample_id': sample,
-                    'sample_snapshot': snapshot,
-                    'sample_snapshot_schema_version': snapshot.get('schema_version'),
-                })
-            if reference_snapshot_json is not None:
-                kwargs.update({
-                    'project_result_reference_snapshot_json': reference_snapshot_json,
-                    'project_result_reference_snapshot_schema_version': (
-                        reference_snapshot_schema_version
-                    ),
-                })
-            raw = self._proxy.start_measurement(item['base_url'], **kwargs)
+            # ⚠️ 옛 형태는 dict 를 조건부로 쌓아 ``**kwargs`` 로 넘겼다. 그러면 포트의
+            #    키워드 표면이 **하나도 검사되지 않는다** — 오타 하나가 조용히 무시되고
+            #    (어댑터는 모르는 키를 받지 않으므로 TypeError 로 죽거나 더 나쁘게는
+            #    body 에서 빠진다), mypy 는 이 자리를 arg-type 으로 짚고 있었다.
+            #
+            #    키를 «빼는 것»과 ``None`` 을 «넘기는 것»은 이 포트에서 **등가**다:
+            #    구현체(`chamber_proxy_adapter.start_measurement`)가 인자마다
+            #    ``if X is not None:`` 으로 body 에 넣을지 정한다. 그래서 조건부 dict 없이
+            #    전부 명시해도 노드가 받는 body 는 한 바이트도 달라지지 않는다.
+            raw = self._proxy.start_measurement(
+                item['base_url'],
+                published_plan_id=published_plan_id,
+                project_id=project if snapshot is not None else None,
+                sample_id=sample if snapshot is not None else None,
+                sample_snapshot=snapshot,
+                sample_snapshot_schema_version=(
+                    snapshot.get('schema_version') if snapshot is not None else None
+                ),
+                project_result_reference_snapshot_json=reference_snapshot_json,
+                project_result_reference_snapshot_schema_version=(
+                    reference_snapshot_schema_version
+                    if reference_snapshot_json is not None else None
+                ),
+            )
         except ChamberBusyError as exc:
             # heartbeat 지연 race: 중앙은 IDLE 로 봤으나 노드(권위)가 이미 측정 중이라
             # 409 거부 → 5xx upstream 이 아니라 가용성 충돌로 전파(IDLE 게이트와 동의).

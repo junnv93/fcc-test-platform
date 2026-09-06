@@ -19,7 +19,7 @@ PySide6 / fastapi / sqlalchemy / psycopg import 0).
 """
 from __future__ import annotations
 
-from typing import Mapping, Protocol, runtime_checkable
+from typing import Mapping, Optional, Protocol, runtime_checkable
 
 
 __all__ = [
@@ -85,4 +85,42 @@ class CentralChamberWritePort(Protocol):
         연결/트랜잭션 실패는 :class:`ChamberWriteError`(→ 503, 서버 장애). 구현체는
         이 둘을 섞어서는 안 된다.
         """
+        ...
+
+    # ── 노드 설정 축 ───────────────────────────────────────────────────────────
+    #
+    # ⚠️ 2026-09-06 추가. 이 다섯은 **이미 서비스가 부르고 어댑터가 구현하고** 있었는데
+    #    포트에는 선언돼 있지 않았다. 즉 이 프로토콜은 「등록 + heartbeat」 둘만
+    #    약속하면서 실제로는 일곱을 요구했다 — 그 사이의 다섯은 **다른 구현체가
+    #    빠뜨려도 타입 검사를 통과하고 런타임에 죽는** 자리였다.
+    #    (mypy 가 `central_chamber_write_service.py` 에서 attr-defined 5건으로 짚었다.)
+    #
+    #    시그니처는 발명한 것이 아니라 서비스의 호출부에서 그대로 읽었다 —
+    #    `_opt_text(...) -> Optional[str]` · `_opt_bool(...) -> Optional[bool]` ·
+    #    `_require_equipment_patch(...) -> Mapping`.
+
+    def update_chamber_storage_root(
+        self, chamber_id: str, *, artifact_storage_root: Optional[str], updated_at: str,
+    ) -> dict:
+        """이 챔버의 산출물 저장 루트를 갱신하고 갱신된 행을 반환한다."""
+        ...
+
+    def update_chamber_web_session_approval(
+        self, chamber_id: str, *, accepts_web_sessions: Optional[bool], updated_at: str,
+    ) -> dict:
+        """이 챔버가 웹 세션을 받는지 여부를 갱신하고 갱신된 행을 반환한다."""
+        ...
+
+    def read_chamber_settings(self, chamber_id: str) -> dict:
+        """노드 범위 설정 1행. 알 수 없는 챔버는 «빈 답이 아니라» 404 로 갈린다."""
+        ...
+
+    def read_chamber_equipment_config(self, chamber_id: str) -> dict:
+        """이 챔버의 계측기 연결 설정 1행."""
+        ...
+
+    def patch_chamber_equipment_config(
+        self, chamber_id: str, *, patch: Mapping, updated_at: str,
+    ) -> dict:
+        """계측기 연결 설정을 부분 갱신하고 갱신된 행을 반환한다."""
         ...

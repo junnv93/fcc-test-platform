@@ -307,11 +307,16 @@ def _decode_config(raw: object) -> dict:
         return {}
     if isinstance(raw, Mapping):
         source: object = raw
-    else:
+    elif isinstance(raw, (str, bytes, bytearray)):
         try:
             source = json.loads(raw)
-        except (TypeError, ValueError):
+        except ValueError:
             return {}
+    else:
+        # ⚠️ 옛 형태는 무엇이든 ``json.loads`` 에 넘기고 ``TypeError`` 를 함께 잡아
+        #    ``{}`` 를 돌려줬다. 결과는 같지만 «무엇을 파싱할 수 있는지»가 예외
+        #    처리기에 숨어 있었다 — 여기서 형으로 적는다.
+        return {}
     if not isinstance(source, Mapping):
         return {}
     return {

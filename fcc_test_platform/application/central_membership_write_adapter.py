@@ -21,7 +21,7 @@ Design (mirrors ``PostgresCentralClaimWriteAdapter``):
 """
 from __future__ import annotations
 
-from typing import Callable, Mapping, Optional
+from typing import Callable, Mapping, Optional, TypeVar
 
 from fcc_test_platform.application.central_rbac_read_adapter import (
     MEMBERSHIP_COLUMNS,
@@ -87,6 +87,9 @@ SELECT_MEMBERSHIP_WITH_SUBJECT_SQL = (
     f'JOIN "{USERS_TABLE}" u ON u."id" = pm."user_id" '
     'WHERE "pm"."project_id" = %s AND "pm"."user_id" = %s AND "pm"."role_key" = %s'
 )
+
+
+_T = TypeVar('_T')
 
 
 class PostgresCentralMembershipWriteAdapter:
@@ -165,7 +168,11 @@ class PostgresCentralMembershipWriteAdapter:
 
         return self._in_transaction(_txn)
 
-    def _in_transaction(self, body: Callable[[object], Optional[dict]]) -> Optional[dict]:
+    # ⚠️ 제네릭이다. 옛 형태는 언제나 ``Optional[dict]`` 을 돌려준다고 적었고, 그래서
+    #    「``_txn`` 이 None 을 돌려줄 수 없는」 호출부(행이 없으면 raise 한다)조차 그
+    #    Optional 을 물려받았다. 호출부마다 가드를 덧대는 대신 여기서 «넘긴 것을 그대로
+    #    돌려준다»고 적는다 — 그것이 이 함수가 실제로 하는 일이다.
+    def _in_transaction(self, body: Callable[[object], _T]) -> _T:
         try:
             connection = self._connection_factory()
         except Exception as exc:  # noqa: BLE001

@@ -12,6 +12,7 @@ from typing import Mapping
 
 from fcc_test_contracts.common.auth_config import HttpAuthConfig
 from fcc_test_contracts.common.env_loaders import read_paths, read_text
+from fcc_test_platform.application.declared_defaults import declared_default
 from fcc_test_contracts.common.rate_limit_config import (
     load_rate_limit_policy,
     rate_limit_env_map,
@@ -92,7 +93,7 @@ class HeadlessApiConfig:
             report_output_dir=read_text(env, _NON_AUTH_HEADLESS_API_ENV['report_output_dir']),
             app_title=(
                 read_text(env, _NON_AUTH_HEADLESS_API_ENV['app_title'])
-                or defaults['app_title'].default
+                or declared_default(defaults, 'app_title', str)
             ),
             app_version=read_text(env, _NON_AUTH_HEADLESS_API_ENV['app_version']),
             download_signing_secret=read_text(

@@ -388,19 +388,52 @@ def measurement_staging_passes_m1(manifest: Mapping) -> bool:
     return not measurement_staging_unmet_pass_criteria(manifest)
 
 
+def _mapping_at(source: Mapping, key: str) -> Mapping:
+    """``source[key]`` 가 Mapping 이면 그것, 아니면 빈 Mapping.
+
+    ⚠️ 저자의 가드를 **바꾸는 것이 아니라 보이게** 만든다. 옛 형태는::
+
+        equipment = (manifest.get('equipment')
+                     if isinstance(manifest.get('equipment'), Mapping) else {})
+
+    로 같은 키를 **두 번** 읽었다. ``isinstance`` 는 첫 번째 호출의 결과를 좁히고
+    대입되는 것은 **두 번째 호출의 결과**라, 런타임은 옳은데 타입은 여전히
+    ``Any | dict | None`` 이었다 — mypy 가 이 파일에서 22건을 짚은 이유가 그것이다.
+    한 번만 읽으면 그 가드가 그대로 타입이 된다.
+    """
+    value = source.get(key)
+    if isinstance(value, Mapping):
+        return value
+    return {}
+
+
+def _sequence_at(source: Mapping, key: str) -> Sequence:
+    """``source[key]`` 가 (문자열 아닌) 시퀀스면 그것, 아니면 빈 목록.
+
+    ⚠️ ``_is_list`` 를 부르지 않고 그 술어를 **여기 펼친다.** 그 함수는 ``bool`` 을
+    돌려주므로 mypy 가 반환값을 좁히지 못한다 — 술어를 밖에 두면 이 헬퍼 자신이
+    다시 ``Any | None`` 을 돌려주게 된다. 판정 규칙은 그 함수와 **같다**
+    (문자열·바이트는 시퀀스가 아니다).
+    """
+    value = source.get(key)
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+        return value
+    return []
+
+
 def measurement_staging_pass_summary(manifest: Mapping) -> list[PassCriterion]:
     """Evaluate every M1 pass criterion (met + detail), in plan order."""
     if not isinstance(manifest, Mapping):
         manifest = {}
-    machines = manifest.get('machines') if _is_list(manifest.get('machines')) else []
-    equipment = manifest.get('equipment') if isinstance(manifest.get('equipment'), Mapping) else {}
-    measurement = manifest.get('measurement') if isinstance(manifest.get('measurement'), Mapping) else {}
-    progress = measurement.get('progress') if isinstance(measurement.get('progress'), Mapping) else {}
-    start = measurement.get('start') if isinstance(measurement.get('start'), Mapping) else {}
-    correlation = manifest.get('correlation') if isinstance(manifest.get('correlation'), Mapping) else {}
-    restart = manifest.get('restart_partition') if isinstance(manifest.get('restart_partition'), Mapping) else {}
-    fleet = manifest.get('fleet_partition') if isinstance(manifest.get('fleet_partition'), Mapping) else {}
-    timeline = manifest.get('timeline') if _is_list(manifest.get('timeline')) else []
+    machines = _sequence_at(manifest, 'machines')
+    equipment = _mapping_at(manifest, 'equipment')
+    measurement = _mapping_at(manifest, 'measurement')
+    progress = _mapping_at(measurement, 'progress')
+    start = _mapping_at(measurement, 'start')
+    correlation = _mapping_at(manifest, 'correlation')
+    restart = _mapping_at(manifest, 'restart_partition')
+    fleet = _mapping_at(manifest, 'fleet_partition')
+    timeline = _sequence_at(manifest, 'timeline')
 
     machine_count = _distinct_physical_machine_count(machines)
     analyzer = _real_value(equipment.get('analyzer_resource'))

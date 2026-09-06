@@ -52,7 +52,7 @@ import threading
 import time as _time
 import uuid
 from collections import OrderedDict
-from typing import Callable, Mapping, Optional
+from typing import Callable, Mapping, Optional, Protocol
 
 from fcc_test_contracts.common.access_policy import ApiPrincipal
 from fcc_test_contracts.common.api_error_codes import ErrorCode
@@ -839,6 +839,39 @@ class LoginSprayingDetector:
         return fingerprint_digest(self._secret, value)
 
 
+class _RotationDenial(Protocol):
+    """회전이 거부됐을 때 스로틀이 돌려주는 사유.
+
+    ⚠️ 서비스는 이 둘을 **실제로 읽는다** — 경고 메시지의 ``retry_after`` 와,
+    호출자에게 올리는 ``RefreshRotationLimitedError`` 의 두 필드다. 그러므로
+    「None 인지만 본다」로 적으면 거짓이 된다.
+    """
+
+    @property
+    def retry_after_seconds(self) -> int:
+        """이 주체가 다시 회전할 수 있을 때까지 남은 초."""
+        ...
+
+    @property
+    def limit(self) -> int:
+        """발화한 예산. ``RefreshRotationLimitedError(rate_limit=...)`` 가 ``int`` 를
+        선언하므로 여기서도 ``int`` 다 — ``object`` 로 적었더니 그 자리가 즉시 빨개졌고,
+        그것이 이 표면의 실제 계약이라는 증거다."""
+        ...
+
+
+class _RotationThrottle(Protocol):
+    """이 서비스가 회전 스로틀에 요구하는 **전부**.
+
+    ⚠️ 옛 선언은 ``rotation_throttle: object`` 였다 — 무엇을 갖춘 객체를 넣어야 하는지가
+    코드 어디에도 없었고, 호출부는 그 답을 구현체를 읽어서 알아내야 했다.
+    """
+
+    def charge(self, subject: object) -> Optional[_RotationDenial]:
+        """이 주체의 회전 예산을 1 소모한다. 거부면 그 사유를, 아니면 ``None``."""
+        ...
+
+
 class LocalAuthService:
     """비밀번호 로그인 유스케이스."""
 
@@ -851,7 +884,7 @@ class LocalAuthService:
         clock: Callable[[], object],
         revocation_list: Optional[TokenRevocationList] = None,
         spraying_detector: Optional[LoginSprayingDetector] = None,
-        rotation_throttle: object = None,
+        rotation_throttle: Optional['_RotationThrottle'] = None,
         id_factory: Callable[[], str] = lambda: str(uuid.uuid4()),
         epoch_clock: Callable[[], int] = lambda: int(_time.time()),
     ) -> None:
@@ -963,13 +996,21 @@ class LocalAuthService:
         # 로그아웃·비밀번호 변경은 사람이 *"이 세션을 끝내겠다"* 고 결정한 것이라
         # 그 표시를 달지 않는다.
         token_id = claims.get('jti')
-        claimed = self._revocations is not None and self._revocations.claim(
-            token_id,
-            expires_at=float(claims.get('exp') or 0),
-            custodian=self._custodian_for(claims),
-            churn=True,
-        )
-        if self._revocations is not None and not claimed:
+        # ⚠️ bool 이 아니라 **「claim 한 목록」 자체**를 든다. 저자가 아래 되돌림
+        #    자리의 주석으로 적던 불변식 — *claimed 이면 목록이 있다* — 을 산문이 아니라
+        #    **타입**으로 만든다. 옛 형태(``claimed: bool``)에서는 되돌리는 자리에서
+        #    ``self._revocations`` 가 여전히 Optional 이라, 그 불변식을 사람만 알았다.
+        #    단락 평가와 호출 순서는 옛 형태와 같다(목록이 없으면 ``claim`` 을 안 부른다).
+        revocations = self._revocations
+        claimed_from = revocations if (
+            revocations is not None and revocations.claim(
+                token_id,
+                expires_at=float(claims.get('exp') or 0),
+                custodian=self._custodian_for(claims),
+                churn=True,
+            )
+        ) else None
+        if revocations is not None and claimed_from is None:
             raise InvalidCredentialsError('invalid refresh token')
 
         try:
@@ -1036,11 +1077,11 @@ class LocalAuthService:
             #
             # 되돌리는 동안 그 키는 계속 목록에 있었으므로 위 원자성은 유지된다.
             #
-            # ⚠️ ``claimed`` 를 묻지 ``_revocations is not None`` 만 묻지 않는다 —
+            # ⚠️ ``claimed_from`` 을 묻지 ``_revocations is not None`` 만 묻지 않는다 —
             # 목록이 없는 구성(폐기 목록 미배선)에서는 claim 이 일어나지 않았으므로
             # 되돌릴 것도 없고, 그 경우에 ``release`` 를 부르면 ``None`` 에 접근한다.
-            if claimed:
-                self._revocations.release(token_id)
+            if claimed_from is not None:
+                claimed_from.release(token_id)
             raise
 
         return self._issue_pair(user, session_version=user.get('session_version'))
@@ -1434,7 +1475,17 @@ class LocalAuthService:
 
     def _issue_pair(self, user: Mapping, *, session_version: object) -> dict:
         issued_at = self._epoch()
-        version = int(session_version or 0)
+        # ⚠️ 조용히 0 으로 만들지 «않는다». 세션 버전은 강제 로그아웃의 축이고,
+        #    알 수 없는 형을 0 으로 접으면 그 비교가 «항상 일치»로 무너진다 —
+        #    옛 ``int(session_version or 0)`` 도 그런 형에는 죽었다(TypeError).
+        #    여기서는 무엇이 왔는지를 메시지에 담아 죽는다.
+        raw_version = session_version or 0
+        if not isinstance(raw_version, (int, float, str)):
+            raise TypeError(
+                f'session_version must be numeric or text, '
+                f'got {type(raw_version).__name__}'
+            )
+        version = int(raw_version)
         force_change = bool(
             user.get('force_password_change')
             or user.get('password_changed_at') is None
