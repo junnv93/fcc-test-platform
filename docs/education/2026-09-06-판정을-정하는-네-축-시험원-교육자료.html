@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>초록은 무엇을 검사했는지 말하지 않는다 — 시험원 교육자료</title>
+    <!--
+      이 파일은 네트워크 없이 열린다 — 외부 글꼴·스크립트·이미지를 부르지 않는다.
+      시험실 PC 에서 더블클릭으로 여는 것이 이 문서의 기본 사용법이기 때문이다.
+      선례: docs/education/2026-09-06-조용한-결함-시험원-교육자료.html
+    -->
+  </head>
+  <body>
+<style>
+  :root {
+    --ground:      #F5F7FA;
+    --surface:     #FFFFFF;
+    --surface-2:   #EDF1F6;
+    --ink:         #12171F;
+    --ink-2:       #4A5566;
+    --ink-3:       #77839A;
+    --rule:        #D3DAE4;
+    --rule-2:      #B9C3D1;
+    --accent:      #1B4F8C;
+    --accent-soft: #E4EDF8;
+    --bad:         #A93318;
+    --bad-soft:    #FBE9E4;
+    --good:        #17654A;
+    --good-soft:   #E1F0E9;
+
+    --f-sans: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+    --f-mono: "Cascadia Mono", Consolas, "D2Coding", "SFMono-Regular", monospace;
+
+    --measure: 66ch;
+    --pad: clamp(1.1rem, 4vw, 2.5rem);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0F131A;
+      --surface:     #161C25;
+      --surface-2:   #1D242F;
+      --ink:         #E7ECF3;
+      --ink-2:       #A7B2C2;
+      --ink-3:       #7C879A;
+      --rule:        #2A323E;
+      --rule-2:      #3B4553;
+      --accent:      #74AAE8;
+      --accent-soft: #182636;
+      --bad:         #EC8368;
+      --bad-soft:    #2C1D18;
+      --good:        #55C295;
+      --good-soft:   #14261F;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #0F131A;
+    --surface:     #161C25;
+    --surface-2:   #1D242F;
+    --ink:         #E7ECF3;
+    --ink-2:       #A7B2C2;
+    --ink-3:       #7C879A;
+    --rule:        #2A323E;
+    --rule-2:      #3B4553;
+    --accent:      #74AAE8;
+    --accent-soft: #182636;
+    --bad:         #EC8368;
+    --bad-soft:    #2C1D18;
+    --good:        #55C295;
+    --good-soft:   #14261F;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-sans);
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+  }
+
+  .wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: var(--pad) var(--pad) 5rem;
+  }
+
+  /* ─── 흐름: 산문은 좁게, 그림·표는 넓게 ─────────────────────── */
+  .flow > * { max-width: var(--measure); }
+  .flow > .wide { max-width: 100%; }
+
+  /* ─── 표제 ──────────────────────────────────────────────── */
+  .masthead {
+    border-top: 3px solid var(--ink);
+    padding-top: 1.1rem;
+    margin-bottom: 3rem;
+  }
+  .kicker {
+    font-family: var(--f-mono);
+    font-size: .72rem;
+    font-weight: 500;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem 1.4rem;
+    margin-bottom: 1rem;
+  }
+  h1 {
+    font-size: clamp(1.85rem, 5.2vw, 3rem);
+    font-weight: 600;
+    line-height: 1.18;
+    letter-spacing: -.02em;
+    text-wrap: balance;
+    margin: 0 0 .9rem;
+  }
+  .standfirst {
+    font-size: clamp(1rem, 2.4vw, 1.16rem);
+    color: var(--ink-2);
+    font-weight: 300;
+    max-width: 58ch;
+    margin: 0;
+  }
+  .standfirst strong { font-weight: 600; color: var(--ink); }
+
+  /* ─── 결과 스트립 ───────────────────────────────────────── */
+  .strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin: 2.5rem 0 3.5rem;
+  }
+  .strip div { background: var(--surface); padding: 1rem 1.1rem; }
+  .strip dt {
+    font-family: var(--f-mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: .45rem;
+  }
+  .strip dd {
+    margin: 0;
+    font-family: var(--f-mono);
+    font-size: 1.32rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
+  }
+  .strip dd small {
+    display: block;
+    font-family: var(--f-sans);
+    font-size: .78rem;
+    font-weight: 400;
+    color: var(--ink-2);
+    letter-spacing: 0;
+    margin-top: .2rem;
+  }
+  .n-good { color: var(--good); }
+  .n-bad  { color: var(--bad); }
+
+  /* ─── 절 ────────────────────────────────────────────────── */
+  section { margin-top: 4rem; }
+  h2 {
+    font-size: clamp(1.25rem, 3vw, 1.6rem);
+    font-weight: 600;
+    letter-spacing: -.015em;
+    line-height: 1.3;
+    text-wrap: balance;
+    margin: 0 0 .35rem;
+    padding-top: .9rem;
+    border-top: 1px solid var(--rule-2);
+  }
+  h2 .num {
+    font-family: var(--f-mono);
+    font-size: .74rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: .1em;
+    display: block;
+    margin-bottom: .5rem;
+  }
+  h3 {
+    font-size: 1.02rem;
+    font-weight: 600;
+    margin: 2.3rem 0 .5rem;
+    letter-spacing: -.005em;
+  }
+  p { margin: 0 0 1.05rem; }
+  .lede { color: var(--ink-2); margin-bottom: 1.8rem; }
+
+  code, .mono { font-family: var(--f-mono); font-size: .875em; }
+  code {
+    background: var(--surface-2);
+    padding: .1em .34em;
+    border-radius: 2px;
+    word-break: break-all;
+  }
+  strong { font-weight: 600; }
+  em { font-style: normal; background: var(--accent-soft); padding: .05em .3em; }
+
+  ul, ol { margin: 0 0 1.05rem; padding-left: 1.3rem; }
+  li { margin-bottom: .5rem; }
+  li::marker { color: var(--ink-3); }
+
+  /* ─── 그림 ──────────────────────────────────────────────── */
+  figure {
+    margin: 2rem 0 2.4rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 1.4rem 1.2rem 1rem;
+    overflow-x: auto;
+  }
+  figure svg { display: block; width: 100%; min-width: 480px; height: auto; }
+  figcaption {
+    margin-top: 1rem;
+    padding-top: .8rem;
+    border-top: 1px solid var(--rule);
+    font-size: .84rem;
+    line-height: 1.6;
+    color: var(--ink-2);
+    min-width: 480px;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  .svg-box   { fill: var(--surface-2); stroke: var(--rule-2); }
+  .svg-lbl   { fill: var(--ink); font-family: "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+  .svg-sub   { fill: var(--ink-3); color: var(--ink-3); font-family: "Noto Sans KR", "Malgun Gothic", sans-serif; font-size: 11.5px; }
+  .svg-edge  { stroke: var(--rule-2); fill: none; stroke-width: 1.6; }
+  .svg-bad   { stroke: var(--bad); fill: none; stroke-width: 2; }
+  .svg-good  { stroke: var(--good); fill: none; stroke-width: 2; }
+  .svg-badtx { fill: var(--bad); font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 600; }
+  .svg-gootx { fill: var(--good); font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 600; }
+  .svg-hd    { fill: var(--ink-3); font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; letter-spacing: .1em; }
+
+  /* ─── 표 ────────────────────────────────────────────────── */
+  .tablebox { overflow-x: auto; margin: 1.6rem 0 2rem; border: 1px solid var(--rule); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: .88rem; }
+  th, td { text-align: left; padding: .62rem .85rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th {
+    font-family: var(--f-mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .m { font-family: var(--f-mono); font-size: .84em; word-break: break-all; }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--f-mono);
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    padding: .1rem .42rem;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .tag-bad  { color: var(--bad); background: var(--bad-soft); }
+  .tag-good { color: var(--good); background: var(--good-soft); }
+
+  /* ─── 강조 블록 ─────────────────────────────────────────── */
+  .note {
+    border-left: 3px solid var(--accent);
+    background: var(--surface);
+    padding: 1.1rem 1.2rem;
+    margin: 1.8rem 0;
+  }
+  .note.warn { border-left-color: var(--bad); }
+  .note > :last-child { margin-bottom: 0; }
+  .note .hd {
+    font-family: var(--f-mono);
+    font-size: .7rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: .5rem;
+  }
+
+  /* ─── 다음 세션 멘트 ────────────────────────────────────── */
+  .prompt-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: .7rem;
+  }
+  button.copy {
+    font-family: var(--f-mono);
+    font-size: .74rem;
+    letter-spacing: .06em;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    padding: .38rem .8rem;
+    cursor: pointer;
+  }
+  button.copy:hover { background: var(--surface-2); }
+  button.copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  pre.prompt {
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    padding: 1.1rem 1.2rem;
+    margin: 0;
+    overflow-x: auto;
+    font-family: var(--f-mono);
+    font-size: .795rem;
+    line-height: 1.72;
+    white-space: pre-wrap;
+    word-break: break-word;
+    tab-size: 2;
+  }
+
+  footer {
+    margin-top: 4.5rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--rule-2);
+    font-size: .8rem;
+    color: var(--ink-3);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  /* 이 문서가 더하는 것 — 화살표 머리와 「떨어져 나가는 칸」. 색은 전부 토큰이라
+     라이트/다크 어느 쪽에서도 배경과 같은 세트로 해소된다. */
+  .mk-rule { fill: var(--rule-2); }
+  .mk-bad  { fill: var(--bad); }
+  .mk-good { fill: var(--good); }
+  .svg-drop { fill: var(--bad-soft); stroke: var(--bad); stroke-dasharray: 4 3; }
+  .svg-hit  { fill: var(--bad-soft); stroke: var(--bad); }
+  .svg-ok   { fill: var(--good-soft); stroke: var(--good); }
+  .svg-tick { fill: var(--surface-2); stroke: var(--rule-2); }
+  .svg-cap  { fill: var(--ink-2); font-family: "Noto Sans KR", "Malgun Gothic", sans-serif; font-size: 12px; }
+  .svg-num  { fill: var(--ink-3); font-family: "Cascadia Mono", Consolas, monospace; font-size: 10px; }
+  .ledger { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin: 1.6rem 0 2rem; }
+  @media (min-width: 640px) { .ledger { grid-template-columns: repeat(4, 1fr); } }
+  .ledger div { background: var(--surface); padding: .95rem 1.05rem; }
+  .ledger dt { font-family: var(--f-mono); font-size: .68rem; letter-spacing: .1em; color: var(--ink-3); text-transform: uppercase; }
+  .ledger dd { margin: .35rem 0 0; font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 1.45rem; }
+  .ledger dd small { display: block; font-size: .72rem; font-family: var(--f-sans); color: var(--ink-3); margin-top: .2rem; letter-spacing: 0; }
+</style>
+<style>
+  /* 이 문서가 더하는 것 — 「축」 비교 격자와 판정 흐름도. 색은 전부 토큰이다. */
+  .axis { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin: 1.6rem 0 2rem; }
+  @media (min-width: 720px) { .axis { grid-template-columns: repeat(4, 1fr); } }
+  .axis > div { background: var(--surface); padding: 1rem 1.05rem; }
+  .axis h3 { margin: 0 0 .45rem; font-size: .95rem; letter-spacing: -.01em; }
+  .axis .ax-n { font-family: var(--f-mono); font-size: .68rem; letter-spacing: .12em; color: var(--ink-3); display: block; margin-bottom: .3rem; }
+  .axis p { margin: 0; font-size: .86rem; color: var(--ink-2); line-height: 1.55; }
+  .axis code { font-size: .78rem; }
+  .ledger { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin: 1.6rem 0 2rem; }
+  @media (min-width: 640px) { .ledger { grid-template-columns: repeat(4, 1fr); } }
+  .ledger div { background: var(--surface); padding: .95rem 1.05rem; }
+  .ledger dt { font-family: var(--f-mono); font-size: .68rem; letter-spacing: .1em; color: var(--ink-3); text-transform: uppercase; }
+  .ledger dd { margin: .35rem 0 0; font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 1.45rem; }
+  .ledger dd small { display: block; font-size: .72rem; font-family: var(--f-sans); color: var(--ink-3); margin-top: .2rem; letter-spacing: 0; }
+  .svg-cap  { fill: var(--ink-2); font-family: "Noto Sans KR", "Malgun Gothic", sans-serif; font-size: 12px; }
+  .svg-num  { fill: var(--ink-3); font-family: "Cascadia Mono", Consolas, monospace; font-size: 10px; }
+  .mk-rule { fill: var(--rule-2); }
+  .mk-bad  { fill: var(--bad); }
+  .mk-good { fill: var(--good); }
+  .svg-ok   { fill: var(--good-soft); stroke: var(--good); }
+  .svg-hit  { fill: var(--bad-soft); stroke: var(--bad); }
+  .svg-tick { fill: var(--surface-2); stroke: var(--rule-2); }
+</style>
+
+<header class="masthead">
+  <div class="kicker">
+    <span>fcc-test-platform · 모노레포</span>
+    <span>착지 13건</span>
+    <span>2026-09-06</span>
+  </div>
+  <h1 class="hd">초록은 무엇을 검사했는지 말하지 않는다</h1>
+  <p class="standfirst">
+    이 세션은 <strong>판정 자체를 고쳤다.</strong> 경계 계약을 지키는 게이트가 CI 에서
+    <strong>한 번도 돌지 않고</strong> 초록을 내고 있었고, 그 사실은 통과 수로는 보이지 않았다.
+    같은 커밋이 초록도 빨강도 되는 자리가 <strong>이번 세션에서만 아홉 번</strong> 나왔고,
+    그중 다섯은 사람이 아니라 다른 세션이 다시 재서 찾았다.
+    이 문서는 그 아홉 개가 무엇이었는지, 그리고 <strong>빨간 줄을 만났을 때 시험원이
+    무엇을 하면 되는지</strong>를 적는다.
+  </p>
+</header>
+
+<div class="flow">
+
+<!-- ═══════════════════════════════════════════════════════ 01 -->
+<section>
+  <h2><span class="n">01</span> 이 세션이 처분한 것</h2>
+  <p class="lede">
+    저장소 셋에 걸쳐 13건이 착지했다. 아래 넷이 이 문서가 다루는 축이다.
+  </p>
+
+  <dl class="ledger">
+    <div>
+      <dt>돌지 않던 게이트</dt>
+      <dd>3<small>경계 계약. CI 에서 0회 실행</small></dd>
+    </div>
+    <div>
+      <dt>낡아서 빨갛던 시험</dt>
+      <dd>20 → 0<small>호출 형태가 2년 전 계약</small></dd>
+    </div>
+    <div>
+      <dt>간헐 실패 발생률</dt>
+      <dd>3.6%<small>8 / 220 회 · 결정적</small></dd>
+    </div>
+    <div>
+      <dt>내가 틀린 판정</dt>
+      <dd>9<small>스스로 잡은 것 4</small></dd>
+    </div>
+  </dl>
+
+  <div class="tablebox">
+    <table>
+      <thead>
+        <tr><th>무엇</th><th>전</th><th>후</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>경계 계약 게이트(import-linter)</td><td class="n-bad">CI 에서 skip</td><td class="n-good">Analyzed 260 files, 1307 dependencies · KEPT 3회</td></tr>
+        <tr><td>mypy 게이트가 보는 층</td><td class="n-bad">domain 하나 (하드코딩)</td><td class="n-good">domain 54 + infrastructure 11</td></tr>
+        <tr><td>architecture_gate 의 skip</td><td class="n-bad">2건 (사유가 바뀌며 계속 빠짐)</td><td class="n-good">0건</td></tr>
+        <tr><td>tests/test_platform_project_entry.py</td><td class="n-bad">20 failed / 19 passed</td><td class="n-good">39 passed / 0 failed</td></tr>
+        <tr><td>모노레포 소비 표면</td><td>101 모듈 / 400 이름</td><td class="n-good">101/101 · 400/400 해소</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 02 -->
+<section>
+  <h2><span class="n">02</span> 같은 커밋이 초록도 되고 빨강도 된다</h2>
+  <p class="lede">
+    「이 시험이 통과했다」는 문장은 커밋 하나만으로 정해지지 않는다. 넷이 더 정한다.
+    이번 세션의 오판 아홉 개는 <strong>전부 이 넷 중 하나를 안 고정한 것</strong>이었다.
+  </p>
+
+  <div class="axis">
+    <div>
+      <span class="ax-n">축 1</span>
+      <h3>게이트가 돌았는가</h3>
+      <p>도구가 설치되지 않았거나 선행조건에서 빠지면 <strong>검사하지 않고 통과</strong>한다. 「위반 없음」과 구분되지 않는다.</p>
+    </div>
+    <div>
+      <span class="ax-n">축 2</span>
+      <h3>어느 설치본인가</h3>
+      <p>같은 시험 파일이라도 <code>fcc-test-platform</code> 이 v0.1.9 냐 v0.1.11 이냐에 따라 답이 갈린다.</p>
+    </div>
+    <div>
+      <span class="ax-n">축 3</span>
+      <h3>어디서 돌렸는가</h3>
+      <p>작업 폴더 위치와 <code>__pycache__</code> 상태가 결과를 바꾼다. 코드는 한 글자도 안 달라진다.</p>
+    </div>
+    <div>
+      <span class="ax-n">축 4</span>
+      <h3>무엇으로 찾았는가</h3>
+      <p>「없다」는 도구가 닿은 범위 안에서만 참이다. 범위를 안 적으면 그 주장은 반증할 수 없다.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <div class="hd">이 넷을 고정하지 않으면 생기는 일</div>
+    <p>
+      결과가 참이어도 <strong>이유가 틀린다.</strong> 이번 세션에서 형제 세션이
+      「판올림이 시그니처를 옮겼다」고 보고했는데, 축 2 를 고정해 재 보니
+      <strong>두 판의 시그니처가 완전히 같았다.</strong> 빨간 것은 사실이었고 원인이 달랐다.
+      원인이 틀리면 다음 사람이 v0.1.9 로 되돌려 보고 안 고쳐지는 것을 발견한다.
+    </p>
+  </div>
+</section>
+<!-- ═══════════════════════════════════════════════════════ 03 -->
+<section>
+  <h2><span class="n">03</span> 축 1 — 게이트가 돌았는가</h2>
+  <p class="lede">
+    경계 계약 셋(레이어 순서 · 도메인 순수성 · SQL 은 infrastructure 에서만)을 지키는 게이트가
+    있었다. 그 게이트는 <strong>CI 에서 한 번도 돌지 않았다.</strong> 두 겹으로 빠졌기 때문이다.
+  </p>
+
+  <figure class="wide">
+    <svg viewBox="0 0 720 200" role="img" aria-label="게이트가 두 겹으로 빠지는 과정">
+      <rect x="8" y="40" width="150" height="58" rx="3" class="svg-tick"/>
+      <text x="83" y="65" text-anchor="middle" class="svg-cap">게이트 시작</text>
+      <text x="83" y="83" text-anchor="middle" class="svg-num">test_the_three_contracts_hold</text>
+
+      <path d="M162 69 L200 69" stroke="var(--rule-2)" stroke-width="1.5" fill="none"/>
+      <polygon points="200,69 193,65 193,73" class="mk-rule"/>
+
+      <rect x="204" y="30" width="150" height="78" rx="3" class="svg-hit" stroke-width="1.5"/>
+      <text x="279" y="53" text-anchor="middle" class="svg-cap">겹 1 — 도구가 없다</text>
+      <text x="279" y="71" text-anchor="middle" class="svg-num">import-linter 미설치</text>
+      <text x="279" y="88" text-anchor="middle" class="svg-num">→ skip</text>
+
+      <path d="M358 69 L396 69" stroke="var(--rule-2)" stroke-width="1.5" fill="none"/>
+      <polygon points="396,69 389,65 389,73" class="mk-rule"/>
+
+      <rect x="400" y="30" width="164" height="78" rx="3" class="svg-hit" stroke-width="1.5"/>
+      <text x="482" y="53" text-anchor="middle" class="svg-cap">겹 2 — 형제 레인이 없다</text>
+      <text x="482" y="71" text-anchor="middle" class="svg-num">옆 폴더를 찾는다 → CI 엔 없다</text>
+      <text x="482" y="88" text-anchor="middle" class="svg-num">→ skip</text>
+
+      <path d="M568 69 L606 69" stroke="var(--rule-2)" stroke-width="1.5" fill="none"/>
+      <polygon points="606,69 599,65 599,73" class="mk-rule"/>
+
+      <rect x="610" y="40" width="102" height="58" rx="3" class="svg-ok" stroke-width="1.5"/>
+      <text x="661" y="65" text-anchor="middle" class="svg-cap">초록</text>
+      <text x="661" y="83" text-anchor="middle" class="svg-num">PASSED</text>
+
+      <text x="360" y="146" text-anchor="middle" class="svg-cap">두 겹은 사유가 다르지만 화면에는 «똑같이» 통과로 보인다</text>
+      <text x="360" y="168" text-anchor="middle" class="svg-num">겹 1 을 고쳐도 겹 2 가 받는다 — 사유만 바뀌고 결과는 그대로다</text>
+    </svg>
+    <figcaption>도구 미설치와 「필요한 것이 없다」는 서로 다른 사유인데, 통과 화면에서는 구분되지 않는다.</figcaption>
+  </figure>
+
+  <p>
+    <strong>고친 방법은 통과 수를 세는 것이 아니었다.</strong> 같은 위반을 코드에 넣고
+    게이트가 무엇이라 말하는지 봤다. 넣은 것은 한 줄이다 —
+    <code>application</code> 층에 데이터베이스 드라이버 <code>import psycopg</code>.
+  </p>
+
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>같은 위반을 넣었을 때</th><th>게이트의 답</th></tr></thead>
+      <tbody>
+        <tr><td>고치기 전 main</td><td class="n-bad">10 passed · 종료코드 0 — <strong>위반이 있는데 초록</strong></td></tr>
+        <tr><td>고친 뒤 main</td><td class="n-good">1 failed — 위반한 줄을 이름으로 지목</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <div class="hd">시험원이 가져갈 것</div>
+    <p>
+      「통과했다」는 <strong>「검사했고 위반이 없다」와 「검사하지 않았다」를 같은 화면으로
+      보여 준다.</strong> 그래서 게이트를 붙였다는 주장은 통과 수의 증가가 아니라
+      <strong>위반을 넣었을 때 빨개지는가</strong>로 확인한다.
+      지금은 로그에 증거가 남는다 —
+      <code>GateEvidence: import-linter 게이트가 돌았다 — Analyzed 260 files, 1307 dependencies · KEPT 3회</code>.
+      그 줄이 없으면 게이트가 안 돈 것이다.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 04 -->
+<section>
+  <h2><span class="n">04</span> 축 2 — 어느 설치본인가</h2>
+  <p class="lede">
+    시험 파일은 그대로 두고 <strong>설치된 부품만 바꿔 두 번 돌리면</strong>, 빨간 것이
+    「이번 판올림 때문」인지 「원래 그랬는지」가 갈린다. 이번 세션에서 두 번 값을 냈다.
+  </p>
+
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>사례</th><th>v0.1.9 로 돌리면</th><th>v0.1.11 로 돌리면</th><th>판정</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>목록 길이가 어긋나던 시험</td>
+          <td class="n-good">통과 3 / 3</td>
+          <td class="n-bad">실패 3 / 3</td>
+          <td><strong>판올림이 드러냈다</strong> — 원래 13번째 값이 조용히 버려지고 있었다</td>
+        </tr>
+        <tr>
+          <td><code>create_project</code> 를 부르던 시험 둘</td>
+          <td class="n-bad">실패 2</td>
+          <td class="n-bad">실패 2</td>
+          <td><strong>판올림과 무관</strong> — 예외 문구까지 같다</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    아래가 첫 번째 사례의 알맹이다. 데이터베이스 조회가 <strong>12칸</strong>을 돌려주는데
+    시험이 <strong>13칸</strong>짜리 가짜 응답을 주고 있었다. 예전 방식은 짧은 쪽에 맞춰
+    조용히 잘랐고, 그래서 <strong>13번째 값은 몇 년 동안 버려지면서도 초록이었다.</strong>
+  </p>
+
+  <figure class="wide">
+    <svg viewBox="0 0 720 168" role="img" aria-label="12칸 조회에 13칸 응답을 주면 마지막 칸이 버려진다">
+      <text x="8" y="26" class="svg-cap">조회가 돌려주는 칸 (12)</text>
+      <g>
+        <rect x="8" y="36" width="46" height="26" rx="2" class="svg-tick"/><text x="31" y="54" text-anchor="middle" class="svg-num">1</text>
+        <rect x="58" y="36" width="46" height="26" rx="2" class="svg-tick"/><text x="81" y="54" text-anchor="middle" class="svg-num">2</text>
+        <rect x="108" y="36" width="46" height="26" rx="2" class="svg-tick"/><text x="131" y="54" text-anchor="middle" class="svg-num">…</text>
+        <rect x="158" y="36" width="46" height="26" rx="2" class="svg-tick"/><text x="181" y="54" text-anchor="middle" class="svg-num">11</text>
+        <rect x="208" y="36" width="46" height="26" rx="2" class="svg-tick"/><text x="231" y="54" text-anchor="middle" class="svg-num">12</text>
+      </g>
+
+      <text x="8" y="94" class="svg-cap">시험이 주던 가짜 응답 (13)</text>
+      <g>
+        <rect x="8" y="104" width="46" height="26" rx="2" class="svg-ok" stroke-width="1.4"/><text x="31" y="122" text-anchor="middle" class="svg-num">1</text>
+        <rect x="58" y="104" width="46" height="26" rx="2" class="svg-ok" stroke-width="1.4"/><text x="81" y="122" text-anchor="middle" class="svg-num">2</text>
+        <rect x="108" y="104" width="46" height="26" rx="2" class="svg-ok" stroke-width="1.4"/><text x="131" y="122" text-anchor="middle" class="svg-num">…</text>
+        <rect x="158" y="104" width="46" height="26" rx="2" class="svg-ok" stroke-width="1.4"/><text x="181" y="122" text-anchor="middle" class="svg-num">11</text>
+        <rect x="208" y="104" width="46" height="26" rx="2" class="svg-ok" stroke-width="1.4"/><text x="231" y="122" text-anchor="middle" class="svg-num">12</text>
+        <rect x="258" y="104" width="46" height="26" rx="2" class="svg-hit" stroke-width="1.4" stroke-dasharray="4 3"/><text x="281" y="122" text-anchor="middle" class="svg-num">13</text>
+      </g>
+      <path d="M281 100 L281 78" stroke="var(--bad)" stroke-width="1.4" fill="none"/>
+      <polygon points="281,72 277,80 285,80" class="mk-bad"/>
+      <text x="300" y="80" class="svg-cap">이 칸은 갈 곳이 없다 → 예전엔 조용히 버려졌다</text>
+      <text x="300" y="120" class="svg-cap">지금은 여기서 멈춘다: 「13 ≠ 12」</text>
+    </svg>
+    <figcaption>고친 뒤에는 두 수를 대며 자기 자리에서 멈춘다 — 조회 안쪽에서 알 수 없는 오류가 나는 대신.</figcaption>
+  </figure>
+</section>
+<!-- ═══════════════════════════════════════════════════════ 05 -->
+<section>
+  <h2><span class="n">05</span> 축 3 — 어디서 돌렸는가</h2>
+  <p class="lede">
+    코드가 한 글자도 안 달라져도 결과가 달라지는 자리가 둘 있었다. 둘 다 이번 세션에서 실측했다.
+  </p>
+
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>바꾼 것</th><th>결과</th><th>왜</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>작업 폴더를 저장소 <strong>밖</strong>에 두고 실행</td>
+          <td class="n-bad">101 중 <strong>94</strong>만 해소</td>
+          <td>7개 모듈이 시작할 때 <code>docs/platform/central_db_schema.v1.json</code> 을 찾는다. 저장소 밖에서는 그 파일이 없다</td>
+        </tr>
+        <tr>
+          <td>임시 캐시(<code>__pycache__</code>)를 지우고 실행</td>
+          <td class="n-bad">경고가 24 → 28 로</td>
+          <td>일부 경고는 파일을 «처음 읽을 때»만 나온다. 캐시가 있으면 안 나온다</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <div class="hd">이것이 왜 판정을 뒤집나</div>
+    <p>
+      두 번째 것 때문에 <strong>「증가분이 전부 설명되는가」 회계가 틀릴 뻔했다.</strong>
+      경고가 6 늘었는데 내가 더한 것은 2줄뿐이었다. 나머지 4는 캐시를 지운 쪽에서만 나오던 것이고,
+      캐시 상태를 양쪽에서 같게 맞추니 정확히 2가 됐다.
+      <strong>수를 세어 논증할 거면 두 번의 실행 조건이 같아야 한다.</strong>
+      더 나은 방법은 수가 아니라 <strong>이름 목록</strong>을 비교하는 것이다 — 이름은 캐시에 흔들리지 않는다.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 06 -->
+<section>
+  <h2><span class="n">06</span> 축 4 — 무엇으로 찾았는가</h2>
+  <p class="lede">
+    「그런 파일은 없다」를 세 번 잘못 말했다. 세 번 다 <strong>도구가 닿은 범위</strong>가
+    말뭉치의 경계와 달랐다.
+  </p>
+
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>내가 한 말</th><th>실제</th><th>무엇이 좁았나</th></tr></thead>
+      <tbody>
+        <tr><td>「그 검사 축이 0건이다」</td><td>있었다 — 이름이 달랐을 뿐</td><td><strong>이름</strong>으로 찾았다. 성질로 찾으니 27개가 나왔다</td></tr>
+        <tr><td>「그 게이트가 상자에 없다」</td><td>같은 형태가 27개 있었다</td><td><strong>형태</strong>는 갔고 이 «대상»만 안 갔다</td></tr>
+        <tr><td>「그 파일이 저장소에 없다」</td><td>깊이 5 에 있었다</td><td><code>find -maxdepth 3</code> — <strong>도구가 닿을 수 없는 명령</strong>이었다</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <figure class="wide">
+    <svg viewBox="0 0 720 150" role="img" aria-label="검색 깊이 3은 깊이 5의 파일에 닿지 못한다">
+      <text x="8" y="24" class="svg-cap">폴더 깊이</text>
+      <g>
+        <rect x="8" y="36" width="118" height="30" rx="2" class="svg-tick"/><text x="67" y="56" text-anchor="middle" class="svg-num">1 .claude</text>
+        <rect x="134" y="36" width="118" height="30" rx="2" class="svg-tick"/><text x="193" y="56" text-anchor="middle" class="svg-num">2 skills</text>
+        <rect x="260" y="36" width="118" height="30" rx="2" class="svg-tick"/><text x="319" y="56" text-anchor="middle" class="svg-num">3 harness</text>
+        <rect x="386" y="36" width="118" height="30" rx="2" class="svg-tick"/><text x="445" y="56" text-anchor="middle" class="svg-num">4 references</text>
+        <rect x="512" y="36" width="180" height="30" rx="2" class="svg-hit" stroke-width="1.5"/><text x="602" y="56" text-anchor="middle" class="svg-num">5 example-prompts.md</text>
+      </g>
+      <path d="M8 84 L378 84" stroke="var(--good)" stroke-width="2.5" fill="none"/>
+      <polygon points="378,84 371,80 371,88" class="mk-good"/>
+      <text x="8" y="106" class="svg-cap">내 명령이 본 범위 — 여기까지</text>
+      <path d="M512 84 L692 84" stroke="var(--bad)" stroke-width="2.5" stroke-dasharray="5 4" fill="none"/>
+      <text x="512" y="106" class="svg-cap">찾던 파일은 여기 있었다</text>
+      <text x="8" y="136" class="svg-cap">결과: 「0건」 — 도구는 정직했고, 질문의 범위가 틀렸다</text>
+    </svg>
+    <figcaption>도구는 거짓말하지 않았다. 「없다」가 「내 도구가 닿는 곳에 없다」였을 뿐이다.</figcaption>
+  </figure>
+
+  <div class="note">
+    <div class="hd">그래서 부재는 이렇게 적는다</div>
+    <p>
+      <code>X 0건 (검색: &lt;명령 그대로&gt;, 범위: &lt;경로 · 깊이 · 판본&gt;)</code>
+    </p>
+    <p>
+      범위를 적으면 다음 사람이 <strong>더 넓은 도구로 반증할 수 있다.</strong> 안 적으면 못 한다 —
+      그리고 <strong>반증할 수 없는 「없다」는 그냥 믿어진다.</strong>
+      이번에 내가 스스로 못 잡고 다른 세션이 잡았다.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 07 -->
+<section>
+  <h2><span class="n">07</span> 「재현이 안 된다」는 「없다」가 아니다</h2>
+  <p class="lede">
+    한 시험 파일이 부하가 걸리면 가끔 빨개졌다. 관측은 <strong>다섯 번</strong>이었고
+    <strong>매번 실패하는 이름이 달랐다.</strong> 그래서 오랫동안 원인이 닫히지 않았다.
+  </p>
+
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>어떻게 찾으려 했나</th><th>결과</th><th>뜻</th></tr></thead>
+      <tbody>
+        <tr><td>파일 전체를 12개 동시에, 24회 반복</td><td class="n-bad">재현 0건</td><td>이 방법으로는 안 잡힌다 <strong>(← 틀린 결론)</strong></td></tr>
+        <tr><td>취약한 시험 하나만, 순서대로 반복</td><td class="n-good">220회 중 8회 = <strong>3.6%</strong></td><td>잡힌다. 훨씬 싸다</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    <strong>24회에서 0건이 나올 확률은 3.6% 아래에서 42%다.</strong> 즉 그 관측은
+    「없다」의 근거가 아니라 <strong>거의 아무 정보도 없는 결과</strong>였다.
+    귀무 결과를 주장으로 바꾸려면 발생률을 먼저 재고 몇 회가 필요한지 계산해야 한다.
+  </p>
+
+  <p>
+    원인은 <strong>확률이 아니라 시각</strong>이었다. 그 시험들은 초 단위 시계를 쓰는데,
+    시험이 도는 동안 초가 넘어가면 앞뒤 값이 1 달라진다. 넘어가는 «지점»을 매개변수로 훑으니
+    어느 시험이 깨지는지가 정확히 정해졌다.
+  </p>
+
+  <figure class="wide">
+    <svg viewBox="0 0 720 168" role="img" aria-label="초가 넘어가는 지점에 따라 깨지는 시험이 달라진다">
+      <text x="8" y="24" class="svg-cap">초가 넘어가는 지점 (호출 번째)</text>
+      <line x1="8" y1="76" x2="700" y2="76" stroke="var(--rule-2)" stroke-width="1.5"/>
+      <g class="svg-num" text-anchor="middle">
+        <circle cx="40" cy="76" r="6" fill="var(--surface-2)" stroke="var(--rule-2)"/><text x="40" y="100">0</text>
+        <circle cx="122" cy="76" r="6" fill="var(--surface-2)" stroke="var(--rule-2)"/><text x="122" y="100">1</text>
+        <circle cx="204" cy="76" r="6" fill="var(--surface-2)" stroke="var(--rule-2)"/><text x="204" y="100">3</text>
+        <circle cx="286" cy="76" r="8" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="2"/><text x="286" y="100">5</text>
+        <circle cx="368" cy="76" r="6" fill="var(--surface-2)" stroke="var(--rule-2)"/><text x="368" y="100">8</text>
+        <circle cx="450" cy="76" r="6" fill="var(--surface-2)" stroke="var(--rule-2)"/><text x="450" y="100">12</text>
+        <circle cx="532" cy="76" r="8" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="2"/><text x="532" y="100">40</text>
+        <circle cx="614" cy="76" r="6" fill="var(--surface-2)" stroke="var(--rule-2)"/><text x="614" y="100">200</text>
+      </g>
+      <text x="286" y="52" text-anchor="middle" class="svg-cap">공격자 회전</text>
+      <text x="532" y="52" text-anchor="middle" class="svg-cap">회전 폭주</text>
+      <text x="8" y="134" class="svg-cap">빨간 두 지점에서만 깨진다 — 그리고 그 두 이름이 야생에서 관측된 이름과 «정확히» 같았다</text>
+      <text x="8" y="154" class="svg-num">나머지 지점: 73 passed</text>
+    </svg>
+    <figcaption>확률처럼 보였던 것은 결정적이었다. 실행 시점이 지점을 고를 뿐이다.</figcaption>
+  </figure>
+
+  <div class="note">
+    <div class="hd">시험원이 가져갈 것</div>
+    <p>
+      <strong>이 시험이 빨개지면 그 시험 하나만 다시 돌려 보면 된다.</strong>
+      발생률이 3.6% 이므로 아무 세션의 push 나 막을 수 있고, 코드 변경 탓이 아닐 가능성이 높다.
+      그리고 <strong>「다시 돌리니 통과했다」를 「기계가 바빴다」의 근거로 읽지 마라</strong> —
+      통과한 이유는 부하가 없어서가 아니라 지점을 다시 뽑았기 때문이고, 그 둘은 화면에서 구분되지 않는다.
+    </p>
+  </div>
+</section>
+<!-- ═══════════════════════════════════════════════════════ 08 -->
+<section>
+  <h2><span class="n">08</span> 빨간 줄을 만났을 때 — 판정 순서</h2>
+  <p class="lede">
+    아래 순서는 이번 세션에서 실제로 값을 낸 것만 남긴 것이다. 위에서부터 싸고, 아래로 갈수록 비싸다.
+  </p>
+
+  <figure class="wide">
+    <svg viewBox="0 0 720 300" role="img" aria-label="빨간 줄을 만났을 때 밟는 다섯 단계">
+      <g>
+        <rect x="8" y="14" width="704" height="44" rx="3" class="svg-tick"/>
+        <text x="24" y="34" class="svg-cap">1 — 그 시험 «하나»만 다시 돌린다</text>
+        <text x="24" y="50" class="svg-num">통과하면 간헐 실패다. 로그를 파일로 받아 실패 «이름»을 남긴다 — 화면만 보면 사라진다</text>
+      </g>
+      <g>
+        <rect x="8" y="66" width="704" height="44" rx="3" class="svg-tick"/>
+        <text x="24" y="86" class="svg-cap">2 — 그 실패가 main 에도 있는지 본다</text>
+        <text x="24" y="102" class="svg-num">있으면 내 변경 탓이 아니다. 「내 브랜치가 빨갛다」와 「내가 깨뜨렸다」는 다른 문장이다</text>
+      </g>
+      <g>
+        <rect x="8" y="118" width="704" height="44" rx="3" class="svg-tick"/>
+        <text x="24" y="138" class="svg-cap">3 — 설치본을 바꿔 같은 트리를 다시 돌린다</text>
+        <text x="24" y="154" class="svg-num">판올림 탓인지 원래 그랬는지가 여기서 갈린다. 이번 세션에서 두 번 값을 냈다</text>
+      </g>
+      <g>
+        <rect x="8" y="170" width="704" height="44" rx="3" class="svg-tick"/>
+        <text x="24" y="190" class="svg-cap">4 — 실행 조건을 맞춘다</text>
+        <text x="24" y="206" class="svg-num">작업 폴더는 저장소 루트에. 수를 비교할 거면 캐시를 양쪽에서 지운다</text>
+      </g>
+      <g>
+        <rect x="8" y="222" width="704" height="44" rx="3" class="svg-ok" stroke-width="1.5"/>
+        <text x="24" y="242" class="svg-cap">5 — 고쳤다면, 위반을 다시 넣어 빨개지는지 본다</text>
+        <text x="24" y="258" class="svg-num">초록이 된 것과 검사가 사는 것은 다르다. 넣은 위반이 «착지했는지»도 함께 확인한다</text>
+      </g>
+      <text x="8" y="288" class="svg-num">⚠ 5 를 건너뛰면 「고쳤다」가 「검사를 껐다」와 구분되지 않는다</text>
+    </svg>
+    <figcaption>이 순서는 원인을 좁히는 순서다. 1~2 는 몇 초, 3~4 는 몇 분, 5 는 그보다 조금 더 걸린다.</figcaption>
+  </figure>
+
+  <div class="note">
+    <div class="hd">이번 세션에서 5번을 건너뛸 뻔한 자리</div>
+    <p>
+      위반을 넣었는데 <strong>넣은 것이 파일에 안 들어간 경우가 다섯 번</strong> 있었다 —
+      따옴표가 안 맞아서, 시험 이름을 잘못 짚어 <strong>0개가 수집돼서</strong>, 바꿀 문자열이 두 곳인데
+      한 곳만 봐서. 그 다섯은 전부 <strong>정상적인 초록과 구분되지 않는 화면</strong>을 냈다.
+      그래서 주입을 걸면 <strong>바뀐 줄을 눈으로 확인하고</strong>, 수집된 시험 수도 함께 본다.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 09 -->
+<section>
+  <h2><span class="n">09</span> 아직 초록인 채로 남아 있는 것</h2>
+  <p class="lede">
+    다음 세션이 이어받을 것 셋이다. 셋 다 <strong>지금 화면상으로는 문제가 없어 보인다.</strong>
+  </p>
+
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>무엇</th><th>지금 보이는 것</th><th>실제</th><th>누가 다치나</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>개발용 초기 데이터 넣기</strong><br><span class="svg-num">scripts/dev_seed/central.py</span></td>
+          <td class="n-good">시험 100건 전부 통과</td>
+          <td class="n-bad">실제로 돌리면 <strong>첫 줄에서 죽는다</strong> — 서비스가 그 인자 9개를 전부 거부한다</td>
+          <td>새 환경을 세우는 사람</td>
+        </tr>
+        <tr>
+          <td><strong>도구가 안내하는 명령</strong><br><span class="svg-num">설치된 상자 안 32종</span></td>
+          <td class="n-good">진입점 37개가 생겼다</td>
+          <td class="n-bad">도구가 안내하는 <strong>옛 경로 32종</strong>은 이제 어디에도 없다</td>
+          <td>안내를 따라가는 운영자</td>
+        </tr>
+        <tr>
+          <td><strong>대상이 떠난 검사</strong><br><span class="svg-num">경로 25종</span></td>
+          <td class="n-bad">이미 빨갛다 (오래됨)</td>
+          <td class="n-bad">검사가 보던 파일이 다른 저장소로 갔다. <strong>지우면 그 단언이 양쪽 어디에도 없게 된다</strong></td>
+          <td>다음 회귀를 놓치는 우리 전부</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <div class="hd">첫째 줄이 왜 제일 급한가</div>
+    <p>
+      그 시험이 통과하는 이유는 <strong>시험용 가짜가 옛 계약을 그대로 보존</strong>하기 때문이다 —
+      진짜 서비스가 거부하는 모양을 가짜는 받아 준다. 그러면 그 검사는
+      <strong>현실이 아니라 과거를 검사한다.</strong> 그리고 고치는 데는 판단이 하나 필요하다:
+      데모 프로젝트 6개 중 <strong>3개가 지금 필수인 값을 안 갖고 있다.</strong>
+      그 값을 정하는 것은 기계적 변환이 아니라 <strong>데이터 결정</strong>이라 이번 세션은
+      발명하지 않고 규모만 남겼다.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 10 -->
+<section>
+  <h2><span class="n">10</span> 다음 세션에 그대로 넣을 말</h2>
+  <p class="lede">
+    아래를 복사해 다음 세션의 첫 지시로 쓰면 된다. <strong>왜</strong> 그 일을 해야 하는지가 함께 들어 있다.
+  </p>
+
+  <div class="prompt-head">
+    <span>다음 세션에 그대로 붙여 넣을 것</span>
+    <button class="copy" type="button" data-copy>복사</button>
+  </div>
+<pre class="prompt wide" id="next-prompt">이어서 「초록인데 현실과 어긋난 것」 셋을 처분하라. 순서는 아래대로,
+그리고 각 단계는 «고쳤다»가 아니라 «검사가 산다»로 닫아라.
+
+■ 왜 지금인가
+이번 라운드에서 판정이 아홉 번 뒤집혔고 그중 다섯은 다른 세션이 다시 재서 찾았다.
+남은 셋은 전부 «화면상 정상»이라 아무도 다시 재지 않으면 그대로 굳는다.
+그리고 셋 중 둘은 사람이 실제로 따라가다 실패하는 자리다.
+
+① scripts/dev_seed/central.py — 런타임에서 깨져 있고 시험은 100건 초록이다   [P2]
+   실측: 실제 서비스는 그 호출의 인자 9개를 «전부» 거부한다(TypeError).
+        그중 customer 는 폐기된 필드이고 값은 applicant_name 으로 옮겨졌다.
+   왜 초록인가: tests/test_dev_seed_central.py 의 가짜가
+        def create_project(self, *, model_name, actor_subject, **cover)
+        로 옛 계약을 보존해 진짜가 거부하는 모양을 받아 준다.
+   ⚠️ 호출부만 고치면 안 된다 — 데모 spec 6개 중 3개(DEMO-PROJ-02·04·06)가
+      지금 필수인 model_name·management_number·applicant_name 을 안 채운다.
+      그 값을 정하는 것은 «데이터 결정»이다. 운영자에게 물어라.
+   처분 셋이 함께 가야 한다: ⓐ 호출부를 body 형태로 ⓑ 3개 spec 의 필수 값
+      ⓒ 가짜 시그니처를 진짜와 맞추기. ⓒ 없이 ⓐⓑ만 하면 다음 계약 변경에서 반복된다.
+   장부: .claude/exec-plans/tech-debt-tracker.md
+        [2026-09-06 dev-seed-create-project-runtime-break]
+
+② 상자가 안내하는 죽은 경로 32종 (fcc-test-platform)                        [P2]
+   실측: 설치된 v0.1.11 안에 scripts/platform_*.py 리터럴 32종 · 담은 모듈 35개 ·
+        상자 안에 실재하는 것 0/32. cutover_workflow_hints.py 는 그것을
+        suggested_command 로 «반환»한다.
+   ⚠️ 진입점 37개를 세운 봉인은 이 자리를 못 본다 — 그것은 「명령이 존재하는가」를
+      보고, 이 결함은 「도구가 무엇을 출력하는가」다.
+   ⚠️ 상자에 test_the_package_never_tells_anyone_to_run_scripts.py 가 이미 있고
+      선언 기준선 셋을 예외로 두고 있다. 새 봉인을 세우지 말고 «그 예외 목록을
+      비워라» — 마지막 항목이 빠지는 순간 봉인이 자동으로 전면 적용된다.
+
+③ 대상이 떠난 검사 25종 (모노레포)                                          [P3]
+   장부: [2026-09-06 departed-subject-gates]
+   ⚠️ 지우지 마라 — 상자에 대응물이 없어서 지우면 그 단언이 양쪽 어디에도 없어진다.
+   게이트마다 한 질문으로 갈라라: 「이 게이트가 감시하는 코드는 지금 어디서 나오는가」
+        레인에서 난다  → 게이트를 레인으로 이사
+        아직 여기서 난다 → 경로만 수리
+        산출물을 소비할 뿐 → 설치본을 가리키게
+   칸별 수는 안 쟀다. 그 분류가 이 항목의 첫 측정이다.
+
+■ 판정 규약 (이번 라운드에서 값을 낸 것만)
+- 고쳤으면 «위반을 다시 넣어» 빨개지는지 보라. 그리고 넣은 것이 «착지했는지»도 —
+  이번 라운드에서 무착지 주입이 다섯 번 정상적인 초록과 구분되지 않았다.
+- 「없다」를 적을 때는 검색 명령과 범위를 함께 적어라. 반증 불가능한 부재는 그냥 믿어진다.
+- 「재현 안 됨」은 발생률을 재기 전엔 아무 뜻도 없다(0/24 는 3.6%에서 42% 확률).
+- 수를 비교할 거면 캐시 상태를 양쪽에서 맞추고, 되도록 수가 아니라 «이름 집합»으로 비교하라.
+- 남의 레포·레인에서 시작하기 전에 그 세션이 살아 있는지부터 보라
+  (워크트리 mtime 이 아니라 전사 mtime). 이번 라운드에서 세 번 중복했다.
+
+push·병합·태그·컨테이너 재기동은 승인 지점이다. 17항목 자기감사 규약을 지킬 것.</pre>
+</section>
+
+</div>
+
+<footer>
+  <p>
+    fcc-test-platform · FCC_mobile_test_automation · 2026-09-06 ·
+    이 문서의 모든 수치는 이 세션에서 직접 측정한 값이다. 측정 방법이 적히지 않은 수치는 없다.
+  </p>
+</footer>
+
+<script>
+  document.querySelector('[data-copy]')?.addEventListener('click', (event) => {
+    const button = event.currentTarget;
+    const text = document.getElementById('next-prompt').textContent;
+    navigator.clipboard?.writeText(text).then(
+      () => { button.textContent = '복사됨'; setTimeout(() => { button.textContent = '복사'; }, 1600); },
+      () => { button.textContent = '복사 실패'; }
+    );
+  });
+</script>
+  </body>
+</html>
