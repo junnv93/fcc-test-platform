@@ -41,9 +41,13 @@ and because a second hasher would make a chamber's etag comparison meaningless.
 from __future__ import annotations
 
 import json
-from typing import Callable, Mapping, Optional, Sequence
+from typing import Callable, Iterable, Mapping, Optional, Sequence
 
 from fcc_test_kernel.domain.models.reference_catalog import RevisionState
+from fcc_test_platform.application.central_db_surfaces import (
+    RowConnection,
+    RowCursor,
+)
 from fcc_test_platform.domain.ports.output.central_reference_port import (
     CentralReferenceError,
     ReferenceProviderNotFoundError,
@@ -199,6 +203,27 @@ _ENTRY_PAYLOAD_UPDATE = (
     'UPDATE "reference_entries" SET "payload_json" = %s, "content_sha256" = %s '
     'WHERE "revision_id" = %s AND "reference_id" = %s'
 )
+
+
+def _condition_ids(value: object) -> list:
+    """``test_condition_ids`` 를 목록으로 — 문자열은 **거절한다**.
+
+    ⚠️ 옛 코드는 ``list(value or [])`` 였다. 포트가 이 항목을 ``Mapping[str, object]``
+    로 선언한 뒤 mypy 가 그것을 짚었고(`No overload variant of "list" matches argument
+    type "object"`), 그 자리를 들여다보니 **문자열이 오면 글자 단위로 쪼개**
+    ``["a","b","c"]`` 를 적고 있었다 — 조건 하나를 세 개로 만드는 조용한 오기다.
+    None/빈 값은 빈 목록으로 되돌아가는 옛 동작을 그대로 둔다.
+    """
+    if not value:
+        return []
+    if isinstance(value, (str, bytes)):
+        raise ValueError(
+            'test_condition_ids must be a sequence of ids, not a single string — '
+            f'got {value!r}'
+        )
+    if not isinstance(value, Iterable):
+        raise ValueError(f'test_condition_ids must be iterable, got {type(value).__name__}')
+    return list(value)
 
 
 class PostgresCentralReferenceWriteAdapter:
@@ -367,7 +392,7 @@ class PostgresCentralReferenceWriteAdapter:
 
     @staticmethod
     def _raise_entry_edit_reason(
-        cursor, revision_id: str, expected_etag: str,
+        cursor: RowCursor, revision_id: str, expected_etag: str,
     ) -> None:
         """Say WHY nothing moved, without parsing a driver message.
 
@@ -404,8 +429,9 @@ class PostgresCentralReferenceWriteAdapter:
         content_sha256: str,
         provenance_kind: str,
         updated_by: str,
-        additions,
-        removals,
+        # ⚠️ ``CentralReferencePort`` 가 이미 이 둘을 선언한다 — 여기서 베낀다.
+        additions: Sequence[Mapping[str, object]],
+        removals: Sequence[str],
     ) -> dict:
         """Insert and delete rows, and move the revision header, in one transaction.
 
@@ -457,7 +483,11 @@ class PostgresCentralReferenceWriteAdapter:
                         entry['reference_id'],
                         entry['identity_key'],
                         json.dumps(entry['payload'], sort_keys=True),
-                        json.dumps(list(entry.get('test_condition_ids') or [])),
+                        # ⚠️ 포트가 이 항목을 ``Mapping[str, object]`` 로 선언하자
+                        #    ``list(…)`` 가 「object 를 list() 에 넣는다」로 드러났다.
+                        #    문자열이 오면 옛 코드는 **글자 단위로 쪼개** 조용히 틀린
+                        #    조건 목록을 적었다 — 그것을 여기서 이름으로 거절한다.
+                        json.dumps(_condition_ids(entry.get('test_condition_ids'))),
                         entry.get('effective_from'),
                         entry.get('effective_to'),
                         entry.get('source_sheet_name'),
@@ -629,7 +659,7 @@ class PostgresCentralReferenceWriteAdapter:
             ) from exc
 
     @staticmethod
-    def _rollback(connection) -> None:
+    def _rollback(connection: RowConnection) -> None:
         rollback = getattr(connection, 'rollback', None)
         if callable(rollback):
             try:
@@ -638,7 +668,7 @@ class PostgresCentralReferenceWriteAdapter:
                 pass
 
     @staticmethod
-    def _close(connection) -> None:
+    def _close(connection: RowConnection) -> None:
         close: Optional[Callable] = getattr(connection, 'close', None)
         if callable(close):
             close()

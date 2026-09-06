@@ -1,9 +1,13 @@
 """Central PostgreSQL users JIT-provisioning write adapter."""
 from __future__ import annotations
 
-from typing import Callable, Mapping, Optional
+from typing import Callable, Mapping, Optional, TypeVar
 
 from fcc_test_contracts.common.identity import canonical_issuer
+from fcc_test_platform.application.central_db_surfaces import (
+    RowConnection,
+    RowCursor,
+)
 from fcc_test_platform.domain.ports.output.central_user_write_port import UserWriteError
 from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
@@ -40,6 +44,9 @@ _RETURNING_COLUMNS: tuple[str, ...] = (
 )
 
 
+_T = TypeVar('_T')
+
+
 class PostgresCentralUserWriteAdapter:
     """``CentralUserWritePort`` — idempotent users upsert on issuer+subject."""
 
@@ -53,7 +60,7 @@ class PostgresCentralUserWriteAdapter:
         materialized['issuer'] = canonical_issuer(materialized.get('issuer'))
         values = tuple(materialized.get(column) for column in USER_INSERT_COLUMNS)
 
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             cursor.execute(UPSERT_USER_SQL, values)
             row = cursor.fetchone()
             if row is None:
@@ -64,7 +71,12 @@ class PostgresCentralUserWriteAdapter:
         assert result is not None
         return result
 
-    def _in_transaction(self, body: Callable[[object], Optional[dict]]) -> Optional[dict]:
+    # ⚠️ 옛 선언은 ``Callable[[object], …]`` 이었다 — 「본문에 **아무거나** 넘긴다」는
+    #    뜻이고, 그것은 거짓이다: 이 러너는 언제나 **커서**를 넘긴다. 그 거짓이
+    #    본문의 인자를 ``RowCursor`` 로 적는 순간 드러난다(Callable 은 인자에 대해
+    #    **반변**이므로 커서를 받는 본문은 object 를 받는 자리에 못 들어간다).
+    #    반환도 마찬가지다 — 「넘긴 것을 그대로 돌려준다」가 이 함수가 하는 일이다.
+    def _in_transaction(self, body: Callable[[RowCursor], _T]) -> _T:
         try:
             connection = self._connection_factory()
         except Exception as exc:  # noqa: BLE001
@@ -89,7 +101,7 @@ class PostgresCentralUserWriteAdapter:
                 close()
 
 
-def _safe_rollback(connection) -> None:
+def _safe_rollback(connection: RowConnection) -> None:
     rollback = getattr(connection, 'rollback', None)
     if callable(rollback):
         try:

@@ -22,8 +22,12 @@ creator admin grant.
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Callable, Mapping, Optional
+from typing import Callable, Mapping, Optional, TypeVar
 
+from fcc_test_platform.application.central_db_surfaces import (
+    RowConnection,
+    RowCursor,
+)
 from fcc_test_platform.application.central_membership_write_adapter import (
     MEMBERSHIP_INSERT_COLUMNS,
     SELECT_MEMBERSHIP_WITH_SUBJECT_SQL,
@@ -175,6 +179,9 @@ def build_device_model_metadata_update_sql(fields: tuple[str, ...]) -> str:
     )
 
 
+_T = TypeVar('_T')
+
+
 class PostgresCentralProjectWriteAdapter:
     """``CentralProjectWritePort`` — find-by-code + atomic (project + model) insert."""
 
@@ -190,7 +197,7 @@ class PostgresCentralProjectWriteAdapter:
         self._audit = audit_writer
 
     def find_project_by_code(self, project_code: str) -> Optional[dict]:
-        def _txn(cursor) -> Optional[dict]:
+        def _txn(cursor: RowCursor) -> Optional[dict]:
             cursor.execute(SELECT_PROJECT_BY_CODE_SQL, (project_code,))
             rows = list(cursor.fetchall())
             if not rows:
@@ -209,7 +216,7 @@ class PostgresCentralProjectWriteAdapter:
             device_model_record.get(column) for column in DEVICE_MODEL_INSERT_COLUMNS
         )
 
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             cursor.execute(INSERT_PROJECT_SQL, project_values)
             cursor.execute(INSERT_DEVICE_MODEL_SQL, device_values)
             return {
@@ -224,7 +231,7 @@ class PostgresCentralProjectWriteAdapter:
     def update_project_status(
         self, project_id: str, status: str, updated_at: str,
     ) -> Optional[dict]:
-        def _txn(cursor) -> Optional[dict]:
+        def _txn(cursor: RowCursor) -> Optional[dict]:
             cursor.execute(UPDATE_PROJECT_STATUS_SQL, (status, updated_at, project_id))
             rows = list(cursor.fetchall())
             if not rows:
@@ -261,7 +268,7 @@ class PostgresCentralProjectWriteAdapter:
             updated_at, project_id,
         )
 
-        def _txn(cursor) -> Optional[dict]:
+        def _txn(cursor: RowCursor) -> Optional[dict]:
             # Both tables inside ONE transaction body (D-6): a device_models
             # failure rolls the projects edit back — never a half-applied edit.
             cursor.execute(project_sql, project_values)
@@ -308,7 +315,7 @@ class PostgresCentralProjectWriteAdapter:
         )
         user_values = tuple(user_record.get(column) for column in USER_INSERT_COLUMNS)
 
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             _set_serializable_best_effort(cursor)
             cursor.execute(UPSERT_USER_SQL, user_values)
             user_row = cursor.fetchone()
@@ -348,7 +355,12 @@ class PostgresCentralProjectWriteAdapter:
         assert result is not None
         return result
 
-    def _in_transaction(self, body: Callable[[object], Optional[dict]]) -> Optional[dict]:
+    # ⚠️ 옛 선언은 ``Callable[[object], …]`` 이었다 — 「본문에 **아무거나** 넘긴다」는
+    #    뜻이고, 그것은 거짓이다: 이 러너는 언제나 **커서**를 넘긴다. 그 거짓이
+    #    본문의 인자를 ``RowCursor`` 로 적는 순간 드러난다(Callable 은 인자에 대해
+    #    **반변**이므로 커서를 받는 본문은 object 를 받는 자리에 못 들어간다).
+    #    반환도 마찬가지다 — 「넘긴 것을 그대로 돌려준다」가 이 함수가 하는 일이다.
+    def _in_transaction(self, body: Callable[[RowCursor], _T]) -> _T:
         try:
             connection = self._connection_factory()
         except Exception as exc:  # noqa: BLE001
@@ -401,7 +413,7 @@ def _as_identifier_conflict(exc: BaseException) -> Optional[ProjectIdentifierCon
     return ProjectIdentifierConflictError(field, PROJECT_CONFLICT_RESOURCE)
 
 
-def _safe_rollback(connection) -> None:
+def _safe_rollback(connection: RowConnection) -> None:
     rollback = getattr(connection, 'rollback', None)
     if callable(rollback):
         try:

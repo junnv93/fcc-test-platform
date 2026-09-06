@@ -42,9 +42,13 @@ Design (mirrors ``PostgresCentralClaimWriteAdapter``):
 from __future__ import annotations
 
 import json
-from typing import Callable, Mapping, Optional
+from typing import Callable, Mapping, Optional, TypeVar
 
 from fcc_test_kernel.application.central_contract.envelope_helpers import apply_flat_merge_patch
+from fcc_test_platform.application.central_db_surfaces import (
+    RowConnection,
+    RowCursor,
+)
 from fcc_test_platform.domain.ports.output.central_chamber_write_port import (
     ChamberNotFoundError,
     ChamberWriteError,
@@ -326,7 +330,7 @@ def _decode_config(raw: object) -> dict:
     }
 
 
-def _equipment_config_envelope(row) -> dict:
+def _equipment_config_envelope(row: Mapping) -> dict:
     """Project ``(chamber_id, equipment_config_json, updated_at)`` to the envelope."""
     updated_at: Optional[str] = None if row[2] is None else str(row[2])
     return {
@@ -346,6 +350,9 @@ _PASS_THROUGH_ERRORS: tuple[type[Exception], ...] = (
 )
 
 
+_T = TypeVar('_T')
+
+
 class PostgresCentralChamberWriteAdapter:
     """``CentralChamberWritePort`` over a central PostgreSQL connection factory."""
 
@@ -360,7 +367,7 @@ class PostgresCentralChamberWriteAdapter:
             raise ValueError('register record requires chamber_id')
         values = tuple(record.get(column) for column in CHAMBER_NODE_WRITE_COLUMNS)
 
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             cursor.execute(UPSERT_CHAMBER_NODE_SQL, values)
             rows = list(cursor.fetchall())
             if not rows:  # pragma: no cover — an upsert always returns its row
@@ -385,7 +392,7 @@ class PostgresCentralChamberWriteAdapter:
             raise ValueError('heartbeat record requires chamber_id')
         values = tuple(record.get(column) for column in HEARTBEAT_EVENT_COLUMNS)
 
-        def _txn(cursor) -> None:
+        def _txn(cursor: RowCursor) -> None:
             cursor.execute(INSERT_HEARTBEAT_EVENT_SQL, values + (chamber_id,))
             # ``rowcount`` is declared by the ``DbCursor`` port Protocol. A driver
             # that cannot report it yields a negative/None value — treated as
@@ -402,7 +409,10 @@ class PostgresCentralChamberWriteAdapter:
         self._in_transaction(_txn)
 
     def update_chamber_storage_root(
-        self, chamber_id: str, *, artifact_storage_root, updated_at: str,
+        # ⚠️ 타입을 발명하지 않는다 — ``CentralChamberWritePort`` 가 이미
+        #    ``Optional[str]`` 로 선언한다(PR #112). 포트가 진실이고 어댑터가
+        #    그것을 «안 적고 있었다».
+        self, chamber_id: str, *, artifact_storage_root: Optional[str], updated_at: str,
     ) -> dict:
         """Set (or clear) where this chamber writes plots — operator action.
 
@@ -414,7 +424,7 @@ class PostgresCentralChamberWriteAdapter:
         if not str(chamber_id or '').strip():
             raise ValueError('update requires chamber_id')
 
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             cursor.execute(
                 UPDATE_CHAMBER_STORAGE_ROOT_SQL,
                 (artifact_storage_root, updated_at, chamber_id),
@@ -430,7 +440,7 @@ class PostgresCentralChamberWriteAdapter:
         return self._in_transaction(_txn)
 
     def update_chamber_web_session_approval(
-        self, chamber_id: str, *, accepts_web_sessions, updated_at: str,
+        self, chamber_id: str, *, accepts_web_sessions: Optional[bool], updated_at: str,
     ) -> dict:
         """운영자가 *"이 챔버는 웹 세션을 받는다/받지 않는다"* 를 선언한다 (챔버 모드 축).
 
@@ -442,7 +452,7 @@ class PostgresCentralChamberWriteAdapter:
         if not str(chamber_id or '').strip():
             raise ValueError('update requires chamber_id')
 
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             cursor.execute(
                 UPDATE_CHAMBER_WEB_SESSION_APPROVAL_SQL,
                 (accepts_web_sessions, updated_at, chamber_id),
@@ -467,7 +477,7 @@ class PostgresCentralChamberWriteAdapter:
         if not str(chamber_id or '').strip():
             raise ValueError('settings read requires chamber_id')
 
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             cursor.execute(SELECT_CHAMBER_SETTINGS_SQL, (chamber_id,))
             rows = list(cursor.fetchall())
             if not rows:
@@ -485,7 +495,7 @@ class PostgresCentralChamberWriteAdapter:
         if not str(chamber_id or '').strip():
             raise ValueError('equipment-config read requires chamber_id')
 
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             cursor.execute(SELECT_CHAMBER_EQUIPMENT_CONFIG_SQL, (chamber_id,))
             rows = list(cursor.fetchall())
             if not rows:
@@ -511,7 +521,7 @@ class PostgresCentralChamberWriteAdapter:
         if not str(chamber_id or '').strip():
             raise ValueError('equipment-config patch requires chamber_id')
 
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             cursor.execute(
                 SELECT_CHAMBER_EQUIPMENT_CONFIG_FOR_UPDATE_SQL, (chamber_id,),
             )
@@ -538,7 +548,12 @@ class PostgresCentralChamberWriteAdapter:
 
         return self._in_transaction(_txn)
 
-    def _in_transaction(self, body: Callable[[object], object]):
+    # ⚠️ 옛 선언은 ``Callable[[object], …]`` 이었다 — 「본문에 **아무거나** 넘긴다」는
+    #    뜻이고, 그것은 거짓이다: 이 러너는 언제나 **커서**를 넘긴다. 그 거짓이
+    #    본문의 인자를 ``RowCursor`` 로 적는 순간 드러난다(Callable 은 인자에 대해
+    #    **반변**이므로 커서를 받는 본문은 object 를 받는 자리에 못 들어간다).
+    #    반환도 마찬가지다 — 「넘긴 것을 그대로 돌려준다」가 이 함수가 하는 일이다.
+    def _in_transaction(self, body: Callable[[RowCursor], _T]) -> _T:
         """Run ``body`` in one transaction and **return its value**.
 
         The return channel matters for the statements that answer with a row:
@@ -576,7 +591,7 @@ class PostgresCentralChamberWriteAdapter:
         return result
 
 
-def _safe_rollback(connection) -> None:
+def _safe_rollback(connection: RowConnection) -> None:
     rollback = getattr(connection, 'rollback', None)
     if callable(rollback):
         try:

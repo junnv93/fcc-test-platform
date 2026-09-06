@@ -22,6 +22,10 @@ from __future__ import annotations
 import uuid
 from typing import Callable, Optional, Sequence
 
+from fcc_test_platform.application.central_db_surfaces import (
+    RowConnection,
+    RowCursor,
+)
 from fcc_test_platform.domain.models.progress_expectation import ProgressExpectationAtom
 from fcc_test_platform.domain.models.progress_time_catalog import StandardTimeCatalog
 from fcc_test_platform.domain.ports.output.central_progress_write_port import (
@@ -178,7 +182,7 @@ class PostgresCentralProgressWriteAdapter(CentralProgressWritePort):
             raise CentralProgressWriteError(str(exc)) from exc
         return ExpectationWriteSummary(inserted=inserted, updated=updated)
 
-    def _existing_keys(self, cursor, atoms: Sequence[ProgressExpectationAtom]) -> set:
+    def _existing_keys(self, cursor: RowCursor, atoms: Sequence[ProgressExpectationAtom]) -> set:
         """Natural keys already present, loaded in-transaction for insert/update counts."""
         keys: set = set()
         # Only the (project, plan) pairs actually present in the batch (index-backed

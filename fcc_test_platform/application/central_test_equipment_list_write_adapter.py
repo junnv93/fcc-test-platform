@@ -32,8 +32,12 @@ test_report)이라 SQLSTATE 23503 만으로 어느 부모인지 특정할 수 �
 """
 from __future__ import annotations
 
-from typing import Callable, Mapping, Optional, Sequence
+from typing import Callable, Mapping, Optional, Sequence, TypeVar
 
+from fcc_test_platform.application.central_db_surfaces import (
+    RowConnection,
+    RowCursor,
+)
 from fcc_test_platform.domain.ports.output.central_test_equipment_list_port import (
     CentralTestEquipmentListError,
     EquipmentListConflictError,
@@ -154,6 +158,9 @@ DIAGNOSE_LIST_SQL = (
 )
 
 
+_T = TypeVar('_T')
+
+
 class PostgresCentralTestEquipmentListWriteAdapter:
     """``CentralTestEquipmentListWritePort`` — 부분 인덱스 2종 대응 write."""
 
@@ -170,7 +177,7 @@ class PostgresCentralTestEquipmentListWriteAdapter:
         )
         values = tuple(list_record.get(column) for column in LIST_INSERT_COLUMNS)
 
-        def _txn(cursor) -> Optional[dict]:
+        def _txn(cursor: RowCursor) -> Optional[dict]:
             cursor.execute(statement, values)
             if not list(cursor.fetchall()):
                 # 자연키 중복 — 삽입 없음. 서비스가 409 로 옮긴다.
@@ -191,7 +198,7 @@ class PostgresCentralTestEquipmentListWriteAdapter:
             for item in items
         ]
 
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             # 조건부 UPDATE 를 먼저 — 초안이 아니면 아무것도 지우지 않는다.
             cursor.execute(
                 TOUCH_DRAFT_LIST_SQL,
@@ -209,7 +216,7 @@ class PostgresCentralTestEquipmentListWriteAdapter:
     def attach_to_report(
         self, equipment_list_id: str, *, test_report_id: str, updated_at: str
     ) -> dict:
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             cursor.execute(
                 ATTACH_DRAFT_LIST_SQL,
                 (test_report_id, updated_at, equipment_list_id, ListStatus.DRAFT.value),
@@ -221,7 +228,7 @@ class PostgresCentralTestEquipmentListWriteAdapter:
         return self._in_transaction(_txn)
 
     def confirm_list(self, equipment_list_id: str, *, confirmed_at: str) -> dict:
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             cursor.execute(
                 CONFIRM_DRAFT_LIST_SQL,
                 (
@@ -243,7 +250,12 @@ class PostgresCentralTestEquipmentListWriteAdapter:
 
         return self._in_transaction(_txn)
 
-    def _in_transaction(self, body: Callable[[object], object]):
+    # ⚠️ 옛 선언은 ``Callable[[object], …]`` 이었다 — 「본문에 **아무거나** 넘긴다」는
+    #    뜻이고, 그것은 거짓이다: 이 러너는 언제나 **커서**를 넘긴다. 그 거짓이
+    #    본문의 인자를 ``RowCursor`` 로 적는 순간 드러난다(Callable 은 인자에 대해
+    #    **반변**이므로 커서를 받는 본문은 object 를 받는 자리에 못 들어간다).
+    #    반환도 마찬가지다 — 「넘긴 것을 그대로 돌려준다」가 이 함수가 하는 일이다.
+    def _in_transaction(self, body: Callable[[RowCursor], _T]) -> _T:
         try:
             connection = self._connection_factory()
         except Exception as exc:  # noqa: BLE001
@@ -277,7 +289,7 @@ class PostgresCentralTestEquipmentListWriteAdapter:
                 close()
 
 
-def _diagnose(cursor, equipment_list_id: str, *, action: str) -> Exception:
+def _diagnose(cursor: RowCursor, equipment_list_id: str, *, action: str) -> Exception:
     """조건부 UPDATE 가 0행일 때 404 인지 409 인지 가른다(왕복 1회).
 
     반환값을 caller 가 ``raise`` 한다 — 여기서 raise 하면 트랜잭션 헬퍼의
@@ -306,7 +318,7 @@ def _diagnose(cursor, equipment_list_id: str, *, action: str) -> Exception:
     )
 
 
-def _safe_rollback(connection) -> None:
+def _safe_rollback(connection: RowConnection) -> None:
     rollback = getattr(connection, 'rollback', None)
     if callable(rollback):
         try:

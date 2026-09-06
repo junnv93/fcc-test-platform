@@ -16,8 +16,12 @@ Design (mirrors ``PostgresCentralProjectWriteAdapter``):
 """
 from __future__ import annotations
 
-from typing import Callable, Mapping, Optional
+from typing import Callable, Mapping, Optional, TypeVar
 
+from fcc_test_platform.application.central_db_surfaces import (
+    RowConnection,
+    RowCursor,
+)
 from fcc_test_platform.domain.ports.output.central_report_port import CentralReportError
 from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
@@ -59,6 +63,9 @@ def _build_insert(table: str, columns: tuple[str, ...]) -> str:
 INSERT_REPORT_SQL = _build_insert('test_reports', REPORT_INSERT_COLUMNS)
 
 
+_T = TypeVar('_T')
+
+
 class PostgresCentralReportWriteAdapter:
     """``CentralReportWritePort`` — race-safe single-row insert."""
 
@@ -70,7 +77,7 @@ class PostgresCentralReportWriteAdapter:
     def create_report(self, report_record: Mapping) -> Optional[dict]:
         values = tuple(report_record.get(column) for column in REPORT_INSERT_COLUMNS)
 
-        def _txn(cursor) -> Optional[dict]:
+        def _txn(cursor: RowCursor) -> Optional[dict]:
             cursor.execute(INSERT_REPORT_SQL, values)
             rows = list(cursor.fetchall())
             if not rows:
@@ -83,7 +90,12 @@ class PostgresCentralReportWriteAdapter:
 
         return self._in_transaction(_txn)
 
-    def _in_transaction(self, body: Callable[[object], Optional[dict]]) -> Optional[dict]:
+    # ⚠️ 옛 선언은 ``Callable[[object], …]`` 이었다 — 「본문에 **아무거나** 넘긴다」는
+    #    뜻이고, 그것은 거짓이다: 이 러너는 언제나 **커서**를 넘긴다. 그 거짓이
+    #    본문의 인자를 ``RowCursor`` 로 적는 순간 드러난다(Callable 은 인자에 대해
+    #    **반변**이므로 커서를 받는 본문은 object 를 받는 자리에 못 들어간다).
+    #    반환도 마찬가지다 — 「넘긴 것을 그대로 돌려준다」가 이 함수가 하는 일이다.
+    def _in_transaction(self, body: Callable[[RowCursor], _T]) -> _T:
         try:
             connection = self._connection_factory()
         except Exception as exc:  # noqa: BLE001
@@ -110,7 +122,7 @@ class PostgresCentralReportWriteAdapter:
                 close()
 
 
-def _safe_rollback(connection) -> None:
+def _safe_rollback(connection: RowConnection) -> None:
     rollback = getattr(connection, 'rollback', None)
     if callable(rollback):
         try:

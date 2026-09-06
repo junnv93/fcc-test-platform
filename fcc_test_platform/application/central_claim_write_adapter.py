@@ -31,8 +31,12 @@ Design (mirrors ``PostgresCentralReadAdapter`` + ``PostgresIngestionWriter``):
 """
 from __future__ import annotations
 
-from typing import Callable, Mapping, Optional
+from typing import Callable, Mapping, Optional, TypeVar
 
+from fcc_test_platform.application.central_db_surfaces import (
+    RowConnection,
+    RowCursor,
+)
 from fcc_test_platform.application.central_read_adapter import (
     ACTIVE_CLAIM_COLUMNS,
     ACTIVE_CLAIMS_VIEW,
@@ -59,6 +63,9 @@ CLAIM_EVENTS_TABLE = 'claim_events'
 #: re-reads the now-committed winner, so it resolves on the first retry in
 #: practice (the extra headroom covers a 3-way pile-up).
 _MAX_SERIALIZATION_RETRIES = 3
+
+
+_T = TypeVar('_T')
 
 
 class _SerializationRetry(Exception):
@@ -141,7 +148,7 @@ class PostgresCentralClaimWriteAdapter:
             raise ValueError('acquire record requires project_id + condition_hash')
         values = tuple(record.get(column) for column in CLAIM_EVENT_COLUMNS)
 
-        def _txn(cursor) -> Optional[dict]:
+        def _txn(cursor: RowCursor) -> Optional[dict]:
             existing = self._fetch_one(
                 cursor, OPEN_CLAIM_BY_CONDITION_SQL, (project_id, condition_hash),
             )
@@ -168,7 +175,7 @@ class PostgresCentralClaimWriteAdapter:
         action: str = 'released',
         audit_record: Optional[Mapping] = None,
     ) -> Optional[dict]:
-        def _txn(cursor) -> Optional[dict]:
+        def _txn(cursor: RowCursor) -> Optional[dict]:
             open_claim = self._fetch_one(
                 cursor, OPEN_CLAIM_BY_ID_SQL, (project_id, claim_id),
             )
@@ -195,7 +202,7 @@ class PostgresCentralClaimWriteAdapter:
 
         return self._in_transaction(_txn)
 
-    def _maybe_audit(self, cursor, audit_record: Optional[Mapping]) -> None:
+    def _maybe_audit(self, cursor: RowCursor, audit_record: Optional[Mapping]) -> None:
         """INSERT the audit row inside the open transaction when audit is wired.
 
         Both ``audit_writer`` (composition) and ``audit_record`` (per-call)
@@ -209,7 +216,12 @@ class PostgresCentralClaimWriteAdapter:
 
     # ── transaction plumbing ────────────────────────────────────────────────
 
-    def _in_transaction(self, body: Callable[[object], Optional[dict]]) -> Optional[dict]:
+    # ⚠️ 옛 선언은 ``Callable[[object], …]`` 이었다 — 「본문에 **아무거나** 넘긴다」는
+    #    뜻이고, 그것은 거짓이다: 이 러너는 언제나 **커서**를 넘긴다. 그 거짓이
+    #    본문의 인자를 ``RowCursor`` 로 적는 순간 드러난다(Callable 은 인자에 대해
+    #    **반변**이므로 커서를 받는 본문은 object 를 받는 자리에 못 들어간다).
+    #    반환도 마찬가지다 — 「넘긴 것을 그대로 돌려준다」가 이 함수가 하는 일이다.
+    def _in_transaction(self, body: Callable[[RowCursor], _T]) -> _T:
         """Run ``body`` in one SERIALIZABLE transaction, retrying on a serialization
         failure.
 
@@ -237,7 +249,9 @@ class PostgresCentralClaimWriteAdapter:
             f'serialization retries: {last_exc}'
         ) from last_exc
 
-    def _run_once(self, body: Callable[[object], Optional[dict]]) -> Optional[dict]:
+    # ⚠️ ``_in_transaction`` 과 같은 계약이다 — 커서를 넘기고, 본문이 돌려주는 것을
+    #    그대로 돌려준다. 한쪽만 고치면 재시도 러너가 다시 「아무거나」를 약속한다.
+    def _run_once(self, body: Callable[[RowCursor], _T]) -> _T:
         try:
             connection = self._connection_factory()
         except Exception as exc:  # noqa: BLE001 — wrap as loud ClaimWriteError
@@ -266,7 +280,7 @@ class PostgresCentralClaimWriteAdapter:
                 close()
 
     @staticmethod
-    def _fetch_one(cursor, statement: str, params: tuple) -> Optional[dict]:
+    def _fetch_one(cursor: RowCursor, statement: str, params: tuple) -> Optional[dict]:
         # fetchall()[0] (not fetchone) to match PostgresCentralReadAdapter._query
         # + the SQLite test fixture cursor, which only implements fetchall.
         cursor.execute(statement, params)
@@ -276,7 +290,7 @@ class PostgresCentralClaimWriteAdapter:
         return dict(zip(ACTIVE_CLAIM_COLUMNS, rows[0], strict=True))
 
 
-def _set_serializable_best_effort(cursor) -> None:
+def _set_serializable_best_effort(cursor: RowCursor) -> None:
     """Issue ``SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`` best-effort.
 
     On PostgreSQL this makes the check-and-append race-safe (a concurrent
@@ -302,7 +316,7 @@ def _is_serialization_error(exc: Exception) -> bool:
     return 'serializ' in type(exc).__name__.lower()
 
 
-def _safe_rollback(connection) -> None:
+def _safe_rollback(connection: RowConnection) -> None:
     rollback = getattr(connection, 'rollback', None)
     if callable(rollback):
         try:

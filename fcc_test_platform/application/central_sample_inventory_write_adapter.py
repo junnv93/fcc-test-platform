@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import json
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Callable, Mapping, Optional, Sequence, Union, overload
 import uuid
 
 from fcc_test_kernel.domain.models.sample_inventory import (
@@ -12,6 +12,10 @@ from fcc_test_kernel.domain.models.sample_inventory import (
     SAMPLE_EDITABLE_FIELDS,
     SampleRevisionEvent,
     SampleStatus,
+)
+from fcc_test_platform.application.central_db_surfaces import (
+    RowConnection,
+    RowCursor,
 )
 from fcc_test_platform.domain.ports.output.central_sample_inventory_write_port import (
     CentralSampleInventoryNotFoundError,
@@ -422,15 +426,22 @@ class PostgresCentralSampleInventoryWriteAdapter:
         finally:
             self._close(conn, cursor)
 
-    def _insert_intake(self, cursor, sample_id: str, value: Mapping[str, Any], now: str) -> None:
+    def _insert_intake(self, cursor: RowCursor, sample_id: str, value: Mapping[str, Any], now: str) -> None:
         cursor.execute(INTAKE_INSERT_SQL, (
             str(uuid.uuid4()), sample_id, value.get('intake_date'), value.get('bl'),
             value.get('ap'), value.get('cp'), value.get('csc'), value.get('rf_cal'),
             value.get('hw_rev'), value.get('note'), value.get('tech_group'), now, now,
         ))
 
-    def _insert_revision(self, cursor, sample_id, project_id, revision_number,
-                         event_type, snapshot, changed_fields, actor_subject, occurred_at):
+    def _insert_revision(
+        self, cursor: RowCursor, sample_id: str, project_id: str, revision_number: int,
+        # ⚠️ ``event_type`` 은 열거형 «또는» 문자열이다 — 본문이 그 둘을 실제로 갈라
+        #    처리한다(`isinstance(…, SampleRevisionEvent)`). 한쪽으로 좁히면 그 분기가
+        #    닿을 수 없는 코드가 되고, 그것은 여기 있는 사실과 다르다.
+        event_type: Union[SampleRevisionEvent, str],
+        snapshot: Mapping, changed_fields: Sequence[str],
+        actor_subject: str, occurred_at: str,
+    ) -> None:
         cursor.execute(REVISION_INSERT_SQL, (
             str(uuid.uuid4()), sample_id, project_id, revision_number,
             event_type.value if isinstance(event_type, SampleRevisionEvent) else str(event_type),
@@ -438,13 +449,35 @@ class PostgresCentralSampleInventoryWriteAdapter:
             actor_subject, occurred_at, occurred_at,
         ))
 
-    def _next_revision(self, cursor, sample_id: str) -> int:
+    def _next_revision(self, cursor: RowCursor, sample_id: str) -> int:
         row = self._fetchone(cursor, NEXT_REVISION_SQL, (sample_id,))
         current = int((row or [0])[0] if not isinstance(row, Mapping) else next(iter(row.values())))
         return current + 1
 
+    # ⚠️ 이 함수의 반환 형은 ``columns`` 에 달려 있고, 그것은 **본문에서 참이다**:
+    #    ``columns`` 가 비어 있지 않으면 마지막 ``return row``(원시 튜플) 줄에 도달할 수
+    #    없다. 그래서 오버로드로 그 사실을 적는다 — 동작은 한 줄도 바뀌지 않는다.
+    #
+    #    ⚠️ 좁혀서 언제나 ``Mapping`` 이라고 적으면 거짓이 된다. 드라이버가
+    #    ``description`` 을 주지 않고 호출자가 ``columns`` 도 안 주면 이 함수는 행 튜플을
+    #    그대로 돌려주고, ``_next_revision`` 은 그 경우를 `isinstance(row, Mapping)` 으로
+    #    **실제로 갈라** 처리한다. 두 사실이 다 참이므로 둘 다 적는다.
+    @overload
     @staticmethod
-    def _fetchone(cursor, statement: str, params: tuple, columns: tuple[str, ...] = ()):
+    def _fetchone(
+        cursor: RowCursor, statement: str, params: tuple,
+    ) -> Optional[Union[Mapping, Sequence]]: ...
+
+    @overload
+    @staticmethod
+    def _fetchone(
+        cursor: RowCursor, statement: str, params: tuple, columns: tuple[str, ...],
+    ) -> Optional[Mapping]: ...
+
+    @staticmethod
+    def _fetchone(
+        cursor: RowCursor, statement: str, params: tuple, columns: tuple[str, ...] = (),
+    ) -> Optional[Union[Mapping, Sequence]]:
         cursor.execute(statement, params)
         row = cursor.fetchone()
         if row is None:
@@ -458,7 +491,7 @@ class PostgresCentralSampleInventoryWriteAdapter:
             return dict(zip(columns, row, strict=True))
         return row
 
-    def _open(self):
+    def _open(self) -> tuple[RowConnection, RowCursor]:
         try:
             conn = self._connection_factory()
             return conn, conn.cursor()
@@ -466,13 +499,13 @@ class PostgresCentralSampleInventoryWriteAdapter:
             raise CentralSampleInventoryWriteError(f'central sample write connection failed: {exc}') from exc
 
     @staticmethod
-    def _rollback(conn):
+    def _rollback(conn: RowConnection) -> None:
         rollback = getattr(conn, 'rollback', None)
         if callable(rollback):
             rollback()
 
     @staticmethod
-    def _close(conn, cursor):
+    def _close(conn: RowConnection, cursor: RowCursor) -> None:
         try:
             cursor.close()
         finally:
@@ -508,7 +541,9 @@ def _row_projection(row: Mapping[str, Any], latest: Optional[Mapping[str, Any]])
     return result
 
 
-def _sample_update_values(after, now, project_id, sample_id):
+def _sample_update_values(
+    after: Mapping, now: str, project_id: str, sample_id: str,
+) -> tuple:
     return tuple(
         [after.get(field) for field in SAMPLE_EDITABLE_FIELDS]
         + [after['status'], after['row_version'],
@@ -517,8 +552,10 @@ def _sample_update_values(after, now, project_id, sample_id):
     )
 
 
-def _snapshot_for_projection(project, sample_id, projection, latest_intake,
-                             revision_number, captured_at):
+def _snapshot_for_projection(
+    project: Mapping, sample_id: str, projection: Mapping,
+    latest_intake: Optional[Mapping], revision_number: int, captured_at: str,
+) -> dict:
     value = dict(projection)
     value['id'] = sample_id
     return canonical_snapshot(
