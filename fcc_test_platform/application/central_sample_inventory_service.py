@@ -186,13 +186,21 @@ class CentralSampleInventoryService:
                 raise SampleInventoryConflictError(str(exc)) from exc
             raise
 
-    def change_status(self, project_id: str, sample_id: str, status: str, *,
-                      expected_version: int, actor_subject: str) -> dict:
-        normalize_status(status)
-        expected_version = validate_expected_version(expected_version)
+    def change_status(self, project_id: str, sample_id: str, status: object, *,
+                      expected_version: object, actor_subject: str) -> dict:
+        # ``status``/``expected_version`` are declared ``object`` deliberately.
+        # The only production caller is the HTTP route, which hands over a raw
+        # JSON body value, and the two kernel validators below are declared
+        # ``Any`` because accepting anything and rejecting it *with a specific
+        # message* is their entire contract. Declaring ``str``/``int`` here
+        # claimed a guarantee no caller gives, and "fixing" it at the route by
+        # coercing ``None`` to ``''`` would have turned
+        # ``unsupported sample status: None`` into ``... ''`` (2026-09-06).
+        status_token = normalize_status(status).value
+        version = validate_expected_version(expected_version)
         try:
             return self._write.change_status(
-                project_id, sample_id, status, expected_version=expected_version,
+                project_id, sample_id, status_token, expected_version=version,
                 actor_subject=_actor(actor_subject), occurred_at=self._clock(),
             )
         except CentralSampleInventoryNotFoundError as exc:
@@ -202,7 +210,7 @@ class CentralSampleInventoryService:
                 raise SampleInventoryConflictError(str(exc)) from exc
             raise
 
-    def soft_delete(self, project_id: str, sample_id: str, *, expected_version: int,
+    def soft_delete(self, project_id: str, sample_id: str, *, expected_version: object,
                     actor_subject: str) -> dict:
         return self.change_status(
             project_id, sample_id, SampleStatus.DELETED.value,

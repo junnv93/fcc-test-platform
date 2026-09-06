@@ -1,0 +1,19 @@
+{
+  "task": "api-strict-the-last-layer-20260906",
+  "branch": "feat/api-strict-the-last-layer-20260906",
+  "owner": "fcc-delivery-final-6a",
+  "status": "active",
+  "base": "origin/main@6b667d4",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/ec0a73aa-2dd1-4978-907a-79f33d27232f/scratchpad/wt-api2",
+  "scope": [
+    "fcc_test_platform/api/platform_routes.py",
+    "fcc_test_platform/application/central_sample_inventory_service.py",
+    ".claude/work-claims/api-strict-the-last-layer-20260906.json"
+  ],
+  "shared_outputs": [
+    "mypy.ini",
+    "tests/test_architecture_gate_conformance.py"
+  ],
+  "conflicts_with": [],
+  "sequencing": "마지막 층이다 — 이것이 착지하면 STRICT_SECTIONS 는 네 줄이 되고 fcc_test_platform 전체가 strict 다. 실측 133건 = no-untyped-def 111 + 실제 타입 오류 22. #128 과의 교집합은 0. ⚠️ application 계열이 아니라 api 웨이브인데 central_sample_inventory_service.py 가 scope 에 있는 이유: 실제 타입 오류 3건(status·expected_version×2)이 «라우트에서 고칠 수 없는» 종류다. 커널의 normalize_status(value: Any) 와 validate_expected_version(v: Any) 는 무엇이든 받아 특정 메시지로 거절하는 것이 계약 전체이므로, 라우트가 None 을 '' 로 접으면 unsupported sample status: None 이 '' 로 바뀐다. 거짓말하는 쪽은 서비스의 status: str / expected_version: int 선언이다. 나머지 12건은 _require_text 계열이라 None 과 '' 를 같은 raise 로 접으므로 라우트에서 접을 수 있다(실측: _require_text · _parse_reported_status · issuer_lookup_candidates 셋 다 확인). ⚠️ platform_routes.py 를 분해하지 않는다. contract-as-data(PLATFORM_API_OPERATIONS + 동적 등록)를 건드리지 않는다."
+}

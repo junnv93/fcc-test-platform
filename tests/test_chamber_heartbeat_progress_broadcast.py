@@ -139,3 +139,61 @@ class TestIngestBroadcast(unittest.TestCase):
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()
+
+
+class TestTheRelayReadSideIsRealNotDeclared(unittest.TestCase):
+    """``_SubscribableProgressBroadcaster`` 가 주석이 아니라 주장이게 하는 봉인.
+
+    🔴 2026-09-06, ``api`` 를 strict 로 켜면서 드러난 사실:
+    ``ChamberProgressBroadcastPort`` 는 스스로 「publish-only」라 선언하는데
+    ``PlatformApiAdapter`` 는 그 타입으로 받아 놓고 진행 WS 릴레이에서
+    ``.subscribe()`` 를 부른다. 즉 **선언된 타입이 실제 계약보다 좁다.**
+
+    포트를 넓히는 것은 포트 주인의 판정이므로 이 웨이브는 api 쪽에서 좁혔다
+    (``platform_routes._SubscribableProgressBroadcaster``). 그 좁힘은 「조립
+    루트가 실제로 배선하는 객체가 그 모양을 갖는다」에 전적으로 의존하는데,
+    ``cast`` 는 아무것도 검사하지 않는다 — 그래서 여기서 검사한다.
+
+    ⚠️ ``isinstance`` 로 메서드 **존재**만 보지 않는다. 라우트가 쓰는 철자
+    (``async with b.subscribe() as sub`` → ``async for ev in sub``) 를 그대로
+    구동한다. ``__aenter__``/``__aexit__``/``__aiter__``/``__anext__`` 중 하나만
+    빠져도 빨개진다.
+    """
+
+    def test_the_composition_root_wires_the_subscribable_broadcaster(self):
+        # ① 배선되는 것이 정말 그 구상 클래스인가 — 포트만 만족하는 다른 객체가
+        #    들어오면 라우트의 좁힘이 런타임에 AttributeError 로 무너진다.
+        source = (_REPO_ROOT / 'fcc_test_platform' / 'api_composition.py').read_text()
+        self.assertIn('progress_broadcaster = ChamberProgressBroadcaster()', source)
+        self.assertIn('progress_broadcaster=progress_broadcaster', source)
+
+    def test_the_wired_broadcaster_speaks_the_relay_spelling(self):
+        # ② 라우트가 쓰는 철자를 그대로 구동한다.
+        import asyncio
+
+        from fcc_test_platform.infrastructure.adapters.driven.chamber_progress_broadcaster import (
+            ChamberProgressBroadcaster,
+        )
+
+        bus = ChamberProgressBroadcaster()
+        event = ChamberProgressEvent(
+            chamber_id='ch-1',
+            progress={'percent': 42},
+            session_id='s-1',
+            occurred_at=_FIXED_NOW,
+        )
+        seen: list[ChamberProgressEvent] = []
+
+        async def relay():
+            # platform_routes 의 WS 핸들러와 같은 철자.
+            async with bus.subscribe() as subscription:
+                bus.publish(event)
+                async for received in subscription:
+                    seen.append(received)
+                    return
+
+        asyncio.run(asyncio.wait_for(relay(), timeout=5))
+        self.assertEqual([e.chamber_id for e in seen], ['ch-1'])
+        # 구독은 스코프를 벗어나며 반드시 해제된다 — 누수는 매 publish 마다
+        # 죽은 큐를 채운다(핸들러 주석이 명시하는 바로 그 이유).
+        self.assertEqual(bus.subscriber_count(), 0)
