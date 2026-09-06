@@ -13,10 +13,13 @@ optimisation; it is the boundary.
 """
 from __future__ import annotations
 
-from typing import Callable, Mapping, Optional, Protocol, Sequence
+from typing import Callable, Mapping, Optional, Protocol, Sequence, TypeVar
 
 from fcc_test_contracts.common.identity import LOCAL_IDENTITY_ISSUER, local_identity_key
 from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowCursor
+
+_T = TypeVar('_T')
 from fcc_test_contracts.common.login_throttle_policy import (
     LOCKOUT_DURATION_MINUTES,
     LOCKOUT_MAX_ATTEMPTS,
@@ -340,7 +343,7 @@ class PostgresLocalUserStore:
 
     # ── writes ───────────────────────────────────────────────────────────────
 
-    def record_failed_login(self, user_id: object, *, now) -> dict:
+    def record_failed_login(self, user_id: object, *, now: object) -> dict:
         """Fold one failure into the counters, atomically. See the SQL comment.
 
         Returns the post-update counters, or ``{}`` when the row was already
@@ -358,7 +361,7 @@ class PostgresLocalUserStore:
             now,                                      # WHERE locked_until <= now
         )
 
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             cursor.execute(RECORD_FAILED_LOGIN_SQL, params)
             rows = list(cursor.fetchall() or ())
             if not rows:
@@ -370,8 +373,8 @@ class PostgresLocalUserStore:
 
         return self._in_transaction(_txn)
 
-    def record_successful_login(self, user_id: object, *, now) -> None:
-        def _txn(cursor) -> None:
+    def record_successful_login(self, user_id: object, *, now: object) -> None:
+        def _txn(cursor: RowCursor) -> None:
             cursor.execute(
                 RECORD_SUCCESSFUL_LOGIN_SQL,
                 (now, now, user_id, LOCAL_IDENTITY_ISSUER),
@@ -379,9 +382,9 @@ class PostgresLocalUserStore:
 
         self._in_transaction(_txn)
 
-    def update_password(self, user_id: object, *, password_hash: str, now) -> int:
+    def update_password(self, user_id: object, *, password_hash: str, now: object) -> int:
         """Store a new hash and bump ``session_version``. Returns the new version."""
-        def _txn(cursor) -> int:
+        def _txn(cursor: RowCursor) -> int:
             cursor.execute(
                 UPDATE_PASSWORD_SQL,
                 (password_hash, now, now, user_id, LOCAL_IDENTITY_ISSUER),
@@ -395,7 +398,7 @@ class PostgresLocalUserStore:
 
         return self._in_transaction(_txn)
 
-    def unlock_account(self, subject: object, *, now, audit_record: Mapping) -> dict:
+    def unlock_account(self, subject: object, *, now: object, audit_record: Mapping) -> dict:
         """Lift the lockout for ``subject`` and audit it in the **same transaction**.
 
         Returns ``{'subject': …, 'session_version': int, 'was_locked': True}``
@@ -435,7 +438,7 @@ class PostgresLocalUserStore:
         record['event_type'] = ACCOUNT_UNLOCKED_EVENT_TYPE
         record['target_user_subject'] = target
 
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             cursor.execute(UNLOCK_ACCOUNT_SQL, (now, issuer, target))
             rows = list(cursor.fetchall() or ())
             if not rows:
@@ -461,7 +464,7 @@ class PostgresLocalUserStore:
         return self._in_transaction(_txn)
 
     def grant_role(self, user_id: object, role_key: str) -> None:
-        def _txn(cursor) -> None:
+        def _txn(cursor: RowCursor) -> None:
             cursor.execute(GRANT_ROLE_SQL, (user_id, role_key))
 
         self._in_transaction(_txn)
@@ -478,7 +481,7 @@ class PostgresLocalUserStore:
         display_name: str,
         password_hash: str,
         force_password_change: bool,
-        now,
+        now: object,
     ) -> Optional[dict]:
         """Insert a local user, or ``None`` when one already exists.
 
@@ -489,7 +492,7 @@ class PostgresLocalUserStore:
         """
         issuer, subject = local_identity_key(email)
 
-        def _txn(cursor) -> Optional[dict]:
+        def _txn(cursor: RowCursor) -> Optional[dict]:
             cursor.execute(
                 INSERT_LOCAL_USER_SQL,
                 (
@@ -527,7 +530,11 @@ class PostgresLocalUserStore:
         finally:
             _close(connection)
 
-    def _in_transaction(self, body: Callable[[object], object]):
+    def _in_transaction(self, body: Callable[[RowCursor], _T]) -> _T:
+        # ⚠️ 제네릭이라야 한다. `Callable[[object], object]` 로 적으면 호출부마다
+        # 반환이 `object` 로 뭉개져 `dict`·`int` 를 기대하는 자리가 전부 red 가
+        # 된다 — 실측 2026-09-06: 그 형태로 10건이 «새로» 났다. 이미 strict 인
+        # `central_*_adapter` 들이 같은 러너를 이 철자로 적는다(선례 4곳).
         try:
             connection = self._connection_factory()
         except Exception as exc:  # noqa: BLE001
@@ -552,13 +559,13 @@ class PostgresLocalUserStore:
             _close(connection)
 
 
-def _close(connection) -> None:
+def _close(connection: object) -> None:
     close = getattr(connection, 'close', None)
     if callable(close):
         close()
 
 
-def _safe_rollback(connection) -> None:
+def _safe_rollback(connection: object) -> None:
     rollback = getattr(connection, 'rollback', None)
     if callable(rollback):
         try:

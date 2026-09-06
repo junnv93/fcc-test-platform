@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from typing import Callable, Mapping, Optional, Sequence
+from typing import Any, Callable, Mapping, Optional, Sequence
 
 from fcc_test_kernel.application.central_contract.envelope_helpers import parse_timestamp
 from fcc_test_kernel.domain.models.artifact_custody import CustodyStatus
@@ -57,7 +57,7 @@ class CentralArtifactCustodyService:
     """보관 스냅샷 수신 + 프로젝트 축 조회."""
 
     def __init__(
-        self, *, read_port=None, write_port=None,
+        self, *, read_port: Any = None, write_port: Any = None,
         clock: Optional[Callable[[], datetime]] = None,
     ) -> None:
         self._read_port = read_port
@@ -291,6 +291,6 @@ def _session_summary(row: Mapping, snapshot: CustodySessionSnapshot) -> dict:
     }
 
 
-def _optional_text(value) -> Optional[str]:
+def _optional_text(value: object) -> Optional[str]:
     text = str(value or '').strip()
     return text or None

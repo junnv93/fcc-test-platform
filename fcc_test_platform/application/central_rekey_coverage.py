@@ -25,6 +25,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping, Tuple
 
+from fcc_test_platform.application.central_db_surfaces import RowCursor
+
 # 같은 central 대상 테이블 — ingest adapter 가 정의한 단일 SSOT 를 import (중복 정의 0).
 from fcc_test_platform.application.central_rekey_ingest_adapter import MEASUREMENT_ATTEMPTS_TABLE
 from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
@@ -102,7 +104,7 @@ def collect_central_coverage(connection: DbConnection) -> CentralCoverageCounts:
     return CentralCoverageCounts(total_attempts=total, v2_null_count=v2_null)
 
 
-def _scalar(cursor, statement: str) -> int:
+def _scalar(cursor: RowCursor, statement: str) -> int:
     """단일 COUNT scalar 추출 (`PostgresCentralRekeyIngestAdapter._scalar` 동형)."""
     cursor.execute(statement, ())
     rows = list(cursor.fetchall())

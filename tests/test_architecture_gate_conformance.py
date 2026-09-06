@@ -64,38 +64,20 @@ IMPORTLINTER_INI = REPO_ROOT / '.importlinter'
 STRICT_SECTIONS = (
     'mypy-fcc_test_platform.domain.*',
     'mypy-fcc_test_platform.infrastructure.*',
-    'mypy-fcc_test_platform.application.session.*',
-    'mypy-fcc_test_platform.application.headless.*',
-) + tuple(
-    # ⚠️ 여기는 «모듈»이다. 부분 와일드카드(`central_*`)가 0건 매치이므로 패키지
-    #    글롭으로는 이 묶음을 표현할 수 없다 — mypy.ini 주석이 그 실측을 담는다.
-    f'mypy-fcc_test_platform.application.central_{name}_write_adapter'
-    for name in (
-        'chamber', 'sample_inventory', 'test_equipment_list', 'project', 'claim',
-        'artifact_custody', 'reference', 'membership', 'user', 'report', 'progress',
-    )
-) + tuple(
-    # read 어댑터 10모듈 (2026-09-06). write 와 «대칭»이고, 같은 제약(부분 와일드카드
-    # 불가) 아래 있으므로 같은 값을 치른다.
-    #
-    # ⚠️ `central_read_adapter` 는 여기 «없다» — 이름 규약이 `central_<X>_read_adapter`
-    #    가 아니라서 이 파생이 만들 수 없고, 손으로 한 줄 더하면 파생과 열거가 한
-    #    파일에서 섞인다. 비용은 실측 0건(no-untyped-def)이므로 다음 웨이브가
-    #    「나머지 application」을 자를 때 함께 들어간다.
-    f'mypy-fcc_test_platform.application.central_{name}_read_adapter'
-    for name in (
-        'chamber', 'progress', 'progress_catalog', 'project', 'rbac',
-        'reference', 'report', 'test_equipment_list', 'artifact_custody',
-        'sample_inventory',
-    )
-) + (
-    # 어댑터 계열의 «나머지» 3개 (2026-09-06). read/write 규약 밖의 이름이라
-    # 파생이 만들 수 없어 **열거**한다 — 여기가 파생과 열거가 갈리는 자리이고,
-    # 그 갈림 자체가 이름 규약이 균일하지 않다는 실측이다.
-    'mypy-fcc_test_platform.application.central_result_selection_adapter',
-    'mypy-fcc_test_platform.application.central_rekey_ingest_adapter',
-    'mypy-fcc_test_platform.application.published_plan_identity_adapter',
+    'mypy-fcc_test_platform.application.*',
 )
+#: ⚠️ 2026-09-06 — `application.session.*`·`application.headless.*` 와 어댑터 계열
+#:    24모듈의 «파생 + 열거» 두 덩어리가 여기서 한 줄로 접혔다. 그 구조가 존재한
+#:    이유는 이름 규약이 아니라 **비용**이었고(층 전체 145건), 이번 웨이브가 마지막
+#:    57건을 처분해 `application.*` 전량이 0건이 되면서 사유가 사라졌다.
+#:
+#: ⚠️ *"부분 와일드카드(`central_*`)는 0건 매치"* 라는 실측은 **여전히 참이다.**
+#:    바뀐 것은 이제 부분이 아니라 **전부**를 선언한다는 것이다.
+#:
+#: ⚠️ 열거는 «다음 파일이 조용히 빠지는» 자리였다 — `central_read_adapter` 가 두
+#:    웨이브 동안 밖에 있었고, 이유는 그 이름이 `central_<X>_read_adapter` 파생을
+#:    따르지 않아서였다. 와일드카드는 그 구멍을 구성상 갖지 않는다.
+
 
 #: 절 이름에서 **mypy 호출 인자**를 파생한다 — 두 번 적으면 갈라진다.
 #:

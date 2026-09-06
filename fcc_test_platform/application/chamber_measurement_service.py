@@ -23,7 +23,7 @@ IDLE 게이트의 "idle" 은 :class:`domain.models.chamber_node.ChamberNodeStatu
 """
 from __future__ import annotations
 
-from typing import Mapping, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 
 from fcc_test_platform.application.central_chamber_read_service import CentralChamberReadService
 from fcc_test_kernel.domain.models.chamber_node import ChamberNodeStatus, ChamberProgress
@@ -69,8 +69,8 @@ class ChamberMeasurementService:
         self,
         read_service: CentralChamberReadService,
         proxy: ChamberMeasurementProxyPort,
-        sample_inventory_service=None,
-        project_reference_service=None,
+        sample_inventory_service: Any = None,
+        project_reference_service: Any = None,
     ) -> None:
         self._read = read_service
         self._proxy = proxy

@@ -115,7 +115,7 @@ def load_mapping_envelope(data: Mapping) -> IngestMappingEnvelope:
     )
 
 
-def _coerce_hash_pair(pair, index: int) -> Tuple[str, str]:
+def _coerce_hash_pair(pair: object, index: int) -> Tuple[str, str]:
     """Validate one provider mapping pair before it can reach central write code."""
     if not isinstance(pair, (list, tuple)):
         raise ValueError(f'mapping envelope pairs[{index}] 가 2원소 배열(list/tuple) 아님')

@@ -52,7 +52,7 @@ import threading
 import time as _time
 import uuid
 from collections import OrderedDict
-from typing import Callable, Mapping, Optional, Protocol
+from typing import Any, Callable, Mapping, Optional, Protocol, Tuple
 
 from fcc_test_contracts.common.access_policy import ApiPrincipal
 from fcc_test_contracts.common.api_error_codes import ErrorCode
@@ -561,7 +561,10 @@ class TokenRevocationList:
         )
 
     @staticmethod
-    def _move_locked(index, owner: str, before: int, after: int, top: int) -> int:
+    def _move_locked(
+        index: "dict[int, OrderedDict[str, None]]",
+        owner: str, before: int, after: int, top: int,
+    ) -> int:
         """한 색인에서 ``owner`` 를 ``before`` 버킷에서 ``after`` 버킷으로 옮긴다.
 
         ⚠️ 두 색인이 이 함수를 **공유**한다. 사본을 두면 한쪽의 최댓값 유지만 고쳐지고
@@ -582,7 +585,7 @@ class TokenRevocationList:
             top -= 1
         return top
 
-    def _choose_victim_locked(self):
+    def _choose_victim_locked(self) -> Tuple[Optional[str], Optional[str], int, bool]:
         """누가 무엇을 내놓는가 — ``(보관자, jti, 보유량, churn 이었나)``.
 
         **가치가 무게보다 앞선다.** 회전 churn 이 **어디에든** 남아 있으면 그 중에서
@@ -878,8 +881,12 @@ class LocalAuthService:
     def __init__(
         self,
         *,
-        store,
-        hasher,
+        # ⚠️ `Any` 는 게으름이 아니라 **측정된 사실**이다 — 이 두 협력자를 선언하는
+        # 포트가 없다(실측 2026-09-06: domain 이 선언한 Protocol/ABC 33개 중 어느
+        # 것도 이 계열이 상속하지 않는다). 시험은 가짜를 주입하므로 구체 클래스로
+        # 좁히는 것도 거짓이다. 계약을 «발명하지 않고» 부재를 적는다.
+        store: Any,
+        hasher: Any,
         jwt_config: LocalJwtConfig,
         clock: Callable[[], object],
         revocation_list: Optional[TokenRevocationList] = None,
@@ -1088,7 +1095,7 @@ class LocalAuthService:
 
     # ── me ───────────────────────────────────────────────────────────────────
 
-    def me(self, principal) -> dict:
+    def me(self, principal: object) -> dict:
         user = self._require_local_user(principal)
         return self._profile(user)
 
@@ -1096,7 +1103,7 @@ class LocalAuthService:
 
     def change_password(
         self,
-        principal,
+        principal: object,
         *,
         current_password: object,
         new_password: object,
@@ -1225,7 +1232,7 @@ class LocalAuthService:
 
     def logout(
         self,
-        principal,
+        principal: object,
         *,
         access_token: object = '',
         refresh_token: object = '',
@@ -1279,7 +1286,7 @@ class LocalAuthService:
 
     # ── administrative unlock ────────────────────────────────────────────────
 
-    def unlock_account(self, principal, *, subject: object) -> dict:
+    def unlock_account(self, principal: object, *, subject: object) -> dict:
         """관리자가 ``subject`` 의 로그인 잠금을 푼다 (2026-08-23).
 
         운영자 판정(2026-08-22): 해제 주체는 **관리자 해제 + 자동 만료 둘 다**.
@@ -1549,7 +1556,7 @@ class LocalAuthService:
             ),
         }
 
-    def _require_local_user(self, principal) -> dict:
+    def _require_local_user(self, principal: object) -> dict:
         subject = str(getattr(principal, 'subject', '') or '').strip()
         if not subject or subject == 'anonymous':
             raise InvalidCredentialsError('authentication required')
@@ -1583,18 +1590,18 @@ class LocalAuthService:
         if self._spraying is not None:
             self._spraying.record_failure(fingerprint, identifier)
 
-    def _now_for_compare(self):
+    def _now_for_compare(self) -> object:
         """잠금 비교용 '지금'. ``clock`` 이 무엇을 돌려주든 그것으로 비교한다."""
         return self._clock()
 
 
 def bootstrap_local_admin(
     *,
-    store,
-    hasher,
+    store: Any,
+    hasher: Any,
     email: object,
     password: object,
-    now,
+    now: object,
     id_factory: Callable[[], str] = lambda: str(uuid.uuid4()),
     role_key: str = BOOTSTRAP_ADMIN_ROLE_KEY,
 ) -> Optional[dict]:

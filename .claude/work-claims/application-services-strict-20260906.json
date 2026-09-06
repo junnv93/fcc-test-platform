@@ -1,0 +1,28 @@
+{
+  "task": "application-services-strict-20260906",
+  "branch": "feat/application-services-strict-20260906",
+  "owner": "fcc-delivery-final-6a",
+  "status": "active",
+  "base": "origin/main@08adf3f",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/ec0a73aa-2dd1-4978-907a-79f33d27232f/scratchpad/wt-app",
+  "scope": [
+    "fcc_test_platform/application/chamber_measurement_staging_evidence.py",
+    "fcc_test_platform/application/local_user_store.py",
+    "fcc_test_platform/application/local_auth_service.py",
+    "fcc_test_platform/application/published_plan_expectation_service.py",
+    "fcc_test_platform/application/chamber_token_evidence.py",
+    "fcc_test_platform/application/central_artifact_custody_service.py",
+    "fcc_test_platform/application/sample_inventory_export_service.py",
+    "fcc_test_platform/application/password_hasher.py",
+    "fcc_test_platform/application/chamber_metrics.py",
+    "fcc_test_platform/application/chamber_measurement_service.py",
+    "fcc_test_platform/application/central_sample_inventory_service.py",
+    "fcc_test_platform/application/central_rekey_ingest_evidence.py",
+    "fcc_test_platform/application/central_rekey_coverage.py",
+    "fcc_test_platform/application/central_reference_service.py",
+    ".claude/work-claims/application-services-strict-20260906.json"
+  ],
+  "shared_outputs": ["mypy.ini", "tests/test_architecture_gate_conformance.py"],
+  "conflicts_with": [],
+  "sequencing": "#115(write 어댑터) · #122(read 어댑터) 착지 후에만 시작 가능했다 — 셋이 mypy.ini 의 같은 절과 STRICT_SECTIONS 를 만지기 때문이다. 둘 다 08adf3f 로 착지해 그 대기가 풀렸다. ⚠️ 이 계열은 포트가 없어 write/read 웨이브의 «포트 감사» 축이 성립하지 않는다(실측: domain 이 선언한 33개 Protocol/ABC 중 어느 것도 이 14 모듈이 상속하지 않는다). 대신 계약의 실체는 조립 루트다 — 14 중 11 을 api_composition.py 가 import 하고 그중 9 는 api/platform_routes.py 도 부른다. 따를 Protocol 이 없으므로 주석이 «유일한 선언 표면»이 된다. ⚠️ 실측 57건은 전부 no-untyped-def 이고 실제 타입 오류는 0 이다(#112 가 44건을 먼저 처분했다). ⚠️ 그리고 그 57 은 #115·#122 착지 전후로 «움직이지 않았다» — api 133 과 같은 이유로, 선언 부재는 상류 타입과 독립이다."
+}

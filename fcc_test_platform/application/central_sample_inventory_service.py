@@ -5,7 +5,7 @@ import base64
 import binascii
 from datetime import datetime, timezone
 import json
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Callable, Mapping, Optional, Tuple
 
 from fcc_test_kernel.domain.models.sample_inventory import INTAKE_FIELDS, SampleStatus
 from fcc_test_platform.domain.ports.output.central_sample_inventory_read_port import (
@@ -311,7 +311,9 @@ def _cursor_value(value: Any) -> Any:
     return value
 
 
-def _decode_cursor(value: Optional[str], *, arity: Optional[int] = None):
+def _decode_cursor(
+    value: Optional[str], *, arity: Optional[int] = None,
+) -> Optional[Tuple[Any, ...]]:
     if value is None:
         return None
     try:

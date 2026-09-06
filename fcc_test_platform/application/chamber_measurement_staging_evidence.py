@@ -39,7 +39,7 @@ dependency-free (stdlib only) so it stays frozen-exe safe and unit-testable.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping, Sequence
+from typing import Iterable, Iterator, Mapping, Sequence, TypeGuard
 
 
 __all__ = [
@@ -202,7 +202,7 @@ def chamber_measurement_staging_errors(manifest: Mapping) -> list[StagingEvidenc
     return issues
 
 
-def _validate_machines(value, issues: list[StagingEvidenceIssue]) -> None:
+def _validate_machines(value: object, issues: list[StagingEvidenceIssue]) -> None:
     if not _is_list(value) or not value:
         issues.append(_issue('invalid_machines', 'machines',
                              f'machines must list at least {MIN_PHYSICAL_MACHINES} entries'))
@@ -222,7 +222,7 @@ def _validate_machines(value, issues: list[StagingEvidenceIssue]) -> None:
                                      f'{field} is required'))
 
 
-def _validate_chamber(value, issues: list[StagingEvidenceIssue]) -> None:
+def _validate_chamber(value: object, issues: list[StagingEvidenceIssue]) -> None:
     chamber = _require_object(value, 'chamber', issues)
     if chamber is None:
         return
@@ -232,7 +232,7 @@ def _validate_chamber(value, issues: list[StagingEvidenceIssue]) -> None:
                    'chamber.token_binding_state', 'invalid_token_binding_state', issues)
 
 
-def _validate_equipment(value, issues: list[StagingEvidenceIssue]) -> None:
+def _validate_equipment(value: object, issues: list[StagingEvidenceIssue]) -> None:
     equipment = _require_object(value, 'equipment', issues)
     if equipment is None:
         return
@@ -245,7 +245,7 @@ def _validate_equipment(value, issues: list[StagingEvidenceIssue]) -> None:
                              'dut_driven must be a boolean'))
 
 
-def _validate_measurement(value, issues: list[StagingEvidenceIssue]) -> None:
+def _validate_measurement(value: object, issues: list[StagingEvidenceIssue]) -> None:
     measurement = _require_object(value, 'measurement', issues)
     if measurement is None:
         return
@@ -281,7 +281,7 @@ def _validate_measurement(value, issues: list[StagingEvidenceIssue]) -> None:
                    'measurement.outcome', 'invalid_outcome', issues, allow_empty=True)
 
 
-def _validate_timeline(value, issues: list[StagingEvidenceIssue]) -> None:
+def _validate_timeline(value: object, issues: list[StagingEvidenceIssue]) -> None:
     if not _is_list(value) or len(value) < len(TIMELINE_PHASES):
         issues.append(_issue('invalid_timeline', 'timeline',
                              f'timeline must list at least {len(TIMELINE_PHASES)} '
@@ -299,7 +299,7 @@ def _validate_timeline(value, issues: list[StagingEvidenceIssue]) -> None:
             issues.append(_issue('missing_required_field', f'{path}.at', 'at is required'))
 
 
-def _validate_correlation(value, issues: list[StagingEvidenceIssue]) -> None:
+def _validate_correlation(value: object, issues: list[StagingEvidenceIssue]) -> None:
     correlation = _require_object(value, 'correlation', issues)
     if correlation is None:
         return
@@ -307,7 +307,7 @@ def _validate_correlation(value, issues: list[StagingEvidenceIssue]) -> None:
         _require_text(correlation, key, f'correlation.{key}', issues)
 
 
-def _validate_restart_partition(value, issues: list[StagingEvidenceIssue]) -> None:
+def _validate_restart_partition(value: object, issues: list[StagingEvidenceIssue]) -> None:
     block = _require_object(value, 'restart_partition', issues)
     if block is None:
         return
@@ -317,7 +317,7 @@ def _validate_restart_partition(value, issues: list[StagingEvidenceIssue]) -> No
                    'restart_partition.network_partition', 'invalid_scenario_state', issues)
 
 
-def _validate_fleet_partition(value, issues: list[StagingEvidenceIssue]) -> None:
+def _validate_fleet_partition(value: object, issues: list[StagingEvidenceIssue]) -> None:
     """A 3+ node fleet split (split-brain) scenario.
 
     ``state`` is ``observed`` (actually exercised) or ``not_run`` (honestly
@@ -533,7 +533,7 @@ def measurement_staging_pass_summary(manifest: Mapping) -> list[PassCriterion]:
 # helpers                                                                       #
 # --------------------------------------------------------------------------- #
 
-def _require_object(value, path: str, issues: list[StagingEvidenceIssue]) -> Mapping | None:
+def _require_object(value: object, path: str, issues: list[StagingEvidenceIssue]) -> Mapping | None:
     if not isinstance(value, Mapping) or not value:
         issues.append(_issue('missing_required_field', path, f'{path} must be an object'))
         return None
@@ -546,7 +546,7 @@ def _require_text(mapping: Mapping, key: str, path: str,
         issues.append(_issue('missing_required_field', path, f'{key} is required'))
 
 
-def _validate_enum(value, allowed: Sequence[str], path: str, code: str,
+def _validate_enum(value: object, allowed: Sequence[str], path: str, code: str,
                    issues: list[StagingEvidenceIssue], *, allow_empty: bool = False) -> None:
     text = _text(value)
     if not text:
@@ -557,7 +557,7 @@ def _validate_enum(value, allowed: Sequence[str], path: str, code: str,
         issues.append(_issue(code, path, f"{path} must be one of {', '.join(allowed)}"))
 
 
-def _placeholder_paths(value, path: str):
+def _placeholder_paths(value: object, path: str) -> Iterator[str]:
     """Yield every dotted path whose string value is the template placeholder."""
     if isinstance(value, Mapping):
         for key, child in value.items():
@@ -570,17 +570,17 @@ def _placeholder_paths(value, path: str):
         yield path
 
 
-def _real_value(value) -> str:
+def _real_value(value: object) -> str:
     """Text value with the unfilled placeholder treated as absent."""
     text = _text(value)
     return '' if text == TEMPLATE_PLACEHOLDER else text
 
 
-def _count_real(values) -> int:
+def _count_real(values: Iterable[object]) -> int:
     return sum(1 for v in values if _real_value(v))
 
 
-def _distinct_physical_machine_count(machines) -> int:
+def _distinct_physical_machine_count(machines: Iterable[object]) -> int:
     """Count distinct *physical* machines from the machines array.
 
     A machine only counts when BOTH its ``identity`` and ``address`` are real
@@ -623,7 +623,7 @@ def _distinct_physical_machine_count(machines) -> int:
     return len({find(node) for node in parent})
 
 
-def _real_timeline_phases(timeline) -> set:
+def _real_timeline_phases(timeline: Iterable[object]) -> set:
     """Phases whose entry carries a real (non-placeholder) timestamp."""
     phases: set[str] = set()
     for raw in timeline:
@@ -635,16 +635,23 @@ def _real_timeline_phases(timeline) -> set:
     return phases
 
 
-def _is_http_success(value) -> bool:
+def _is_http_success(value: object) -> bool:
     return (isinstance(value, int) and not isinstance(value, bool)
             and _HTTP_SUCCESS_MIN <= value <= _HTTP_SUCCESS_MAX)
 
 
-def _is_list(value) -> bool:
+def _is_list(value: object) -> TypeGuard[Sequence[object]]:
+    """⚠️ 반환형이 `bool` 이 아니라 `TypeGuard` 인 것이 요점이다.
+
+    이 함수는 **이미** 런타임에 좁힘을 하고 있었다 — 호출부는 그 뒤에서 `len()` 과
+    `enumerate()` 를 쓴다. `bool` 로 적으면 mypy 가 그 좁힘을 못 보고, 호출부마다
+    `object` 에 `len` 을 건다는 오류가 난다(실측 2026-09-06: 그 형태로 8건).
+    `TypeGuard` 는 새 검사를 «만드는» 것이 아니라 이미 있는 검사를 타입에 드러낸다.
+    """
     return isinstance(value, Sequence) and not isinstance(value, (str, bytes))
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()
