@@ -58,7 +58,7 @@ class PostgresCentralUserWriteAdapter:
             row = cursor.fetchone()
             if row is None:
                 raise UserWriteError('central users upsert returned no row')
-            return dict(zip(_RETURNING_COLUMNS, row))
+            return dict(zip(_RETURNING_COLUMNS, row, strict=True))
 
         result = self._in_transaction(_txn)
         assert result is not None

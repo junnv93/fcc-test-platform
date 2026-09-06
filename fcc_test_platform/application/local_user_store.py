@@ -301,7 +301,7 @@ class PostgresLocalUserStore:
         rows = self._query(FIND_LOCAL_USER_SQL, (issuer, subject))
         if not rows:
             return None
-        return dict(zip(LOCAL_USER_COLUMNS, rows[0]))
+        return dict(zip(LOCAL_USER_COLUMNS, rows[0], strict=True))
 
     def global_permissions(self, user_id: object) -> tuple[str, ...]:
         rows = self._query(GLOBAL_PERMISSIONS_SQL, (user_id,))
@@ -482,7 +482,7 @@ class PostgresLocalUserStore:
             rows = list(cursor.fetchall() or ())
             if not rows:
                 return None
-            return dict(zip(LOCAL_USER_COLUMNS, rows[0]))
+            return dict(zip(LOCAL_USER_COLUMNS, rows[0], strict=True))
 
         return self._in_transaction(_txn)
 

@@ -195,7 +195,7 @@ class PostgresCentralProjectWriteAdapter:
             rows = list(cursor.fetchall())
             if not rows:
                 return None
-            return dict(zip(_PROJECT_BY_CODE_COLUMNS, rows[0]))
+            return dict(zip(_PROJECT_BY_CODE_COLUMNS, rows[0], strict=True))
 
         return self._in_transaction(_txn)
 
@@ -309,7 +309,7 @@ class PostgresCentralProjectWriteAdapter:
             user_row = cursor.fetchone()
             if user_row is None:
                 raise CentralProjectError('central users upsert returned no row')
-            user = dict(zip(USER_UPSERT_RETURNING_COLUMNS, user_row))
+            user = dict(zip(USER_UPSERT_RETURNING_COLUMNS, user_row, strict=True))
             if not _is_enabled(user.get('enabled')):
                 raise PermissionError('actor user is disabled')
             materialized_membership = dict(membership_record)

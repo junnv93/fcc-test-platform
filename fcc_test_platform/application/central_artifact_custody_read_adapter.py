@@ -175,7 +175,7 @@ class PostgresCentralArtifactCustodyReadAdapter:
             snapshot = _snapshot_row(rows[0])
             cursor.execute(LIST_FINDINGS_SQL, (snapshot['snapshot_id'],))
             snapshot['findings'] = [
-                {key: _text(value) for key, value in zip(_FINDING_COLUMNS, row)}
+                {key: _text(value) for key, value in zip(_FINDING_COLUMNS, row, strict=True)}
                 for row in cursor.fetchall()
             ]
             return snapshot
@@ -209,7 +209,7 @@ class PostgresCentralArtifactCustodyReadAdapter:
 
 
 def _snapshot_row(row) -> dict:
-    record = dict(zip(SNAPSHOT_SELECT_COLUMNS, row))
+    record = dict(zip(SNAPSHOT_SELECT_COLUMNS, row, strict=True))
     record['roots'] = _decode_roots(record.pop('roots_json', None))
     for key in ('snapshot_id', 'provider_session_id', 'chamber_id',
                 'session_label', 'status', 'observed_at', 'reported_at'):

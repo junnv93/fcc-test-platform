@@ -642,7 +642,7 @@ def _explain(connection, manifest: SeedManifest) -> dict[str, Any]:
     with connection.cursor() as cursor:
         for provider_id, provider_uuid in zip(
             manifest.provider_ids, manifest.provider_uuids
-        ):
+        , strict=True):
             cursor.execute(
                 'EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) '
                 + BASELINE_EFFECTIVE_RESULTS_QUERY_SQL,

@@ -371,4 +371,4 @@ class PostgresCentralReadAdapter:
             close = getattr(connection, 'close', None)
             if callable(close):
                 close()
-        return [dict(zip(columns, row)) for row in rows]
+        return [dict(zip(columns, row, strict=True)) for row in rows]

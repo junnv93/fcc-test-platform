@@ -80,7 +80,7 @@ class SampleInventoryExportService:
         )
         sample_ids = tuple(str(item['sample_id']) for item in items)
         categories = {sample_id: _export_category(item.get('test_category'))
-                      for sample_id, item in zip(sample_ids, items)}
+                      for sample_id, item in zip(sample_ids, items, strict=True)}
         unresolved = [sample_id for sample_id, category in categories.items() if category is None]
         if unresolved:
             raise SampleInventoryExportCategoryUnresolvedError(unresolved)
