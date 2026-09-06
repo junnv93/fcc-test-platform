@@ -1,0 +1,20 @@
+{
+  "task": "sibling-pin-unblocks-the-consumer-20260906",
+  "branch": "chore/release-v0.1.12-sibling-pin-20260906",
+  "owner": "fcc-delivery-final-35210538",
+  "status": "active",
+  "base": "origin/main@0da711d7",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/35210538-70c0-4266-9569-088fae7397a5/scratchpad/wt-box",
+  "scope": [
+    "pyproject.toml",
+    "requirements-central.txt",
+    "githooks/pre-push"
+  ],
+  "shared_outputs": [],
+  "summary": "The monorepo cannot install its own declaration. It pins fcc-test-contracts v0.1.23 (the supply-closure gate needed that release's fixes) while pinning this box at v0.1.11, whose metadata requires contracts v0.1.22 — measured 2026-09-06 in a venv built from the declaration, pip answers ResolutionImpossible, so the monorepo's backend-invariants and backend-routine die at the install step and would have kept dying after the runner came back. This release moves the sibling pin to v0.1.23 — deliberately NOT the latest (v0.1.25), but the same release the consumer already holds, which is the smallest change that closes the defect. Measured green in an isolated venv: 3,277 passed, declared 0 / observed 0. Surface v0.1.11 -> here: HTTP diff 0, modules 212 -> 215 with none removed, entry points 37 -> 38. Also corrects githooks/pre-push, whose header still said GitHub Actions assigns no runner: that is true of the private monorepo, not of this public lane, where PR #128's lane-check passed on a real runner in 1m43s.",
+  "non_scope": [
+    "Moving to contracts v0.1.25 (or kernel-v0.5.1). That is a wider bump that has to be measured on both sides of the consumer boundary; this release only removes the contradiction.",
+    "The v0.1.12 tag itself and the monorepo pin bump that follows it — each is a separate approval.",
+    "apps/web/package.json version parity (0.1.4). Declared-divergent on purpose; owning wave undecided."
+  ]
+}
