@@ -73,8 +73,10 @@ class CentralResultSelectionService:
         provider_id: str,
         condition_hash: str,
         *,
-        attempt_id: str,
-        expected_revision: int,
+        # `_append` 가 `Optional[str]` / `object` 로 선언하고 «무엇이든 받아 특정
+        # 메시지로 거절»한다. `str`/`int` 는 그 몸이 부정하는 선언이었다.
+        attempt_id: Optional[str],
+        expected_revision: object,
         actor_subject: str,
         reason: Optional[str] = None,
     ) -> Mapping:
@@ -91,7 +93,7 @@ class CentralResultSelectionService:
         provider_id: str,
         condition_hash: str,
         *,
-        expected_revision: int,
+        expected_revision: object,
         actor_subject: str,
         reason: Optional[str] = None,
     ) -> Mapping:
@@ -110,7 +112,7 @@ class CentralResultSelectionService:
         *,
         action: str,
         attempt_id: Optional[str],
-        expected_revision: int,
+        expected_revision: object,
         actor_subject: str,
         reason: Optional[str],
     ) -> Mapping:

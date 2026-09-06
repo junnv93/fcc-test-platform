@@ -65,6 +65,7 @@ STRICT_SECTIONS = (
     'mypy-fcc_test_platform.domain.*',
     'mypy-fcc_test_platform.infrastructure.*',
     'mypy-fcc_test_platform.application.*',
+    'mypy-fcc_test_platform.api.*',
 )
 #: ⚠️ 2026-09-06 — `application.session.*`·`application.headless.*` 와 어댑터 계열
 #:    24모듈의 «파생 + 열거» 두 덩어리가 여기서 한 줄로 접혔다. 그 구조가 존재한

@@ -11,7 +11,10 @@ failure (``CentralReadError``) → 503.
 from __future__ import annotations
 
 from functools import wraps
-from typing import Optional, TYPE_CHECKING
+from typing import (
+    Any, AsyncIterator, Awaitable, Callable, Mapping, Optional, Protocol,
+    TYPE_CHECKING, cast,
+)
 
 from fcc_test_contracts.common.access_policy import (
     API_PERMISSION_ADMIN,
@@ -213,6 +216,13 @@ from fcc_test_platform.application.provider_ui_descriptor_registry import (
 )
 
 if TYPE_CHECKING:  # avoid a hard import on the read-only surface
+    from types import TracebackType
+    from fastapi import APIRouter, FastAPI, Request, Response
+    from fcc_test_contracts.common.credential_throttle import CredentialThrottle
+    from fcc_test_platform.application.chamber_metrics import ChamberMetricsCollector
+    from fcc_test_platform.application.sample_inventory_export_service import (
+        SampleInventoryExportResult,
+    )
     from fcc_test_platform.application.central_reference_service import CentralReferenceService
     from fcc_test_platform.application.central_artifact_custody_service import (
         CentralArtifactCustodyService,
@@ -256,9 +266,84 @@ CHAMBER_BINDING_AXES = (
 _PLATFORM_PATH_PATTERNS = build_route_pattern_index(PLATFORM_API_ROUTES)
 
 
-def _lookup_platform_operation(request_path: str):
+def _lookup_platform_operation(request_path: str) -> Optional[str]:
     """Return canonical operation name for a request path; None if no match."""
     return _lookup_route_operation(_PLATFORM_PATH_PATTERNS, request_path)
+
+
+def _body_text(value: object) -> str:
+    """A required text field read straight out of a JSON request body.
+
+    ⚠️ This deliberately does **not** validate — the write services do, and this
+    must not change what they say. Every service reached from here spells the
+    same normalisation (``'' if value is None else str(value).strip()``, then
+    reject empty): ``_require_text`` in the report/claim/membership/chamber
+    services, and ``_parse_reported_status`` on the chamber heartbeat. So a
+    missing field arriving here as ``''`` raises exactly the ``<field> is
+    required`` it always did (both spellings read, 2026-09-06).
+
+    It exists because those services declare ``str`` *truthfully* — every other
+    caller passes real text — and this adapter is the one place a raw body value
+    crosses that line. The boundary belongs here, not in the services.
+
+    ⚠️ NOT for ``status``/``expected_version`` on the sample routes. Those reach
+    kernel validators declared ``Any`` whose message names the offending value,
+    so folding ``None`` into ``''`` there would turn ``unsupported sample
+    status: None`` into ``... ''``. Those two are declared ``object`` on
+    ``CentralSampleInventoryService`` instead — the declaration was the lie.
+
+    ⚠️ NOT for ``user_issuer`` — see the ``or ''`` at its two call sites.
+    """
+    return '' if value is None else str(value)
+
+
+#: What the progress WebSocket relay actually needs back from ``subscribe()``:
+#: an async context manager that also yields the events. Declared structurally
+#: so ``api`` still imports nothing from ``infrastructure`` (it imports none
+#: today, deliberately — see the probe note in ``create_platform_app``).
+class _ProgressSubscriptionScope(Protocol):
+    async def __aenter__(self) -> 'AsyncIterator[ChamberProgressEvent]': ...
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: 'TracebackType | None',
+    ) -> None: ...
+
+
+class _SubscribableProgressBroadcaster(Protocol):
+    """The *read* side of the progress relay.
+
+    🔴 FINDING (2026-09-06, surfaced by turning strict on for ``api``).
+    ``ChamberProgressBroadcastPort`` declares itself publish-only, and the
+    adapter takes ``Optional[ChamberProgressBroadcastPort]`` — but the only
+    object ever wired is the concrete ``ChamberProgressBroadcaster``
+    (``api_composition.py:580``), and this relay is the port's *read* side. So
+    the declared type has been narrower than the real contract all along, and
+    the ``.subscribe()`` below has been reaching past it.
+
+    Narrowing here rather than widening the port keeps the domain's publish-only
+    decision where it belongs (the port owner's call, not this wave's). Runtime
+    is unchanged: a wiring that supplied a publish-only object failed with
+    ``AttributeError`` before and fails identically now. The claim that the
+    wired object satisfies this is checked in
+    ``tests/test_chamber_heartbeat_progress_broadcast.py`` — without that, this
+    Protocol would be a comment.
+    """
+
+    def subscribe(self) -> _ProgressSubscriptionScope: ...
+
+
+class _PrincipalResolver(Protocol):
+    """``create_principal_resolver`` 가 돌려주는 것들의 공통 표면.
+
+    이름으로 import 하지 않고 구조로 적는 이유는 그 팩토리가 인증 모드마다
+    **다른 클래스**를 돌려주기 때문이다(trusted-header / oidc_jwt / local_jwt).
+    조립 루트가 strict 이므로 이 Protocol 은 그 호출 지점에서 검사된다.
+    """
+
+    def resolve(self, request: object) -> ApiPrincipal: ...
 
 
 class PlatformAuthorizationError(PermissionError):
@@ -283,7 +368,7 @@ class PlatformApiAdapter:
         chamber_measurement_service: Optional[ChamberMeasurementService] = None,
         chamber_result_ingestion_service: Optional[ChamberResultIngestionService] = None,
         progress_broadcaster: Optional[ChamberProgressBroadcastPort] = None,
-        chamber_metrics_collector=None,
+        chamber_metrics_collector: Optional['ChamberMetricsCollector'] = None,
         project_service: Optional[CentralProjectService] = None,
         sample_inventory_service: Optional[CentralSampleInventoryService] = None,
         sample_export_service: Optional[SampleInventoryExportService] = None,
@@ -656,7 +741,7 @@ class PlatformApiAdapter:
     def list_project_result_selections(
         self, project_id: str, provider_id: str, *,
         limit: Optional[int] = None, cursor: Optional[str] = None,
-    ) -> dict:
+    ) -> Mapping:
         self.authorize('list_project_result_selections', project_id=project_id)
         return self._require_result_selection_service(
             'list_project_result_selections'
@@ -668,7 +753,7 @@ class PlatformApiAdapter:
     def list_project_result_attempts(
         self, project_id: str, provider_id: str, condition_hash: str, *,
         limit: Optional[int] = None, cursor: Optional[str] = None,
-    ) -> dict:
+    ) -> Mapping:
         self.authorize('list_project_result_attempts', project_id=project_id)
         return self._require_result_selection_service(
             'list_project_result_attempts'
@@ -680,7 +765,7 @@ class PlatformApiAdapter:
     def select_project_result(
         self, project_id: str, provider_id: str, condition_hash: str,
         body: Optional[dict] = None,
-    ) -> dict:
+    ) -> Mapping:
         self.authorize('select_project_result', project_id=project_id)
         actor = self._require_actor('select_project_result')
         payload = body or {}
@@ -697,7 +782,7 @@ class PlatformApiAdapter:
     def clear_project_result_selection(
         self, project_id: str, provider_id: str, condition_hash: str,
         body: Optional[dict] = None,
-    ) -> dict:
+    ) -> Mapping:
         self.authorize('clear_project_result_selection', project_id=project_id)
         actor = self._require_actor('clear_project_result_selection')
         payload = body or {}
@@ -712,7 +797,7 @@ class PlatformApiAdapter:
 
     def ingest_published_plan_expectation(
         self, project_id: str, provider_id: str, body: Optional[dict] = None,
-    ) -> dict:
+    ) -> Mapping:
         """Register a published plan's conditions as this project's denominator.
 
         ⚠️ **This is also how central learns the plan exists.**
@@ -731,7 +816,9 @@ class PlatformApiAdapter:
             'ingest_published_plan_expectation'
         ).ingest(
             project_id, provider_id,
-            plan_id=payload.get('plan_id'),
+            # ``or ''``: `_clean` is `str(value or '').strip()`, so this is that
+            # same fold — identical for every value, falsy non-strings included.
+            plan_id=payload.get('plan_id') or '',
             plan_published_at=payload.get('plan_published_at'),
             conditions=payload.get('conditions') or (),
         )
@@ -740,7 +827,7 @@ class PlatformApiAdapter:
         self, project_id: str, *, producer_provider_id: Optional[str] = None,
         state: Optional[str] = None, limit: Optional[int] = None,
         cursor: Optional[str] = None,
-    ) -> dict:
+    ) -> Mapping:
         self.authorize('list_project_result_references', project_id=project_id)
         return self._require_project_result_reference_service(
             'list_project_result_references'
@@ -751,7 +838,7 @@ class PlatformApiAdapter:
 
     def create_project_result_reference(
         self, project_id: str, body: Optional[dict] = None,
-    ) -> dict:
+    ) -> Mapping:
         self.authorize('create_project_result_reference', project_id=project_id)
         actor = self._require_actor('create_project_result_reference')
         payload = validate_project_result_reference_request(body)
@@ -767,13 +854,16 @@ class PlatformApiAdapter:
 
     def retire_project_result_reference(
         self, project_id: str, revision_id: str, body: Optional[dict] = None,
-    ) -> dict:
+    ) -> Mapping:
         self.authorize('retire_project_result_reference', project_id=project_id)
         actor = self._require_actor('retire_project_result_reference')
         payload = body or {}
         return self._require_project_result_reference_service(
             'retire_project_result_reference'
-        ).retire(revision_id, actor_subject=actor, reason=payload.get('reason'))
+        ).retire(
+            # ``or ''`` — `retire` opens with `str(reason or '').strip()`.
+            revision_id, actor_subject=actor, reason=payload.get('reason') or '',
+        )
 
     # ── Phase 1 (2026-06-22) — 프로젝트 진입층 ────────────────────────────────
     # list 는 호출자 멤버십으로 scope(token path 가 platform:read 게이트, 행 필터는
@@ -890,7 +980,7 @@ class PlatformApiAdapter:
         payload = body or {}
         return self._report_service.create_report(
             project_id,
-            edition=payload.get('edition'),
+            edition=_body_text(payload.get('edition')),
             date_of_issue=payload.get('date_of_issue'),
             date_tested_start=payload.get('date_tested_start'),
             date_tested_end=payload.get('date_tested_end'),
@@ -908,10 +998,14 @@ class PlatformApiAdapter:
             raise RuntimeError(
                 'get_report_citation called but report_service is not wired'
             )
-        kwargs = {'edition': edition}
-        if session_id is not None:
-            kwargs['session_id'] = session_id
-        return self._report_service.get_report_citation(project_id, **kwargs)
+        # Was a conditional ``**kwargs`` dict, which mypy read as
+        # ``dict[str, str | None]`` and could therefore not match against
+        # ``session_snapshot: Optional[dict]``. Passing both keywords directly is
+        # identical: ``get_report_citation`` declares ``session_id=None``, so
+        # omitting it and passing ``None`` are the same call.
+        return self._report_service.get_report_citation(
+            project_id, edition=edition, session_id=session_id,
+        )
 
     # ── 성적서 §6 장비목록 (2026-08-07) ────────────────────────────────────────
     # EMS 가 표준 장비리스트의 SSOT 이고 이 표면은 프로젝트가 실제로 쓴 목록을
@@ -919,7 +1013,10 @@ class PlatformApiAdapter:
     # mutating 토큰) — authorize 가 토큰 ∪ 프로젝트 멤버십 union 이므로
     # 프로젝트 멤버인 시험원은 토큰 없이도 자기 목록을 끝낼 수 있다.
 
-    def list_test_equipment_lists(self, project_id: str) -> list:
+    # 🔴 2026-09-06: 이 자리는 `-> list` 라 선언돼 있었는데 `list_lists` 는
+    # `{'lists': [...], 'test_items': [...]}` 를 돌려준다. 응답은 처음부터
+    # 객체였고 선언만 틀려 있었다 — strict 가 아니었으면 계속 그랬을 것이다.
+    def list_test_equipment_lists(self, project_id: str) -> dict:
         self.authorize('list_test_equipment_lists', project_id=project_id)
         service = self._require_equipment_list_service('list_test_equipment_lists')
         return service.list_lists(project_id)
@@ -972,7 +1069,7 @@ class PlatformApiAdapter:
         service = self._require_equipment_list_service('confirm_test_equipment_list')
         return service.confirm_list(project_id, equipment_list_id)
 
-    def _require_equipment_list_service(self, operation: str):
+    def _require_equipment_list_service(self, operation: str) -> CentralTestEquipmentListService:
         """미배선이면 loud 실패 — 조용히 빈 목록을 돌려주지 않는다."""
         if self._equipment_list_service is None:
             raise RuntimeError(
@@ -1230,7 +1327,10 @@ class PlatformApiAdapter:
             cursor=cursor,
         )
 
-    def _authorize_reference_scope(self, operation: str, *, resolve_scope) -> None:
+    def _authorize_reference_scope(
+        self, operation: str, *,
+        resolve_scope: Callable[[], Optional[tuple[Optional[str], Optional[str]]]],
+    ) -> None:
         """Token first; membership only for a PROJECT-scoped family.
 
         Until 2026-08-08 the reference operations called ``authorize(op)`` with
@@ -1284,7 +1384,9 @@ class PlatformApiAdapter:
         self.authorize(operation, project_id=project_scope)
 
     @staticmethod
-    def _reference_revision_scope(service, revision_id: str):
+    def _reference_revision_scope(
+        service: 'CentralReferenceService', revision_id: str,
+    ) -> Optional[tuple[str, str]]:
         """``(family, scope_id)`` of a stored revision, or ``None``.
 
         Returning ``None`` for an unknown id is what keeps a refusal silent
@@ -1294,26 +1396,26 @@ class PlatformApiAdapter:
         row = service.peek_revision_scope(revision_id)
         return (row['family'], row['scope_id']) if row else None
 
-    def _require_reference_service(self, operation: str):
+    def _require_reference_service(self, operation: str) -> CentralReferenceService:
         if self._reference_service is None:
             raise RuntimeError(
                 f'{operation} called but reference_service is not wired'
             )
         return self._reference_service
 
-    def _require_result_selection_service(self, operation: str):
+    def _require_result_selection_service(self, operation: str) -> CentralResultSelectionService:
         if self._result_selection_service is None:
             raise RuntimeError(f'{operation} called but result_selection_service is not wired')
         return self._result_selection_service
 
-    def _require_published_plan_expectation_service(self, operation: str):
+    def _require_published_plan_expectation_service(self, operation: str) -> PublishedPlanExpectationService:
         if self._published_plan_expectation_service is None:
             raise RuntimeError(
                 f'{operation} called but published_plan_expectation_service is not wired'
             )
         return self._published_plan_expectation_service
 
-    def _require_project_result_reference_service(self, operation: str):
+    def _require_project_result_reference_service(self, operation: str) -> CentralProjectReferenceService:
         if self._project_result_reference_service is None:
             raise RuntimeError(
                 f'{operation} called but project_result_reference_service is not wired'
@@ -1371,10 +1473,10 @@ class PlatformApiAdapter:
         # body for local-dev compatibility.
         operator = self._authenticated_operator(payload.get('operator'))
         actor = self._authenticated_actor() or operator
-        return self._claim_write_service.acquire(
+        return self._require_claim_write_service('acquire_project_claim').acquire(
             project_id,
-            technology=payload.get('technology'),
-            condition_hash=payload.get('condition_hash'),
+            technology=_body_text(payload.get('technology')),
+            condition_hash=_body_text(payload.get('condition_hash')),
             operator=operator,
             session_id=payload.get('session_id'),
             reason=payload.get('reason'),
@@ -1389,7 +1491,7 @@ class PlatformApiAdapter:
         payload = body or {}
         operator = self._authenticated_operator(payload.get('operator'))
         actor = self._authenticated_actor() or operator
-        return self._claim_write_service.release(
+        return self._require_claim_write_service('release_project_claim').release(
             project_id,
             claim_id,
             operator=operator,
@@ -1434,14 +1536,19 @@ class PlatformApiAdapter:
             )
         return self._membership_write_service.assign(
             project_id,
-            user_subject=payload.get('user_subject'),
-            user_issuer=payload.get('user_issuer'),
+            user_subject=_body_text(payload.get('user_subject')),
+            # ``or ''``, not ``_body_text``: this field is not required and never
+            # reaches ``_require_text``. ``issuer_lookup_candidates`` opens with
+            # ``str(user_issuer or '')``, so ``or ''`` is that same fold — whereas
+            # ``str(value)`` would make a falsy non-string body value (``0``) read
+            # as the *explicit* issuer ``'0'`` instead of «not given».
+            user_issuer=payload.get('user_issuer') or '',
             # The actor's VALIDATED issuer resolves a body that names only a
             # subject: membership is granted within one IdP, so the target row
             # lives under the same issuer the actor authenticated against
             # (mirrors create_project's actor_issuer forwarding).
             actor_issuer=self._actor_issuer(),
-            role_key=payload.get('role_key'),
+            role_key=_body_text(payload.get('role_key')),
             actor_subject=actor,
             expires_at=payload.get('expires_at'),
             team=payload.get('team'),
@@ -1464,10 +1571,15 @@ class PlatformApiAdapter:
             )
         return self._membership_write_service.revoke(
             project_id,
-            user_subject=payload.get('user_subject'),
-            user_issuer=payload.get('user_issuer'),
+            user_subject=_body_text(payload.get('user_subject')),
+            # ``or ''``, not ``_body_text``: this field is not required and never
+            # reaches ``_require_text``. ``issuer_lookup_candidates`` opens with
+            # ``str(user_issuer or '')``, so ``or ''`` is that same fold — whereas
+            # ``str(value)`` would make a falsy non-string body value (``0``) read
+            # as the *explicit* issuer ``'0'`` instead of «not given».
+            user_issuer=payload.get('user_issuer') or '',
             actor_issuer=self._actor_issuer(),
-            role_key=payload.get('role_key'),
+            role_key=_body_text(payload.get('role_key')),
             actor_subject=actor,
         )
 
@@ -1494,9 +1606,9 @@ class PlatformApiAdapter:
             )
         payload = body or {}
         return self._chamber_write_service.register(
-            chamber_id=payload.get('chamber_id'),
-            name=payload.get('name'),
-            base_url=payload.get('base_url'),
+            chamber_id=_body_text(payload.get('chamber_id')),
+            name=_body_text(payload.get('name')),
+            base_url=_body_text(payload.get('base_url')),
             enabled=payload.get('enabled', True),
             heartbeat_ttl_seconds=payload.get('heartbeat_ttl_seconds'),
         )
@@ -1512,8 +1624,8 @@ class PlatformApiAdapter:
                 'push_chamber_heartbeat called but chamber_write_service is not wired'
             )
         ack = self._chamber_write_service.heartbeat(
-            chamber_id=payload.get('chamber_id'),
-            reported_status=payload.get('reported_status'),
+            chamber_id=_body_text(payload.get('chamber_id')),
+            reported_status=_body_text(payload.get('reported_status')),
             session_id=payload.get('session_id'),
             expires_at=payload.get('expires_at'),
             # C1 — carry the node's progress snapshot (in_use only; the domain
@@ -1848,7 +1960,7 @@ class PlatformApiAdapter:
         service = self._require_local_auth_service('unlock_local_account')
         return service.unlock_account(self._principal, subject=identifier)
 
-    def _require_local_auth_service(self, operation: str):
+    def _require_local_auth_service(self, operation: str) -> LocalAuthService:
         if self._local_auth_service is None:
             raise RuntimeError(
                 f'{operation} called but local_auth_service is not wired — this '
@@ -1856,7 +1968,7 @@ class PlatformApiAdapter:
             )
         return self._local_auth_service
 
-    def _require_chamber_write_service(self, operation: str):
+    def _require_chamber_write_service(self, operation: str) -> CentralChamberWriteService:
         if self._chamber_write_service is None:
             raise RuntimeError(
                 f'{operation} called but chamber_write_service is not wired'
@@ -1920,7 +2032,7 @@ class PlatformApiAdapter:
         # 노출하지 않는 유일한 답이다.
         return service.get_snapshot(project_id, snapshot_id)
 
-    def _require_artifact_custody_service(self, operation: str):
+    def _require_artifact_custody_service(self, operation: str) -> CentralArtifactCustodyService:
         """미배선이면 loud 실패 — 조용히 "이상 없음"을 돌려주지 않는다.
 
         보관 조회에서 빈 결과는 통과처럼 읽힌다. 배선이 빠진 것을 그 모양으로
@@ -2045,7 +2157,7 @@ class PlatformApiAdapter:
         self, project_id: str, template: str, *, team: Optional[str] = None,
         status: Optional[str] = None, as_of: Optional[str] = None,
         include_deleted: bool = False,
-    ):
+    ) -> 'SampleInventoryExportResult':
         self.authorize('export_sample_inventory', project_id=project_id)
         if self._sample_export_service is None:
             raise RuntimeError('sample export service is not wired')
@@ -2058,6 +2170,15 @@ class PlatformApiAdapter:
         if self._sample_inventory_service is None:
             raise RuntimeError(f'{operation} called but sample_inventory_service is not wired')
         return self._sample_inventory_service
+
+    def _require_claim_write_service(self, operation: str) -> ClaimWriteService:
+        # The nine sibling services all have one of these; claim was the only
+        # one calling the Optional attribute straight, so an unwired claim
+        # service surfaced as ``'NoneType' object has no attribute 'acquire'``
+        # instead of naming what is missing. mypy is what noticed the asymmetry.
+        if self._claim_write_service is None:
+            raise RuntimeError(f'{operation} called but claim_write_service is not wired')
+        return self._claim_write_service
 
     def _authenticated_actor(self) -> Optional[str]:
         """Return the authenticated principal's subject when usable.
@@ -2312,11 +2433,11 @@ def api_error_status(exc: Exception) -> int:
 
 def create_platform_router(
     adapter: PlatformApiAdapter,
-    principal_resolver=None,
+    principal_resolver: Optional[_PrincipalResolver] = None,
     *,
     ws_heartbeat_seconds: float = 20.0,
-    credential_throttle=None,
-):
+    credential_throttle: Optional['CredentialThrottle'] = None,
+) -> 'APIRouter':
     """Create FastAPI routes for the platform read surface.
 
     ``ws_heartbeat_seconds`` controls the keepalive ping interval for the
@@ -2351,14 +2472,14 @@ def create_platform_router(
 
     router = APIRouter()
 
-    def request_adapter(request=None) -> PlatformApiAdapter:
+    def request_adapter(request: object = None) -> PlatformApiAdapter:
         if principal_resolver is None:
             return adapter
         return adapter.with_principal(principal_resolver.resolve(request))
 
-    def route_error_boundary(handler):
+    def route_error_boundary(handler: Callable[..., object]) -> Callable[..., object]:
         @wraps(handler)
-        def _wrapped(*args, **kwargs):
+        def _wrapped(*args: object, **kwargs: object) -> object:
             try:
                 return handler(*args, **kwargs)
             except (
@@ -2525,7 +2646,7 @@ def create_platform_router(
 
         return _wrapped
 
-    def _emit_page(response, page: dict) -> list:
+    def _emit_page(response: Response, page: Mapping) -> list:
         # Body stays a plain array (backward compatible); the next-page keyset
         # cursor rides in the response header (GitHub-style).
         next_cursor = page.get('next_cursor')
@@ -2536,13 +2657,13 @@ def create_platform_router(
     def get_project_coverage(
         project_id: str, request: Request, response: Response,
         limit: Optional[int] = None, cursor: str = '', technology: str = '',
-    ):
+    ) -> list:
         page = request_adapter(request).get_project_coverage(
             project_id, limit=limit, cursor=cursor or None, technology=technology or None,
         )
         return _emit_page(response, page)
 
-    def resolve_effective_project_permissions(project_id: str, request: Request):
+    def resolve_effective_project_permissions(project_id: str, request: Request) -> dict:
         permissions = request_adapter(request).resolve_effective_project_permissions(
             project_id,
         )
@@ -2551,28 +2672,28 @@ def create_platform_router(
     def list_project_claims(
         project_id: str, request: Request, response: Response,
         limit: Optional[int] = None, cursor: str = '', technology: str = '',
-    ):
+    ) -> list:
         page = request_adapter(request).list_project_claims(
             project_id, limit=limit, cursor=cursor or None, technology=technology or None,
         )
         return _emit_page(response, page)
 
-    def get_project_sync_status(project_id: str, request: Request):
+    def get_project_sync_status(project_id: str, request: Request) -> dict:
         # Single freshness object (not a paginated array) — returned directly.
         return request_adapter(request).get_project_sync_status(project_id)
 
-    def get_project_progress(project_id: str, request: Request):
+    def get_project_progress(project_id: str, request: Request) -> list:
         # Phase 6 — bounded per-(area, bucket) rollup array (no pagination).
         return request_adapter(request).get_project_progress(project_id)
 
-    def list_project_report_sessions(project_id: str, request: Request):
+    def list_project_report_sessions(project_id: str, request: Request) -> list:
         # P5-C — bounded reportable session choices with node routing metadata.
         return request_adapter(request).list_project_report_sessions(project_id)
 
     def list_project_result_selections(
         project_id: str, provider_id: str, request: Request, response: Response,
         limit: Optional[int] = None, cursor: str = '',
-    ):
+    ) -> list:
         page = request_adapter(request).list_project_result_selections(
             project_id, provider_id, limit=limit, cursor=cursor or None,
         )
@@ -2582,7 +2703,7 @@ def create_platform_router(
         project_id: str, provider_id: str, condition_hash: str,
         request: Request, response: Response, limit: Optional[int] = None,
         cursor: str = '',
-    ):
+    ) -> list:
         page = request_adapter(request).list_project_result_attempts(
             project_id, provider_id, condition_hash,
             limit=limit, cursor=cursor or None,
@@ -2592,7 +2713,7 @@ def create_platform_router(
     def select_project_result(
         project_id: str, provider_id: str, condition_hash: str,
         request: Request, body: Optional[dict] = None,
-    ):
+    ) -> Mapping:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).select_project_result(
             project_id, provider_id, condition_hash, body,
@@ -2601,7 +2722,7 @@ def create_platform_router(
     def ingest_published_plan_expectation(
         project_id: str, provider_id: str,
         request: Request, body: Optional[dict] = None,
-    ):
+    ) -> Mapping:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).ingest_published_plan_expectation(
             project_id, provider_id, body,
@@ -2610,7 +2731,7 @@ def create_platform_router(
     def clear_project_result_selection(
         project_id: str, provider_id: str, condition_hash: str,
         request: Request, body: Optional[dict] = None,
-    ):
+    ) -> Mapping:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).clear_project_result_selection(
             project_id, provider_id, condition_hash, body,
@@ -2620,7 +2741,7 @@ def create_platform_router(
         project_id: str, request: Request, response: Response,
         provider_id: str = '', state: str = '', limit: Optional[int] = None,
         cursor: str = '',
-    ):
+    ) -> list:
         page = request_adapter(request).list_project_result_references(
             project_id, producer_provider_id=provider_id or None,
             state=state or None, limit=limit, cursor=cursor or None,
@@ -2629,14 +2750,14 @@ def create_platform_router(
 
     def create_project_result_reference(
         project_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> Mapping:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).create_project_result_reference(project_id, body)
 
     def retire_project_result_reference(
         project_id: str, revision_id: str, request: Request,
         body: Optional[dict] = None,
-    ):
+    ) -> Mapping:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).retire_project_result_reference(
             project_id, revision_id, body,
@@ -2645,7 +2766,7 @@ def create_platform_router(
     def list_projects(
         request: Request, response: Response, status: str = 'active',
         q: str = '', limit: Optional[int] = None, cursor: str = '',
-    ):
+    ) -> list:
         # Plain array of the project directory filtered by status (read-open — any
         # authenticated principal). Defaults to 'active' (in-progress);
         # ?status=completed or ?status=all widen it. W3 백엔드 — ?q= searches
@@ -2656,60 +2777,62 @@ def create_platform_router(
         )
         return _emit_page(response, page)
 
-    def list_applicants(request: Request, q: str = '', limit: Optional[int] = None):
+    def list_applicants(request: Request, q: str = '', limit: Optional[int] = None) -> list:
         # Plain array of applicant suggestions (most recently used first). No
         # cursor: this is an autocomplete read, and the top N IS the whole answer —
         # advertising pagination the server does not implement would invite a UI
         # that cannot work.
         return request_adapter(request).list_applicants(q=q or None, limit=limit)
 
-    def create_project(request: Request, body: Optional[dict] = None):
+    def create_project(request: Request, body: Optional[dict] = None) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).create_project(body)
 
-    def get_project(project_id: str, request: Request):
+    def get_project(project_id: str, request: Request) -> dict:
         # Single project detail object — returned directly.
         return request_adapter(request).get_project(project_id)
 
     def update_project(
         project_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).update_project(project_id, body)
 
     # ── Phase G — test_reports 성적서 surface ─────────────────────────────────
-    def list_reports(project_id: str, request: Request):
+    def list_reports(project_id: str, request: Request) -> list:
         # Plain array of the project's reports (newest first) — returned directly.
         return request_adapter(request).list_reports(project_id)
 
     def create_report(
         project_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).create_report(project_id, body)
 
     def get_report_citation(
         project_id: str, request: Request, edition: str = '', session_id: str = '',
-    ):
+    ) -> dict:
         # Single citation object; optional ?edition feeds the derived report_number.
         return request_adapter(request).get_report_citation(
             project_id, edition=edition or None, session_id=session_id or None,
         )
 
     # 성적서 §6 장비목록 — 프로젝트가 실제로 사용한 장비/시험용 소프트웨어.
-    def list_test_equipment_lists(project_id: str, request: Request):
-        # Plain array of the project's equipment lists (newest first).
+    def list_test_equipment_lists(project_id: str, request: Request) -> dict:
+        # ``{'lists': [...], 'test_items': [...]}`` — an object, not an array.
+        # 🔴 이 주석은 「Plain array」라고 적혀 있었고 선언도 `-> list` 였다.
+        # 응답은 처음부터 객체였다(`CentralTestEquipmentListService.list_lists`).
         return request_adapter(request).list_test_equipment_lists(project_id)
 
     def create_test_equipment_list(
         project_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).create_test_equipment_list(project_id, body)
 
     def get_test_equipment_list(
         project_id: str, equipment_list_id: str, request: Request,
-    ):
+    ) -> dict:
         return request_adapter(request).get_test_equipment_list(
             project_id, equipment_list_id,
         )
@@ -2717,7 +2840,7 @@ def create_platform_router(
     def replace_test_equipment_list_items(
         project_id: str, equipment_list_id: str, request: Request,
         body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).replace_test_equipment_list_items(
             project_id, equipment_list_id, body,
@@ -2726,7 +2849,7 @@ def create_platform_router(
     def attach_test_equipment_list(
         project_id: str, equipment_list_id: str, request: Request,
         body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).attach_test_equipment_list(
             project_id, equipment_list_id, body,
@@ -2734,35 +2857,35 @@ def create_platform_router(
 
     def confirm_test_equipment_list(
         project_id: str, equipment_list_id: str, request: Request,
-    ):
+    ) -> dict:
         return request_adapter(request).confirm_test_equipment_list(
             project_id, equipment_list_id,
         )
 
-    def list_providers(request: Request):
+    def list_providers(request: Request) -> list:
         # Provider summary list (read-only) — returned directly.
         return request_adapter(request).list_providers()
 
-    def get_provider_ui_descriptor(provider_id: str, request: Request):
+    def get_provider_ui_descriptor(provider_id: str, request: Request) -> dict:
         # Single descriptor object (read-only proxy) — returned directly.
         return request_adapter(request).get_provider_ui_descriptor(provider_id)
 
     def acquire_project_claim(
         project_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).acquire_project_claim(project_id, body)
 
     def release_project_claim(
         project_id: str, claim_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).release_project_claim(project_id, claim_id, body)
 
     def list_project_memberships(
         project_id: str, request: Request, response: Response,
         limit: Optional[int] = None, cursor: str = '',
-    ):
+    ) -> list:
         page = request_adapter(request).list_project_memberships(
             project_id, limit=limit, cursor=cursor or None,
         )
@@ -2770,27 +2893,27 @@ def create_platform_router(
 
     def assign_project_membership(
         project_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).assign_project_membership(project_id, body)
 
     def revoke_project_membership(
         project_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).revoke_project_membership(project_id, body)
 
-    def complete_project(project_id: str, request: Request):
+    def complete_project(project_id: str, request: Request) -> dict:
         return request_adapter(request).complete_project(project_id)
 
-    def reopen_project(project_id: str, request: Request):
+    def reopen_project(project_id: str, request: Request) -> dict:
         return request_adapter(request).reopen_project(project_id)
 
     def list_reference_revisions(
         request: Request, response: Response, provider_id: str,
         family: str = '', scope_kind: str = '', scope_id: str = '',
         state: str = '', limit: Optional[int] = None, cursor: str = '',
-    ):
+    ) -> list:
         page = request_adapter(request).list_reference_revisions(
             provider_id,
             family=family or None,
@@ -2802,32 +2925,32 @@ def create_platform_router(
         )
         return _emit_page(response, page)
 
-    def get_reference_revision(provider_id: str, revision_id: str, request: Request):
+    def get_reference_revision(provider_id: str, revision_id: str, request: Request) -> dict:
         return request_adapter(request).get_reference_revision(
             provider_id, revision_id,
         )
 
     def create_reference_revision(
         provider_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).create_reference_revision(provider_id, body)
 
     def fork_reference_revision(
         provider_id: str, revision_id: str, request: Request,
         body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).fork_reference_revision(
             provider_id, revision_id, body,
         )
 
-    def list_reference_families(provider_id: str, request: Request):
+    def list_reference_families(provider_id: str, request: Request) -> list:
         return request_adapter(request).list_reference_families(provider_id)
 
     def create_authored_reference_revision(
         provider_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).create_authored_reference_revision(
             provider_id, body,
@@ -2836,7 +2959,7 @@ def create_platform_router(
     def update_reference_revision_rows(
         provider_id: str, revision_id: str, request: Request,
         body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).update_reference_revision_rows(
             provider_id, revision_id, body,
@@ -2845,7 +2968,7 @@ def create_platform_router(
     def update_reference_revision_entries(
         provider_id: str, revision_id: str, request: Request,
         body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).update_reference_revision_entries(
             provider_id, revision_id, body,
@@ -2854,7 +2977,7 @@ def create_platform_router(
     def publish_reference_revision(
         provider_id: str, revision_id: str, request: Request,
         body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).publish_reference_revision(
             provider_id, revision_id, body,
@@ -2864,7 +2987,7 @@ def create_platform_router(
         chamber_id: str, request: Request,
         scope_project_id: str = '', bundle_etag: str = '',
         limit: Optional[int] = None, cursor: str = '',
-    ):
+    ) -> dict:
         # A single bundle object (revisions + tag + unchanged flag) — returned
         # directly rather than through _emit_page, because the cut is one answer
         # and splitting it across a header would let a caller act on half of it.
@@ -2878,11 +3001,13 @@ def create_platform_router(
 
     def update_chamber_storage_root(
         chamber_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).update_chamber_storage_root(chamber_id, body)
 
-    def _deny_if_throttled(operation, request, body=None) -> None:
+    def _deny_if_throttled(
+        operation: str, request: object, body: Optional[dict] = None,
+    ) -> None:
         """Charge the account tier and raise 429 when the attempt is over budget.
 
         ⚠️ Charged **before** the adapter is touched, so a denied attempt costs no
@@ -2917,7 +3042,7 @@ def create_platform_router(
             },
         )
 
-    def local_auth_login(request: Request, body: Optional[dict] = None):
+    def local_auth_login(request: Request, body: Optional[dict] = None) -> dict:
         request, body = _normalize_request_body_args(request, body)
         # ⚠️ Enforce first, charge later. The check does not spend the budget —
         # ``record_failure`` below does, and only when the attempt actually failed.
@@ -2937,14 +3062,14 @@ def create_platform_router(
                 credential_throttle.record_failure('local_auth_login', body)
             raise
 
-    def local_auth_refresh(request: Request, body: Optional[dict] = None):
+    def local_auth_refresh(request: Request, body: Optional[dict] = None) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).local_auth_refresh(body)
 
-    def local_auth_me(request: Request):
+    def local_auth_me(request: Request) -> dict:
         return request_adapter(request).local_auth_me()
 
-    def local_auth_change_password(request: Request, body: Optional[dict] = None):
+    def local_auth_change_password(request: Request, body: Optional[dict] = None) -> dict:
         request, body = _normalize_request_body_args(request, body)
         # ⚠️ **No account tier here, and that is a decision.** A first draft put
         # this surface on the login bucket. Adversarial review showed the cost lands
@@ -2965,33 +3090,33 @@ def create_platform_router(
             source_fingerprint=_source_fingerprint(request),
         )
 
-    def local_auth_logout(request: Request, body: Optional[dict] = None):
+    def local_auth_logout(request: Request, body: Optional[dict] = None) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).local_auth_logout(
             body, access_token=_bearer_token_of(request),
         )
 
-    def unlock_local_account(request: Request, body: Optional[dict] = None):
+    def unlock_local_account(request: Request, body: Optional[dict] = None) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).unlock_local_account(body)
 
     def update_chamber_web_session_approval(
         chamber_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).update_chamber_web_session_approval(
             chamber_id, body,
         )
 
-    def get_chamber_settings(chamber_id: str, request: Request):
+    def get_chamber_settings(chamber_id: str, request: Request) -> dict:
         return request_adapter(request).get_chamber_settings(chamber_id)
 
-    def get_chamber_equipment_config(chamber_id: str, request: Request):
+    def get_chamber_equipment_config(chamber_id: str, request: Request) -> dict:
         return request_adapter(request).get_chamber_equipment_config(chamber_id)
 
     def update_chamber_equipment_config(
         chamber_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).update_chamber_equipment_config(
             chamber_id, body,
@@ -2999,47 +3124,47 @@ def create_platform_router(
 
     def push_artifact_custody_report(
         chamber_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).push_artifact_custody_report(chamber_id, body)
 
-    def get_project_artifact_custody(project_id: str, request: Request):
+    def get_project_artifact_custody(project_id: str, request: Request) -> dict:
         # 프로젝트 요약 + 세션 행이 한 답이다 — 페이지로 쪼개면 호출자가 절반을 보고
         # "이상 없음"이라고 판단할 수 있다(차단 세션이 다음 페이지에 있을 때).
         return request_adapter(request).get_project_artifact_custody(project_id)
 
     def get_artifact_custody_snapshot(
         project_id: str, snapshot_id: str, request: Request,
-    ):
+    ) -> dict:
         return request_adapter(request).get_artifact_custody_snapshot(
             project_id, snapshot_id,
         )
 
-    def list_chambers(request: Request):
+    def list_chambers(request: Request) -> dict:
         # Single availability object (items + server_time) — returned directly,
         # not paginated (chamber count is small).
         return request_adapter(request).list_chambers()
 
-    def register_chamber(request: Request, body: Optional[dict] = None):
+    def register_chamber(request: Request, body: Optional[dict] = None) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).register_chamber(body)
 
-    def push_chamber_heartbeat(request: Request, body: Optional[dict] = None):
+    def push_chamber_heartbeat(request: Request, body: Optional[dict] = None) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).push_chamber_heartbeat(body)
 
     def start_chamber_measurement(
         chamber_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).start_chamber_measurement(chamber_id, body)
 
-    def get_chamber_measurement_progress(chamber_id: str, request: Request):
+    def get_chamber_measurement_progress(chamber_id: str, request: Request) -> dict:
         return request_adapter(request).get_chamber_measurement_progress(chamber_id)
 
     def push_chamber_result_ingestion(
         chamber_id: str, request: Request, body: Optional[dict] = None,
-    ):
+    ) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).push_chamber_result_ingestion(chamber_id, body)
 
@@ -3049,59 +3174,59 @@ def create_platform_router(
         request: Request, project_id: str = '', team: str = '', status: str = '',
         as_of: str = '', after: str = '', limit: int = 100,
         include_deleted: bool = False,
-    ):
+    ) -> dict:
         return request_adapter(request).list_sample_inventory(
             project_id=project_id or None, team=team or None, status=status or None,
             as_of=as_of or None, after=after or None, limit=limit,
             include_deleted=include_deleted,
         )
 
-    def create_sample(project_id: str, request: Request, body: Optional[dict] = None):
+    def create_sample(project_id: str, request: Request, body: Optional[dict] = None) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).create_sample(project_id, body)
 
-    def get_sample(project_id: str, sample_id: str, request: Request, as_of: str = ''):
+    def get_sample(project_id: str, sample_id: str, request: Request, as_of: str = '') -> dict:
         return request_adapter(request).get_sample(project_id, sample_id, as_of=as_of or None)
 
     def patch_sample(project_id: str, sample_id: str, request: Request,
-                     body: Optional[dict] = None):
+                     body: Optional[dict] = None) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).patch_sample(project_id, sample_id, body)
 
     def change_sample_status(project_id: str, sample_id: str, request: Request,
-                             body: Optional[dict] = None):
+                             body: Optional[dict] = None) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).change_sample_status(project_id, sample_id, body)
 
     def delete_sample(project_id: str, sample_id: str, request: Request,
-                      body: Optional[dict] = None):
+                      body: Optional[dict] = None) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).delete_sample(project_id, sample_id, body)
 
-    def hard_delete_sample(sample_id: str, request: Request):
+    def hard_delete_sample(sample_id: str, request: Request) -> dict:
         return request_adapter(request).hard_delete_sample(sample_id)
 
     def list_sample_history(project_id: str, sample_id: str, request: Request,
-                            after: str = '', limit: int = 100):
+                            after: str = '', limit: int = 100) -> dict:
         return request_adapter(request).list_sample_history(
             project_id, sample_id, after=after or None, limit=limit,
         )
 
-    def list_sample_intakes(project_id: str, sample_id: str, request: Request):
+    def list_sample_intakes(project_id: str, sample_id: str, request: Request) -> dict:
         return request_adapter(request).list_sample_intakes(project_id, sample_id)
 
-    def list_sample_custody_events(project_id: str, sample_id: str, request: Request):
+    def list_sample_custody_events(project_id: str, sample_id: str, request: Request) -> dict:
         return request_adapter(request).list_sample_custody_events(project_id, sample_id)
 
     def append_sample_custody_event(project_id: str, sample_id: str, request: Request,
-                                    body: Optional[dict] = None):
+                                    body: Optional[dict] = None) -> dict:
         request, body = _normalize_request_body_args(request, body)
         return request_adapter(request).append_sample_custody_event(
             project_id, sample_id, body,
         )
 
     def delete_sample_custody_event(project_id: str, sample_id: str, event_id: str,
-                                    request: Request):
+                                    request: Request) -> dict:
         return request_adapter(request).delete_sample_custody_event(
             project_id, sample_id, event_id,
         )
@@ -3110,7 +3235,7 @@ def create_platform_router(
         project_id: str, template: str, request: Request,
         response: Response, team: str = '', status: str = '', as_of: str = '',
         include_deleted: bool = False,
-    ):
+    ) -> Response:
         result = request_adapter(request).export_sample_inventory(
             project_id, template, team=team or None, status=status or None,
             as_of=as_of or None, include_deleted=include_deleted,
@@ -3129,7 +3254,7 @@ def create_platform_router(
             },
         )
 
-    route_handlers = {
+    route_handlers: dict[str, Callable[..., object]] = {
         'list_projects': list_projects,
         'list_applicants': list_applicants,
         'create_project': create_project,
@@ -3237,11 +3362,11 @@ def create_platform_router(
     _probe_prefix = PLATFORM_API_ROUTES['list_projects'][1].rsplit('/', 1)[0]
 
     @router.get(f'{_probe_prefix}{LIVENESS_PATH_SUFFIX}')
-    def _liveness_endpoint():  # pragma: no cover — exercised via TestClient
+    def _liveness_endpoint() -> dict:  # pragma: no cover — exercised via TestClient
         return liveness_payload()
 
     @router.get(f'{_probe_prefix}{READINESS_PATH_SUFFIX}')
-    def _readiness_endpoint():  # pragma: no cover — exercised via TestClient
+    def _readiness_endpoint() -> dict:  # pragma: no cover — exercised via TestClient
         snapshot = adapter.readiness()
         if snapshot.ready:
             return snapshot.as_dict()
@@ -3265,7 +3390,7 @@ def create_platform_router(
     # metrics. Not declared in PLATFORM_API_ROUTES, so the OpenAPI contract
     # artifact is unaffected.
     @router.get('/platform/metrics')
-    def _metrics_endpoint():  # pragma: no cover — exercised via TestClient
+    def _metrics_endpoint() -> Response:  # pragma: no cover — exercised via TestClient
         from fastapi.responses import PlainTextResponse
         adapter.refresh_metrics()  # scrape 시점 챔버 derived gauge 갱신(best-effort)
         registry = adapter.metrics_registry
@@ -3379,7 +3504,7 @@ def create_platform_router(
         ws_stream_task = asyncio.current_task()
         heartbeat_task = None
         if ws_heartbeat_seconds > 0:
-            async def _heartbeat():
+            async def _heartbeat() -> None:
                 nonlocal close_code, heartbeat_failed
                 try:
                     while True:
@@ -3412,7 +3537,8 @@ def create_platform_router(
                 # dead _Subscription leaks in the broadcaster's strong-ref set and
                 # every later publish wastefully fills its queue (mirror of the
                 # session WS handler's ``async with self._event_bus.subscribe()``).
-                async with broadcaster.subscribe() as subscription:
+                subscribable = cast('_SubscribableProgressBroadcaster', broadcaster)
+                async with subscribable.subscribe() as subscription:
                     async for event in subscription:
                         await websocket.send_json(event.as_wire())
             else:
@@ -3509,7 +3635,7 @@ def _cause_chain(exc: BaseException) -> str:
     the file sink that is not mounted. Measured on a deliberately pre-027
     database: the operator saw exactly what a dead DB would have shown.
     """
-    parts = []
+    parts: list[str] = []
     seen: set = set()
     current: object = exc
     while isinstance(current, BaseException) and len(parts) < _CAUSE_DEPTH:
@@ -3530,13 +3656,13 @@ def create_platform_app(
     *,
     title: str = PLATFORM_API_TITLE,
     version: str = PLATFORM_API_CONTRACT_VERSION,
-    principal_resolver=None,
-    lifespan=None,
+    principal_resolver: Optional[_PrincipalResolver] = None,
+    lifespan: Optional[Callable[..., Any]] = None,
     ws_heartbeat_seconds: float = 20.0,
-    rate_limit_policy=None,
-    rate_limit_subject_header=None,
-    credential_secret=None,
-):
+    rate_limit_policy: object = None,
+    rate_limit_subject_header: Optional[str] = None,
+    credential_secret: Optional[str] = None,
+) -> 'FastAPI':
     """Create a FastAPI app shell using the modern ``lifespan`` constructor.
 
     Deprecated ``@app.on_event`` / ``add_event_handler`` APIs are forbidden by
@@ -3650,7 +3776,10 @@ def create_platform_app(
     )
 
     @app.middleware('http')
-    async def _request_id_middleware(request, call_next):
+    async def _request_id_middleware(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
         correlation = extract_incoming_correlation(request.headers)
         request.state.request_id = correlation.request_id
         request.state.trace_id = correlation.trace_id
@@ -3676,7 +3805,7 @@ def create_platform_app(
     return app
 
 
-def _bearer_token_of(request) -> str:
+def _bearer_token_of(request: object) -> str:
     """``Authorization: Bearer <token>`` off a request, or ``''``."""
     headers = getattr(request, 'headers', {}) if request is not None else {}
     getter = getattr(headers, 'get', None)
@@ -3686,7 +3815,7 @@ def _bearer_token_of(request) -> str:
     return value[7:].strip()
 
 
-def _source_fingerprint(request) -> str:
+def _source_fingerprint(request: object) -> str:
     """Opaque per-origin string for spraying detection ONLY.
 
     ⚠️ It is HMAC-digested immediately by ``LoginSprayingDetector`` and is never
@@ -3710,7 +3839,9 @@ def _source_fingerprint(request) -> str:
     return spraying_source_key(getattr(client, 'host', ''))
 
 
-def _normalize_request_body_args(request, body):
+def _normalize_request_body_args(
+    request: object, body: Optional[dict],
+) -> tuple[Any, Optional[dict]]:
     """Tolerate a direct call passing the JSON body as the first positional arg.
 
     FastAPI binds ``body: Optional[dict]`` from the request JSON and ``request``
