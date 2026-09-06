@@ -40,6 +40,7 @@ def _repository_root() -> Path:
 
 
 PROJECT_ROOT = _repository_root()
+from fcc_test_platform.repository_anchor import repository_anchor
 from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # noqa: E402
 
 # This module used to carry a private byte-identical copy of the nearest-ancestor
@@ -55,9 +56,9 @@ from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # no
 # so the exporter wrote to a directory the box does not have. Making the copy
 # record-aware would have meant duplicating three more functions, which is the
 # drift the SSOT's own docstring exists to refuse.
-DEFAULT_SCHEMA = resolve_repo_artifact(__file__, 'docs/platform/central_db_schema.v1.json')
+DEFAULT_SCHEMA = resolve_repo_artifact(repository_anchor(__file__), 'docs/platform/central_db_schema.v1.json')
 DEFAULT_OUTPUT = resolve_repo_artifact(
-    __file__, 'docs/platform/migrations/001_initial_central_db.sql',
+    repository_anchor(__file__), 'docs/platform/migrations/001_initial_central_db.sql',
 )
 
 

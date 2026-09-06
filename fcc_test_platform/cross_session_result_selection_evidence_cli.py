@@ -70,6 +70,7 @@ def _repository_root() -> Path:
 
 
 ROOT = _repository_root()
+from fcc_test_platform.repository_anchor import repository_anchor
 from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # noqa: E402
 
 # Repository-relative artifacts are named the way the repository names them and
@@ -90,10 +91,10 @@ from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # no
 # Identity in the monorepo: with no layout record the resolver returns the
 # joined repository-relative path, byte-identical to what this file computed
 # before, which is why nothing about a local run changes.
-MIGRATIONS_DIR = resolve_repo_artifact(__file__, 'docs/platform/migrations')
+MIGRATIONS_DIR = resolve_repo_artifact(repository_anchor(__file__), 'docs/platform/migrations')
 MIGRATION_PATH = MIGRATIONS_DIR / '030_cross_session_test_result_selection.sql'
 SCHEMA_PATH = resolve_repo_artifact(
-    __file__, 'docs/platform/central_db_schema.v1.json'
+    repository_anchor(__file__), 'docs/platform/central_db_schema.v1.json'
 )
 FRESH_ENV = 'FCC_CENTRAL_DB_URL'
 UPGRADE_ENV = 'FCC_CENTRAL_DB_UPGRADE_URL'

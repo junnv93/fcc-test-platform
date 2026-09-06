@@ -15,6 +15,7 @@ from typing import Mapping
 
 
 from fcc_test_platform.cutover_readiness import cutover_readiness_errors
+from fcc_test_platform.repository_anchor import repository_anchor
 from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact
 from fcc_test_platform.application.platform_cutover_catalog import (
     catalog_cli_arguments,
@@ -35,7 +36,7 @@ EVIDENCE_ARGUMENTS = tuple(
 )
 EVIDENCE_FILENAMES = catalog_filenames()
 DEFAULT_CATALOG_OUTPUT = resolve_repo_artifact(
-    __file__, 'docs/platform/cutover_readiness_evidence.schema.v1.json'
+    repository_anchor(__file__), 'docs/platform/cutover_readiness_evidence.schema.v1.json'
 )
 
 
@@ -229,8 +230,8 @@ def _export_catalog_main(argv: list[str]) -> int:
     parser.add_argument('--check', action='store_true', help='fail if --output differs from the derived contract')
     args = parser.parse_args(argv)
 
-    source = args.schema if args.schema.is_absolute() else resolve_repo_artifact(__file__, str(args.schema))
-    output = args.output if args.output.is_absolute() else resolve_repo_artifact(__file__, str(args.output))
+    source = args.schema if args.schema.is_absolute() else resolve_repo_artifact(repository_anchor(__file__), str(args.schema))
+    output = args.output if args.output.is_absolute() else resolve_repo_artifact(repository_anchor(__file__), str(args.output))
     rendered = render_text(source)
     if args.check:
         existing = output.read_text(encoding='utf-8') if output.exists() else ''

@@ -41,12 +41,13 @@ import sys
 from typing import Mapping, Optional, Sequence
 
 
+from fcc_test_platform.repository_anchor import repository_anchor
 from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # noqa: E402
 
 # The record, not a directory walk: this lane delivers docs/platform/migrations/
 # to migrations/ at the box root, so the box has a docs/ an ancestor walk finds
 # and no docs/platform/migrations under it.
-DEFAULT_MIGRATIONS_DIR = resolve_repo_artifact(__file__, 'docs/platform/migrations')
+DEFAULT_MIGRATIONS_DIR = resolve_repo_artifact(repository_anchor(__file__), 'docs/platform/migrations')
 #: Whole-run serialisation lock (session-scoped; held across every per-migration tx).
 RUN_LOCK_KEY = 'fcc-platform:central-db-migrate'
 LEDGER_TABLE = 'schema_migrations'
