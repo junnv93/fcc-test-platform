@@ -291,7 +291,12 @@ class PostgresCentralProjectWriteAdapter:
         audit_record: Mapping,
     ) -> dict:
         """Insert project/model and grant creator admin in one DB transaction."""
-        if self._audit is None:
+        # ⚠️ 좁힌 값을 **지역 이름에 묶는다.** 아래 ``_txn`` 은 중첩 함수라, 여기서
+        #    ``self._audit is None`` 을 걸러도 그 좁힘이 클로저 «안»으로 가지 않는다
+        #    (그 사이 속성이 재대입될 수 있다고 보기 때문이다). 가드는 원래 있었고
+        #    감사가 빠지는 경로는 없다 — 보이지 않았을 뿐이다.
+        audit = self._audit
+        if audit is None:
             raise CentralProjectError(
                 'audit_writer is required for atomic project creator grant'
             )
@@ -321,7 +326,7 @@ class PostgresCentralProjectWriteAdapter:
             cursor.execute(INSERT_PROJECT_SQL, project_values)
             cursor.execute(INSERT_DEVICE_MODEL_SQL, device_values)
             cursor.execute(UPSERT_MEMBERSHIP_SQL, membership_values)
-            self._audit.append_event_in_transaction(cursor, audit_record)
+            audit.append_event_in_transaction(cursor, audit_record)
             cursor.execute(
                 SELECT_MEMBERSHIP_WITH_SUBJECT_SQL,
                 (

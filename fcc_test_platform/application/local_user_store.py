@@ -13,7 +13,7 @@ optimisation; it is the boundary.
 """
 from __future__ import annotations
 
-from typing import Callable, Mapping, Optional, Sequence
+from typing import Callable, Mapping, Optional, Protocol, Sequence
 
 from fcc_test_contracts.common.identity import LOCAL_IDENTITY_ISSUER, local_identity_key
 from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
@@ -264,6 +264,20 @@ COUNT_LOCAL_USERS_SQL = (
 )
 
 
+class _AuditWriter(Protocol):
+    """이 저장소가 감사 기록기에 요구하는 **전부**.
+
+    ⚠️ 옛 선언은 ``audit_writer: object`` 였다. 그러면 「무엇을 갖춘 객체를 넣어야
+    하는가」가 코드 어디에도 없고, 호출부는 그 답을 구현체를 읽어서 알아내야 한다.
+    실제로 요구하는 것은 한 메서드뿐이므로 그것만 적는다 — 넓게 적으면
+    「이 저장소가 감사 포트 전체를 쓴다」는 거짓이 남는다.
+    """
+
+    def append_event_in_transaction(self, cursor: object, record: Mapping) -> None:
+        """열려 있는 트랜잭션 안에서 감사 이벤트 1건을 append 한다."""
+        ...
+
+
 class PostgresLocalUserStore:
     """``users`` access for the local-password identity path."""
 
@@ -271,7 +285,7 @@ class PostgresLocalUserStore:
         self,
         connection_factory: Callable[[], DbConnection],
         *,
-        audit_writer: object = None,
+        audit_writer: Optional['_AuditWriter'] = None,
     ) -> None:
         if not callable(connection_factory):
             raise ValueError('connection_factory must be callable')
@@ -407,7 +421,11 @@ class PostgresLocalUserStore:
         the audit would break that sentence for the one operation whose entire
         purpose is administrative intervention.
         """
-        if self._audit_writer is None:
+        # ⚠️ 좁힌 값을 **지역 이름에 묶는다** — 아래 트랜잭션 본문은 중첩 함수라
+        #    여기서 거른 ``is None`` 이 그 안으로 가지 않는다. 가드는 원래 있었고
+        #    감사 없는 해제가 지나가는 경로는 없다. 보이지 않았을 뿐이다.
+        audit_writer = self._audit_writer
+        if audit_writer is None:
             raise LocalUserStoreError(
                 'unlock_account requires an audit_writer — an unaudited '
                 'administrative unlock is forbidden (audit atomicity)'
@@ -433,7 +451,7 @@ class PostgresLocalUserStore:
                     'session_version': None,
                     'was_locked': False,
                 }
-            self._audit_writer.append_event_in_transaction(cursor, record)
+            audit_writer.append_event_in_transaction(cursor, record)
             return {
                 'subject': rows[0][0],
                 'session_version': int(rows[0][1] or 0),

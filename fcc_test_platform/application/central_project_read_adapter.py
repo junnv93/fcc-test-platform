@@ -429,7 +429,9 @@ class PostgresCentralProjectReadAdapter:
             params += (status,)
         if search:
             params += (q,) * len(PROJECT_SEARCH_COLUMNS)
-        if keyset:
+        # ⚠️ ``keyset`` 이 아니라 ``after`` 를 직접 묻는다. 둘은 같은 사실이지만
+        #    bool 별칭을 거치면 그 사실이 타입에서 사라진다(mypy arg-type).
+        if after is not None:
             params += tuple(after)
         if limited:
             params += (limit,)
