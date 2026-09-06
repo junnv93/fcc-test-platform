@@ -29,22 +29,47 @@ from fcc_test_kernel.domain.models.chamber_node import ChamberProgressEvent  # n
 from fcc_test_platform.api.platform_routes import (  # noqa: E402
     PlatformApiAdapter,
 )
+from fcc_test_platform.domain.ports.output.chamber_progress_broadcast_port import (  # noqa: E402
+    ChamberProgressBroadcastPort,
+)
 
 
 _FIXED_NOW = '2026-06-18T01:02:03+00:00'
 
 
 class _RecordingBroadcaster:
+    """publish 만 «쓰는» 시험을 위한 가짜 — 그래도 Port 전 표면을 갖는다.
+
+    ⚠️ 안 쓰는 두 메서드를 왜 두나: 이 객체는 ``PlatformApiAdapter`` 의
+    ``progress_broadcaster``(선언 타입 ``Optional[ChamberProgressBroadcastPort]``)
+    자리에 들어간다. 가짜가 선언보다 좁으면 **그 시험은 이미 죽은 계약을 검사하게
+    된다** — 실제 배선이 요구하는 것과 다른 것을 통과시키기 때문이다. 아래
+    ``TestTheDoublesSatisfyThePort`` 가 그 등호를 잡는다.
+    """
+
     def __init__(self) -> None:
         self.events: list[ChamberProgressEvent] = []
+        self.disposed = False
 
     def publish(self, event: ChamberProgressEvent) -> None:
         self.events.append(event)
+
+    def subscribe(self):
+        raise AssertionError('이 가짜는 릴레이 읽기 축에 쓰이지 않는다')
+
+    def dispose(self) -> None:
+        self.disposed = True
 
 
 class _ExplodingBroadcaster:
     def publish(self, event):  # noqa: ANN001
         raise RuntimeError('fan-out backend down')
+
+    def subscribe(self):
+        raise AssertionError('이 가짜는 릴레이 읽기 축에 쓰이지 않는다')
+
+    def dispose(self) -> None:
+        pass
 
 
 class _FakeWritePort:
@@ -137,32 +162,38 @@ class TestIngestBroadcast(unittest.TestCase):
         self.assertEqual(bus.events, [])
 
 
-if __name__ == '__main__':  # pragma: no cover
-    unittest.main()
+class TestTheWiredBusMatchesTheDeclaredPort(unittest.TestCase):
+    """배선되는 버스가 «선언된 Port» 와 같은 것임을 잡는 봉인.
 
+    2026-09-07 — ``ChamberProgressBroadcastPort`` 가 버스 전 표면(publish ·
+    subscribe · dispose)을 적게 되면서 ``api`` 쪽의 임시 Protocol 둘과 ``cast``
+    는 걷혔다. 남은 위험은 **Port 와 구현이 갈라지는 것**이고, 그것을 잡는 축이
+    셋이다 — 아래 세 검사가 그 셋이다.
 
-class TestTheRelayReadSideIsRealNotDeclared(unittest.TestCase):
-    """``_SubscribableProgressBroadcaster`` 가 주석이 아니라 주장이게 하는 봉인.
-
-    🔴 2026-09-06, ``api`` 를 strict 로 켜면서 드러난 사실:
-    ``ChamberProgressBroadcastPort`` 는 스스로 「publish-only」라 선언하는데
-    ``PlatformApiAdapter`` 는 그 타입으로 받아 놓고 진행 WS 릴레이에서
-    ``.subscribe()`` 를 부른다. 즉 **선언된 타입이 실제 계약보다 좁다.**
-
-    포트를 넓히는 것은 포트 주인의 판정이므로 이 웨이브는 api 쪽에서 좁혔다
-    (``platform_routes._SubscribableProgressBroadcaster``). 그 좁힘은 「조립
-    루트가 실제로 배선하는 객체가 그 모양을 갖는다」에 전적으로 의존하는데,
-    ``cast`` 는 아무것도 검사하지 않는다 — 그래서 여기서 검사한다.
-
-    ⚠️ ``isinstance`` 로 메서드 **존재**만 보지 않는다. 라우트가 쓰는 철자
-    (``async with b.subscribe() as sub`` → ``async for ev in sub``) 를 그대로
-    구동한다. ``__aenter__``/``__aexit__``/``__aiter__``/``__anext__`` 중 하나만
-    빠져도 빨개진다.
+    ⚠️ 왜 mypy 하나로 끝나지 않나: 구현이 Port 를 만나는 «타입» 지점은 조립
+    루트(``api_composition.py``)인데 그 모듈은 strict 집합(domain · infrastructure
+    · application · api) **밖**이라 게이트가 부르지 않는다. 그래서 구현 쪽의
+    명시 상속이 유일하게 검사되는 자리이고, 그 상속이 살아 있는지는 여기서 본다.
     """
 
+    def test_the_implementation_declares_the_port_explicitly(self):
+        # ① 명시 상속이 곧 mypy 의 검사 지점이다. 이 base 를 떼면 구조적 충족만
+        #    남는데, 그것을 «타입으로» 확인하는 자리가 이 레포에 없다(위 ⚠️).
+        #    실측으로 이빨을 확인했다: 상속이 있는 상태에서 반환형을 옛
+        #    ``AsyncIterator`` 로 되돌리면 mypy 가 [override] 로 빨개진다.
+        from fcc_test_platform.infrastructure.adapters.driven.chamber_progress_broadcaster import (
+            ChamberProgressBroadcaster,
+        )
+
+        self.assertIn(
+            ChamberProgressBroadcastPort, ChamberProgressBroadcaster.__mro__,
+            '구상 버스가 Port 를 명시 상속하지 않는다 — 그 순간 Port 와 구현의 '
+            '갈라짐을 검사하는 자리가 이 레포에서 사라진다')
+
     def test_the_composition_root_wires_the_subscribable_broadcaster(self):
-        # ① 배선되는 것이 정말 그 구상 클래스인가 — 포트만 만족하는 다른 객체가
-        #    들어오면 라우트의 좁힘이 런타임에 AttributeError 로 무너진다.
+        # ② 배선되는 것이 정말 그 구상 클래스인가. ①이 「그 클래스면 안전하다」를
+        #    주고, 이것이 「배선되는 것이 그 클래스다」를 준다. 조립 루트가 타입
+        #    검사 밖이므로 이 축은 아직 소스 텍스트로 잰다.
         source = (_REPO_ROOT / 'fcc_test_platform' / 'api_composition.py').read_text()
         self.assertIn('progress_broadcaster = ChamberProgressBroadcaster()', source)
         self.assertIn('progress_broadcaster=progress_broadcaster', source)
@@ -197,3 +228,22 @@ class TestTheRelayReadSideIsRealNotDeclared(unittest.TestCase):
         # 구독은 스코프를 벗어나며 반드시 해제된다 — 누수는 매 publish 마다
         # 죽은 큐를 채운다(핸들러 주석이 명시하는 바로 그 이유).
         self.assertEqual(bus.subscriber_count(), 0)
+
+
+class TestTheDoublesSatisfyThePort(unittest.TestCase):
+    """가짜가 선언보다 좁으면 그 시험은 죽은 계약을 검사한다 — 이 레인의 관례
+    (``assertIsInstance(<구현>, <Port>)``)를 진행 버스에도 적용한다.
+
+    ⚠️ ``runtime_checkable`` 의 ``isinstance`` 는 메서드 **존재**만 본다. 반환
+    타입 축은 이것이 아니라 위 ①(명시 상속 + mypy)이 갖는다 — 둘은 다른 축이고
+    어느 하나가 다른 하나를 대신하지 못한다.
+    """
+
+    def test_the_doubles_are_broadcast_ports(self):
+        for double in (_RecordingBroadcaster(), _ExplodingBroadcaster()):
+            with self.subTest(double=type(double).__name__):
+                self.assertIsInstance(double, ChamberProgressBroadcastPort)
+
+
+if __name__ == '__main__':  # pragma: no cover
+    unittest.main()

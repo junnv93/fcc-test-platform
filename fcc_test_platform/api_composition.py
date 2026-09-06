@@ -29,6 +29,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Optional
 
+from fcc_test_platform.domain.ports.output.chamber_progress_broadcast_port import (
+    ChamberProgressBroadcastPort,
+)
+
 from fcc_test_contracts.common.access_policy import ApiAccessPolicy
 import os
 from datetime import datetime, timezone
@@ -223,7 +227,13 @@ class PlatformApiRuntime:
     metrics_registry: ApiMetricsRegistry
     # 멀티챔버 P7/B4 — central progress relay fan-out engine. None on a runtime
     # composed without the relay (back-compat); production wires one.
-    progress_broadcaster: object = None
+    #
+    # ⚠️ 이웃 필드들과 달리 ``object`` 가 **아니다**. 이 필드는 아래
+    # :meth:`dispose` 에서 실제로 호출되는데, ``object`` 로 두면 그 호출이 어떤
+    # 선언에도 대조되지 않는다 — 실측(2026-09-07, 이 모듈은 strict 집합 밖이라
+    # 게이트가 안 부르지만 직접 부르면): `"object" has no attribute "dispose"`.
+    # Port 가 ``dispose`` 를 적게 된 지금 그 호출을 선언에 묶는다.
+    progress_broadcaster: Optional[ChamberProgressBroadcastPort] = None
     # 신원 축 EMS 정합 (2026-08-21) — the process-local access-token revocation
     # list. Held on the runtime because BOTH the login service (writer) and the
     # principal resolver (reader) must be handed the SAME object.

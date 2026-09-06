@@ -12,8 +12,7 @@ from __future__ import annotations
 
 from functools import wraps
 from typing import (
-    Any, AsyncIterator, Awaitable, Callable, Mapping, Optional, Protocol,
-    TYPE_CHECKING, cast,
+    Any, Awaitable, Callable, Mapping, Optional, Protocol, TYPE_CHECKING,
 )
 
 from fcc_test_contracts.common.access_policy import (
@@ -216,7 +215,6 @@ from fcc_test_platform.application.provider_ui_descriptor_registry import (
 )
 
 if TYPE_CHECKING:  # avoid a hard import on the read-only surface
-    from types import TracebackType
     from fastapi import APIRouter, FastAPI, Request, Response
     from fcc_test_contracts.common.credential_throttle import CredentialThrottle
     from fcc_test_platform.application.chamber_metrics import ChamberMetricsCollector
@@ -297,50 +295,29 @@ def _body_text(value: object) -> str:
     return '' if value is None else str(value)
 
 
-#: What the progress WebSocket relay actually needs back from ``subscribe()``:
-#: an async context manager that also yields the events. Declared structurally
-#: so ``api`` still imports nothing from ``infrastructure`` (it imports none
-#: today, deliberately — see the probe note in ``create_platform_app``).
-class _ProgressSubscriptionScope(Protocol):
-    async def __aenter__(self) -> 'AsyncIterator[ChamberProgressEvent]': ...
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        tb: 'TracebackType | None',
-    ) -> None: ...
-
-
-class _SubscribableProgressBroadcaster(Protocol):
-    """The *read* side of the progress relay.
-
-    🔴 FINDING (2026-09-06, surfaced by turning strict on for ``api``).
-    ``ChamberProgressBroadcastPort`` declares itself publish-only, and the
-    adapter takes ``Optional[ChamberProgressBroadcastPort]`` — but the only
-    object ever wired is the concrete ``ChamberProgressBroadcaster``
-    (``api_composition.py:580``), and this relay is the port's *read* side. So
-    the declared type has been narrower than the real contract all along, and
-    the ``.subscribe()`` below has been reaching past it.
-
-    Narrowing here rather than widening the port keeps the domain's publish-only
-    decision where it belongs (the port owner's call, not this wave's). Runtime
-    is unchanged: a wiring that supplied a publish-only object failed with
-    ``AttributeError`` before and fails identically now. The claim that the
-    wired object satisfies this is checked in
-    ``tests/test_chamber_heartbeat_progress_broadcast.py`` — without that, this
-    Protocol would be a comment.
-    """
-
-    def subscribe(self) -> _ProgressSubscriptionScope: ...
-
-
 class _PrincipalResolver(Protocol):
     """``create_principal_resolver`` 가 돌려주는 것들의 공통 표면.
 
     이름으로 import 하지 않고 구조로 적는 이유는 그 팩토리가 인증 모드마다
     **다른 클래스**를 돌려주기 때문이다(trusted-header / oidc_jwt / local_jwt).
-    조립 루트가 strict 이므로 이 Protocol 은 그 호출 지점에서 검사된다.
+
+    ⚠️ **이 Protocol 의 적합성은 지금 아무 데서도 검사되지 않는다** (2026-09-07
+    실측 정정 — 옛 문장은 *"조립 루트가 strict 이므로 이 Protocol 은 그 호출
+    지점에서 검사된다"* 였고 그것은 틀렸다). 유일한 생산 호출부는
+    ``api_composition.PlatformApiRuntime.create_router`` 인데:
+
+      ① ``fcc_test_platform.api_composition`` 은 ``mypy.ini`` 의 네 strict 절
+         (domain · infrastructure · application · api) **어디에도 매치되지 않는다**
+         — 게이트는 그 모듈에 mypy 를 부르지 않는다.
+      ② 그 모듈에 직접 부르더라도 ``create_router`` 는 **선언 없는 def** 라
+         mypy 가 본문을 건너뛴다.
+
+    주입으로 확인했다: 그 자리에 ``resolve`` 가 없는 ``object()`` 를 넣어도 네 팩
+    전량이 ``Success`` 였고, 그 모듈을 직접 불러도 오류 수가 그대로였다.
+    ``--check-untyped-defs`` 를 켜야 비로소 ``[arg-type]`` 이 나온다. 이 Protocol
+    이 검사되게 하려면 ``create_router`` 에 반환 선언을 붙이는 것이 첫 걸음이다
+    (이 웨이브의 범위 밖 — 그러면 같은 본문의 ``api_adapter: object`` 도 함께
+    드러난다).
     """
 
     def resolve(self, request: object) -> ApiPrincipal: ...
@@ -3541,8 +3518,7 @@ def create_platform_router(
                 # dead _Subscription leaks in the broadcaster's strong-ref set and
                 # every later publish wastefully fills its queue (mirror of the
                 # session WS handler's ``async with self._event_bus.subscribe()``).
-                subscribable = cast('_SubscribableProgressBroadcaster', broadcaster)
-                async with subscribable.subscribe() as subscription:
+                async with broadcaster.subscribe() as subscription:
                     async for event in subscription:
                         await websocket.send_json(event.as_wire())
             else:

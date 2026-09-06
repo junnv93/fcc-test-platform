@@ -128,7 +128,10 @@ subscribe」라고 스스로 적는다. **선언된 타입이 처음부터 좁�
 - **`STRICT_SECTIONS` 는 이제 네 줄이고 `fcc_test_platform` 전량이 strict 다.**
   범위 **밖**으로 남는 것(`tests/`, `apps/web/scripts/`)을 `mypy.ini` 에 이름으로
   적었다 — 적지 않으면 다음 사람이 「저장소 전량 strict」로 읽는다.
-- 🔴 `ChamberProgressBroadcastPort` 의 폭은 **미해결**이다. 포트를 넓힐지, 읽기
-  포트를 따로 선언할지, 어댑터가 두 능력을 별도 인자로 받을지 — 포트 주인의 판정이다.
+- ~~🔴 `ChamberProgressBroadcastPort` 의 폭은 **미해결**이다.~~ **닫혔다**
+  (2026-09-07, `2026-09-07-progress-port-declares-its-real-contract.md`). 판정은
+  「포트를 넓힌다」. ⚠️ 이 웨이브가 세 갈래로 적은 것이 **완전하지 않았다** — 좁힘은
+  포트 하나가 아니라 세 겹이었고(구상 클래스의 `subscribe` 반환형이 자기가 돌려주는
+  것을 숨겼다), 그 둘째 겹은 어느 갈래를 고르든 따로 고쳐야 했다.
 - 설계서 §9(분해 여부)는 이 웨이브가 **답하지 않았다.** 답하지 않고도 strict 가
   켜진다는 것이 이 웨이브의 결과이고, 그만큼 §9 는 이제 순수한 설계 질문이다.
