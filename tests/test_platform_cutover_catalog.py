@@ -19,11 +19,29 @@ from fcc_test_platform.cutover_readiness import (
 from fcc_test_platform.cutover_bundle_cli import EVIDENCE_ARGUMENTS, EVIDENCE_FILENAMES
 from fcc_test_platform.cutover_completion_audit_cli import REQUIREMENTS
 from fcc_test_platform.cutover_live_workflow_cli import build_workflow_template
-from fcc_test_platform.cutover_workflow_hints import suggested_command
+from fcc_test_platform.cutover_workflow_hints import (
+    RUNS_ON_CENTRAL,
+    runs_on,
+    suggested_command,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
+
+
+def _declared_console_commands() -> set[str]:
+    """이 배포판이 «선언한» 콘솔 명령 이름 — 목록을 여기 적지 않는다.
+
+    적어 두면 진입점을 개명한 날 이 검사가 조용히 옛 목록을 검사한다.
+    """
+    import tomllib
+
+    pyproject = Path(__file__).resolve().parents[1] / 'pyproject.toml'
+    table = tomllib.loads(pyproject.read_text(encoding='utf-8'))['project']['scripts']
+    if not table:
+        raise AssertionError('`[project.scripts]` 가 비었다 — 이 검사가 공허해진다')
+    return set(table)
 
 class TestPlatformCutoverCatalog(unittest.TestCase):
     def test_catalog_is_immutable_and_total(self):
@@ -78,8 +96,17 @@ class TestPlatformCutoverCatalog(unittest.TestCase):
             with self.subTest(evidence_key=entry.key):
                 command = suggested_command(entry.key, f'/tmp/{entry.canonical_filename}')
                 self.assertTrue(command)
-                self.assertEqual(command[0], 'python')
                 self.assertIn('/tmp/' + entry.canonical_filename, command)
+                # ⚠️ 명령의 «종»이 실행 기계에 따라 다르다 (2026-09-06). 중앙 단계는
+                # `[project.scripts]` 에 선언된 콘솔 «명령 이름», 챔버 단계는 provider
+                # 저장소의 «경로». 여기서 `command[0] == 'python'` 하나로 뭉뚱그리면
+                # 중앙 쪽이 다시 `scripts/…` 경로로 돌아가도 조용하다 — 그 경로는
+                # 휠에 실리지 않아 소비자의 기계에서 없는 파일이다.
+                if runs_on(entry.key) == RUNS_ON_CENTRAL:
+                    self.assertIn(command[0], _declared_console_commands())
+                    self.assertNotIn('scripts/', ' '.join(command))
+                else:
+                    self.assertEqual(command[0], 'python')
                 issues = validate_collector_manifest(
                     entry.key,
                     {'schema_version': 1},
