@@ -9,7 +9,7 @@ migration 적용 후 live central PG 에서 실행하는 권위 쿼리를 단일
 
 설계 (`PostgresCentralRekeyIngestAdapter` 동형):
 
-- **injected ``connection``** (DB-API ``DbConnection``). 구체 PostgreSQL 연결은
+- **injected ``connection``** (DB-API ``RowConnection``). 구체 PostgreSQL 연결은
   composition root(ingest adapter 와 동일 factory)가 lazily 만든다 — 본 모듈은
   드라이버를 import 하지 않는다 (frozen-exe safe + platform 가드 통과).
 - **SELECT COUNT(*) only**: ``measurement_attempts`` 를 읽기만 한다. write / DDL /
@@ -29,7 +29,7 @@ from fcc_test_platform.application.central_db_surfaces import RowCursor
 
 # 같은 central 대상 테이블 — ingest adapter 가 정의한 단일 SSOT 를 import (중복 정의 0).
 from fcc_test_platform.application.central_rekey_ingest_adapter import MEASUREMENT_ATTEMPTS_TABLE
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 
 
 __all__ = [
@@ -89,7 +89,7 @@ def coverage_counts_to_evidence(counts: CentralCoverageCounts) -> Mapping[str, i
     }
 
 
-def collect_central_coverage(connection: DbConnection) -> CentralCoverageCounts:
+def collect_central_coverage(connection: RowConnection) -> CentralCoverageCounts:
     """central PG 연결에서 coverage 2-count 를 read-only 로 수집.
 
     expand migration 적용 후 호출해야 한다 (`condition_hash_v2` 컬럼 존재 전제 —

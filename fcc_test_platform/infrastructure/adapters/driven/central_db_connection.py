@@ -35,14 +35,14 @@ from __future__ import annotations
 
 from typing import Callable
 
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 
 
 __all__ = ['build_central_db_connection_factory']
 
 
-def build_central_db_connection_factory(database_url: str) -> Callable[[], DbConnection]:
-    """중앙 DSN 하나를 ``() -> DbConnection`` 팩토리로 바꾼다.
+def build_central_db_connection_factory(database_url: str) -> Callable[[], RowConnection]:
+    """중앙 DSN 하나를 ``() -> RowConnection`` 팩토리로 바꾼다.
 
     호출마다 새 연결을 연다. 읽기 어댑터가 SELECT 하나를 끝내고 닫으므로 연결이
     읽기 사이에 공유되지 않는다.
@@ -55,7 +55,7 @@ def build_central_db_connection_factory(database_url: str) -> Callable[[], DbCon
         raise ValueError('database_url is required to build a connection factory')
     import psycopg  # lazy — keeps desktop frozen-exe free of the PostgreSQL driver
 
-    def _connect() -> DbConnection:
+    def _connect() -> RowConnection:
         return psycopg.connect(database_url)
 
     return _connect

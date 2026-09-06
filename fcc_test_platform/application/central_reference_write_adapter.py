@@ -41,7 +41,7 @@ and because a second hasher would make a chamber's etag comparison meaningless.
 from __future__ import annotations
 
 import json
-from typing import Callable, Iterable, Mapping, Optional, Sequence
+from typing import Callable, Iterable, Mapping, NoReturn, Optional, Sequence
 
 from fcc_test_kernel.domain.models.reference_catalog import RevisionState
 from fcc_test_platform.application.central_db_surfaces import (
@@ -55,7 +55,7 @@ from fcc_test_platform.domain.ports.output.central_reference_port import (
     ReferenceRevisionNotFoundError,
     ReferenceStateConflictError,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 
 
 __all__ = ['PostgresCentralReferenceWriteAdapter']
@@ -229,7 +229,7 @@ def _condition_ids(value: object) -> list:
 class PostgresCentralReferenceWriteAdapter:
     """``CentralReferenceWritePort`` over a central PostgreSQL connection factory."""
 
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], RowConnection]) -> None:
         if not callable(connection_factory):
             raise ValueError('connection_factory must be callable')
         self._connection_factory = connection_factory
@@ -393,7 +393,7 @@ class PostgresCentralReferenceWriteAdapter:
     @staticmethod
     def _raise_entry_edit_reason(
         cursor: RowCursor, revision_id: str, expected_etag: str,
-    ) -> None:
+    ) -> NoReturn:
         """Say WHY nothing moved, without parsing a driver message.
 
         Three outcomes are indistinguishable from a zero-row UPDATE alone, and
@@ -650,7 +650,7 @@ class PostgresCentralReferenceWriteAdapter:
 
     # -------------------------------------------------------------- helpers
 
-    def _connect(self) -> DbConnection:
+    def _connect(self) -> RowConnection:
         try:
             return self._connection_factory()
         except Exception as exc:  # noqa: BLE001

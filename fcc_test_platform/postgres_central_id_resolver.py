@@ -32,7 +32,7 @@ Two mappings, two strategies — each the industry-standard choice for its shape
     (never a silent NULL FK).
 
 frozen-exe safe: this module imports **no** ``psycopg``. It depends only on the
-injected ``connection_factory`` (a ``DbConnection`` Protocol per
+injected ``connection_factory`` (a ``RowConnection`` Protocol per
 ``platform_database_port``); the concrete psycopg connection is built lazily by
 the composition root. Enforced by ``tests/test_postgres_central_id_resolver.py``.
 """
@@ -47,7 +47,7 @@ from fcc_test_platform.domain.ports.output.central_id_resolver_port import (
     CentralIdResolutionError,
     ModelProjectResolution,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 from fcc_test_platform.session_identity import normalize_chamber_id, session_uuid_name
 
 
@@ -171,7 +171,7 @@ def _normalize_model_number(value: object) -> str:
 class PostgresCentralIdResolver:
     """Production resolver implementing ``CentralIdResolverPort``.
 
-    ``connection_factory`` returns a fresh ``DbConnection`` per call (the
+    ``connection_factory`` returns a fresh ``RowConnection`` per call (the
     composition root passes the same psycopg factory used by the ingestion
     writer). Project lookups open → query → close one connection each; the
     result cache means this happens at most once per distinct ``project_code``.
@@ -181,7 +181,7 @@ class PostgresCentralIdResolver:
         self,
         *,
         provider_id: str,
-        connection_factory: Callable[[], DbConnection],
+        connection_factory: Callable[[], RowConnection],
         session_uuid_namespace: uuid.UUID = CENTRAL_SESSION_UUID_NAMESPACE,
     ) -> None:
         if not provider_id or not str(provider_id).strip():

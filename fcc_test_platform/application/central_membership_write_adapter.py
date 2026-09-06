@@ -10,7 +10,7 @@ together — a failed audit rolls the membership write back.
 
 Design (mirrors ``PostgresCentralClaimWriteAdapter``):
 
-- **injected ``connection_factory``** (``() -> DbConnection``).
+- **injected ``connection_factory``** (``() -> RowConnection``).
 - **SERIALIZABLE best-effort** on PostgreSQL; SQLite test fixture serializes
   via its single-connection model.
 - **``%s`` paramstyle** (psycopg) for both INSERT and DELETE.
@@ -34,7 +34,7 @@ from fcc_test_platform.application.central_rbac_read_adapter import (
 )
 from fcc_test_platform.domain.ports.output.central_audit_write_port import CentralAuditWritePort
 from fcc_test_platform.domain.ports.output.central_membership_write_port import MembershipWriteError
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 
 
 __all__ = [
@@ -101,7 +101,7 @@ class PostgresCentralMembershipWriteAdapter:
 
     def __init__(
         self,
-        connection_factory: Callable[[], DbConnection],
+        connection_factory: Callable[[], RowConnection],
         audit_writer: CentralAuditWritePort,
     ) -> None:
         if not callable(connection_factory):

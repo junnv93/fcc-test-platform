@@ -8,7 +8,7 @@ model). ``find_project_by_code`` is the same-model reuse gate (D1).
 
 Design (mirrors ``PostgresCentralMembershipWriteAdapter``):
 
-- **injected ``connection_factory``** (``() -> DbConnection``).
+- **injected ``connection_factory``** (``() -> RowConnection``).
 - **``%s`` paramstyle** (psycopg) for both INSERTs + the SELECT.
 - **loud-fail**: a connection/query failure raises ``CentralProjectError``.
 - **atomic pair**: both INSERTs run inside one ``_in_transaction`` body before
@@ -43,7 +43,7 @@ from fcc_test_platform.domain.ports.output.central_project_port import (
     CentralProjectError,
     ProjectIdentifierConflictError,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 from fcc_test_platform.domain.services.project_identifier_conflict import (
     PROJECT_CONFLICT_RESOURCE,
     classify_project_unique_violation,
@@ -187,7 +187,7 @@ class PostgresCentralProjectWriteAdapter:
 
     def __init__(
         self,
-        connection_factory: Callable[[], DbConnection],
+        connection_factory: Callable[[], RowConnection],
         *,
         audit_writer: Optional[CentralAuditWritePort] = None,
     ) -> None:

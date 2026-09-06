@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Callable, Mapping, Optional, Protocol, Sequence, TypeVar
 
 from fcc_test_contracts.common.identity import LOCAL_IDENTITY_ISSUER, local_identity_key
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 from fcc_test_platform.application.central_db_surfaces import RowCursor
 
 _T = TypeVar('_T')
@@ -286,7 +286,7 @@ class PostgresLocalUserStore:
 
     def __init__(
         self,
-        connection_factory: Callable[[], DbConnection],
+        connection_factory: Callable[[], RowConnection],
         *,
         audit_writer: Optional['_AuditWriter'] = None,
     ) -> None:

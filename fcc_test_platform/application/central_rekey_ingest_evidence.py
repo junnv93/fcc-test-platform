@@ -45,7 +45,7 @@ from fcc_test_platform.domain.ports.output.central_rekey_ingest_port import (
     RekeyIngestConflictError,
     RekeyMappingEnvelopeLike,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 
 
 __all__ = [
@@ -157,7 +157,7 @@ class IngestExecutionResult:
 
 
 def execute_central_ingest(
-    connection_factory: Callable[[], DbConnection],
+    connection_factory: Callable[[], RowConnection],
     envelope: RekeyMappingEnvelopeLike,
     *,
     audit_writer: Optional[CentralAuditWritePort] = None,

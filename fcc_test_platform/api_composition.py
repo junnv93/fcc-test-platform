@@ -185,7 +185,7 @@ from fcc_test_platform.application.runtime_config import (
     PLATFORM_AUTH_ENV_PREFIX,
     PlatformApiConfig,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 from fcc_test_contracts.common.health_probe_policy import DEPENDENCY_CENTRAL_DB
 
 
@@ -268,8 +268,8 @@ class PlatformApiRuntime:
 _spraying_logger = get_logger('platform_api')
 
 
-def _build_central_connection_factory(database_url: str) -> Callable[[], DbConnection]:
-    """Return a ``() -> DbConnection`` factory backed by psycopg (lazy import).
+def _build_central_connection_factory(database_url: str) -> Callable[[], RowConnection]:
+    """Return a ``() -> RowConnection`` factory backed by psycopg (lazy import).
 
     Delegates to the driven adapter that owns the driver binding
     (``infrastructure.adapters.driven.central_db_connection``, 설계서 S3). 이 이름은
@@ -282,8 +282,8 @@ def _build_central_connection_factory(database_url: str) -> Callable[[], DbConne
     return build_central_db_connection_factory(database_url)
 
 
-def build_central_connection_factory(database_url: str) -> Callable[[], DbConnection]:
-    """Public SSOT for turning a central DSN into a ``() -> DbConnection`` factory.
+def build_central_connection_factory(database_url: str) -> Callable[[], RowConnection]:
+    """Public SSOT for turning a central DSN into a ``() -> RowConnection`` factory.
 
     The runtime composition (``create_platform_runtime``) and operator tooling
     (``scripts/rekey_central_ingest_evidence_cli.py collect`` — ADR-0005 E4 live
@@ -297,14 +297,14 @@ def build_central_connection_factory(database_url: str) -> Callable[[], DbConnec
 def create_platform_runtime(
     config: PlatformApiConfig,
     *,
-    connection_factory: Optional[Callable[[], DbConnection]] = None,
+    connection_factory: Optional[Callable[[], RowConnection]] = None,
     project_reference_provider_resolver: Optional[ProviderResolver] = None,
 ) -> PlatformApiRuntime:
     """Assemble the platform read runtime.
 
     Args:
         config: platform settings (central DSN + auth).
-        connection_factory: optional pre-built ``() -> DbConnection``. Production
+        connection_factory: optional pre-built ``() -> RowConnection``. Production
             leaves this ``None`` so a psycopg factory is built from
             ``config.central.database_url``; tests inject a SQLite/fake factory so
             no psycopg dependency or live PostgreSQL is required.
@@ -854,7 +854,7 @@ def create_platform_runtime(
 def create_platform_runtime_from_config(
     config: PlatformApiConfig,
     *,
-    connection_factory: Optional[Callable[[], DbConnection]] = None,
+    connection_factory: Optional[Callable[[], RowConnection]] = None,
     project_reference_provider_resolver: Optional[ProviderResolver] = None,
 ) -> PlatformApiRuntime:
     """Alias kept for symmetry with the headless ``*_from_config`` naming."""

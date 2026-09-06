@@ -7,7 +7,7 @@ FE-P3 claim acquire/release.
 
 Design (mirrors ``PostgresCentralReadAdapter`` + ``PostgresIngestionWriter``):
 
-- **injected ``connection_factory``** (``() -> DbConnection``). The concrete
+- **injected ``connection_factory``** (``() -> RowConnection``). The concrete
   psycopg connection is built lazily by the composition root; this module never
   imports a PostgreSQL driver (frozen-exe safe — enforced by
   ``tests/test_platform_claim_write_fe_p3.py``).
@@ -43,7 +43,7 @@ from fcc_test_platform.application.central_read_adapter import (
 )
 from fcc_test_platform.domain.ports.output.central_audit_write_port import CentralAuditWritePort
 from fcc_test_platform.domain.ports.output.central_claim_write_port import ClaimWriteError
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 
 
 __all__ = [
@@ -129,7 +129,7 @@ class PostgresCentralClaimWriteAdapter:
 
     def __init__(
         self,
-        connection_factory: Callable[[], DbConnection],
+        connection_factory: Callable[[], RowConnection],
         audit_writer: Optional[CentralAuditWritePort] = None,
     ) -> None:
         if not callable(connection_factory):

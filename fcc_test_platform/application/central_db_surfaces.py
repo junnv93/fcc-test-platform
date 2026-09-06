@@ -26,7 +26,7 @@
 """
 from __future__ import annotations
 
-from typing import Optional, Protocol, Sequence
+from typing import Any, Optional, Protocol, Sequence
 
 from fcc_test_kernel.domain.ports.output.platform_database_port import (
     DbConnection,
@@ -37,7 +37,29 @@ __all__ = ['RowCursor', 'RowConnection']
 
 
 class RowCursor(DbCursor, Protocol):
-    """결과 행을 읽을 수 있는 커서 — 커널 ``DbCursor`` + 읽기 둘."""
+    """결과 행을 읽을 수 있는 커서 — 커널 ``DbCursor`` + 읽기 둘.
+
+    ⚠️ **커널 포트의 두 줄을 여기서 «바로잡는다»** (실측 2026-09-06).
+    커널이 `Any` 로 보이던 동안 아무도 「이 포트가 실제 드라이버를 기술하는가」를
+    묻지 못했다. `py.typed` 를 켜고 물어보니 psycopg 이 커널 포트를 만족하지 않는다::
+
+        execute    커널: (str, tuple) -> None      psycopg: (…) -> Cursor
+        rowcount   커널: 설정 가능 변수             psycopg: 읽기 전용 property
+
+    `Protocol` 의 변수 선언은 «설정 가능»을 요구하므로 두 번째가 특히 걸린다.
+    ⚠️ 그래서 **상속은 유지하고 두 멤버만 덮어쓴다** — 상속을 끊으면 「이 레인이
+    커널 포트와 무관한 것을 요구한다」는 거짓이 남는다. 요구하는 것은 커널 포트
+    «그대로에» 읽기 둘을 더한 것이고, 다만 커널 쪽 두 줄이 드라이버를 잘못 적었다.
+
+    ⚠️ 이것은 **이 레인의 우회이지 수리가 아니다.** 정공은 커널 포트를 고치는 것이고
+    그것은 새 커널 태그를 뜻한다. 그 창이 열리면 여기 덮어쓴 둘을 지워라 —
+    지워도 초록이면 상류가 고쳐진 것이다.
+    """
+
+    @property
+    def rowcount(self) -> int: ...  # type: ignore[override]
+
+    def execute(self, statement: str, parameters: tuple) -> Any: ...  # type: ignore[override]
 
     def fetchall(self) -> Sequence: ...
 

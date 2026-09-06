@@ -40,7 +40,7 @@ from fcc_test_platform.provider_ingestion_plan import (
     PROVIDER_SCOPED_IDEMPOTENCY_KEYS_BY_TABLE,
     idempotency_fields_for_record,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 
 
 __all__ = [
@@ -101,7 +101,7 @@ COVERAGE_REFRESH_STATEMENT = (
 
 
 class PostgresIngestionWriter:
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], RowConnection]) -> None:
         self._connection_factory = connection_factory
 
     def begin_transaction(self) -> 'PostgresIngestionTransaction':
@@ -146,7 +146,7 @@ class PostgresIngestionWriter:
 
 
 class PostgresIngestionTransaction:
-    def __init__(self, connection: DbConnection) -> None:
+    def __init__(self, connection: RowConnection) -> None:
         self._connection = connection
         self._cursor = connection.cursor()
         self._closed = False
