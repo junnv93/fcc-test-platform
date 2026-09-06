@@ -21,7 +21,56 @@ import unittest
 
 from fcc_test_platform.repository_anchor import repository_anchor
 
-_PACKAGE = pathlib.Path(__file__).resolve().parents[1] / 'fcc_test_platform'
+def _declared_package_files() -> list[pathlib.Path]:
+    """선언된 패키지 아래의 모든 파이썬 파일 — 루트마다 «비지 않았음»을 함께 요구한다."""
+    files: list[pathlib.Path] = []
+    for root in _package_roots():
+        found = sorted(root.rglob('*.py'))
+        if not found:
+            raise AssertionError(
+                f'선언된 패키지 {root.name} 아래에 파이썬 파일이 없다 — 루트 하나가 통째로 '
+                '비어도 «합계»만 보는 검사는 초록으로 지나간다(형제 세션 -91 실측: '
+                '로컬 59 + platform 28 = 108 > 100 이라 커널 루트가 없어도 통과했다). '
+                '루트별로 묻는다.'
+            )
+        files.extend(found)
+    return files
+
+
+def _package_roots() -> list[pathlib.Path]:
+    """이 배포판이 «싣는다고 선언한» 최상위 패키지들.
+
+    ⚠️ **루트를 적어 두지 않는다.** 형제 세션(-91)이 같은 날 같은 형태를 잡았다 —
+    Port 인구조사가 「어떤 Port 가 있나」는 디렉터리 순회로 파생하면서 **「Port 가 어디
+    사나」는 상수로 적어 두었고**, 그 디렉터리가 이사한 날 조사가 통째로 조용해졌다.
+    같은 결함의 두 축을 한쪽만 고쳐 둔 자리다.
+
+    여기서는 답이 이미 `[tool.setuptools.packages.find].include` 에 «선언»돼 있다 —
+    휠이 무엇을 싣는지 정하는 바로 그 값이다. 그것을 읽으므로, 실리는 이름이 늘거나
+    줄면 이 검사의 시야도 함께 움직인다.
+    """
+    import tomllib
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    config = tomllib.loads((root / 'pyproject.toml').read_text(encoding='utf-8'))
+    patterns = config['tool']['setuptools']['packages']['find']['include']
+    # ⚠️ `__init__.py` 를 요구하지 **않는다.** 이 저장소의 `fcc_test_platform/` 에는
+    #    그 파일이 없다(네임스페이스 패키지). 「패키지 = __init__.py 가 있는 것」은
+    #    가정이고, 그 가정이 여기서 거짓이라 첫 판은 루트를 0개로 셌다 — 루트를 적어
+    #    두는 것을 고치면서 그 «판정 방법»을 또 가정한 것이다. 실리는 것은 setuptools 가
+    #    정하므로 디렉터리인지만 묻는다.
+    roots = [
+        candidate
+        for pattern in patterns
+        for candidate in sorted(root.glob(pattern.rstrip('*')))
+        if candidate.is_dir()
+    ]
+    if not roots:
+        raise AssertionError(
+            f'`packages.find.include` = {patterns!r} 가 이 트리에서 아무 패키지도 '
+            '가리키지 않는다 — 이 검사가 공집합을 훑게 된다.'
+        )
+    return roots
 
 
 class TestNoModuleAnchorsRepositoryArtifactsOnItself(unittest.TestCase):
@@ -30,7 +79,7 @@ class TestNoModuleAnchorsRepositoryArtifactsOnItself(unittest.TestCase):
     def test_no_call_passes_dunder_file_directly(self):
         offenders: list[str] = []
         scanned = 0
-        for path in sorted(_PACKAGE.rglob('*.py')):
+        for path in _declared_package_files():
             tree = ast.parse(path.read_text(encoding='utf-8'))
             for node in ast.walk(tree):
                 if not isinstance(node, ast.Call):
