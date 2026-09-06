@@ -1,0 +1,17 @@
+{
+  "task": "close-widened-types-claim-20260907",
+  "branch": "chore/close-widened-types-claim-20260907",
+  "owner": "fcc-delivery-final-0e",
+  "status": "merged",
+  "base": "origin/main@85c43a4",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/cbbcc64d-931a-4c42-a390-de9a2d47d797/scratchpad/wt-close",
+  "scope": [
+    ".claude/work-claims/mypy-widened-types-33-20260906.json",
+    ".claude/work-claims/close-widened-types-claim-20260907.json"
+  ],
+  "non_scope": [
+    "소스 파일 전부 — 이 브랜치는 장부만 만진다."
+  ],
+  "conflicts_with": [],
+  "sequencing": "PR #133 이 `85c43a4` 로 머지됐는데 그 claim 이 `active` 인 채 main 에 남았다. `active` 는 OWNS_SCOPE 라 다음 세션에게 「그 아홉 파일은 아직 임자가 있다」고 말한다 — 없는 점유를 만든다. ⚠️ 그 claim 의 `branch` 는 이미 머지·삭제됐으므로 브랜치 가드가 그 자리에서 닫는 것을 막는다(PR #131 이 같은 벽에 부딪혀 관례를 세웠다: `FCC_ALLOW_BRANCH_MISMATCH` 로 우회하지 말고 «닫는 브랜치용 새 claim»을 만들어라). 이 파일이 그것이고, 자기 자신도 `merged` 로 태어난다 — 이 장부에서 `merged` 는 「이미 머지됐다」가 아니라 「이 PR 이 머지되면 이 범위는 자유다」라는 선언이기 때문이다."
+}
