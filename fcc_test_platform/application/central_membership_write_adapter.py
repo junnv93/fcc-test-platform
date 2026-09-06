@@ -23,6 +23,10 @@ from __future__ import annotations
 
 from typing import Callable, Mapping, Optional, TypeVar
 
+from fcc_test_platform.application.central_db_surfaces import (
+    RowConnection,
+    RowCursor,
+)
 from fcc_test_platform.application.central_rbac_read_adapter import (
     MEMBERSHIP_COLUMNS,
     PROJECT_MEMBERSHIP_TABLE,
@@ -122,7 +126,7 @@ class PostgresCentralMembershipWriteAdapter:
             membership_record.get(column) for column in MEMBERSHIP_INSERT_COLUMNS
         )
 
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             cursor.execute(UPSERT_MEMBERSHIP_SQL, upsert_values)
             # Audit INSERT joins the same transaction — atomic with the UPSERT.
             self._audit.append_event_in_transaction(cursor, audit_record)
@@ -150,7 +154,7 @@ class PostgresCentralMembershipWriteAdapter:
         role_key: str,
         audit_record: Mapping,
     ) -> Optional[dict]:
-        def _txn(cursor) -> Optional[dict]:
+        def _txn(cursor: RowCursor) -> Optional[dict]:
             # Read the row first so the response can echo the pre-delete state.
             cursor.execute(
                 SELECT_MEMBERSHIP_WITH_SUBJECT_SQL,
@@ -172,7 +176,12 @@ class PostgresCentralMembershipWriteAdapter:
     #    「``_txn`` 이 None 을 돌려줄 수 없는」 호출부(행이 없으면 raise 한다)조차 그
     #    Optional 을 물려받았다. 호출부마다 가드를 덧대는 대신 여기서 «넘긴 것을 그대로
     #    돌려준다»고 적는다 — 그것이 이 함수가 실제로 하는 일이다.
-    def _in_transaction(self, body: Callable[[object], _T]) -> _T:
+    # ⚠️ 옛 선언은 ``Callable[[object], …]`` 이었다 — 「본문에 **아무거나** 넘긴다」는
+    #    뜻이고, 그것은 거짓이다: 이 러너는 언제나 **커서**를 넘긴다. 그 거짓이
+    #    본문의 인자를 ``RowCursor`` 로 적는 순간 드러난다(Callable 은 인자에 대해
+    #    **반변**이므로 커서를 받는 본문은 object 를 받는 자리에 못 들어간다).
+    #    반환도 마찬가지다 — 「넘긴 것을 그대로 돌려준다」가 이 함수가 하는 일이다.
+    def _in_transaction(self, body: Callable[[RowCursor], _T]) -> _T:
         try:
             connection = self._connection_factory()
         except Exception as exc:  # noqa: BLE001
@@ -202,7 +211,7 @@ class PostgresCentralMembershipWriteAdapter:
                 close()
 
 
-def _set_serializable_best_effort(cursor) -> None:
+def _set_serializable_best_effort(cursor: RowCursor) -> None:
     """Mirror of ``central_claim_write_adapter._set_serializable_best_effort``.
 
     PostgreSQL: SERIALIZABLE makes concurrent UPSERT-then-audit safe (the loser
@@ -217,7 +226,7 @@ def _set_serializable_best_effort(cursor) -> None:
         pass
 
 
-def _safe_rollback(connection) -> None:
+def _safe_rollback(connection: RowConnection) -> None:
     rollback = getattr(connection, 'rollback', None)
     if callable(rollback):
         try:

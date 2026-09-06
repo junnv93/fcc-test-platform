@@ -66,12 +66,32 @@ STRICT_SECTIONS = (
     'mypy-fcc_test_platform.infrastructure.*',
     'mypy-fcc_test_platform.application.session.*',
     'mypy-fcc_test_platform.application.headless.*',
+) + tuple(
+    # ⚠️ 여기는 «모듈»이다. 부분 와일드카드(`central_*`)가 0건 매치이므로 패키지
+    #    글롭으로는 이 묶음을 표현할 수 없다 — mypy.ini 주석이 그 실측을 담는다.
+    f'mypy-fcc_test_platform.application.central_{name}_write_adapter'
+    for name in (
+        'chamber', 'sample_inventory', 'test_equipment_list', 'project', 'claim',
+        'artifact_custody', 'reference', 'membership', 'user', 'report', 'progress',
+    )
 )
 
-#: 절 이름에서 패키지 이름을 «파생»한다 — 두 번 적으면 갈라진다.
-STRICT_PACKAGES = tuple(
-    section[len('mypy-'):-len('.*')] for section in STRICT_SECTIONS
+#: 절 이름에서 **mypy 호출 인자**를 파생한다 — 두 번 적으면 갈라진다.
+#:
+#: ⚠️ 2026-09-06 까지 이 파생은 `section[:-len('.*')]` 로 **무조건** 끝 두 글자를
+#:    잘랐다. 그 형태는 패키지 글롭만 받는다 — 모듈 절을 넣으면 이름이
+#:    `…central_user_write_adapt` 로 잘린다. 다행히 그 실패는 조용하지 않다(실측:
+#:    `mypy -p <없는 이름>` 은 exit 2 이고 「N source files」 줄도 없어서, 아래 두 검사가
+#:    각각 잡는다). 그래도 장부가 «모듈을 받을 수 있어야» 다음 묶음을 자를 수 있으므로
+#:    형태를 고친다: `.*` 로 끝나면 패키지(`-p`), 아니면 모듈(`-m`)이다.
+STRICT_TARGETS = tuple(
+    ('-p', section[len('mypy-'):-len('.*')]) if section.endswith('.*')
+    else ('-m', section[len('mypy-'):])
+    for section in STRICT_SECTIONS
 )
+
+#: 사람이 읽는 이름(보고·subTest 라벨용).
+STRICT_PACKAGES = tuple(name for _flag, name in STRICT_TARGETS)
 
 #: 예외를 가져서는 안 되는 계약 — 즉 **전부**다. 2026-09-05 S3 착지로 마지막
 #: 등재 2건(`app-no-db`)이 해소되면서 세 계약이 나란히 예외 0건이 됐다.
@@ -424,9 +444,9 @@ class TestTheGatesActuallyRun(unittest.TestCase):
         두 번 적으면 `mypy.ini` 에 층을 더하고 이 검사는 옛 층만 돌리는 날이 온다 —
         그때 게이트는 **초록인 채로 새 층을 안 본다.**
         """
-        for package in STRICT_PACKAGES:
+        for flag, package in STRICT_TARGETS:
             with self.subTest(package=package):
-                done = self._run([sys.executable, '-m', 'mypy', '-p', package])
+                done = self._run([sys.executable, '-m', 'mypy', flag, package])
                 report = f'{done.stdout}\n{done.stderr}'
                 # 증거 먼저 — 「한 파일도 안 봤다」가 「오류 없다」로 읽히지 않게.
                 checked = re.search(r'(\d+) source files?', done.stdout)

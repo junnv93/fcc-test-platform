@@ -52,13 +52,17 @@ loud-fail 한다.
 from __future__ import annotations
 
 import uuid
-from typing import Callable, Mapping, Sequence
+from typing import Callable, Mapping, Sequence, TypeVar
 
 # 해소 SQL 은 **다시 적지 않고 빌려온다.** readiness 가 이 레인에서 «자연키 →
 # providers.id» 를 소유하는 자리이고, 여기서 같은 SELECT 를 새로 쓰면 두 벌이 되어
 # providers 의 열이 바뀔 때 한쪽만 따라간다.
 from fcc_test_kernel.application.central_contract.central_sync_readiness import (
     PROVIDER_READINESS_SQL,
+)
+from fcc_test_platform.application.central_db_surfaces import (
+    RowConnection,
+    RowCursor,
 )
 from fcc_test_platform.domain.ports.output.central_artifact_custody_port import (
     ArtifactCustodyProviderNotFoundError,
@@ -138,6 +142,9 @@ INSERT_FINDING_SQL = (
 )
 
 
+_T = TypeVar('_T')
+
+
 class PostgresCentralArtifactCustodyWriteAdapter:
     """``CentralArtifactCustodyWritePort`` — latest-wins 스냅샷 수신."""
 
@@ -156,7 +163,7 @@ class PostgresCentralArtifactCustodyWriteAdapter:
         accepted: list[str] = []
         superseded: list[str] = []
 
-        def _txn(cursor) -> dict:
+        def _txn(cursor: RowCursor) -> dict:
             provider_uuid = self._resolve_provider_uuid(cursor, provider_id)
             for session in sessions:
                 session_key = str(session.get('provider_session_id') or '')
@@ -198,7 +205,7 @@ class PostgresCentralArtifactCustodyWriteAdapter:
         return self._in_transaction(_txn)
 
     @staticmethod
-    def _resolve_provider_uuid(cursor, provider_id: str) -> str:
+    def _resolve_provider_uuid(cursor: RowCursor, provider_id: str) -> str:
         """자연키를 ``providers.id`` 로 바꾼다. **같은 트랜잭션 안에서** 한다.
 
         ``uuid.UUID`` 로 정규화하는 것은 모양 검사가 아니라 **경계 방어**다 —
@@ -226,7 +233,12 @@ class PostgresCentralArtifactCustodyWriteAdapter:
                 f'{key!r} — the custody FK cannot be satisfied'
             ) from exc
 
-    def _in_transaction(self, body: Callable[[object], object]):
+    # ⚠️ 옛 선언은 ``Callable[[object], …]`` 이었다 — 「본문에 **아무거나** 넘긴다」는
+    #    뜻이고, 그것은 거짓이다: 이 러너는 언제나 **커서**를 넘긴다. 그 거짓이
+    #    본문의 인자를 ``RowCursor`` 로 적는 순간 드러난다(Callable 은 인자에 대해
+    #    **반변**이므로 커서를 받는 본문은 object 를 받는 자리에 못 들어간다).
+    #    반환도 마찬가지다 — 「넘긴 것을 그대로 돌려준다」가 이 함수가 하는 일이다.
+    def _in_transaction(self, body: Callable[[RowCursor], _T]) -> _T:
         try:
             connection = self._connection_factory()
         except Exception as exc:  # noqa: BLE001
@@ -253,14 +265,14 @@ class PostgresCentralArtifactCustodyWriteAdapter:
             _close(connection)
 
 
-def _rollback(connection) -> None:
+def _rollback(connection: RowConnection) -> None:
     try:
         connection.rollback()
     except Exception:  # noqa: BLE001 — 롤백 실패가 원인 예외를 가리지 않게 한다
         pass
 
 
-def _close(connection) -> None:
+def _close(connection: RowConnection) -> None:
     try:
         connection.close()
     except Exception:  # noqa: BLE001
