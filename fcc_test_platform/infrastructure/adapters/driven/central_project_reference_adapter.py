@@ -1,7 +1,7 @@
 """PostgreSQL adapter for the generic project-result reference ledger."""
 from __future__ import annotations
 
-from typing import Callable, Mapping, Optional
+from typing import Callable, Mapping, Optional, Protocol
 
 from fcc_test_kernel.application.central_contract.pagination import (
     CursorValueDomain,
@@ -17,7 +17,7 @@ from fcc_test_platform.domain.ports.output.central_project_reference_port import
     ReferenceHashMismatchError,
     ReferenceSourceMismatchError,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection, DbCursor
 
 
 __all__ = ['PostgresCentralProjectReferenceAdapter']
@@ -65,10 +65,43 @@ def _jsonb_payload(value: Mapping) -> object:
     return Jsonb(dict(value))
 
 
+class _RowCursor(DbCursor, Protocol):
+    """이 어댑터가 **실제로** 요구하는 커서 표면.
+
+    커널의 ``DbCursor`` 는 ``execute`` 와 ``close`` 만 약속한다. 이 어댑터는 결과 행을
+    읽으므로 ``fetchall`` 을 **더** 요구한다. 그 「더」를 여기 적지 않고 인자를
+    ``Any`` 로 두면, 타입이 이 모듈의 요구를 말하지 않게 된다 — 그러면 나중에 커서
+    대역을 만드는 사람이 무엇을 갖춰야 하는지 코드를 읽어 세어야 한다.
+
+    ⚠️ ``description`` 은 넣지 않는다. 이 모듈은 그것을 ``getattr(..., None)`` 으로
+    「있으면 쓰는」 선택 항목으로 다루고(없으면 선언된 컬럼 이름으로 되돌아간다),
+    필수 표면과 선택 표면을 한 자리에 섞으면 그 구분이 사라진다.
+    """
+
+    def fetchall(self) -> list: ...
+
+
+class _RowConnection(DbConnection, Protocol):
+    """행을 읽을 수 있는 커서를 내주는 연결 — 커널 포트를 **좁힌다**.
+
+    커널의 ``DbConnection.cursor()`` 는 ``DbCursor`` 를 약속하고 그것은 ``fetchall`` 을
+    담지 않는다. 이 어댑터는 **읽는다** — 그러니 연결에 요구하는 것도 그만큼 넓다.
+    생성자가 이 타입을 받는 것이 그 요구를 호출자에게 말하는 유일한 자리다.
+
+    ⚠️ ``DbConnection`` 을 **상속**한다. 지우고 새로 쓰면 「이 어댑터는 커널 포트와
+    무관한 무언가를 요구한다」로 읽히지만, 사실은 **그 포트가 약속한 것 전부에 더해**
+    읽을 수 있는 커서를 요구하는 것이다. 반환 타입만 ``_RowCursor`` 로 좁힌다.
+    """
+
+    def cursor(self) -> _RowCursor: ...
+
+    def commit(self) -> None: ...
+
+
 class PostgresCentralProjectReferenceAdapter(CentralProjectReferencePort):
     """Keep source validation and lifecycle writes in one central transaction."""
 
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], _RowConnection]) -> None:
         if not callable(connection_factory):
             raise ValueError('connection_factory must be callable')
         self._connection_factory = connection_factory
@@ -161,7 +194,7 @@ class PostgresCentralProjectReferenceAdapter(CentralProjectReferencePort):
                     record['project_id'], producer_provider_uuid,
                     record['reference_type'], record['schema_version'],
                 )
-                revision = self._fetch_one(
+                revision = self._fetch_exactly_one(
                     cursor,
                     'SELECT COALESCE(MAX(revision_number), 0) + 1 AS revision_number '
                     'FROM project_result_reference_revisions '
@@ -259,7 +292,7 @@ class PostgresCentralProjectReferenceAdapter(CentralProjectReferencePort):
                     target['project_id'], producer_provider_uuid,
                     target['reference_type'], target['schema_version'],
                 )
-                next_revision = self._fetch_one(
+                next_revision = self._fetch_exactly_one(
                     cursor,
                     'SELECT COALESCE(MAX(revision_number), 0) + 1 AS revision_number '
                     'FROM project_result_reference_revisions '
@@ -376,25 +409,53 @@ class PostgresCentralProjectReferenceAdapter(CentralProjectReferencePort):
             self._close(connection)
 
     @staticmethod
-    def _rows(cursor) -> list[dict]:
+    def _rows(cursor: _RowCursor) -> list[dict]:
         descriptions = getattr(cursor, 'description', None) or ()
         columns = tuple(getattr(item, 'name', item[0]) for item in descriptions)
         return [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
 
     @classmethod
-    def _fetch_one(cls, cursor, sql: str, params: tuple,
+    def _fetch_one(cls, cursor: _RowCursor, sql: str, params: tuple,
                    columns: Optional[tuple[str, ...]] = None) -> Optional[dict]:
         cursor.execute(sql, params)
         rows = cls._fetch_cursor_rows(cursor, columns)
         return rows[0] if rows else None
 
     @classmethod
-    def _fetch_cursor_row(cls, cursor) -> Optional[dict]:
+    def _fetch_exactly_one(cls, cursor: _RowCursor, sql: str, params: tuple,
+                           columns: Optional[tuple[str, ...]] = None) -> dict:
+        """**반드시 한 행**인 질의 — 집계 전용.
+
+        ⚠️ 이것은 ``Optional`` 을 벗기려는 우회로가 **아니다.** 위 ``_fetch_one`` 을
+        쓰는 자리 중 ``source`` · ``target`` · ``row`` 는 조회가 빈손일 수 있어
+        ``is None`` 가드를 갖는다. 반면 ``SELECT COALESCE(MAX(...), 0) + 1`` 처럼
+        GROUP BY 가 없는 집계는 **대상 행이 0개여도 언제나 정확히 한 행**을 돌려준다.
+        저자가 그 두 자리에만 가드를 두지 않은 이유가 그것이고, 이 헬퍼는 그
+        사실을 산문이 아니라 **타입과 검사**로 적는다.
+
+        ⚠️ 그리고 한 행이 아니면 조용히 넘어가지 않는다. 그런 결과가 왔다는 것은
+        **질의가 우리가 믿는 것과 다르다**는 뜻이다. 그 자리에서 이름을 가진 오류로
+        죽는 것이 옳다 — 호출부까지 ``None`` 을 흘려보내면 진단이
+        ``'NoneType' object is not subscriptable`` 이 되고 **어느 질의였는지 남지 않는다.**
+        """
+        cursor.execute(sql, params)
+        rows = cls._fetch_cursor_rows(cursor, columns)
+        if len(rows) != 1:
+            raise CentralProjectReferenceError(
+                f'aggregate query must return exactly one row, got {len(rows)}: '
+                f'{" ".join(sql.split())[:120]}'
+            )
+        return rows[0]
+
+    @classmethod
+    def _fetch_cursor_row(cls, cursor: _RowCursor) -> Optional[dict]:
         rows = cls._fetch_cursor_rows(cursor)
         return rows[0] if rows else None
 
     @staticmethod
-    def _fetch_cursor_rows(cursor, columns: Optional[tuple[str, ...]] = None) -> list[dict]:
+    def _fetch_cursor_rows(
+        cursor: _RowCursor, columns: Optional[tuple[str, ...]] = None,
+    ) -> list[dict]:
         rows = list(cursor.fetchall())
         if not rows:
             return []
@@ -410,14 +471,14 @@ class PostgresCentralProjectReferenceAdapter(CentralProjectReferencePort):
         result['payload'] = result.pop('payload_json', result.get('payload'))
         return result
 
-    def _open(self):
+    def _open(self) -> _RowConnection:
         try:
             return self._connection_factory()
         except Exception as exc:  # noqa: BLE001
             raise CentralProjectReferenceError(f'central reference connection failed: {exc}') from exc
 
     @staticmethod
-    def _resolve_provider_id(cursor, provider_id: str) -> Mapping:
+    def _resolve_provider_id(cursor: _RowCursor, provider_id: str) -> Mapping:
         row = PostgresCentralProjectReferenceAdapter._fetch_one(
             cursor,
             'SELECT id, provider_id FROM providers '
@@ -430,7 +491,9 @@ class PostgresCentralProjectReferenceAdapter(CentralProjectReferencePort):
         return row
 
     @staticmethod
-    def _serializable(cursor) -> None:
+    # ⚠️ 여기는 ``_RowCursor`` 가 아니라 ``DbCursor`` 다 — 이 함수는 행을 읽지
+    #    않는다. 필요보다 넓은 타입을 적으면 「이 함수가 결과를 본다」는 거짓을 남긴다.
+    def _serializable(cursor: DbCursor) -> None:
         try:
             cursor.execute('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE', ())
         except Exception as exc:  # noqa: BLE001
@@ -440,7 +503,7 @@ class PostgresCentralProjectReferenceAdapter(CentralProjectReferencePort):
 
     @staticmethod
     def _lock_reference_identity(
-        cursor, project_id: str, provider_id: str,
+        cursor: DbCursor, project_id: str, provider_id: str,
         reference_type: str, schema_version: str,
     ) -> None:
         cursor.execute(
@@ -449,7 +512,7 @@ class PostgresCentralProjectReferenceAdapter(CentralProjectReferencePort):
         )
 
     @staticmethod
-    def _rollback(connection) -> None:
+    def _rollback(connection: _RowConnection) -> None:
         rollback = getattr(connection, 'rollback', None)
         if callable(rollback):
             try:
@@ -458,7 +521,7 @@ class PostgresCentralProjectReferenceAdapter(CentralProjectReferencePort):
                 pass
 
     @staticmethod
-    def _close(connection) -> None:
+    def _close(connection: _RowConnection) -> None:
         close = getattr(connection, 'close', None)
         if callable(close):
             close()
