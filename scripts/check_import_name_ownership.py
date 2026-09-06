@@ -199,9 +199,27 @@ def judge_name(
     roots: Mapping[str, Path],
     *,
     find_spec=importlib.util.find_spec,
+    is_editable=_is_editable,
 ) -> NameVerdict:
-    """이름 하나를 판정한다. **관측(해소 위치)은 주입 가능하다** — 봉인이 실제
-    인터프리터 상태에 기대지 않고 두 축을 각각 시험할 수 있어야 한다."""
+    """이름 하나를 판정한다. **관측은 전부 주입 가능하다** — 봉인이 실제 인터프리터
+    상태에 기대지 않고 각 축을 따로 시험할 수 있어야 한다.
+
+    ⚠️ ``is_editable`` 은 2026-09-06 에 seam 이 됐다. 그전까지 이 함수는 입력 넷을
+    주입받으면서 **그 하나만 실제 환경을 읽었고**, 그래서 「순수 단위 테스트의 형태를
+    하고 있으면서 환경 하나를 몰래 읽는」 봉인이 됐다. 그 비대칭이 실제로 값을 치렀다:
+
+      · `test_resolution_outside_it_is_a_violation` 은 `'shadowed'` 를 기대하는데,
+        editable 설치에서는 `'editable'` 이 나와 **로컬에서 빨갛다.**
+      · 그런데 CI 는 초록이었다. 이유가 검사와 무관하다 — `pip install -e '.[test]'`
+        를 **레포 루트에서** 하면 소스 트리에 `fcc_test_platform.egg-info/` 가 남고,
+        같은 루트에서 pytest 를 돌리면 `cwd` 가 `sys.path` 에 있어
+        `distribution('fcc-test-platform')` 이 **그 egg-info** 로 해소된다. 거기엔
+        `direct_url.json` 이 없으므로 `_is_editable` 이 `False` 를 답한다.
+
+    즉 판정이 **빌드 잔재의 유무와 cwd** 라는 두 우연에 달려 있었다(2026-09-06 3-way
+    실측). 프로덕션 기본값은 그대로다 — seam 은 시험을 위한 것이지 동작을 바꾸는 것이
+    아니다.
+    """
     owners = tuple(sorted(set(dists)))
     known = [d for d in owners if d in roots]
 
@@ -241,7 +259,7 @@ def judge_name(
                 )
             return NameVerdict(name, owners, str(resolved_path), str(root), 'ok')
 
-    editable = [d for d in owners if _is_editable(d)]
+    editable = [d for d in owners if is_editable(d)]
     if editable:
         return NameVerdict(
             name, owners, str(resolved_path), None, 'editable',
@@ -260,10 +278,15 @@ def judge_all(
     roots: Mapping[str, Path],
     *,
     find_spec=importlib.util.find_spec,
+    is_editable=_is_editable,
 ) -> list[NameVerdict]:
-    """판정 대상 전량. 표준 라이브러리 이름은 뺀다(배포판 선언과 무관하게 해소된다)."""
+    """판정 대상 전량. 표준 라이브러리 이름은 뺀다(배포판 선언과 무관하게 해소된다).
+
+    ⚠️ 두 관측을 **둘 다** 아래로 흘린다. 하나만 흘리면 이 층에서 시험할 수 있는 것과
+    없는 것이 갈리고, 그 경계는 이 함수의 주제가 아니다.
+    """
     return [
-        judge_name(name, dists, roots, find_spec=find_spec)
+        judge_name(name, dists, roots, find_spec=find_spec, is_editable=is_editable)
         for name, dists in sorted(packages.items())
         if name not in _STDLIB_TOP_LEVEL and _is_import_name(name)
     ]

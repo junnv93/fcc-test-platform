@@ -58,11 +58,18 @@ class TestTheShadowingAxis(unittest.TestCase):
         self.assertFalse(v.is_violation)
 
     def test_resolution_outside_it_is_a_violation(self):
-        """2026-09-03 챔버 조건의 재현 — provider 트리가 휠을 가린다."""
+        """2026-09-03 챔버 조건의 재현 — provider 트리가 휠을 가린다.
+
+        ⚠️ ``is_editable`` 을 **주입한다**(2026-09-06). 그전까지 이 검사는 입력 넷을
+        주입하면서 그 하나만 실제 환경을 읽었고, 그래서 editable 설치에서 `'editable'`
+        이 나와 빨갰다 — 재는 것이 「가려짐」이 아니라 「이 개발자가 무엇으로 설치했나」
+        였다. 아래 `TestTheEditableSeam` 이 그 축을 «따로» 잰다.
+        """
         v = guard.judge_name(
             'domain', ['fcc-test-platform'],
             {'fcc-test-platform': Path('/site-packages')},
             find_spec=_fixed({'domain': '/repo/src/domain'}),
+            is_editable=lambda _d: False,
         )
         self.assertEqual(v.state, 'shadowed')
         self.assertTrue(v.is_violation)
@@ -159,6 +166,71 @@ class TestExitCodesKeepTheThreeStatesApart(unittest.TestCase):
         code, report = guard.render([obs])
         self.assertEqual(code, guard.EXIT_OK)
         self.assertIn('관측', report)
+
+
+class TestTheEditableSeam(unittest.TestCase):
+    """``editable`` 축을 **주입으로** 잰다 — 이 개발자가 무엇으로 설치했든 같은 답.
+
+    ⚠️ 이 클래스가 없으면 seam 을 내고도 반쪽이다. 한 팔(비-editable)만 단언하면
+    `is_editable` 을 무시하도록 바꿔도 아무것도 붉어지지 않는다.
+
+    #### 왜 이 seam 이 필요했나 (2026-09-06 3-way 실측)
+
+    같은 커밋 · 같은 리그에서 판정이 셋으로 갈렸다:
+
+    | 조건 | 결과 |
+    |---|---|
+    | `egg-info` 있음 + cwd = 트리 루트 | 통과 ← **CI 의 조건** |
+    | `egg-info` 없음 + cwd = 트리 루트 | 실패 |
+    | `egg-info` 있음 + cwd = 트리 밖 | 실패 |
+
+    `pip install -e '.[test]'` 를 레포 루트에서 하면 `fcc_test_platform.egg-info/` 가
+    소스 트리에 남고, 그 루트에서 pytest 를 돌리면 `cwd` 가 `sys.path` 에 있어
+    `distribution()` 이 그것으로 해소된다 — 거기엔 `direct_url.json` 이 없다.
+    **CI 의 초록은 빌드 잔재 덕분이었다.** `checks.yml` 이 「비-editable 은 `build/` 를
+    남겨 실패 집합을 오염시킨다」고 경고하는데, editable 은 `egg-info` 를 남겨 봉인을
+    **조용히 통과시킨다.**
+    """
+
+    def _judge(self, *, editable: bool) -> object:
+        return guard.judge_name(
+            'domain', ['fcc-test-platform'],
+            {'fcc-test-platform': Path('/site-packages')},
+            find_spec=_fixed({'domain': '/repo/src/domain'}),
+            is_editable=lambda _d: editable,
+        )
+
+    def test_editable_resolution_outside_the_root_is_not_a_violation(self):
+        """editable 은 설치 루트 밖에서 해소되는 것이 **정상**이다."""
+        v = self._judge(editable=True)
+
+        self.assertEqual(v.state, 'editable')
+        self.assertFalse(v.is_violation)
+
+    def test_non_editable_resolution_outside_the_root_is_a_violation(self):
+        """같은 관측, 같은 입력 — `editable` 하나만 뒤집으면 판정이 뒤집힌다."""
+        v = self._judge(editable=False)
+
+        self.assertEqual(v.state, 'shadowed')
+        self.assertTrue(v.is_violation)
+
+    def test_the_two_arms_disagree(self):
+        """비-공허성. 두 팔이 같은 답을 내면 이 seam 은 아무것도 시험하지 않는다."""
+        self.assertNotEqual(
+            self._judge(editable=True).state,
+            self._judge(editable=False).state,
+        )
+
+    def test_the_default_is_still_the_real_environment(self):
+        """⚠️ seam 은 «시험을 위한» 것이지 동작을 바꾸는 것이 아니다.
+
+        기본값이 조용히 상수로 바뀌면 프로덕션이 editable 을 영원히 가려짐으로
+        보고하거나(그러면 개발 환경 전체가 빨갛다) 그 반대가 된다.
+        """
+        import inspect
+
+        default = inspect.signature(guard.judge_name).parameters['is_editable'].default
+        self.assertIs(default, guard._is_editable)
 
 
 if __name__ == '__main__':  # pragma: no cover
