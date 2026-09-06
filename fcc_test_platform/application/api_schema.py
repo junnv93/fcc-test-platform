@@ -16,7 +16,7 @@ The artifact (``docs/api/platform-api.openapi.json``) MUST be byte-identical to
 """
 from __future__ import annotations
 
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Final, Optional, TYPE_CHECKING
 
 from fcc_test_contracts.common.api_error_codes import ApiSurface, surface_error_codes
 from fcc_test_contracts.common.openapi_schema_builder import (
@@ -669,17 +669,51 @@ def _path_parameters_for(path: str) -> list[dict[str, Any]]:
     return parameters
 
 
+#: §8 — ``in`` 가드 + 첨자의 «마지막 구멍»을 닫는다.
+#:
+#: 리터럴을 두 번 적으면 키 이름이 두 번 등장하는데 **검사되는 것은 첨자 쪽 하나뿐**
+#: 이다. 실측 2026-09-06 (커널 0.5.1 · mypy 2.3.1, 주입 대조):
+#:
+#:     'response_media_typo' in op  뒤  op['response_media_type']   → ⚠️ 오류 없음
+#:     'response_media_type' in op  뒤  op['response_media_typo']   → error [typeddict-item]
+#:
+#: 즉 «가드 쪽» 오타는 조용하고, 그 결과는 분기가 영원히 거짓이 되는 것 —
+#: `export_sample_inventory` 의 media type 이 소리 없이 기본값으로 접힌다.
+#: ``Final`` 은 mypy 가 그 값을 리터럴로 취급하게 하므로(실측: ``in`` 좁힘도
+#: 첨자도 둘 다 동작한다) 이름을 **한 번만** 적게 되고, 그 한 자리를 틀리면
+#: 첨자에서 빨개진다. ⚠️ ``Final`` 을 떼면 타입이 ``str`` 로 넓어져 그 검사가
+#: 조용히 사라진다 — 정리로 보이지만 회귀다.
+_RESPONSE_MEDIA_TYPE: Final = 'response_media_type'
+
+
 def _build_responses_for(name: str) -> dict[str, Any]:
     operation = PLATFORM_API_OPERATIONS[name]
-    response_schema_name = operation.get('response')
+    # §8 — 계약표를 «검사되는» 형태로 읽는다. 커널의 ``OperationSpec`` 이
+    # ``response`` 를 ``Required[str]`` 로 선언하므로 첨자가 안전하고, 첨자만이
+    # 키 «이름»을 검사한다. 실측 2026-09-06 (커널 0.5.1 · mypy 2.3.1, 주입 대조):
+    #     op.get('respones')  → 오류 없음, 타입 ``object``   ← 오타가 영원히 조용하다
+    #     op['respones']      → error [typeddict-item] + "Did you mean response?"
+    # 즉 이 한 글자 변경이 사는 것은 «타입»이 아니라 **키 이름**이다.
+    response_schema_name = operation['response']
     if response_schema_name and response_schema_name in PLATFORM_API_SCHEMAS:
         ok_schema: dict[str, Any] = _ref_object(response_schema_name)
     else:
         ok_schema = {'type': 'object'}
+    # §8 — ⚠️ 여기서 첨자 «단독» 을 쓰면 안 된다. ``response_media_type`` 은
+    # ``NotRequired`` 이고 실측 **1/80** 이다(2026-09-06 전수 — 가진 것은
+    # ``export_sample_inventory`` 하나). 그 형태는 mypy 가 «아무 말도 안 하고»
+    # 런타임이 79/80 에서 ``KeyError`` 로 죽는다 — 검사기가 침묵하는 쪽으로
+    # 고장이 옮겨 갈 뿐이라 개선이 아니다. ``in`` 가드를 거친 첨자만이
+    # «검사되면서 안전한» 형태다.
+    media_type = (
+        operation[_RESPONSE_MEDIA_TYPE]
+        if _RESPONSE_MEDIA_TYPE in operation
+        else 'application/json'
+    )
     ok_response: dict[str, Any] = {
         'description': 'OK',
         'content': {
-            operation.get('response_media_type', 'application/json'): {
+            media_type: {
                 'schema': ok_schema,
             },
         },
@@ -707,7 +741,11 @@ def _build_responses_for(name: str) -> dict[str, Any]:
 
 def _build_request_body_for(name: str) -> dict[str, Any] | None:
     operation = PLATFORM_API_OPERATIONS[name]
-    request_schema_name = operation.get('request')
+    # §8 — ``request`` 는 ``Required[str | None]`` 이다. 「42/80 이 ``None``」은
+    # 키의 부재가 아니라 «값»이므로 첨자가 안전하다(부재 0/80). 아래 ``not`` 가
+    # 그 ``None`` 을 그대로 받는다 — 동작은 ``.get`` 과 동일하고, 달라지는 것은
+    # 오타가 이제 빨개진다는 것뿐이다.
+    request_schema_name = operation['request']
     if not request_schema_name or request_schema_name not in PLATFORM_API_SCHEMAS:
         return None
     return {
