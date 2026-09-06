@@ -24,10 +24,14 @@ from __future__ import annotations
 import asyncio
 import threading
 from types import TracebackType
-from typing import AsyncIterator, Optional
+from typing import Optional
 
 from fcc_test_kernel.domain.models.chamber_node import ChamberProgressEvent
 from fcc_test_kernel.logger_config import get_logger
+
+from fcc_test_platform.domain.ports.output.chamber_progress_broadcast_port import (
+    ChamberProgressBroadcastPort,
+)
 
 
 __all__ = ['ChamberProgressBroadcaster', 'DEFAULT_PROGRESS_BUFFER_SIZE']
@@ -92,13 +96,21 @@ class _Subscription:
             self.queue.put_nowait(None)
 
 
-class ChamberProgressBroadcaster:
+class ChamberProgressBroadcaster(ChamberProgressBroadcastPort):
     """진행 이벤트 fan-out in-process 버스.
 
     Thread-safety: 구독 집합/큐 변경은 모두 버스의 asyncio 루프에서
     ``call_soon_threadsafe`` 로 수행(요청/측정 스레드 어디서든 :meth:`publish` 안전).
-    :class:`domain.ports.output.chamber_progress_broadcast_port.ChamberProgressBroadcastPort`
-    를 구조적으로 충족(publish 표면) + WS 핸들러가 직접 소비할 async :meth:`subscribe`.
+
+    ⚠️ Port 를 **명시 상속**한다 — 구조적 충족에 기대지 않는다. 2026-09-07 까지
+    이 클래스는 Port 를 구조적으로만 만족했고, 그 상태에서 두 겹의 좁힘이 아무
+    게이트에도 걸리지 않았다: Port 가 ``subscribe`` 를 안 적었고, 이 클래스는
+    ``subscribe`` 의 반환을 ``AsyncIterator`` 라 적어 **자기가 실제로 돌려주는**
+    :class:`_SubscriptionScope`(=``__aenter__`` 보유)를 스스로 숨겼다. 그래서 WS
+    릴레이는 Port 로도 이 클래스로도 ``async with`` 를 정당화할 수 없어 ``cast``
+    로 둘을 건너뛰어야 했다. 상속은 그 두 겹을 정의 지점에서 mypy 가 검사하게
+    만든다 — ``isinstance``(``runtime_checkable``)는 메서드 **존재**만 보므로
+    반환 타입 좁힘을 원리적으로 못 잡는다.
     """
 
     def __init__(self, buffer_size: Optional[int] = None) -> None:
@@ -138,8 +150,13 @@ class ChamberProgressBroadcaster:
 
     # ── async subscribe ──────────────────────────────────────────────────────
 
-    def subscribe(self) -> 'AsyncIterator[ChamberProgressEvent]':
-        """새 구독에 대한 async iterator + 컨텍스트 매니저 반환."""
+    def subscribe(self) -> '_SubscriptionScope':
+        """새 구독에 대한 async iterator + 컨텍스트 매니저 반환.
+
+        ⚠️ 반환형은 ``AsyncIterator`` 가 **아니다** — 그렇게 적으면 호출자가
+        ``async with`` 를 쓸 근거를 잃고, 그 ``async with`` 가 구독 해제의 유일한
+        보장이다(:class:`_SubscriptionScope.__aexit__`).
+        """
         return _SubscriptionScope(self)
 
     # ── lifecycle ─────────────────────────────────────────────────────────────

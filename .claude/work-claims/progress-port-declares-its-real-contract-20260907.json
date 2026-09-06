@@ -1,0 +1,21 @@
+{
+  "task": "progress-port-declares-its-real-contract-20260907",
+  "branch": "fix/progress-port-declares-its-real-contract-20260907",
+  "owner": "fcc-delivery-final-6a",
+  "status": "active",
+  "base": "origin/main@0da711d",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/1f581e35-7bd3-40a9-852a-32878f4b1f22/scratchpad/wt-port",
+  "scope": [
+    "fcc_test_platform/domain/ports/output/chamber_progress_broadcast_port.py",
+    "fcc_test_platform/infrastructure/adapters/driven/chamber_progress_broadcaster.py",
+    "fcc_test_platform/api/platform_routes.py",
+    "fcc_test_platform/api_composition.py",
+    "tests/test_chamber_heartbeat_progress_broadcast.py",
+    ".claude/work-claims/progress-port-declares-its-real-contract-20260907.json"
+  ],
+  "shared_outputs": [],
+  "conflicts_with": [],
+  "sequencing": "PR #132 이 «드러내기만» 하고 남긴 🔴 하나를 닫는다. 갈래 셋(포트 확장 / 읽기 포트 분리 / 어댑터 2인자) 중 **포트 확장**을 고른다. 근거는 실측 넷: ① 「publish-only」의 유일한 근거인 docstring 문장(「subscribe 는 WS driving adapter 가 인프라 broadcaster 에 직접 접근」)이 **최초 커밋부터 거짓**이다 — 모노레포 0f2aaeef(2026-06-18) 의 그 핸들러도 `broadcaster = adapter.progress_broadcaster` 로 포트 타입 프로퍼티를 통해 받았고, 오늘 이 레포의 `api` 층은 `infrastructure` 에서 **0개**를 import 한다(AST). ② 포트가 인용하는 ADR-0015 는 전송 방향만 정하고 포트 모양을 결정하지 않는다(172줄 중 publish|subscribe|port 2회, 둘 다 노드의 기존 버스 서술). ③ 하우스 규칙은 「능력 하나에 포트 하나」가 아니다 — 28개 포트 모듈 실측상 갈린 Read/Write 8쌍은 전부 구현 클래스가 둘인 경우이고, 한 객체가 받치는 포트는 이질적 능력을 함께 담는다(PlatformIngestionTransaction 은 upsert+commit+rollback, CentralChamberWritePort 는 read_* 둘). ④ 이 broadcaster 가 스스로 「복제」라 적는 원본 SessionEventPort 는 publish+subscribe+dispose 셋을 함께 선언한다. ⚠️ 결함은 **세 겹**이다 — 포트뿐 아니라 구상 클래스의 `subscribe(self) -> AsyncIterator[...]` 도 자기가 돌려주는 `_SubscriptionScope`(=`__aenter__` 보유)를 숨긴다. 그래서 포트만 넓히면 `cast` 를 못 걷는다. 적합성은 Protocol 명시 상속으로 검사되게 만든다(하우스 선례 5/34; assertIsInstance 는 메서드 «존재»만 보므로 반환 타입 좁힘을 원리적으로 못 잡는다). ⚠️ tests/test_architecture_gate_conformance.py 는 건드리지 않는다(형제 세션 bf 의 웨이브).",
+  "pr": null,
+  "result": null
+}
