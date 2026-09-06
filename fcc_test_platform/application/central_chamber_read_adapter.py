@@ -8,7 +8,7 @@ and the measurement proxy (Phase 5).
 
 Design (mirrors ``PostgresCentralReadAdapter``):
 
-- **injected ``connection_factory``** (``() -> DbConnection``). The concrete psycopg
+- **injected ``connection_factory``** (``() -> RowConnection``). The concrete psycopg
   connection is built lazily by the composition root; this module imports no
   PostgreSQL driver (frozen-exe safe — enforced by ``tests/test_platform_chamber_api_p2.py``).
 - **read-only**: only ``SELECT`` statements. No write verb — the registry is written
@@ -26,8 +26,8 @@ from __future__ import annotations
 
 from typing import Callable
 
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 from fcc_test_platform.domain.ports.output.central_chamber_read_port import CentralChamberReadError
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 __all__ = [
@@ -105,7 +105,7 @@ CHAMBER_AVAILABILITY_QUERY_SQL = _select_all(
 class PostgresCentralChamberReadAdapter:
     """``CentralChamberReadPort`` over a central PostgreSQL connection factory."""
 
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], RowConnection]) -> None:
         if not callable(connection_factory):
             raise ValueError('connection_factory must be callable')
         self._connection_factory = connection_factory

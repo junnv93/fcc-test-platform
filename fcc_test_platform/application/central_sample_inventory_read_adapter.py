@@ -7,13 +7,13 @@ revision snapshot, not to the current projection.
 from __future__ import annotations
 
 import json
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 from fcc_test_platform.domain.ports.output.central_sample_inventory_read_port import (
     CentralSampleInventoryReadError,
 )
 from fcc_test_kernel.domain.models.sample_inventory import custody_state
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
 
 
 SAMPLE_COLUMNS: tuple[str, ...] = (
@@ -146,7 +146,7 @@ MEASUREMENT_SNAPSHOT_SQL = (
 
 
 class PostgresCentralSampleInventoryReadAdapter:
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], RowConnection]) -> None:
         if not callable(connection_factory):
             raise ValueError('connection_factory must be callable')
         self._connection_factory = connection_factory
@@ -357,7 +357,10 @@ class PostgresCentralSampleInventoryReadAdapter:
             'plan_project_count': plan_project_count,
         }
 
-    def _list_current(self, *, project_id, team, status, after, limit, include_deleted):
+    def _list_current(
+        self, *, project_id: Optional[str], team: Optional[str], status: Optional[str],
+        after: Optional[tuple], limit: int, include_deleted: bool,
+    ) -> list[dict]:
         predicates: list[str] = []
         params: list = []
         if project_id:
@@ -381,8 +384,11 @@ class PostgresCentralSampleInventoryReadAdapter:
         params.append(limit + 1)
         return self._query(statement, tuple(params), columns=SAMPLE_COLUMNS)
 
-    def _list_as_of(self, *, project_id, team, status, as_of, after, limit,
-                    include_deleted=False):
+    def _list_as_of(
+        self, *, project_id: Optional[str], team: Optional[str], status: Optional[str],
+        as_of: Optional[str], after: Optional[tuple], limit: int,
+        include_deleted: bool = False,
+    ) -> list[dict]:
         predicates: list[str] = []
         params: list = [as_of]
         if project_id:
@@ -438,7 +444,7 @@ class PostgresCentralSampleInventoryReadAdapter:
         return [dict(zip(columns, row, strict=True)) for row in raw]
 
 
-def _json(value):
+def _json(value: Any) -> Any:
     if isinstance(value, str):
         try:
             return json.loads(value)
@@ -447,7 +453,7 @@ def _json(value):
     return value or {}
 
 
-def _cursor_value(value):
+def _cursor_value(value: Any) -> Any:
     """Convert DB driver values to JSON-safe, stable keyset tokens."""
     if hasattr(value, 'isoformat') and callable(value.isoformat):
         return value.isoformat()

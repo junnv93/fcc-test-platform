@@ -6,7 +6,7 @@
 
 설계(``PostgresCentralReportReadAdapter`` 미러):
 
-- **주입 ``connection_factory``**(``() -> DbConnection``) — psycopg 는 합성
+- **주입 ``connection_factory``**(``() -> RowConnection``) — psycopg 는 합성
   루트가 lazy 로 만든다. 이 모듈은 어떤 PostgreSQL 드라이버도 import 하지 않는다.
 - **read-only**: ``SELECT`` 만.
 - **``%s`` paramstyle**(psycopg).
@@ -26,7 +26,7 @@ from typing import Callable, Optional
 from fcc_test_platform.domain.ports.output.central_test_equipment_list_port import (
     CentralTestEquipmentListError,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 from fcc_test_kernel.domain.services.test_equipment_list_policy import ITEM_PERSISTED_FIELDS
 
 
@@ -97,7 +97,7 @@ LIST_ITEMS_SQL = (
 class PostgresCentralTestEquipmentListReadAdapter:
     """``CentralTestEquipmentListReadPort`` over a central PG connection factory."""
 
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], RowConnection]) -> None:
         if not callable(connection_factory):
             raise ValueError('connection_factory must be callable')
         self._connection_factory = connection_factory

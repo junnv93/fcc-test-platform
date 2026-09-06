@@ -74,6 +74,20 @@ STRICT_SECTIONS = (
         'chamber', 'sample_inventory', 'test_equipment_list', 'project', 'claim',
         'artifact_custody', 'reference', 'membership', 'user', 'report', 'progress',
     )
+) + tuple(
+    # read 어댑터 10모듈 (2026-09-06). write 와 «대칭»이고, 같은 제약(부분 와일드카드
+    # 불가) 아래 있으므로 같은 값을 치른다.
+    #
+    # ⚠️ `central_read_adapter` 는 여기 «없다» — 이름 규약이 `central_<X>_read_adapter`
+    #    가 아니라서 이 파생이 만들 수 없고, 손으로 한 줄 더하면 파생과 열거가 한
+    #    파일에서 섞인다. 비용은 실측 0건(no-untyped-def)이므로 다음 웨이브가
+    #    「나머지 application」을 자를 때 함께 들어간다.
+    f'mypy-fcc_test_platform.application.central_{name}_read_adapter'
+    for name in (
+        'chamber', 'progress', 'progress_catalog', 'project', 'rbac',
+        'reference', 'report', 'test_equipment_list', 'artifact_custody',
+        'sample_inventory',
+    )
 )
 
 #: 절 이름에서 **mypy 호출 인자**를 파생한다 — 두 번 적으면 갈라진다.

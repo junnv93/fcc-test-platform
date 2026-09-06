@@ -5,7 +5,7 @@ the central ``test_reports`` table (docs/platform/central_db_schema.v1.json).
 
 Design (mirrors ``PostgresCentralProjectReadAdapter``):
 
-- **injected ``connection_factory``** (``() -> DbConnection``) — psycopg built
+- **injected ``connection_factory``** (``() -> RowConnection``) — psycopg built
   lazily by the composition root; this module imports no PostgreSQL driver.
 - **read-only**: only ``SELECT``.
 - **``%s`` paramstyle** (psycopg) — project_id is a bound parameter.
@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Callable, Optional
 
 from fcc_test_platform.domain.ports.output.central_report_port import CentralReportError
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 
 
 __all__ = [
@@ -67,7 +67,7 @@ GET_SESSION_SNAPSHOT_SQL = (
 class PostgresCentralReportReadAdapter:
     """``CentralReportReadPort`` over a central PostgreSQL connection factory."""
 
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], RowConnection]) -> None:
         if not callable(connection_factory):
             raise ValueError('connection_factory must be callable')
         self._connection_factory = connection_factory
