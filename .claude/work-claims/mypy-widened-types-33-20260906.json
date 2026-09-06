@@ -2,7 +2,7 @@
   "task": "mypy-widened-types-33-20260906",
   "branch": "fix/object-subscript-and-kwargs-33-20260906",
   "owner": "fcc-delivery-final-0e",
-  "status": "active",
+  "status": "merged",
   "base": "origin/main@0da711d",
   "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/cbbcc64d-931a-4c42-a390-de9a2d47d797/scratchpad/wt-33",
   "scope": [
@@ -25,5 +25,7 @@
   "conflicts_with": [],
   "sequencing": "🔴 이 작업은 «아직 착지하지 않은 핀» 뒤에 서 있다. 5c 의 판올림(v0.1.22→v0.1.25, kernel-v0.5.0→kernel-v0.5.1)이 착지하기 전에는 이 60건이 검사기에 «보이지 않는다» — 커널에 py.typed 가 없어 import 전체가 Any 이기 때문이다(PEP 561). 실측(트리 고정 origin/main@0da711d, 커널만 이동, 선언대로 설치): 네 strict 층 0/0/0/0 → 0/1/69/9. 즉 오늘 게이트는 «완전 초록»이고 핀이 켜지는 순간 79 다. 그래서 이 PR 의 초록은 무증거이고, 증거는 rig 실행이다.",
   "rig": "python3.12 · mypy 2.3.1 · fcc-test-kernel 0.5.1(py.typed 있음) + fcc-test-contracts 0.1.25 를 로컬 태그 워크트리에서 --no-deps 설치 · 나머지는 pyproject 선언대로(fastapi·psycopg[binary]·bcrypt·[test] 전량). ⚠️ 리그가 답을 바꾼다 — fastapi 없이는 infrastructure 0/api 8/provider_identity 0 이었고, 설치 후 1/9/3 이다.",
-  "measured": "내 9파일 슬라이스 60건(커널 0.5.1) 중 20건은 커널 0.5.0 에서도 빨갛다(핀 무관) · 40건이 핀 유발."
+  "measured": "내 9파일 슬라이스 60건(커널 0.5.1) 중 20건은 커널 0.5.0 에서도 빨갛다(핀 무관) · 40건이 핀 유발.",
+  "pr": "https://github.com/junnv93/fcc-test-platform/pull/133",
+  "result": "8파일 · cast 0 · type: ignore 0. 선언된 핀으로 세운 rig 기준 53건 닫힘(전체 177→124, strict 4층 합 79→63). 현재 핀에서는 65→45 이고 게이트는 0→0 무회귀. ⚠️ 이 브랜치의 초록은 무증거였다 — 현재 핀에서는 그 53건이 애초에 보이지 않는다(커널에 py.typed 가 없어 import 전체가 Any). 증거는 rig 실행이고 그것을 PR 본문과 .claude/evaluations/2026-09-06-what-the-pin-makes-visible.md 에 남겼다. 🔴 설계서 §8 의 「fail-closed 냐 타입 검사냐」가 거짓 이분법이었다 — 셋째 형태(.get(op) + is None 분기 + 첨자)가 둘 다 준다. 오타 주입으로 갈렸고 부재 동작은 동일. ⚠️ 그 자리는 형제 세션이 무접촉으로 지정했던 곳이고, 내가 «내 트리의 줄 번호»로 확인해 「무접촉」이라 답한 것이 틀렸다(6b667d4:548-549 == 0da711d:633-634). 결과는 옳았고 그쪽이 유지를 요청했으나 판정 과정이 틀렸다. 남긴 것 넷은 계약 레인 선언이라 여기서 못 고쳤고 contracts PR #50 이 그중 셋을 든다."
 }
