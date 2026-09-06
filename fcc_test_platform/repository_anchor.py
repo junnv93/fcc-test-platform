@@ -25,11 +25,40 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from fcc_test_contracts.common.tree_artifacts import LAYOUT_RECORD_NAME
+
+#: 「여기가 상자 루트다」라고 말하는 파일들. **하나로는 부족하다.**
+#:
+#: ⚠️ 실측 2026-09-06 — 이 헬퍼의 첫 판은 ``pyproject.toml`` 하나만 인정했고,
+#: 그래서 **컨테이너 이미지 안에서 마이그레이션 러너가 죽었다**:
+#:
+#:     {"ok": false, "error": "마이그레이션 디렉터리가 없다: /docs/platform/migrations"}
+#:
+#: 원인은 이미지가 그 표식을 **의도적으로 지운다**는 데 있다
+#: (``infra/central/Dockerfile.api``)::
+#:
+#:     RUN pip install --no-deps . && rm -rf … /app/pyproject.toml /app/README.md …
+#:
+#: 소스를 남기면 ``/app`` 이 cwd 이므로 휠보다 먼저 import 되어 **휠을 조용히 가린다**
+#: — 그 삭제는 옳다. 그리고 같은 Dockerfile 이 바로 그 자리를 메우려고
+#: ``.extraction-layout.json`` 을 싣는다: *"상자 표식을 함께 싣는다 … 그래서 부르는
+#: 쪽이 경로를 몰라도 된다."*
+#:
+#: 즉 이미지는 상자 표식을 **가지고 있었고**, 이 헬퍼가 그것을 표식으로 세지 않았을
+#: 뿐이다. ``_tree_root`` 는 이미 그 기록을 **가장 먼저** 찾으므로, 앵커가 상자 안을
+#: 가리키기만 하면 나머지는 그대로 성립한다.
+#:
+#: ⚠️ 순서는 후보 디렉터리가 바깥, 표식이 안이다 — **가장 가까운 트리가 이긴다.**
+#: 표식을 바깥 고리로 돌리면 먼 조상의 ``pyproject.toml`` 이 가까운 상자를 이긴다.
+BOX_MARKERS = ('pyproject.toml', LAYOUT_RECORD_NAME)
+
 
 def repository_anchor(module_file: str | Path) -> Path:
     """``resolve_repo_artifact`` 에 넘길 앵커 파일.
 
-    cwd 나 그 조상 중 ``pyproject.toml`` 을 가진 첫 트리를 «다루는 곳»으로 본다.
+    cwd 나 그 조상 중 :data:`BOX_MARKERS` 중 하나를 가진 첫 트리를 «다루는 곳»으로
+    본다 — 저장소 체크아웃은 ``pyproject.toml`` 로, 배송된 상자와 컨테이너 이미지는
+    ``.extraction-layout.json`` 으로 답한다.
     배송된 상자 안에서 돌 때도 그 상자가 답이 되므로 상자의 배치 기록이 그대로 쓰인다.
 
     ⚠️ ``.git`` 을 요구하지 **않는다** — 배송된 상자는 저장소가 아니라 트리이고,
@@ -40,6 +69,7 @@ def repository_anchor(module_file: str | Path) -> Path:
     """
     here = Path.cwd().resolve()
     for candidate in (here, *here.parents):
-        if (candidate / 'pyproject.toml').is_file():
-            return candidate / 'pyproject.toml'
+        for marker in BOX_MARKERS:
+            if (candidate / marker).is_file():
+                return candidate / marker
     return Path(module_file)
