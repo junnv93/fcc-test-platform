@@ -42,7 +42,7 @@ class TestPlatformSampleInventoryFilters:
             actor_subject='seed',
         )
         self.service.soft_delete(
-            PROJECT_ID, self.rf['id'], expected_version=1, actor_subject='seed',
+            PROJECT_ID, self.rf['sample_id'], expected_version=1, actor_subject='seed',
         )
 
     def teardown_method(self):

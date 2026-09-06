@@ -108,9 +108,9 @@ class TestExample2LandsWithoutLoss(_Fixture):
 
     def test_every_event_is_stored_and_readable_as_a_first_class_row(self):
         sample = self._sample()
-        self._append_all(sample['id'])
+        self._append_all(sample['sample_id'])
 
-        events = self.service.list_custody_events(PROJECT_ID, sample['id'])['items']
+        events = self.service.list_custody_events(PROJECT_ID, sample['sample_id'])['items']
         assert len(events) == len(self.EVENTS)
         # 목록은 최신이 먼저다 — 화면이 '지금 어떤 상태인가'를 맨 위에서 읽는다.
         assert events[0]['occurred_on'] == '2025-11-04'
@@ -127,19 +127,19 @@ class TestExample2LandsWithoutLoss(_Fixture):
 
     def test_current_custody_is_computable_and_was_not_before(self):
         sample = self._sample()
-        self._append_all(sample['id'])
+        self._append_all(sample['sample_id'])
 
-        current = self.service.get_sample(PROJECT_ID, sample['id'])
+        current = self.service.get_sample(PROJECT_ID, sample['sample_id'])
         assert current['custody_state'] == 'in_custody'
         assert current['custody_event_count'] == len(self.EVENTS)
 
         self.service.append_custody_event(
-            PROJECT_ID, sample['id'],
+            PROJECT_ID, sample['sample_id'],
             {'event_type': 'released', 'occurred_on': '2025-11-20'},
             actor_subject='user:pm',
         )
         assert self.service.get_sample(
-            PROJECT_ID, sample['id'])['custody_state'] == 'released'
+            PROJECT_ID, sample['sample_id'])['custody_state'] == 'released'
 
     def test_a_sample_with_no_events_is_unknown_not_released(self):
         """기존 시료는 사건 없이 넘어온다 (결정 9: 자동 변환하지 않는다).
@@ -147,7 +147,7 @@ class TestExample2LandsWithoutLoss(_Fixture):
         그것을 '반출됨'으로 읽으면 사람이 적지 않은 사실을 시스템이 지어내는 것이다.
         """
         sample = self._sample()
-        current = self.service.get_sample(PROJECT_ID, sample['id'])
+        current = self.service.get_sample(PROJECT_ID, sample['sample_id'])
         assert current['custody_state'] is None
         assert current['custody_event_count'] == 0
 
@@ -155,9 +155,9 @@ class TestExample2LandsWithoutLoss(_Fixture):
         """결정 9 — 원문을 보존한다. 한 줄도 잃지 않는다."""
         raw_note = '11/4일 재 반입\n10/28일 재 반입\n10/23일 NR n41/48 CEM 디버깅건으로 임시 반출'
         sample = self._sample(note=raw_note, intake_cert='20251104-1432333773\n20251027-1724065293')
-        self._append_all(sample['id'])
+        self._append_all(sample['sample_id'])
 
-        current = self.service.get_sample(PROJECT_ID, sample['id'])
+        current = self.service.get_sample(PROJECT_ID, sample['sample_id'])
         assert current['note'] == raw_note
         assert current['intake_cert'].startswith('20251104-1432333773\n')
 
@@ -175,7 +175,7 @@ class TestIntakeCertIsAnEventNotASampleAttribute(_Fixture):
                     for index in range(1, 5)]
         for sample in shipment:
             self.service.append_custody_event(
-                PROJECT_ID, sample['id'],
+                PROJECT_ID, sample['sample_id'],
                 {'event_type': 'received', 'occurred_on': '2025-11-04',
                  'intake_cert_number': cert},
                 actor_subject='user:pm',
@@ -183,7 +183,7 @@ class TestIntakeCertIsAnEventNotASampleAttribute(_Fixture):
         # 다른 납품으로 들어온 시료 하나는 그 배치에 속하지 않는다.
         other = self._sample(sample_number='#9', sample_description='SM-F968U1_Main Conduction #9')
         self.service.append_custody_event(
-            PROJECT_ID, other['id'],
+            PROJECT_ID, other['sample_id'],
             {'event_type': 'received', 'occurred_on': '2025-09-30',
              'intake_cert_number': '20250930-1031009813'},
             actor_subject='user:pm',
@@ -191,40 +191,40 @@ class TestIntakeCertIsAnEventNotASampleAttribute(_Fixture):
 
         read = PostgresCentralSampleInventoryReadAdapter(
             lambda: QmarkConnection(self.db_path))
-        ids = [sample['id'] for sample in shipment] + [other['id']]
+        ids = [sample['sample_id'] for sample in shipment] + [other['sample_id']]
         rows = read.list_custody_events(PROJECT_ID, ids)
         batch = {row['sample_id'] for row in rows if row['intake_cert_number'] == cert}
-        assert batch == {sample['id'] for sample in shipment}
+        assert batch == {sample['sample_id'] for sample in shipment}
 
 
 class TestCorrectionIsDeleteNotEdit(_Fixture):
     def test_a_wrongly_recorded_event_can_be_removed(self):
         sample = self._sample()
         wrong = self.service.append_custody_event(
-            PROJECT_ID, sample['id'],
+            PROJECT_ID, sample['sample_id'],
             {'event_type': 'released', 'occurred_on': '2025-10-77'},
             actor_subject='user:pm',
         )
         receipt = self.service.delete_custody_event(
-            PROJECT_ID, sample['id'], wrong['id'], actor_subject='user:pm')
-        assert receipt == {'custody_event_id': wrong['id'], 'deleted': True}
-        assert self.service.list_custody_events(PROJECT_ID, sample['id'])['items'] == []
+            PROJECT_ID, sample['sample_id'], wrong['custody_event_id'], actor_subject='user:pm')
+        assert receipt == {'custody_event_id': wrong['custody_event_id'], 'deleted': True}
+        assert self.service.list_custody_events(PROJECT_ID, sample['sample_id'])['items'] == []
         # 지운 뒤 보유 상태는 '알 수 없음'으로 돌아간다 — 남은 사건이 없기 때문이다.
-        assert self.service.get_sample(PROJECT_ID, sample['id'])['custody_state'] is None
+        assert self.service.get_sample(PROJECT_ID, sample['sample_id'])['custody_state'] is None
 
     def test_deleting_an_unknown_event_is_not_found(self):
         sample = self._sample()
         with pytest.raises(SampleInventoryNotFoundError):
             self.service.delete_custody_event(
-                PROJECT_ID, sample['id'], 'no-such-event', actor_subject='user:pm')
+                PROJECT_ID, sample['sample_id'], 'no-such-event', actor_subject='user:pm')
 
     def test_a_custody_write_does_not_bump_row_version(self):
         """편집 화면이 열려 있어도 헛된 409 가 나지 않아야 한다."""
         sample = self._sample()
-        before = self.service.get_sample(PROJECT_ID, sample['id'])['row_version']
+        before = self.service.get_sample(PROJECT_ID, sample['sample_id'])['row_version']
         self.service.append_custody_event(
-            PROJECT_ID, sample['id'], {'event_type': 'received'}, actor_subject='user:pm')
-        after = self.service.get_sample(PROJECT_ID, sample['id'])['row_version']
+            PROJECT_ID, sample['sample_id'], {'event_type': 'received'}, actor_subject='user:pm')
+        after = self.service.get_sample(PROJECT_ID, sample['sample_id'])['row_version']
         assert before == after
 
 
@@ -260,14 +260,14 @@ class TestTesterAxisNowHasAWindow(_Fixture):
     def test_the_full_intake_history_is_readable_not_only_the_latest(self):
         sample = self._sample(latest_intake={'bl': 'BL-1', 'intake_date': '2025-09-30'})
         for index, bl in enumerate(('BL-2', 'BL-3'), start=1):
-            current = self.service.get_sample(PROJECT_ID, sample['id'])
+            current = self.service.get_sample(PROJECT_ID, sample['sample_id'])
             self.service.patch_sample(
-                PROJECT_ID, sample['id'],
+                PROJECT_ID, sample['sample_id'],
                 {'latest_intake': {'bl': bl, 'intake_date': f'2025-10-2{index}'}},
                 expected_version=current['row_version'], actor_subject='user:rf',
             )
 
-        history = self.service.list_intakes(PROJECT_ID, sample['id'])['items']
+        history = self.service.list_intakes(PROJECT_ID, sample['sample_id'])['items']
         assert [row['bl'] for row in history] == ['BL-1', 'BL-2', 'BL-3']
 
     def test_the_intake_envelope_does_not_leak_sample_columns(self):
@@ -278,11 +278,11 @@ class TestTesterAxisNowHasAWindow(_Fixture):
         위반이다.
         """
         sample = self._sample(latest_intake={'bl': 'BL-1'})
-        row = self.service.list_intakes(PROJECT_ID, sample['id'])['items'][0]
+        row = self.service.list_intakes(PROJECT_ID, sample['sample_id'])['items'][0]
         assert 'sample_number' not in row
         assert 'test_category' not in row
         assert row['bl'] == 'BL-1'
-        assert row['sample_id'] == sample['id']
+        assert row['sample_id'] == sample['sample_id']
 
     def test_an_unknown_sample_is_not_found(self):
         with pytest.raises(SampleInventoryNotFoundError):
@@ -295,7 +295,7 @@ class TestClassificationIsStored(_Fixture):
     def test_device_accessory_and_description_survive_a_round_trip(self):
         sample = self._sample(sample_kind='Accessory', test_category=None,
                               sample_description='SM-F968U1_Dummy Batt')
-        current = self.service.get_sample(PROJECT_ID, sample['id'])
+        current = self.service.get_sample(PROJECT_ID, sample['sample_id'])
         assert current['sample_kind'] == 'Accessory'
         assert current['sample_description'] == 'SM-F968U1_Dummy Batt'
         # Accessory 는 Conducted/Radiated 를 갖지 않는다 (결정 8).

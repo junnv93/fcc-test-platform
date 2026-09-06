@@ -168,7 +168,7 @@ class PostgresCentralSampleInventoryWriteAdapter:
             conn.commit()
             result = deepcopy(value)
             result.update({
-                'id': sample_id, 'project_id': project_id,
+                'sample_id': sample_id, 'project_id': project_id,
                 'status': SampleStatus.ACTIVE.value, 'row_version': 1,
                 'latest_intake': dict(intake) if intake else None,
                 'created_at': now, 'updated_at': now,
@@ -218,7 +218,19 @@ class PostgresCentralSampleInventoryWriteAdapter:
             self._insert_revision(cursor, sample_id, project_id, revision_number, event,
                                   snapshot, changed, actor_subject, occurred_at)
             conn.commit()
-            after.update({'id': sample_id, 'project_id': project_id, 'updated_at': now})
+            # ⚠️ 커널의 값 모양은 자원 키를 `id` 로 부른다
+            # (`fcc_test_kernel.domain.services.sample_inventory_policy` — `apply_patch`
+            # 가 그 이름으로 돌려준다). API 계약은 `sample_id` 로 선언한다
+            # (`SampleInventoryItem`, `additionalProperties: false`). **두 이름이
+            # 한 dict 에 같이 있으면 그 응답은 선언을 어긴다** — 그리고 그 위반은
+            # 200 으로 나가므로 아무 데서도 실패하지 않는다(2026-09-06 실측:
+            # 접수 화면이 `?sample=undefined` 로 갔다).
+            #
+            # 커널을 고치지 않고 **여기서 번역한다**: 커널 값은 내부 모양이고,
+            # 이 어댑터가 API 경계다. 커널 쪽을 바꾸면 2-레포 웨이브가 되고
+            # 커널 태그가 앞서야 한다.
+            after.pop('id', None)
+            after.update({'sample_id': sample_id, 'project_id': project_id, 'updated_at': now})
             return after
         except CentralSampleInventoryNotFoundError:
             self._rollback(conn)
@@ -379,7 +391,7 @@ class PostgresCentralSampleInventoryWriteAdapter:
             ))
             conn.commit()
             return {
-                'id': event_id, 'sample_id': sample_id, 'project_id': project_id,
+                'custody_event_id': event_id, 'sample_id': sample_id, 'project_id': project_id,
                 **{field: value[field] for field in CUSTODY_EVENT_FIELDS},
                 'actor_subject': actor_subject,
                 'created_at': occurred_at, 'updated_at': occurred_at,
@@ -498,7 +510,7 @@ def _initial_projection(payload: Mapping[str, Any]) -> dict[str, Any]:
 def _row_projection(row: Mapping[str, Any], latest: Optional[Mapping[str, Any]]) -> dict[str, Any]:
     result = {field: row.get(field) for field in SAMPLE_EDITABLE_FIELDS}
     result.update({
-        'id': row.get('id'), 'project_id': row.get('project_id'),
+        'sample_id': row.get('id'), 'project_id': row.get('project_id'),
         'status': row.get('status', SampleStatus.ACTIVE.value),
         'row_version': int(row.get('row_version', 1)),
         'deleted_at': row.get('deleted_at'),

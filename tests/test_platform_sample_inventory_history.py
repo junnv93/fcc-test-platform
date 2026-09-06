@@ -44,21 +44,21 @@ class TestPlatformSampleInventoryHistory:
             actor_subject='user:1',
         )
         self.service.patch_sample(
-            PROJECT_ID, sample['id'], {'note': 'one'},
+            PROJECT_ID, sample['sample_id'], {'note': 'one'},
             expected_version=1, actor_subject='user:2',
         )
         self.service.patch_sample(
-            PROJECT_ID, sample['id'], {'assigned_team': 'RF'},
+            PROJECT_ID, sample['sample_id'], {'assigned_team': 'RF'},
             expected_version=2, actor_subject='user:3',
         )
 
-        first = self.service.list_history(PROJECT_ID, sample['id'], limit=2)
+        first = self.service.list_history(PROJECT_ID, sample['sample_id'], limit=2)
         assert [item['revision_number'] for item in first['items']] == [3, 2]
         assert first['next_cursor']
         assert 'offset' not in self.service._read.__class__.list_history.__code__.co_consts
 
         second = self.service.list_history(
-            PROJECT_ID, sample['id'], after=first['next_cursor'], limit=2,
+            PROJECT_ID, sample['sample_id'], after=first['next_cursor'], limit=2,
         )
         assert [item['revision_number'] for item in second['items']] == [1]
         assert second['next_cursor'] is None
@@ -71,11 +71,11 @@ class TestPlatformSampleInventoryHistory:
         )
         write = PostgresCentralSampleInventoryWriteAdapter(lambda: QmarkConnection(self.db_path))
         write.patch_sample(
-            PROJECT_ID, sample['id'], {'note': 'at-cutoff'}, expected_version=1,
+            PROJECT_ID, sample['sample_id'], {'note': 'at-cutoff'}, expected_version=1,
             actor_subject='user:2', occurred_at='2026-01-02T00:00:00Z',
         )
         write.patch_sample(
-            PROJECT_ID, sample['id'], {'note': 'after'}, expected_version=2,
+            PROJECT_ID, sample['sample_id'], {'note': 'after'}, expected_version=2,
             actor_subject='user:3', occurred_at='2026-01-03T00:00:00Z',
         )
 
