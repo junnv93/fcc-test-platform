@@ -2,7 +2,7 @@
   "task": "the-fifth-mypy-section-name-is-a-noop-20260907",
   "branch": "docs/the-fifth-mypy-section-name-is-a-noop-20260907",
   "owner": "fcc-delivery-final-97",
-  "status": "active",
+  "status": "merged",
   "base": "origin/main@ae7d7d4",
   "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/1f581e35-7bd3-40a9-852a-32878f4b1f22/scratchpad/wt-chk",
   "scope": [
@@ -11,5 +11,7 @@
   ],
   "shared_outputs": [],
   "conflicts_with": [],
-  "sequencing": "문서 전용. PR #138 의 후속 문단에 실측 하나를 더한다 — 게이트 범위 웨이브(형제 bf 가 시작했으나 그 세션이 종료됐다)가 쓸 다섯째 mypy 절의 «이름»에 함정이 있다는 것. 코드 무변경. ⚠️ mypy.ini 도 tests/test_architecture_gate_conformance.py 도 건드리지 «않는다» — 그 수리의 소유는 그 웨이브다."
+  "sequencing": "문서 전용. PR #138 의 후속 문단에 실측 하나를 더한다 — 게이트 범위 웨이브(형제 bf 가 시작했으나 그 세션이 종료됐다)가 쓸 다섯째 mypy 절의 «이름»에 함정이 있다는 것. 코드 무변경. ⚠️ mypy.ini 도 tests/test_architecture_gate_conformance.py 도 건드리지 «않는다» — 그 수리의 소유는 그 웨이브다.",
+  "pr": "https://github.com/junnv93/fcc-test-platform/pull/139",
+  "result": "문서 전용. 실측: [mypy-fcc_test_platform] 은 no-op(패키지 전체 44건 → 44건, 변화 0) 이고 [mypy-fcc_test_platform.*] 라야 최상위를 덮는다(227건/47파일). ⚠️ 이 레인의 게이트는 절 이름에서 mypy 호출 인자를 파생하므로 앞의 절은 「부르긴 하고 checked 1 source file 을 보고」한다 — 부재가 아니라 위장이다. 형제 세션이 dc9fdf9 에서 잰 45/8/228 과의 차는 정확히 1이고 그 하나가 PR #138 이 없앤 dispose 오류다(모순 아님, 병합 전후). mypy.ini · tests/test_architecture_gate_conformance.py 무접촉 — 44건 처리 판정의 소유는 범위 웨이브다. CI lane-check pass."
 }
