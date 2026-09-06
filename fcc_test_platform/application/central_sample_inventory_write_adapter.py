@@ -21,7 +21,7 @@ from fcc_test_platform.domain.ports.output.central_sample_inventory_write_port i
     CentralSampleInventoryNotFoundError,
     CentralSampleInventoryWriteError,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 from fcc_test_kernel.domain.services.sample_inventory_policy import (
     SampleExpectedVersionConflict,
     SampleInventoryPolicyError,
@@ -133,7 +133,7 @@ INTAKE_COLUMNS = (
 
 
 class PostgresCentralSampleInventoryWriteAdapter:
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], RowConnection]) -> None:
         if not callable(connection_factory):
             raise ValueError('connection_factory must be callable')
         self._connection_factory = connection_factory

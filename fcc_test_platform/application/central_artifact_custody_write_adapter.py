@@ -68,7 +68,7 @@ from fcc_test_platform.domain.ports.output.central_artifact_custody_port import 
     ArtifactCustodyProviderNotFoundError,
     CentralArtifactCustodyError,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 
 
 __all__ = [
@@ -148,7 +148,7 @@ _T = TypeVar('_T')
 class PostgresCentralArtifactCustodyWriteAdapter:
     """``CentralArtifactCustodyWritePort`` — latest-wins 스냅샷 수신."""
 
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], RowConnection]) -> None:
         if not callable(connection_factory):
             raise ValueError('connection_factory must be callable')
         self._connection_factory = connection_factory
@@ -273,7 +273,16 @@ def _rollback(connection: RowConnection) -> None:
 
 
 def _close(connection: RowConnection) -> None:
+    # ⚠️ ``close`` 는 커널 ``DbConnection`` 도 이 레인의 ``RowConnection`` 도 약속하지
+    #    «않는» 선택 표면이다 — 그 판단은 `central_db_surfaces` 와
+    #    `central_artifact_custody_read_adapter` 에 이미 적혀 있다.
+    #    이 자리만 직접 부르고 있었다(나머지 아홉은 `getattr` 형태). 아홉에 맞춘다.
+    #    ⚠️ 프로토콜에 `close` 를 «추가»하는 것이 아니다 — 그러면 「모든 연결이 닫힌다」는
+    #       거짓이 되고, 그것을 안 갖는 구현이 조용히 계약 위반이 된다.
+    close = getattr(connection, 'close', None)
+    if close is None:
+        return
     try:
-        connection.close()
+        close()
     except Exception:  # noqa: BLE001
         pass

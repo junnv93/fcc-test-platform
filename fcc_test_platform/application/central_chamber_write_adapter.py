@@ -7,7 +7,7 @@ chamber registration + heartbeat push.
 
 Design (mirrors ``PostgresCentralClaimWriteAdapter``):
 
-- **injected ``connection_factory``** (``() -> DbConnection``). The concrete psycopg
+- **injected ``connection_factory``** (``() -> RowConnection``). The concrete psycopg
   connection is built lazily by the composition root; this module imports no
   PostgreSQL driver (frozen-exe safe — enforced by ``tests/test_platform_chamber_api_p2.py``).
 - **append-only heartbeat**: ``append_heartbeat`` only ever ``INSERT INTO
@@ -22,7 +22,7 @@ Design (mirrors ``PostgresCentralClaimWriteAdapter``):
   (1) **no extra round trip** on a high-frequency path — one statement, same as
   before; (2) **no TOCTOU** — the existence test and the insert are the *same*
   statement, so there is no window between "checked" and "wrote"; (3) **no driver
-  string parsing** — the verdict rides on ``DbCursor.rowcount``, a value the port
+  string parsing** — the verdict rides on ``DbCursor.rowcount``, a value the kernel port
   Protocol already declares, not on a constraint-violation message that shifts
   with driver/locale/PG version. Residual window: a chamber deleted *during* the
   statement is still caught by the ``chamber_id`` foreign key and surfaces as
@@ -53,7 +53,7 @@ from fcc_test_platform.domain.ports.output.central_chamber_write_port import (
     ChamberNotFoundError,
     ChamberWriteError,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 
 
 __all__ = [
@@ -356,7 +356,7 @@ _T = TypeVar('_T')
 class PostgresCentralChamberWriteAdapter:
     """``CentralChamberWritePort`` over a central PostgreSQL connection factory."""
 
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], RowConnection]) -> None:
         if not callable(connection_factory):
             raise ValueError('connection_factory must be callable')
         self._connection_factory = connection_factory
@@ -394,7 +394,8 @@ class PostgresCentralChamberWriteAdapter:
 
         def _txn(cursor: RowCursor) -> None:
             cursor.execute(INSERT_HEARTBEAT_EVENT_SQL, values + (chamber_id,))
-            # ``rowcount`` is declared by the ``DbCursor`` port Protocol. A driver
+            # ``rowcount`` is declared by the kernel ``DbCursor`` Protocol, which
+            # ``RowCursor`` inherits — this lane only narrows the read side. A driver
             # that cannot report it yields a negative/None value — treated as
             # "unknown", never as "missing", so an under-reporting driver can only
             # fall back to the old behaviour (the FK is the backstop), never

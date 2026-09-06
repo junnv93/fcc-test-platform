@@ -110,6 +110,8 @@ class ClaimWriteService:
         cond = _require_text(condition_hash, 'condition_hash')
         op = _require_text(operator, 'operator')
         now = self._clock()
+        # ⚠️ dict 를 거치면 값이 `str | None` 로 넓어진다 — 다른 키가 선택이기 때문이다.
+        #    이 값이 `str` 이라는 것은 여기서 «이미 참»이므로 이름을 붙여 그 사실을 지킨다.
         claim_id = self._id_factory()
         record = {
             'id': self._id_factory(),

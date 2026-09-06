@@ -14,7 +14,7 @@ against ``standard_time_catalog`` + ``published_plan_expectation``.
   (loud-fail rollback on error).
 
 Mirrors ``PostgresCentralSampleWriteAdapter``: injected ``connection_factory``
-(``() -> DbConnection``), ``%s`` paramstyle (psycopg), atomic body before commit.
+(``() -> RowConnection``), ``%s`` paramstyle (psycopg), atomic body before commit.
 No new write logic in routes/composition — this is the sole progress write path.
 """
 from __future__ import annotations
@@ -33,7 +33,7 @@ from fcc_test_platform.domain.ports.output.central_progress_write_port import (
     CentralProgressWritePort,
     ExpectationWriteSummary,
 )
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 
 
 __all__ = [
@@ -106,7 +106,7 @@ def _canonical_value(atom: ProgressExpectationAtom) -> Optional[str]:
 class PostgresCentralProgressWriteAdapter(CentralProgressWritePort):
     def __init__(
         self,
-        connection_factory: Callable[[], DbConnection],
+        connection_factory: Callable[[], RowConnection],
         *,
         id_factory: Callable[[], str] = lambda: str(uuid.uuid4()),
     ) -> None:

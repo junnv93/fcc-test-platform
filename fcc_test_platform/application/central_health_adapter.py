@@ -15,7 +15,7 @@ materialized-view refresh.
 
 Design mirrors :class:`~application.platform.central_read_adapter.PostgresCentralReadAdapter`:
 
-- **injected ``connection_factory``** (``() -> DbConnection``) — this module
+- **injected ``connection_factory``** (``() -> RowConnection``) — this module
   never imports a PostgreSQL driver (frozen-exe safety), and tests inject a
   SQLite/fake factory.
 - **loud-fail** — any failure raises ``CentralReadError``. The readiness service
@@ -27,7 +27,7 @@ from __future__ import annotations
 from typing import Callable
 
 from fcc_test_platform.domain.ports.output.central_read_port import CentralReadError
-from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
+from fcc_test_platform.application.central_db_surfaces import RowConnection
 
 
 __all__ = ['CENTRAL_PING_SQL', 'PostgresCentralHealthAdapter']
@@ -41,7 +41,7 @@ CENTRAL_PING_SQL = 'SELECT 1'
 class PostgresCentralHealthAdapter:
     """Reachability probe for the central DB behind ``connection_factory``."""
 
-    def __init__(self, connection_factory: Callable[[], DbConnection]) -> None:
+    def __init__(self, connection_factory: Callable[[], RowConnection]) -> None:
         self._connection_factory = connection_factory
 
     def ping(self) -> None:
@@ -58,7 +58,7 @@ class PostgresCentralHealthAdapter:
         try:
             cursor = connection.cursor()
             try:
-                # ``()`` keeps the DB-API 2-arg form the DbCursor port declares,
+                # ``()`` keeps the DB-API 2-arg form the kernel ``DbCursor`` declares,
                 # matching how every other central adapter calls execute.
                 cursor.execute(CENTRAL_PING_SQL, ())
             finally:

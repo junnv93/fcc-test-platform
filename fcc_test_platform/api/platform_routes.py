@@ -327,6 +327,44 @@ class PlatformAuthorizationError(PermissionError):
     """Raised when a principal is not authorized for a platform operation."""
 
 
+def _publication_fields(
+    payload: Mapping[str, object],
+) -> tuple[str, str, Optional[str]]:
+    """`validate_project_result_reference_request` 가 «이미 증명한» 셋에 이름을 붙인다.
+
+    그 검증기는 `-> dict[str, object]` 로 선언돼 있지만 본문은 훨씬 강한 것을
+    보장한다(실측 2026-09-06, `kernel-v0.5.1` 원문):
+
+        provider_id · condition_hash   부재면 422 · `isinstance(str)` 아니거나
+                                       공백이면 422  → **있음 + 비지 않은 str**
+        reason                         있으면 str · 비지 않음 · ≤500 자
+                                       없으면 키 자체가 없다   → `Optional[str]`
+
+    즉 반환 선언은 **하한**이고 증명한 것을 버린다. 이것은
+    `OperationSpec`(설계서 §8)과 **같은 계급**의 문제이고, 정공도 같다 — 그 검증기가
+    `TypedDict` 를 돌려주는 것. 그 파일은 계약 레인이라 새 태그가 걸린다.
+
+    ⚠️ 이것은 **이 레인의 우회이지 수리가 아니다.** 그리고 `cast` 로 적지 않았다:
+    검증기가 언젠가 느슨해지면 `cast` 는 거짓말이 되고 조용하다. 아래는 그날
+    **검증기 자신의 예외**로 말한다 — 판정을 여기서 다시 쓰지 않고 위임하는 것이
+    사본을 만들지 않는 유일한 형태다(상태 코드도 422 그대로다).
+
+    ⚠️ 상류가 모양을 갖게 되면 이 함수를 지워라 — 지워도 초록이면 고쳐진 것이다.
+    """
+    provider_id = payload['provider_id']
+    condition_hash = payload['condition_hash']
+    reason = payload.get('reason')
+    if not isinstance(provider_id, str) or not isinstance(condition_hash, str):
+        raise ProjectResultReferenceRequestUnprocessableError(
+            'provider_id and condition_hash must be non-empty strings'
+        )
+    if reason is not None and not isinstance(reason, str):
+        raise ProjectResultReferenceRequestUnprocessableError(
+            'reason must be a non-empty string of at most 500 characters'
+        )
+    return provider_id, condition_hash, reason
+
+
 class PlatformApiAdapter:
     """Thin driving adapter over the central read service."""
 
@@ -823,13 +861,14 @@ class PlatformApiAdapter:
         self.authorize('create_project_result_reference', project_id=project_id)
         actor = self._require_actor('create_project_result_reference')
         payload = validate_project_result_reference_request(body)
+        provider_id, condition_hash, reason = _publication_fields(payload)
         return self._require_project_result_reference_service(
             'create_project_result_reference'
         ).publish(
             project_id=project_id,
-            provider_id=payload.get('provider_id'),
-            condition_hash=payload.get('condition_hash'),
-            reason=payload.get('reason'),
+            provider_id=provider_id,
+            condition_hash=condition_hash,
+            reason=reason,
             actor_subject=actor,
         )
 
@@ -1686,9 +1725,20 @@ class PlatformApiAdapter:
         # never fan out on a non-in_use ack even if a caller bypassed validation.
         if ack.get('reported_status') != ChamberNodeStatus.IN_USE.value:
             return
+        chamber_id = ack.get('chamber_id')
+        if not isinstance(chamber_id, str):
+            # ⚠️ `heartbeat()` 는 검증된 `cid` 를 그대로 싣는다(실측:
+            # `central_chamber_write_service` 가 `_require_text` 결과를
+            # `'chamber_id': cid` 로 넣는다). 그런데 그 함수의 반환이 맨 `dict` 라
+            # **타입이 그 사실을 말하지 못한다.** 정공은 그 반환에 모양을 주는
+            # 것이고 그것은 ack 가 곧 HTTP 응답 본문이라 별건이다.
+            # 그때까지 여기서 물러난다 — 위 주석이 못 박듯 broadcast 는
+            # best-effort 이고 **ingest ack 를 절대 깨지 않는다.** 이 함수의
+            # 다른 세 조기 반환과 같은 규율이다.
+            return
         try:
             broadcaster.publish(ChamberProgressEvent(
-                chamber_id=ack.get('chamber_id'),
+                chamber_id=chamber_id,
                 progress=progress,
                 session_id=ack.get('session_id'),
                 occurred_at=ack.get('occurred_at'),
@@ -3777,7 +3827,22 @@ def create_platform_app(
                 tracestate=correlation.tracestate,
             ):
                 response = await call_next(request)
-        apply_correlation_response_headers(response.headers, correlation)
+        # ⚠️ 왜 `response.headers` 를 직접 넘기지 않는가 (실측 2026-09-06):
+        #     피호출자 선언   (response_headers: MutableMapping[str, str])
+        #     피호출자 요구   `__setitem__` 3회 — 읽기·순회 **0건** (계약 레인 원문)
+        #     starlette      `MutableHeaders` 는 `MutableMapping` 이 아니다 → [arg-type]
+        # 즉 선언이 «요구»보다 넓어서 정당한 호출자가 빨개진다. 정공은 그 선언을
+        # 「쓰는 것만 요구」로 좁히는 것이고, 그 파일은 계약 레인이라 새 태그가 걸린다.
+        # 그때까지 dict 하나를 거친다 — `MutableHeaders.update` 의 실물이
+        # `for key, val in other.items(): self[key] = val` 이라(starlette 원문)
+        # 반복 `__setitem__` 과 **같은 연산·같은 순서**다. 동작은 안 바뀐다.
+        # ⚠️ `cast` 를 쓰지 않은 이유: 피호출자가 언젠가 «읽기» 시작하면 `cast` 는
+        #    거짓말이 되고 조용하다. 이 형태는 그때도 참이다.
+        # ⚠️ 상류가 좁아지면 이 세 줄을 한 줄로 되돌려라 — 되돌려도 초록이면
+        #    상류가 고쳐진 것이다.
+        correlation_headers: dict[str, str] = {}
+        apply_correlation_response_headers(correlation_headers, correlation)
+        response.headers.update(correlation_headers)
         return response
 
     app.include_router(create_platform_router(
