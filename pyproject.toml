@@ -164,6 +164,7 @@ fcc-platform-backup-restore-drill = "fcc_test_platform.backup_restore_drill_cli:
 fcc-platform-backup-restore-runner = "fcc_test_platform.backup_restore_runner_cli:main"
 fcc-platform-bench-project-result-selection = "fcc_test_platform.bench_project_result_selection_cli:main"
 fcc-platform-central-db-live-proof = "fcc_test_platform.central_db_live_proof_cli:main"
+fcc-platform-central-migration-readiness = "fcc_test_platform.central_migration_readiness_cli:main"
 fcc-platform-chamber-measurement-staging-gate = "fcc_test_platform.chamber_measurement_staging_gate_cli:main"
 fcc-platform-chamber-token-evidence = "fcc_test_platform.chamber_token_evidence_cli:main"
 fcc-platform-check-auth-mode-pairing = "fcc_test_platform.check_auth_mode_pairing_cli:main"

@@ -216,6 +216,26 @@ ls -lh backup_pre_deploy_*.sql
 새 코드가 깨진다. **두 제약이 반대 방향이면 배포와 적용 사이에 순서가 생기고, 그 순서는
 §5 의 한 걸음 안에 들어가지 않는다.**
 
+### ⓪ 먼저 — 이 절 전체를 **읽기 전용으로 미리** 물어본다
+
+```bash
+python3 scripts/check_central_migration_readiness.py
+```
+
+여섯 축(`machine` · `checkout` · `deploy-class` · `refusal-guard` · `ledger` ·
+`stop-list`)을 **READY / BLOCKED / UNKNOWN** 으로 답한다. 아래 ①~②가 묻는 것을 창을
+열기 전에 한 번에 답하고, **아무것도 바꾸지 않는다.**
+
+종료 코드: 전 축 READY 면 `0`, 한 축이라도 BLOCKED 면 `1`, BLOCKED 는 없는데 판정하지
+못한 축이 있으면 `2`. ⚠️ **`2` 는 통과가 아니다** — 묻지 못한 축은 미확인이다.
+
+⚠️ 이 도구는 아래 절차를 **대신하지 않는다.** ①-b 리허설과 ② 의 순서는 사람이
+판단하는 자리다. 이 도구가 없애는 것은 *"창 안에서 처음 만나는 놀람"* 이다 —
+2026-09-06 에 한 세션이 이 절을 그대로 따르다 넷에 차례로 걸렸고(`exit 2` 로 죽은
+러너 · 실제로 걸린 `032` 가드 · 목록에서 빠진 `platform-api-node` · `001` 아닌 드리프트
+가능성), **넷 다 읽기 전용으로 미리 답할 수 있는 질문**이었다.
+근거: `.claude/evaluations/2026-09-06-central-migration-preflight.md`
+
 ### 판정 — 눈으로 읽지 말고 원장에서 파생한다
 
 ```bash
