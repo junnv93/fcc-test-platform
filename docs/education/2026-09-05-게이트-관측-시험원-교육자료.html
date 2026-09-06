@@ -954,9 +954,31 @@ GateEvidence: import-linter 게이트가 돌았다 — Analyzed 213 files, 927 d
       이 시험이 빨개지면 코드 변경 탓이 아닐 수 있으니 <strong>단독 재실행부터</strong>
       해 보면 된다 — 다만 <em>재실행해서 통과했다</em>를 「기계가 바빴다」의 근거로
       읽지는 마라. 그것이 이 문서가 다루는 「재는 축이 재려는 축이 아니다」의 한 사례다.
-      근본 수정은 이 레인의 몫이지만(프로덕션 모듈이 여기 있다) <strong>같은 결함이
-      모노레포의 시험 사본에도 있어</strong>(양쪽 모두 <code>epoch_clock</code> 이 실시계다)
-      두 곳을 함께 봐야 한다. 아직 착수한 웨이브가 없다.
+    </p>
+    <p>
+      <strong>그리고 아무 이름이나 나오는 것이 아니다 — 이름은 «둘»뿐이다.</strong>
+      기록에 이름이 남은 관측은 <strong>5회</strong>(4개 세션)인데, 나온 이름은
+      <code>test_a_rotation_flood_…</code> 와 <code>test_the_attackers_own_rotation_keeps_working</code>
+      둘뿐이다. 그리고 원인 분석이 초 경계 지점을 매개변수로 훑었을 때 빨개진 이름도
+      <strong>정확히 그 둘</strong>이었다(지점 k=5 · k=40 에서 하나씩).
+    </p>
+    <div class="note">
+      <p style="margin-bottom:0">
+        <strong>이 일치가 왜 중요한가.</strong> 설명이 관측을 «나중에 덮은» 것이 아니라
+        <strong>모형이 이름을 맞혔다.</strong> 그래서 이 결함은 무작위가 아니라
+        <strong>알아볼 수 있는 것</strong>이다 — 저 두 이름 중 하나가 나오면
+        시계 문제로 보면 되고, 다른 이름이면 다른 원인을 찾아야 한다.
+        06절이 말한 「간접 증거와 직접 증거」가 여기서도 같은 형태로 갈린다.
+      </p>
+    </div>
+    <p style="margin-bottom:0">
+      <small>
+        고칠 대상은 <strong>프로덕션이 아니라 시험 파일 둘</strong>이다 — 이 레인과
+        모노레포에 사본이 하나씩 있고(1,775줄 / 1,743줄, 파일 내용은 다르다) 양쪽
+        168행이 똑같이 실시계를 쓴다. 두 사본은 <em>같은</em> 프로덕션 코드를 잡으므로
+        프로덕션을 고쳐도 없어지지 않는다. 아직 착수한 웨이브가 없다.
+        원인·처방 분석: <code>.claude/evaluations/2026-09-06-token-custody-wall-clock-flake.md</code>
+      </small>
     </p>
   </div>
 </section>
@@ -1067,7 +1089,8 @@ tests/test_token_revocation_custody.py 가 epoch_clock=lambda: int(time.time()) 
 실시계를 쓴다. ⚠️ **부하 때문이 아니다** — 12중 병렬 24회로 재현 0건이고, 초 경계를
 넘는 «지점»을 매개변수로 훑으면 k=5·k=40 에서 서로 다른 시험 하나씩이 결정적으로
 빨개진다. 야생 관측에서 나온 이름도 정확히 그 둘이라, 모형이 이름을 맞힌 상태다.
-분석은 형제 세션 fcc-delivery-final-99 가 평가서로 냈다(2026-09-06).
+분석·처방 후보는 평가서에 있다(2026-09-06 착지):
+    .claude/evaluations/2026-09-06-token-custody-wall-clock-flake.md
 ⚠️ 고정 시계로 바꾸면 그 시험이 «무엇을 보장하는지»가 달라진다 — 함부로 고치지 마라.
 그리고 **같은 결함이 모노레포의 시험 사본에도 있다**(양쪽 168행 모두 실시계, 파일은
 서로 다르다: 1775줄 vs 1743줄). 한쪽만 고치면 다른 쪽이 남으므로 두 레포를 함께 잡는
