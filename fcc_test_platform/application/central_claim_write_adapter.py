@@ -221,7 +221,10 @@ class PostgresCentralClaimWriteAdapter:
         idempotent re-acquire. This is the correct "caller retries" pattern (mirrors
         PostgresIngestionWriter Rule 1). Bounded by ``_MAX_SERIALIZATION_RETRIES``.
         """
-        last_exc: Optional[Exception] = None
+        # ⚠️ ``BaseException`` 이다 — ``exc.__cause__`` 의 타입이 그렇고,
+        #    ``Exception`` 으로 좁혀 적으면 그 대입이 «조용한 거짓»이 된다.
+        #    아래 두 소비처(f-string · ``raise … from``)는 둘 다 BaseException 을 받는다.
+        last_exc: Optional[BaseException] = None
         for _attempt in range(_MAX_SERIALIZATION_RETRIES):
             try:
                 return self._run_once(body)

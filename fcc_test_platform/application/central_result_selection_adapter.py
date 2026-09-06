@@ -6,7 +6,7 @@ the select/clear CAS is checked inside one SERIALIZABLE transaction.
 """
 from __future__ import annotations
 
-from typing import Callable, Mapping, Optional
+from typing import Callable, Mapping, Optional, cast
 
 from fcc_test_kernel.application.central_contract.pagination import (
     CursorError,
@@ -21,6 +21,7 @@ from fcc_test_platform.domain.ports.output.central_result_selection_port import 
     SelectionCandidateNotFoundError,
     SelectionCrossScopeError,
     SelectionProviderNotFoundError,
+    SelectedSource,
     SelectionRevisionConflictError,
 )
 from fcc_test_kernel.domain.ports.output.platform_database_port import DbConnection
@@ -463,7 +464,7 @@ class PostgresCentralResultSelectionAdapter(CentralResultSelectionPort):
 
     def selected_source(
         self, project_id: str, provider_id: str, condition_hash: str,
-    ) -> Optional[Mapping]:
+    ) -> Optional[SelectedSource]:
         rows = self._query(
             SELECTED_SOURCE_QUERY_SQL,
             (project_id, provider_id, condition_hash),
@@ -478,7 +479,14 @@ class PostgresCentralResultSelectionAdapter(CentralResultSelectionPort):
                 'selected source row does not satisfy the full event-attempt-session '
                 'provenance contract'
             )
-        return source
+        # ⚠️ ``cast`` 를 두 가지가 «떠받친다» — 둘 다 없으면 이것은 거짓말이다.
+        #    ① 바로 위 가드가 이 행의 키 집합이 ``SELECTED_SOURCE_COLUMNS`` 와 정확히
+        #       같음을 **런타임에** 확인하고, 아니면 도메인 오류로 거절한다.
+        #    ② 그 컬럼 튜플이 ``SelectedSource`` 의 키와 같다는 것은
+        #       ``tests/test_declared_default_invariant.py`` 가 봉인한다(실측 25 = 25).
+        #    옛 선언은 ``Optional[Mapping]`` 이었고, 포트는 ``Optional[SelectedSource]``
+        #    를 약속한다 — 구현이 포트보다 «적게» 약속하던 자리다(mypy override).
+        return cast(SelectedSource, source)
 
     def _query(
         self, sql: str, params: tuple, *, columns: Optional[tuple[str, ...]] = None,

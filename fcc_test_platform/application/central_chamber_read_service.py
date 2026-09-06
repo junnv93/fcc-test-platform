@@ -120,6 +120,13 @@ def _coerce_optional_bool(value: object) -> Optional[bool]:
 def _ttl_or_default(value: object) -> int:
     if value is None or value == '':
         return DEFAULT_HEARTBEAT_TTL_SECONDS
+    # ⚠️ 기본값으로 «조용히» 되돌아가지 않는다. 빈 값은 위에서 이미 걸렀고, 여기 남은
+    #    것은 「값이 있는데 읽을 수 없다」이다 — 그것을 기본 TTL 로 접으면 만료 판정이
+    #    조용히 틀린 기준을 쓴다. 옛 ``int(value)`` 도 이런 형에는 죽었다.
+    if not isinstance(value, (int, float, str)):
+        raise TypeError(
+            f'heartbeat ttl must be numeric or text, got {type(value).__name__}'
+        )
     return int(value)
 
 
