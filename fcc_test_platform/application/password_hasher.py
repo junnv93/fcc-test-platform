@@ -28,6 +28,7 @@ bcrypt 4.x 는 73바이트에 ``ValueError`` 를 던진다. 즉 **라이브러�
 """
 from __future__ import annotations
 
+from types import ModuleType
 from typing import Optional
 
 from fcc_test_platform.domain.services.password_policy import (
@@ -148,6 +149,6 @@ class BcryptPasswordHasher:
         return self._dummy_hash
 
     @staticmethod
-    def _bcrypt():
+    def _bcrypt() -> ModuleType:
         import bcrypt  # lazy — 위 클래스 docstring 참조
         return bcrypt

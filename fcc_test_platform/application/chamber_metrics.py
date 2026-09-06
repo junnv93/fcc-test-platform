@@ -18,7 +18,7 @@ dependency-free of infrastructure(application 계층) — domain enum + applicat
 """
 from __future__ import annotations
 
-from typing import Callable
+from typing import Any, Callable
 
 from fcc_test_contracts.common.metrics_registry import GaugeFamily
 from fcc_test_kernel.application.central_contract.envelope_helpers import parse_timestamp
@@ -69,7 +69,7 @@ class ChamberMetricsCollector:
     ``refresh()`` 는 best-effort — 조회/계산 실패가 metrics 응답을 깨지 않게 흡수한다
     (관측성 보조 경로가 운영을 막지 않음)."""
 
-    def __init__(self, chamber_read_service, registry) -> None:
+    def __init__(self, chamber_read_service: Any, registry: Any) -> None:
         self._chamber_read_service = chamber_read_service
         self._registry = registry
 

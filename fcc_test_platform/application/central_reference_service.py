@@ -158,8 +158,8 @@ class CentralReferenceService:
 
     def __init__(
         self,
-        read_port,
-        write_port=None,
+        read_port: Any,
+        write_port: Any = None,
         *,
         bundle_provider_id: Optional[str] = None,
         offered_provider_ids: Optional[Callable[[], Sequence[str]]] = None,

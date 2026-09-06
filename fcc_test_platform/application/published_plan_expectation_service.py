@@ -28,9 +28,10 @@ back ``null`` so a caller can tell "no ETA" from "ETA of zero".
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Callable, Mapping, Optional, Sequence
+from typing import Any, Callable, Mapping, Optional, Sequence
 
 from fcc_test_platform.domain.models.progress_time_catalog import CatalogSource, StandardTimeCatalog
+from fcc_test_platform.domain.ports.output.central_progress_catalog_read_port import CentralProgressCatalogReadPort
 from fcc_test_platform.application.progress_ingest_service import (
     ProgressIngestService,
     PublishedConditionRow,
@@ -65,7 +66,7 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _clean(value) -> str:
+def _clean(value: object) -> str:
     return str(value or '').strip()
 
 
@@ -73,9 +74,9 @@ class PublishedPlanExpectationService:
     def __init__(
         self,
         *,
-        identity_reader,
+        identity_reader: Any,
         ingest_service: ProgressIngestService,
-        catalog_reader,
+        catalog_reader: CentralProgressCatalogReadPort,
         progress_area: str,
         clock: Optional[Callable[[], str]] = None,
     ) -> None:
@@ -118,14 +119,18 @@ class PublishedPlanExpectationService:
                 f'project {project!r} does not exist centrally'
             )
 
-        catalog = self._catalog_reader.load_catalog(provider_uuid)
-        seeded = catalog is not None
-        if not seeded:
-            catalog = StandardTimeCatalog.from_mapping(
-                {},
-                version=UNSEEDED_CATALOG_VERSION,
-                source=CatalogSource.WORKBOOK_SEED,
-            )
+        # ⚠️ 불변식은 «이미» 참이었다 — 미시드면 아래에서 실제 카탈로그로 «대체»하므로
+        # `catalog` 는 그 뒤로 결코 None 이 아니다. 다만 그 사실이 `seeded` 라는 «두
+        # 번째 변수»에 실려 있어서 검사기가 볼 수 없었다(포트 주석을 달자 union-attr
+        # 로 드러났다, 2026-09-06). 동작은 그대로 두고 «좁힘이 보이게» 다시 적는다:
+        # 읽은 값과 확정된 값을 다른 이름으로 나누면 검사기가 따라온다.
+        loaded = self._catalog_reader.load_catalog(provider_uuid)
+        seeded = loaded is not None
+        catalog = loaded if loaded is not None else StandardTimeCatalog.from_mapping(
+            {},
+            version=UNSEEDED_CATALOG_VERSION,
+            source=CatalogSource.WORKBOOK_SEED,
+        )
         report = self._ingest.ingest_published_plan(
             project_id=project,
             plan_id=plan,

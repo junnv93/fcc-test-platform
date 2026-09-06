@@ -52,7 +52,7 @@ class SampleInventoryExportService:
 
     _TEMPLATES = frozenset({'pm-status', 'rf-data'})
 
-    def __init__(self, inventory_service, read_port: CentralSampleInventoryReadPort,
+    def __init__(self, inventory_service: Any, read_port: CentralSampleInventoryReadPort,
                  renderer: SampleInventoryExportPort) -> None:
         self._inventory = inventory_service
         self._read = read_port

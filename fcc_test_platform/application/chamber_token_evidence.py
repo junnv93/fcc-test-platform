@@ -127,7 +127,7 @@ def chamber_token_evidence_errors(manifest: Mapping) -> list[ChamberTokenEvidenc
     return issues
 
 
-def _validate_events(value, issues: list[ChamberTokenEvidenceIssue]) -> None:
+def _validate_events(value: object, issues: list[ChamberTokenEvidenceIssue]) -> None:
     if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or not value:
         issues.append(_issue('missing_events', 'events',
                              'at least one lifecycle event is required'))
@@ -169,7 +169,7 @@ def _require_text(mapping: Mapping, key: str, path: str,
         issues.append(_issue('missing_required_field', path, f'{key} is required'))
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()
