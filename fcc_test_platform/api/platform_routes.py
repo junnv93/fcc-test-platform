@@ -3827,22 +3827,13 @@ def create_platform_app(
                 tracestate=correlation.tracestate,
             ):
                 response = await call_next(request)
-        # ⚠️ 왜 `response.headers` 를 직접 넘기지 않는가 (실측 2026-09-06):
-        #     피호출자 선언   (response_headers: MutableMapping[str, str])
-        #     피호출자 요구   `__setitem__` 3회 — 읽기·순회 **0건** (계약 레인 원문)
-        #     starlette      `MutableHeaders` 는 `MutableMapping` 이 아니다 → [arg-type]
-        # 즉 선언이 «요구»보다 넓어서 정당한 호출자가 빨개진다. 정공은 그 선언을
-        # 「쓰는 것만 요구」로 좁히는 것이고, 그 파일은 계약 레인이라 새 태그가 걸린다.
-        # 그때까지 dict 하나를 거친다 — `MutableHeaders.update` 의 실물이
-        # `for key, val in other.items(): self[key] = val` 이라(starlette 원문)
-        # 반복 `__setitem__` 과 **같은 연산·같은 순서**다. 동작은 안 바뀐다.
-        # ⚠️ `cast` 를 쓰지 않은 이유: 피호출자가 언젠가 «읽기» 시작하면 `cast` 는
-        #    거짓말이 되고 조용하다. 이 형태는 그때도 참이다.
-        # ⚠️ 상류가 좁아지면 이 세 줄을 한 줄로 되돌려라 — 되돌려도 초록이면
-        #    상류가 고쳐진 것이다.
-        correlation_headers: dict[str, str] = {}
-        apply_correlation_response_headers(correlation_headers, correlation)
-        response.headers.update(correlation_headers)
+        # ✅ 여기 있던 dict 경유 세 줄은 되돌려졌다 (2026-09-07, `v0.1.26`).
+        # 피호출자 선언이 `MutableMapping[str, str]` 이었는데 실제 요구는
+        # `__setitem__` 3회뿐이었고(읽기·순회 0건), starlette 의 `MutableHeaders` 는
+        # `pop`·`popitem`·`clear` 가 없어 구조적으로 `MutableMapping` 이 아니라
+        # **정당한 호출자가 빨개졌다.** 계약 레인이 그 선언을 「쓰는 것만 요구」로
+        # 좁혔고(`_SupportsHeaderAssignment`), 되돌렸더니 초록이다.
+        apply_correlation_response_headers(response.headers, correlation)
         return response
 
     app.include_router(create_platform_router(

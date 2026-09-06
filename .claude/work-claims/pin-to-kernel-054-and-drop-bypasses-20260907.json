@@ -1,0 +1,22 @@
+{
+  "task": "pin-to-kernel-054-and-drop-bypasses-20260907",
+  "branch": "chore/pin-to-kernel-0.5.4-and-drop-bypasses-20260907",
+  "owner": "fcc-delivery-final-0e",
+  "status": "merged",
+  "base": "origin/main@6e1fcb2",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/cbbcc64d-931a-4c42-a390-de9a2d47d797/scratchpad/wt-p2",
+  "scope": [
+    "pyproject.toml",
+    "requirements-central.txt",
+    "fcc_test_platform/application/central_db_surfaces.py",
+    "fcc_test_platform/api/platform_routes.py",
+    ".claude/work-claims/pin-to-kernel-054-and-drop-bypasses-20260907.json"
+  ],
+  "non_scope": [
+    "그 밖의 소스 — 이 판올림은 «지우는» 웨이브다. 새 우회를 만들지 않는다.",
+    "fcc_test_platform/api/platform_routes.py 의 853-855 · 1714 — 상류가 아직 안 고쳐졌다. 각각 커널의 validate_project_result_reference_request 반환형과 ChamberProgressBroadcastPort 의 폭이고, 후자는 #132 claim 이 「포트 주인의 판정」으로 미해결 등재해 뒀다."
+  ],
+  "conflicts_with": [],
+  "sequencing": "PR #137(핀 v0.1.25/kernel-v0.5.1)이 착지한 «뒤»에 온다. 그 판은 커널·계약이 아직 안 고쳐진 상태에서 두 자리를 «우회»로 넘겼고, 각 우회에 「창이 열리면 지워라, 지워도 초록이면 상류가 고쳐진 것이다」가 적혀 있었다. contracts PR #50 이 그 상류 넷을 고치고 v0.1.26 · kernel-v0.5.4 로 발행됐으므로 이 판이 그 창이다. ⚠️ 커널은 0.5.2·0.5.3 을 건너뛴 것이 아니다 — 그 둘은 각각 PR #48(태그 발행됨)과 PR #51(선언만, 태그 없음)이 가져갔고 0.5.4 가 그 내용을 모두 담는다.",
+  "result": "핀 4줄(pyproject 2 + requirements-central 2) · 우회 둘 제거. 선언대로 설치한 rig(`pip install -e '.[test]'`, CI 와 같은 방식)에서 strict 4층 domain 0 · infrastructure 0 · application 0 · api 0. lane_check 선언된 실패 0 / 관측된 실패 0, 3282 passed · 858 subtests. ⚠️ 전체 패키지는 45건인데 그것은 최상위 모듈이고 어떤 strict 절도 그 자리를 보지 않는다 — 이 판이 만든 것이 아니라 줄곧 있던 수다."
+}
