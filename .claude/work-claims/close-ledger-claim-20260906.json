@@ -1,0 +1,16 @@
+{
+  "task": "close-ledger-claim-20260906",
+  "branch": "chore/close-ledger-claim-20260906",
+  "owner": "fcc-delivery-final-bf",
+  "status": "merged",
+  "base": "origin/main@6b667d4",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/b63bb2c9-57e1-4970-a8ee-1337511b3ecf/scratchpad/wt-claims",
+  "scope": [
+    ".claude/work-claims/README.md",
+    ".claude/work-claims/work-claims-ledger-20260906.json",
+    ".claude/work-claims/close-ledger-claim-20260906.json"
+  ],
+  "shared_outputs": [],
+  "conflicts_with": [],
+  "sequencing": "PR #125 의 claim 이 active 인 채 남아 있어 닫으러 왔다가, 브랜치 가드에 막혔다 — 그 claim 의 branch 는 이미 머지·삭제됐기 때문이다. 즉 claim 은 «머지 후»에 닫을 수 없다. 그 사실을 README 에 적고, 이 claim 자신은 관례대로 같은 브랜치에서 merged 로 선언한다(형제 세션 -6a 의 b622826 이 같은 형태)."
+}
