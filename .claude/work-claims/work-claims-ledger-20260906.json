@@ -1,0 +1,15 @@
+{
+  "task": "work-claims-ledger-20260906",
+  "branch": "chore/work-claims-ledger-20260906",
+  "owner": "fcc-delivery-final-bf",
+  "status": "active",
+  "base": "origin/main@39f3f0c",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/b63bb2c9-57e1-4970-a8ee-1337511b3ecf/scratchpad/wt-claims",
+  "scope": [
+    ".claude/work-claims/README.md",
+    ".claude/work-claims/work-claims-ledger-20260906.json"
+  ],
+  "shared_outputs": [],
+  "conflicts_with": [],
+  "sequencing": "githooks/pre-commit 이 요구하는 장부가 디렉터리째 부재해 세션들이 --force 로 우회해 왔다. 판정기(scripts/work_claim_status.py · work_claim_branch_guard.py)는 배송으로 왔는데 그것들이 SSOT 로 가리키는 .claude/work-claims/README.md 는 오지 않았다(실측: 이 저장소 이력에 없음, 모노레포에는 실재). 발명이 아니라 회수다. 코드 변경 0."
+}
