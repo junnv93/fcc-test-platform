@@ -1,0 +1,47 @@
+{
+  "task": "operation-spec-consumers-20260906",
+  "branch": "feat/operation-spec-consumers-20260906",
+  "owner": "fcc-delivery-final-5c",
+  "status": "active",
+  "base": "origin/main@6b667d4",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/764ba30c-93a4-4a1a-b32f-0c69e77d0384/scratchpad/wt-plat",
+  "scope": [
+    "\"docs/architecture/2026-09-04-\\355\\224\\214\\353\\236\\253\\355\\217\\274-\\353\\246\\254\\355\\214\\251\\355\\206\\240\\353\\247\\201-\\354\\204\\244\\352\\263\\204\\354\\204\\234.md\"",
+    "fcc_test_platform/api_composition.py",
+    "fcc_test_platform/application/api_schema.py",
+    "fcc_test_platform/application/central_artifact_custody_write_adapter.py",
+    "fcc_test_platform/application/central_chamber_write_adapter.py",
+    "fcc_test_platform/application/central_claim_write_adapter.py",
+    "fcc_test_platform/application/central_claim_write_service.py",
+    "fcc_test_platform/application/central_db_surfaces.py",
+    "fcc_test_platform/application/central_health_adapter.py",
+    "fcc_test_platform/application/central_membership_write_adapter.py",
+    "fcc_test_platform/application/central_progress_write_adapter.py",
+    "fcc_test_platform/application/central_project_write_adapter.py",
+    "fcc_test_platform/application/central_read_adapter.py",
+    "fcc_test_platform/application/central_reference_write_adapter.py",
+    "fcc_test_platform/application/central_rekey_coverage.py",
+    "fcc_test_platform/application/central_rekey_ingest_evidence.py",
+    "fcc_test_platform/application/central_report_write_adapter.py",
+    "fcc_test_platform/application/central_sample_inventory_write_adapter.py",
+    "fcc_test_platform/application/central_test_equipment_list_write_adapter.py",
+    "fcc_test_platform/application/central_user_write_adapter.py",
+    "fcc_test_platform/application/local_user_store.py",
+    "fcc_test_platform/infrastructure/adapters/driven/central_db_connection.py",
+    "fcc_test_platform/postgres_central_id_resolver.py",
+    "fcc_test_platform/postgres_ingestion_writer.py",
+    "pyproject.toml",
+    "requirements-central.txt",
+    "tests/test_operation_table_reads_are_checked.py",
+    ".claude/work-claims/operation-spec-consumers-20260906.json"
+  ],
+  "shared_outputs": [
+    "pyproject.toml",
+    "requirements-central.txt",
+    "docs/architecture/2026-09-04-플랫폼-리팩토링-설계서.md"
+  ],
+  "conflicts_with": [
+    "mypy-widened-types-33-20260906"
+  ],
+  "sequencing": "🔴 이 브랜치는 `mypy-widened-types-33-20260906`(형제 `fcc-delivery-final-0e` · PR #133 · 기저 origin/main@0da711d) 뒤에 재기저해야 착지한다. 오늘 이 브랜치의 red 두 곳이 **둘 다 그 PR 로 사라진다**: (a) mypy strict 12건 — local_auth_service 10 · central_rbac_read_service 1 · published_plan_progress_glue 1, (b) 신규 봉인 `test_operation_table_reads_are_checked` 의 ①③ — platform_routes.py 가 아직 `.get(op) or {}` 형태다. 시뮬레이션으로 확인했다(그쪽 판을 얹으면 3항 전부 초록).\n\n⚠️ **파일 겹침이 «하나» 있다 — `application/central_claim_write_service.py`.** 두 세션이 같은 결함을 독립으로 같은 방식으로 고쳤다(`claim_id` 를 지역변수로 올려 `record['claim_id']` 재읽기를 없앤다). 차이는 이쪽에만 주석 두 줄이 더 있다는 것뿐이다. 재기저 때 첫 훅이 충돌하고, 해소는 **양쪽을 합치는 것**이다(그쪽 코드 + 이쪽 주석) — 어느 한쪽을 버리는 것이 아니다.\n\n⚠️ **`api/platform_routes.py` 는 이 브랜치가 «건드리지 않았다»**(diff 로 확인). §8 의 일곱째 자리는 그쪽 몫이고, 이쪽은 설계서 §8 의 「상한 6/7」 정정만 든다.\n\n⚠️ 이 브랜치가 올린 핀(v0.1.25 / kernel-v0.5.1)이 담은 `py.typed` 두 파일이 **형제 브랜치의 전제**다. 축 하나로 실측: 마커를 지우면 이 트리의 strict 지적 12 → 0. 즉 두 브랜치는 서로의 전제이고, 순서는 그쪽이 먼저다."
+}
