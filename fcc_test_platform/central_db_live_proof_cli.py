@@ -111,6 +111,7 @@ from fcc_test_platform.provider_ingestion import (  # noqa: E402
 from fcc_test_platform.provider_ingestion_plan import build_platform_ingestion_plan  # noqa: E402
 from fcc_test_platform.provider_ingestion_worker import (  # noqa: E402
     COVERAGE_REFRESH_SUCCEEDED,
+    IngestionExecutionResult,
     IngestionRetryPolicy,
     execute_platform_ingestion_plan,
 )
@@ -414,13 +415,17 @@ def _materialize_pre_012_migrations(directory: Path) -> dict:
         'ls-tree', '-r', '--name-only', BASELINE_MIGRATION_SHA,
         'docs/platform/migrations',
     ).decode('utf-8').splitlines()
-    selected: list[str] = []
+    # 번호는 «매치를 버리지 않고» 그 자리에서 들고 나온다. 아래에서 정규식을 다시
+    # 돌리면 검사기가 볼 수 없는 「여기서는 None 이 아니다」에 기대게 된다 — 그 사실이
+    # 두 루프에 흩어져 있기 때문이다. 쌍으로 정렬해 selected.sort() 의 순서를 보존한다.
+    matched: list[tuple[str, int]] = []
     for name in names:
         match = _MIGRATION_FILE_PATTERN.match(Path(name).name)
         if match and int(match.group('number')) <= 11:
-            selected.append(name)
-    selected.sort()
-    numbers = [int(_MIGRATION_FILE_PATTERN.match(Path(name).name).group('number')) for name in selected]
+            matched.append((name, int(match.group('number'))))
+    matched.sort()
+    selected = [name for name, _number in matched]
+    numbers = [number for _name, number in matched]
     if numbers != list(range(1, 12)):
         raise LiveProofError(
             f'baseline pre-012 migration tree is incomplete: {numbers}'
@@ -737,23 +742,25 @@ def _029_constraint_state(dsn: str) -> dict:
         check = cursor.fetchone()
     if fk is None or check is None:
         raise LiveProofError('029 required PostgreSQL constraints are missing')
+    fk_sample_id = {
+        'convalidated': bool(fk[0]),
+        'confdeltype': str(fk[1]),
+        'on_delete_set_null': str(fk[1]) == 'n',
+        'definition': str(fk[2]),
+    }
+    web_snapshot_check = {
+        'convalidated': bool(check[0]),
+        'definition': str(check[1]),
+    }
     state = {
         'postgresql_setting': str(server_setting),
         'postgresql_version': str(server_version).split(' on ')[0],
-        'fk_sample_id': {
-            'convalidated': bool(fk[0]),
-            'confdeltype': str(fk[1]),
-            'on_delete_set_null': str(fk[1]) == 'n',
-            'definition': str(fk[2]),
-        },
-        'web_snapshot_check': {
-            'convalidated': bool(check[0]),
-            'definition': str(check[1]),
-        },
+        'fk_sample_id': fk_sample_id,
+        'web_snapshot_check': web_snapshot_check,
     }
-    if not state['fk_sample_id']['on_delete_set_null']:
+    if not fk_sample_id['on_delete_set_null']:
         raise LiveProofError(f'029 sample FK is not ON DELETE SET NULL: {state}')
-    if not state['web_snapshot_check']['convalidated']:
+    if not web_snapshot_check['convalidated']:
         raise LiveProofError(f'029 WEB snapshot constraint is not validated: {state}')
     return state
 
@@ -767,6 +774,13 @@ def _hard_delete_fk_proof(
     """Use the production hard-delete adapter against a real PostgreSQL FK."""
     ids = _ids(f'{proof_seed}:fk-delete')
     _provision_identity_graph(dsn, ids, provider_code, f'{proof_seed}-fk-delete')
+    sample = {
+        'sample_id': ids['sample'],
+        'sample_number': f'PROOF-FK-SAMPLE-{proof_seed}',
+        'serial_number': f'PROOF-FK-SERIAL-{proof_seed}',
+        'status': 'active',
+    }
+    latest_intake = {'bl': f'PROOF-FK-BL-{proof_seed}', 'hw_rev': 'PROOF-FK-HW'}
     snapshot = {
         'schema_version': SNAPSHOT_SCHEMA_VERSION,
         'captured_at': _PROOF_TIMESTAMP,
@@ -775,13 +789,8 @@ def _hard_delete_fk_proof(
             'project_code': f'PROOF-PRJ-{proof_seed}-fk-delete',
             'model_name': f'PROOF-MODEL-{proof_seed}-fk-delete',
         },
-        'sample': {
-            'sample_id': ids['sample'],
-            'sample_number': f'PROOF-FK-SAMPLE-{proof_seed}',
-            'serial_number': f'PROOF-FK-SERIAL-{proof_seed}',
-            'status': 'active',
-        },
-        'latest_intake': {'bl': f'PROOF-FK-BL-{proof_seed}', 'hw_rev': 'PROOF-FK-HW'},
+        'sample': sample,
+        'latest_intake': latest_intake,
         'sample_revision': 1,
         'row_version': 1,
     }
@@ -793,9 +802,9 @@ def _hard_delete_fk_proof(
                 'UPDATE samples SET sample_number=%s, sample_code=%s, serial_number=%s, '
                 'status=%s, row_version=%s, note=%s WHERE id=%s',
                 (
-                    snapshot['sample']['sample_number'],
+                    sample['sample_number'],
                     f'PROOF-FK-CODE-{proof_seed}',
-                    snapshot['sample']['serial_number'], 'active', 1,
+                    sample['serial_number'], 'active', 1,
                     'PROOF-FK-NOTE', ids['sample'],
                 ),
             )
@@ -805,8 +814,8 @@ def _hard_delete_fk_proof(
                 'VALUES(%s,%s,%s,%s,%s,%s,%s)',
                 (
                     str(uuid.uuid5(uuid.NAMESPACE_URL, f'{proof_seed}:fk-intake')),
-                    ids['sample'], ts, snapshot['latest_intake']['bl'],
-                    snapshot['latest_intake']['hw_rev'], ts, ts,
+                    ids['sample'], ts, latest_intake['bl'],
+                    latest_intake['hw_rev'], ts, ts,
                 ),
             )
             cursor.execute(
@@ -879,8 +888,8 @@ def _hard_delete_fk_proof(
     if any(
         value in str(audit_detail)
         for value in (
-            snapshot['sample']['serial_number'],
-            snapshot['latest_intake']['bl'],
+            sample['serial_number'],
+            latest_intake['bl'],
             'PROOF-FK-NOTE',
         )
     ):
@@ -906,11 +915,11 @@ def _hard_delete_fk_proof(
         )
     cited_sample = cited_samples[0]
     expected_citation = {
-        'sample_number': snapshot['sample']['sample_number'],
-        'serial_number': snapshot['sample']['serial_number'],
+        'sample_number': sample['sample_number'],
+        'serial_number': sample['serial_number'],
         'latest_firmware': {
-            'bl': snapshot['latest_intake']['bl'],
-            'hw_rev': snapshot['latest_intake']['hw_rev'],
+            'bl': latest_intake['bl'],
+            'hw_rev': latest_intake['hw_rev'],
         },
     }
     actual_citation = {
@@ -1380,7 +1389,7 @@ def _ingest_report_outputs(
     plan = build_platform_ingestion_plan(batch)
     writer_factory = _connection_factory(dsn)
 
-    def _ingest() -> object:
+    def _ingest() -> IngestionExecutionResult:
         return execute_platform_ingestion_plan(
             plan,
             PostgresIngestionWriter(writer_factory),
@@ -1462,7 +1471,7 @@ def _run_ingestion_stages(
     plan = build_platform_ingestion_plan(_representative_batch(ids, proof_seed))
     writer_factory = _connection_factory(dsn)
 
-    def _ingest() -> object:
+    def _ingest() -> IngestionExecutionResult:
         return execute_platform_ingestion_plan(
             plan, PostgresIngestionWriter(writer_factory),
             retry_policy=IngestionRetryPolicy(max_attempts=3),
@@ -1846,7 +1855,9 @@ def _ooo_attempt_timestamp(number: int) -> str:
     return (datetime.fromisoformat(_PROOF_TIMESTAMP) + timedelta(seconds=number)).isoformat()
 
 
-def _ingest_numbered_attempt(dsn: str, ids: dict, proof_seed: str, number: int) -> object:
+def _ingest_numbered_attempt(
+    dsn: str, ids: dict, proof_seed: str, number: int,
+) -> IngestionExecutionResult:
     result_json = json.dumps({'value': -3.5, 'unit': 'dBm'}, sort_keys=True)
     condition_hash = _ooo_condition_hash(proof_seed)
     provider_result_id = f'{proof_seed}-OOO-R{number}'

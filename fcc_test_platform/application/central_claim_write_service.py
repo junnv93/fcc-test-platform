@@ -110,9 +110,10 @@ class ClaimWriteService:
         cond = _require_text(condition_hash, 'condition_hash')
         op = _require_text(operator, 'operator')
         now = self._clock()
+        claim_id = self._id_factory()
         record = {
             'id': self._id_factory(),
-            'claim_id': self._id_factory(),
+            'claim_id': claim_id,
             'project_id': pid,
             'technology': tech,
             'condition_hash': cond,
@@ -127,7 +128,7 @@ class ClaimWriteService:
         audit_record = _audit_for_claim(
             event_type='claim.acquired',
             project_id=pid,
-            claim_id=record['claim_id'],
+            claim_id=claim_id,
             actor_subject=actor_subject or op,
             event_id=self._id_factory(),
             occurred_at=now,
