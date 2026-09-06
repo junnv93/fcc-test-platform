@@ -170,7 +170,7 @@ def _row_dict(cursor, row) -> dict:
     if isinstance(row, Mapping):
         return dict(row)
     names = [description[0] for description in cursor.description]
-    return dict(zip(names, row))
+    return dict(zip(names, row, strict=True))
 
 
 def _text(value) -> str:

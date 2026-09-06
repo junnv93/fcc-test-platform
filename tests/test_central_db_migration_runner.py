@@ -787,7 +787,6 @@ class TestReconcileCommand(unittest.TestCase):
             dp = Path(d)
             _write(dp, '001_a.sql', 'CREATE TABLE a;')
             _write(dp, '002_b.sql', 'CREATE TABLE b;')
-            migs = discover_migrations(dp)
             fresh_001 = checksum_sql((dp / '001_a.sql').read_text(encoding='utf-8'))
             applied = {
                 '001_a': 'stale-bootstrap',
@@ -813,7 +812,6 @@ class TestReconcileCommand(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             dp = Path(d)
             _write(dp, '001_a.sql', 'CREATE TABLE a;')
-            migs = discover_migrations(dp)
             applied = {'001_a': checksum_sql((dp / '001_a.sql').read_text(encoding='utf-8'))}
             fake, result = self._run(dp, applied)
 
@@ -828,7 +826,6 @@ class TestReconcileCommand(unittest.TestCase):
             dp = Path(d)
             _write(dp, '001_a.sql', 'CREATE TABLE a;')
             _write(dp, '002_b.sql', 'CREATE TABLE b;')
-            migs = discover_migrations(dp)
             applied = {
                 '001_a': checksum_sql((dp / '001_a.sql').read_text(encoding='utf-8')),
                 '002_b': 'stale-incremental',

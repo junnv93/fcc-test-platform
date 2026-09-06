@@ -45,6 +45,7 @@ from fcc_test_platform.application.local_auth_service import (  # noqa: E402
     CUSTODY_EVICTION_PHRASE,
     DEGENERATE_EVICTION_PHRASE,
     REVOCATION_LIST_MAX_ENTRIES,
+    InvalidCredentialsError,
     LocalAuthService,
     TokenRevocationList,
 )
@@ -614,8 +615,12 @@ class TestRotationIsAtomic(unittest.TestCase):
         )['jti']
 
         store.users['tester@x.com']['locked_until'] = _NOW + timedelta(minutes=15)
-        with self.assertRaises(Exception):
+        # ⚠️ 옛 형태는 ``assertRaises(Exception)`` 이었다 — 그러면 오타로 인한
+        #    AttributeError 도, 대역이 던지는 KeyError 도 「통과」다. 실측 2026-09-06:
+        #    이 자리가 던지는 것은 InvalidCredentialsError('invalid refresh token') 이다.
+        with self.assertRaises(InvalidCredentialsError) as rejected:
             service.refresh(refresh_token=pair['refresh_token'])
+        self.assertIn('refresh token', str(rejected.exception))
         self.assertFalse(
             revocations.is_revoked(jti),
             '거부된 시도가 토큰을 소모하면 잠긴 사용자의 세션이 영구히 끝난다',
@@ -632,8 +637,9 @@ class TestRotationIsAtomic(unittest.TestCase):
         service = _service(_store('tester@x.com'), revocations)
         pair = service.login(email='tester@x.com', password=_PASSWORD)
         service.refresh(refresh_token=pair['refresh_token'])
-        with self.assertRaises(Exception):
+        with self.assertRaises(InvalidCredentialsError) as refused:
             service.refresh(refresh_token=pair['refresh_token'])
+        self.assertIn('refresh token', str(refused.exception))
 
     def test_claim_refuses_a_token_with_no_identifier(self):
         """식별자가 없으면 재사용을 판정할 수 없다 — 통과는 무제한 재사용이다."""

@@ -136,7 +136,7 @@ class PostgresCentralMembershipWriteAdapter:
                     'membership UPSERT did not produce a readable row — '
                     'central state inconsistent'
                 )
-            return dict(zip(MEMBERSHIP_COLUMNS, rows[0]))
+            return dict(zip(MEMBERSHIP_COLUMNS, rows[0], strict=True))
 
         return self._in_transaction(_txn)
 
@@ -158,7 +158,7 @@ class PostgresCentralMembershipWriteAdapter:
                 # No matching membership — caller will raise MembershipNotFoundError
                 # WITHOUT emitting the audit (don't audit a no-op revoke).
                 return None
-            existing = dict(zip(MEMBERSHIP_COLUMNS, rows[0]))
+            existing = dict(zip(MEMBERSHIP_COLUMNS, rows[0], strict=True))
             cursor.execute(DELETE_MEMBERSHIP_SQL, (project_id, user_id, role_key))
             self._audit.append_event_in_transaction(cursor, audit_record)
             return existing

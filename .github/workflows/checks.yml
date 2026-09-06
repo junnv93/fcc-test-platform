@@ -34,6 +34,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          # ⚠️ 기본 checkout 은 **얕은 클론이라 태그를 받아 오지 않는다.**
+          # `tests/test_every_release_tag_declares_its_own_version.py` 가 발행된 태그의
+          # 트리를 읽어 그 태그의 판번호를 말하는지 본다(2026-09-06 에 v0.1.10 이 판올림
+          # 커밋 없이 붙었다). 태그가 없으면 그 검사는 「태그 0개」를 대조하며 **영원히
+          # 초록**이다 — 검사가 있다는 사실이 지켜진다는 뜻이 되지 않는다.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:

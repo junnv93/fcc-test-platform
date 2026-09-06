@@ -519,7 +519,7 @@ def extract_implementer_audit(report: str) -> tuple[str | None, str]:
             f'expected exactly {len(expected)} status lines '
             f'({expected[0]}…{expected[-1]}), found {len(rows)}'
         )
-    for row, item in zip(rows, expected):
+    for row, item in zip(rows, expected, strict=True):
         match = PHYSICAL_AUDIT_LINE.match(row)
         if match is None:
             return None, (

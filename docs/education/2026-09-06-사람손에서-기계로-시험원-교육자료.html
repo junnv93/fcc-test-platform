@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>사람 손에서 기계로 — 시험원 교육자료</title>
+    <!--
+      이 파일은 네트워크 없이 열린다 — 외부 글꼴·스크립트·이미지를 부르지 않는다.
+      시험실 PC 에서 더블클릭으로 여는 것이 이 문서의 기본 사용법이기 때문이다.
+      선례: docs/education/2026-09-06-시스템-연결-구조-시험원-교육자료.html
+    -->
+  </head>
+  <body>
+<style>
+  :root {
+    --ground:      #F5F7FA;
+    --surface:     #FFFFFF;
+    --surface-2:   #EDF1F6;
+    --ink:         #12171F;
+    --ink-2:       #4A5566;
+    --ink-3:       #77839A;
+    --rule:        #D3DAE4;
+    --rule-2:      #B9C3D1;
+    --accent:      #1B4F8C;
+    --accent-soft: #E4EDF8;
+    --bad:         #A93318;
+    --bad-soft:    #FBE9E4;
+    --good:        #17654A;
+    --good-soft:   #E1F0E9;
+
+    --f-sans: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+    --f-mono: "Cascadia Mono", Consolas, "D2Coding", "SFMono-Regular", monospace;
+
+    --measure: 66ch;
+    --pad: clamp(1.1rem, 4vw, 2.5rem);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0F131A;
+      --surface:     #161C25;
+      --surface-2:   #1D242F;
+      --ink:         #E7ECF3;
+      --ink-2:       #A7B2C2;
+      --ink-3:       #7C879A;
+      --rule:        #2A323E;
+      --rule-2:      #3B4553;
+      --accent:      #74AAE8;
+      --accent-soft: #182636;
+      --bad:         #EC8368;
+      --bad-soft:    #2C1D18;
+      --good:        #55C295;
+      --good-soft:   #14261F;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #0F131A;
+    --surface:     #161C25;
+    --surface-2:   #1D242F;
+    --ink:         #E7ECF3;
+    --ink-2:       #A7B2C2;
+    --ink-3:       #7C879A;
+    --rule:        #2A323E;
+    --rule-2:      #3B4553;
+    --accent:      #74AAE8;
+    --accent-soft: #182636;
+    --bad:         #EC8368;
+    --bad-soft:    #2C1D18;
+    --good:        #55C295;
+    --good-soft:   #14261F;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-sans);
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+  }
+
+  .wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: var(--pad) var(--pad) 5rem;
+  }
+
+  /* ─── 흐름: 산문은 좁게, 그림·표는 넓게 ─────────────────────── */
+  .flow > * { max-width: var(--measure); }
+  .flow > .wide { max-width: 100%; }
+
+  /* ─── 표제 ──────────────────────────────────────────────── */
+  .masthead {
+    border-top: 3px solid var(--ink);
+    padding-top: 1.1rem;
+    margin-bottom: 3rem;
+  }
+  .kicker {
+    font-family: var(--f-mono);
+    font-size: .72rem;
+    font-weight: 500;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem 1.4rem;
+    margin-bottom: 1rem;
+  }
+  h1 {
+    font-size: clamp(1.85rem, 5.2vw, 3rem);
+    font-weight: 600;
+    line-height: 1.18;
+    letter-spacing: -.02em;
+    text-wrap: balance;
+    margin: 0 0 .9rem;
+  }
+  .standfirst {
+    font-size: clamp(1rem, 2.4vw, 1.16rem);
+    color: var(--ink-2);
+    font-weight: 300;
+    max-width: 58ch;
+    margin: 0;
+  }
+  .standfirst strong { font-weight: 600; color: var(--ink); }
+
+  /* ─── 결과 스트립 ───────────────────────────────────────── */
+  .strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin: 2.5rem 0 3.5rem;
+  }
+  .strip div { background: var(--surface); padding: 1rem 1.1rem; }
+  .strip dt {
+    font-family: var(--f-mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: .45rem;
+  }
+  .strip dd {
+    margin: 0;
+    font-family: var(--f-mono);
+    font-size: 1.32rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
+  }
+  .strip dd small {
+    display: block;
+    font-family: var(--f-sans);
+    font-size: .78rem;
+    font-weight: 400;
+    color: var(--ink-2);
+    letter-spacing: 0;
+    margin-top: .2rem;
+  }
+  .n-good { color: var(--good); }
+  .n-bad  { color: var(--bad); }
+
+  /* ─── 절 ────────────────────────────────────────────────── */
+  section { margin-top: 4rem; }
+  h2 {
+    font-size: clamp(1.25rem, 3vw, 1.6rem);
+    font-weight: 600;
+    letter-spacing: -.015em;
+    line-height: 1.3;
+    text-wrap: balance;
+    margin: 0 0 .35rem;
+    padding-top: .9rem;
+    border-top: 1px solid var(--rule-2);
+  }
+  h2 .num {
+    font-family: var(--f-mono);
+    font-size: .74rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: .1em;
+    display: block;
+    margin-bottom: .5rem;
+  }
+  h3 {
+    font-size: 1.02rem;
+    font-weight: 600;
+    margin: 2.3rem 0 .5rem;
+    letter-spacing: -.005em;
+  }
+  p { margin: 0 0 1.05rem; }
+  .lede { color: var(--ink-2); margin-bottom: 1.8rem; }
+
+  code, .mono { font-family: var(--f-mono); font-size: .875em; }
+  code {
+    background: var(--surface-2);
+    padding: .1em .34em;
+    border-radius: 2px;
+    word-break: break-all;
+  }
+  strong { font-weight: 600; }
+  em { font-style: normal; background: var(--accent-soft); padding: .05em .3em; }
+
+  ul, ol { margin: 0 0 1.05rem; padding-left: 1.3rem; }
+  li { margin-bottom: .5rem; }
+  li::marker { color: var(--ink-3); }
+
+  /* ─── 그림 ──────────────────────────────────────────────── */
+  figure {
+    margin: 2rem 0 2.4rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 1.4rem 1.2rem 1rem;
+    overflow-x: auto;
+  }
+  figure svg { display: block; width: 100%; min-width: 480px; height: auto; }
+  figcaption {
+    margin-top: 1rem;
+    padding-top: .8rem;
+    border-top: 1px solid var(--rule);
+    font-size: .84rem;
+    line-height: 1.6;
+    color: var(--ink-2);
+    min-width: 480px;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  .svg-box   { fill: var(--surface-2); stroke: var(--rule-2); }
+  .svg-lbl   { fill: var(--ink); font-family: "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+  .svg-sub   { fill: var(--ink-3); color: var(--ink-3); font-family: "Noto Sans KR", "Malgun Gothic", sans-serif; font-size: 11.5px; }
+  .svg-edge  { stroke: var(--rule-2); fill: none; stroke-width: 1.6; }
+  .svg-bad   { stroke: var(--bad); fill: none; stroke-width: 2; }
+  .svg-good  { stroke: var(--good); fill: none; stroke-width: 2; }
+  .svg-badtx { fill: var(--bad); font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 600; }
+  .svg-gootx { fill: var(--good); font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 600; }
+  .svg-hd    { fill: var(--ink-3); font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; letter-spacing: .1em; }
+
+  h3 {
+    font-size: 1.06rem;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    margin: 2.4rem 0 .2rem;
+    padding-bottom: .4rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  /* ─── 표 ────────────────────────────────────────────────── */
+  .tablebox { overflow-x: auto; margin: 1.6rem 0 2rem; border: 1px solid var(--rule); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: .88rem; }
+  th, td { text-align: left; padding: .62rem .85rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th {
+    font-family: var(--f-mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .m { font-family: var(--f-mono); font-size: .84em; word-break: break-all; }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--f-mono);
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    padding: .1rem .42rem;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .tag-bad  { color: var(--bad); background: var(--bad-soft); }
+  .tag-good { color: var(--good); background: var(--good-soft); }
+
+  /* ─── 강조 블록 ─────────────────────────────────────────── */
+  .note {
+    border-left: 3px solid var(--accent);
+    background: var(--surface);
+    padding: 1.1rem 1.2rem;
+    margin: 1.8rem 0;
+  }
+  .note.warn { border-left-color: var(--bad); }
+  .note > :last-child { margin-bottom: 0; }
+  .note .hd {
+    font-family: var(--f-mono);
+    font-size: .7rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: .5rem;
+  }
+
+  /* ─── 다음 세션 멘트 ────────────────────────────────────── */
+  .prompt-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: .7rem;
+  }
+  button.copy {
+    font-family: var(--f-mono);
+    font-size: .74rem;
+    letter-spacing: .06em;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    padding: .38rem .8rem;
+    cursor: pointer;
+  }
+  button.copy:hover { background: var(--surface-2); }
+  button.copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  pre.prompt {
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    padding: 1.1rem 1.2rem;
+    margin: 0;
+    overflow-x: auto;
+    font-family: var(--f-mono);
+    font-size: .795rem;
+    line-height: 1.72;
+    white-space: pre-wrap;
+    word-break: break-word;
+    tab-size: 2;
+  }
+
+  footer {
+    margin-top: 4.5rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--rule-2);
+    font-size: .8rem;
+    color: var(--ink-3);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="kicker">
+    <span>fcc-test-platform</span>
+    <span>저장소 사이를 기계에 맡긴다</span>
+    <span>2026-09-06 실측</span>
+    <span>PR #95 #99 #100 #102</span>
+  </div>
+  <h1>사람 손에서 기계로 — 네 개의 검사</h1>
+  <p class="standfirst">
+    저장소 «안쪽»은 기계가 잇는데 «사이»는 사람이 이었다. 그 네 단계를 기계에 넘기는 작업이다.
+    네 개를 세우는 동안 <strong>세 개의 공백과 두 개의 내 실수</strong>가 드러났고,
+    그 실수 중 하나는 <strong>검사가 있는데도 아무것도 지키지 못하는</strong> 형태였다.
+  </p>
+</header>
+
+<dl class="strip">
+  <div>
+    <dt>세운 검사</dt>
+    <dd class="n-good">4<small>전부 반증까지 확인</small></dd>
+  </div>
+  <div>
+    <dt>검사가 찾아낸 공백</dt>
+    <dd class="n-bad">3<small>세우자마자 드러남</small></dd>
+  </div>
+  <div>
+    <dt>지금도 벌어진 판번호</dt>
+    <dd class="n-bad">3곳<small>아직 안 고쳐짐</small></dd>
+  </div>
+  <div>
+    <dt>실제로 켜진 자동화</dt>
+    <dd class="n-bad">0<small>승인 대기</small></dd>
+  </div>
+</dl>
+
+<main class="flow">
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">00 — 배경</span>어제 잰 것에서 이어진다</h2>
+
+  <p class="lede">
+    어제 구조를 재면서 한 가지가 분명해졌다 — <strong>저장소 «안쪽»에서는 어긋남이
+    구조적으로 생기지 않는데, 저장소 «사이»를 잇는 일은 전부 사람의 기억에 달려 있다.</strong>
+  </p>
+
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>사람이 해야 하는 네 단계</th><th>알려 주는 장치</th></tr></thead>
+      <tbody>
+        <tr><td>① 새 판에 이름표(태그)를 붙인다</td><td><span class="tag tag-bad">없음</span></td></tr>
+        <tr><td>② 새 이름표가 나온 것을 «안다»</td><td><span class="tag tag-bad">없음</span></td></tr>
+        <tr><td>③ 웹/중앙의 핀 숫자를 고친다</td><td><span class="tag tag-bad">없음</span></td></tr>
+        <tr><td>④ 계측장비의 핀 숫자를 고친다</td><td><span class="tag tag-bad">없음</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    그 결과가 숫자로 남아 있었다 — 같은 규약을 쓰기로 한 세 곳의 판번호가 전부 달랐다.
+    <strong>아무도 틀리지 않았고 아무 검사도 실패하지 않았는데 벌어졌다.</strong>
+    이번 작업은 그 네 단계를 기계에 넘기는 것이다.
+  </p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">01 — 배치</span>네 개를 어디에 세웠나</h2>
+
+  <figure class="wide">
+    <svg viewBox="0 0 800 300" role="img" aria-label="네 개의 검사가 발행부터 설치까지의 흐름 중 어디에 서는지">
+      <defs>
+        <marker id="g4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--rule-2)"></path></marker>
+      </defs>
+
+      <text class="svg-hd" x="20" y="18">규약이 발행되어 이 상자에 설치되기까지</text>
+
+      <rect class="svg-box" x="20" y="34" width="160" height="52"></rect>
+      <text class="svg-lbl" x="34" y="57">규약 레인</text>
+      <text class="svg-sub" x="34" y="73">새 판을 발행한다</text>
+
+      <rect class="svg-box" x="228" y="34" width="160" height="52"></rect>
+      <text class="svg-lbl" x="242" y="57">이름표(태그)</text>
+      <text class="svg-sub" x="242" y="73">v0.1.24</text>
+
+      <rect class="svg-box" x="436" y="34" width="160" height="52"></rect>
+      <text class="svg-lbl" x="450" y="57">이 상자의 핀</text>
+      <text class="svg-sub" x="450" y="73">두 파일에 적힌다</text>
+
+      <rect class="svg-box" x="644" y="34" width="136" height="52"></rect>
+      <text class="svg-lbl" x="658" y="57">실제 설치</text>
+      <text class="svg-sub" x="658" y="73">중앙 PC · 개발 환경</text>
+
+      <line class="svg-edge" x1="184" y1="60" x2="224" y2="60" marker-end="url(#g4)"></line>
+      <line class="svg-edge" x1="392" y1="60" x2="432" y2="60" marker-end="url(#g4)"></line>
+      <line class="svg-edge" x1="600" y1="60" x2="640" y2="60" marker-end="url(#g4)"></line>
+
+      <rect x="228" y="124" width="160" height="62" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.6"></rect>
+      <text class="svg-lbl" x="242" y="146" fill="var(--good)">④ 발행 방어</text>
+      <text class="svg-sub" x="242" y="162">붙인 태그의 트리가</text>
+      <text class="svg-sub" x="242" y="176">그 번호를 말하는가</text>
+
+      <rect x="228" y="204" width="368" height="62" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.6"></rect>
+      <text class="svg-lbl" x="242" y="226" fill="var(--good)">② 판올림 봇</text>
+      <text class="svg-sub" x="242" y="242">새 판이 나오면 핀을 올린 제안서를 자동으로 만든다</text>
+      <text class="svg-sub" x="242" y="257">(설정만 넣었다 — 켜는 것은 승인 지점)</text>
+
+      <rect x="436" y="124" width="160" height="62" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.6"></rect>
+      <text class="svg-lbl" x="450" y="146" fill="var(--good)">① 핀 대조</text>
+      <text class="svg-sub" x="450" y="162">두 파일이 같은가</text>
+      <text class="svg-sub" x="450" y="176">설치와도 같은가</text>
+
+      <rect x="20" y="124" width="160" height="62" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.6"></rect>
+      <text class="svg-lbl" x="34" y="146" fill="var(--good)">③ 경계 산출물</text>
+      <text class="svg-sub" x="34" y="162">받아 나르는 문서가</text>
+      <text class="svg-sub" x="34" y="176">발행본과 같은가</text>
+
+      <line class="svg-edge" x1="100" y1="120" x2="100" y2="90" marker-end="url(#g4)" stroke-dasharray="3 2"></line>
+      <line class="svg-edge" x1="300" y1="120" x2="300" y2="90" marker-end="url(#g4)" stroke-dasharray="3 2"></line>
+      <line class="svg-edge" x1="516" y1="120" x2="516" y2="90" marker-end="url(#g4)" stroke-dasharray="3 2"></line>
+      <line class="svg-edge" x1="690" y1="200" x2="690" y2="90" marker-end="url(#g4)" stroke-dasharray="3 2"></line>
+      <line class="svg-edge" x1="596" y1="235" x2="686" y2="210" stroke-dasharray="3 2"></line>
+    </svg>
+    <figcaption>
+      <b>①③④ 는 검사이고 ② 는 자동화다.</b> 검사는 «어긋나면 멈춘다»이고,
+      자동화는 «어긋나기 전에 제안한다»이다. 넷 중 <b>② 만 켜는 데 승인이 필요하고</b>,
+      나머지 셋은 합쳐지는 순간부터 돈다.
+    </figcaption>
+  </figure>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">02 — ①</span>핀이 두 곳에 적히는데 아무도 안 봤다</h2>
+
+  <p class="lede">
+    이 상자는 «어느 판을 쓴다»를 <strong>두 파일</strong>에 적는다.
+    하나는 프로그램을 설치할 때 쓰이고, 하나는 중앙 PC 배포 목록이다.
+    <strong>그 둘이 같은지 보는 검사가 없었다.</strong> 그날 값은 우연히 같았다.
+  </p>
+
+  <p>
+    어긋나면 <strong>개발자가 세운 환경과 중앙 PC 가 서로 다른 코드를 싣는다.</strong>
+    그리고 그 차이는 <strong>두 곳에서 같은 시험이 다른 답을 낼 때에야</strong> 드러난다.
+  </p>
+
+  <div class="note warn">
+    <div class="hd">그리고 「적어 둔 판 ↔ 실제 깔린 판」이 이 세션에서 두 번 나를 속였다</div>
+    <p>
+      코드에는 <code>v0.1.22</code> 라고 적혀 있는데 내 작업 환경에는 <code>0.1.21</code> 이
+      깔려 있었다. 그 상태로 전체 시험을 돌리자 <strong>무관한 검사 둘이 「새로 깨진 것」으로
+      보였다.</strong> 실제로 깨진 것은 없었다 — 그 둘은 코드 파일이 아니라
+      <strong>설치된 것</strong>을 읽기 때문이다.
+    </p>
+    <p>
+      한 번은 <strong>「main 이 깨졌다」고 보고할 뻔했고</strong> 그 직전에 잡았다.
+      그래서 이 검사가 그 축까지 함께 본다.
+    </p>
+  </div>
+
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>이 검사가 보는 것</th><th>어긋나면</th></tr></thead>
+      <tbody>
+        <tr><td>두 파일이 같은 판을 말하는가</td><td>환경마다 다른 코드가 깔린다</td></tr>
+        <tr><td><b>적어 둔 판 = 실제 깔린 판</b>인가</td><td>무관한 검사가 「깨진 것」으로 보인다</td></tr>
+        <tr><td>이름표가 «움직이지 않는» 것인가</td><td>「어느 코드가 돌았나」를 나중에 답할 수 없다</td></tr>
+        <tr><td>검사가 대조할 대상이 있기는 한가</td><td>0개를 대조하며 영원히 통과한다</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    <strong>새로 설계하지 않았다.</strong> 계측장비 저장소가 같은 계열의 사고를 이미 두 번
+    겪었고 그때 만든 검사가 있다 — 그것을 베꼈다. ⭐ 그리고 <strong>바로 그 검사가 오늘 아침
+    실제로 일을 했다</strong>(아래 ④).
+  </p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">03 — ②</span>「봇을 켜면 된다」가 틀렸다</h2>
+
+  <p class="lede">
+    새 판이 나오면 자동으로 알려 주는 도구(판올림 봇)가 업계 표준이다.
+    <strong>그런데 이 저장소에서는 기본값으로 동작하지 않는다.</strong>
+    문서를 읽고 판단하지 않고 <strong>실제로 돌려서</strong> 확인했다.
+  </p>
+
+  <figure class="wide">
+    <svg viewBox="0 0 800 250" role="img" aria-label="봇이 54개 의존을 추출하면서 우리가 필요한 둘만 건너뛴다">
+      <text class="svg-hd" x="20" y="18">봇을 이 저장소에 돌린 결과 (기본 설정)</text>
+
+      <rect x="20" y="32" width="500" height="44" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.4"></rect>
+      <text x="270" y="60" text-anchor="middle" fill="var(--good)" font-size="15" font-weight="600" font-family="Consolas, monospace">의존 54개를 추출했다</text>
+
+      <rect x="540" y="32" width="240" height="44" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.8"></rect>
+      <text x="660" y="60" text-anchor="middle" fill="var(--bad)" font-size="15" font-weight="600" font-family="Consolas, monospace">그중 둘만 건너뜀</text>
+
+      <text class="svg-badtx" x="540" y="96">← 하필 우리가 필요한 그 둘</text>
+
+      <rect x="20" y="112" width="760" height="60" fill="var(--surface-2)" stroke="var(--rule-2)" stroke-width="1"></rect>
+      <text x="34" y="134" font-family="Consolas, monospace" font-size="11" fill="var(--ink-2)">Dependency fcc-test-contracts has unsupported/unversioned value</text>
+      <text x="34" y="150" font-family="Consolas, monospace" font-size="11" fill="var(--ink-2)">  @ git+https://github.com/junnv93/fcc-test-contracts@v0.1.22</text>
+      <text x="34" y="166" font-family="Consolas, monospace" font-size="11" fill="var(--bad)">Skipping fcc-test-contracts because no currentDigest or pinDigests</text>
+
+      <text class="svg-hd" x="20" y="200">규칙을 따로 써 주자</text>
+      <rect x="20" y="210" width="760" height="34" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.6"></rect>
+      <text x="34" y="232" font-family="Consolas, monospace" font-size="12" fill="var(--good)" font-weight="600">fcc-test-contracts   v0.1.22 → v0.1.24   (실제로 제안이 만들어졌다)</text>
+    </svg>
+    <figcaption>
+      <b>「갱신할 것이 없다」와 「보지도 않았다」는 같은 모습이다.</b> 봇을 켜 놓고
+      제안이 안 온다고 최신인 줄 알면 틀린다. 그래서 규칙을 세 개 써 주고,
+      <b>그 규칙이 실제로 우리 핀을 집는지 보는 검사</b>를 함께 붙였다.
+    </figcaption>
+  </figure>
+
+  <div class="note warn">
+    <div class="hd">⚠️ 그리고 여기서 내가 사고를 냈다</div>
+    <p>
+      설정 파일에 설명을 적으려고 <strong>내 마음대로 만든 항목 이름</strong>을 하나 넣었다.
+      봇은 모르는 항목을 만나면 <strong>설정 전체를 거부한다.</strong> 그 결과
+      <strong>핀은 하나도 조회되지 않았다.</strong>
+    </p>
+    <p>
+      🔴 <strong>그런데 내가 그 직전에 쓴 검사들은 전부 통과였다.</strong>
+      규칙(정규식)은 멀쩡히 핀을 집었기 때문이다.
+      <strong>「규칙이 맞다」와 「봇이 이 설정을 받아들인다」는 다른 문제</strong>인데
+      앞의 것만 재고 있었다. 설명을 봇이 아는 항목으로 옮기고,
+      <strong>그 사고를 잡는 검사를 더했다.</strong>
+    </p>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">04 — ③</span>받아 나르는 문서 중 하나만 대조되고 있었다</h2>
+
+  <p class="lede">
+    이 상자의 API 규격 문서는 <strong>두 부류</strong>다 — 여기서 만드는 것과,
+    규약 레인이 만들어 준 것을 <strong>사본으로 싣는 것</strong>.
+    뒤쪽은 원본과 같아야 하는데, <strong>세 문서 중 하나만 대조되고 있었다.</strong>
+  </p>
+
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>문서</th><th>누가 만드나</th><th>사본 수</th><th>대조되고 있었나</th></tr></thead>
+      <tbody>
+        <tr><td><code>headless-api</code></td><td>규약 레인</td><td class="num">2</td><td><span class="tag tag-good">되고 있었다</span></td></tr>
+        <tr><td><code>session-api</code></td><td>규약 레인</td><td class="num">2</td><td><span class="tag tag-bad">안 되고 있었다</span></td></tr>
+        <tr><td><code>platform-api</code></td><td><b>이 상자</b></td><td class="num">2</td><td>필요 없다 — 여기가 원본</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <div class="hd">방향을 틀리면 «거짓 빨강»이 난다</div>
+    <p>
+      <code>platform-api</code> 는 설치된 규약 패키지 안의 사본과 <strong>실제로 다르다.</strong>
+      그런데 그것은 <strong>결함이 아니다</strong> — 이 문서는 <strong>이 상자가 만들고</strong>
+      규약 레인이 사본을 받아 간다. 우리가 앞서 있으므로 그쪽이 뒤처지는 것이 정상이다.
+    </p>
+    <p>
+      그래서 «사본을 전부 원본과 대조한다»는 단순한 규칙은 <strong>여기서 잘못된 경고</strong>를
+      낸다. <strong>먼저 «누가 만드는가»를 갈라야 한다.</strong>
+      그 판정을 목록으로 적지 않고 <strong>«이 상자에 그 문서를 만드는 프로그램이 있는가»로
+      계산</strong>하게 했다 — 네 번째 문서가 생기는 날 자동으로 따라간다.
+    </p>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">05 — ④</span>이름표를 붙인 뒤 확인하는 장치가 없었다</h2>
+
+  <p class="lede">
+    다른 저장소는 이 상자를 <strong>이름표(태그)</strong>로 지목해서 가져다 쓴다.
+    그러면 «그 이름표가 가리키는 코드가 스스로를 몇 판이라고 말하는가»가 중요해진다.
+    <strong>둘이 어긋난 태그가 하나 있었다.</strong>
+  </p>
+
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>이름표</th><th>그 시점 코드가 말하는 판번호</th><th></th></tr></thead>
+      <tbody>
+        <tr><td class="num">v0.1.0 … v0.1.9</td><td class="num">자기 번호를 말한다</td><td><span class="tag tag-good">10건 정상</span></td></tr>
+        <tr><td class="num">v0.1.10</td><td class="num">0.1.9</td><td><span class="tag tag-bad">어긋남</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    <strong>판번호를 올리는 작업 없이 이름표만 붙었다.</strong> 그러면 그 번호로 가져다 쓴
+    쪽에서 «적어 둔 것과 실제로 깔린 것이 다르다»가 된다.
+  </p>
+
+  <div class="note">
+    <div class="hd">원인은 여기 있는데 경고는 저기서 났다</div>
+    <p>
+      이 사고를 잡은 것은 <strong>계측장비 저장소의 검사</strong>였다 — 다른 세션이 그것을
+      실제로 설치해 보고서야 드러났다. <strong>이 상자 안에서는 아무것도 그것을 보지 않았다.</strong>
+      이름표를 붙이는 일이 사람 손이고, 붙인 뒤 확인하는 장치가 없었기 때문이다.
+    </p>
+    <p>
+      ★ <strong>이름표는 옮기지 않는다.</strong> 잘못 붙은 것은 그대로 두고 다음 번호가 그
+      자리를 대신한다. 그래서 이 검사에는 <strong>«이 하나는 알고 있고 고치지 않는다»는 기록</strong>이
+      이유와 함께 들어 있다. 그리고 <strong>그 기록 자체가 낡는 것</strong>도 세 방향으로 지킨다 —
+      없는 이름표를 가리키거나, 이미 고쳐졌는데 남아 있거나, 이유가 안 적혀 있으면 멈춘다.
+    </p>
+  </div>
+
+  <div class="note warn">
+    <div class="hd">⚠️ 그런데 이 검사는 «켜지지도 않을» 뻔했다</div>
+    <p>
+      검사 서버는 코드를 받아 올 때 <strong>이름표를 받아 오지 않는다</strong>(기본 설정).
+      그러면 이 검사는 <strong>«이름표 0개»를 대조하며 영원히 통과</strong>한다 —
+      검사가 있다는 사실이 지켜진다는 뜻이 되지 않는다.
+    </p>
+    <p>
+      그래서 두 가지를 <strong>함께</strong> 했다: ① 이름표가 안 보이면 건너뛰지 않고
+      <strong>멈추게</strong> 했고, ② 검사 서버 설정에 <strong>이름표를 받아 오라</strong>고 적었다.
+      <strong>둘 중 하나만 하면 안 된다</strong> — 설정만 고치면 나중에 되돌려도 아무도 모르고,
+      검사만 고치면 서버가 그 자리에서 빨개진다.
+    </p>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">06 — 교훈</span>이번에 두 번 확인된 것</h2>
+
+  <p class="lede">
+    네 개를 세우면서 같은 형태를 두 번 만났다. 이름을 붙여 둘 값어치가 있다.
+  </p>
+
+  <div class="note warn">
+    <div class="hd">「검사가 통과했다」가 「검사가 일했다」를 뜻하지 않는다</div>
+    <p>
+      두 번 다 <strong>검사는 초록인데 아무것도 지키지 않는</strong> 상태였다.
+    </p>
+    <p>
+      · 봇 설정이 <strong>통째로 거부</strong>됐는데 내 검사들은 전부 통과였다 —
+      규칙은 맞았고, 설정이 받아들여지는지를 아무도 안 봤다.<br>
+      · 검사 서버가 <strong>이름표를 안 받아 오면</strong> 태그 검사는 0개를 대조하며 통과한다.
+    </p>
+    <p>
+      그래서 이번에 세운 네 검사에는 전부 <strong>«대조할 대상이 있기는 한가»를 먼저 보는
+      항목</strong>이 들어 있다. 대상이 0개면 <strong>통과가 아니라 실패</strong>다.
+    </p>
+  </div>
+
+  <p>
+    그리고 네 검사 모두 <strong>일부러 고장을 내서 실제로 빨개지는지 확인</strong>했다.
+    ⭐ 그중 하나는 <strong>세우자마자 진짜 공백을 찾아냈다</strong> —
+    중앙 배포 목록의 한 항목이 봇 규칙에 안 잡혔고, 이력을 재 보니
+    <strong>한 번도 갱신된 적이 없었다.</strong>
+  </p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<section>
+  <h2><span class="num">07 — 다음</span>왜 여기서 멈추면 안 되는가</h2>
+
+  <p class="lede">
+    <strong>지금 이 순간 실제로 지켜지고 있는 것은 하나도 없다.</strong>
+    이 한 문장이 다음 세션의 이유 전부다.
+  </p>
+
+  <div class="tablebox wide">
+    <table>
+      <thead><tr><th>이번 세션이 만든 것</th><th>지금 상태</th></tr></thead>
+      <tbody>
+        <tr><td>검사 넷 (#95 · #99 · #100 · #102)</td><td><span class="tag tag-bad">전부 열린 제안서</span> — 합쳐지지 않았다</td></tr>
+        <tr><td>구조 교육자료 (#92)</td><td><span class="tag tag-bad">열린 제안서</span></td></tr>
+        <tr><td>판올림 봇</td><td><span class="tag tag-bad">꺼져 있다</span> — 설정만 있고 켜지지 않았다</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    <strong>합쳐지기 전까지 검사는 아무것도 막지 않는다.</strong> 그리고 봇은 켜기 전까지
+    아무것도 알려 주지 않는다. 그 증거가 지금도 남아 있다 — 이번 세션이 처음 잰 그 어긋남이
+    <strong>아직 그대로다:</strong>
+  </p>
+
+  <figure class="wide">
+    <svg viewBox="0 0 800 130" role="img" aria-label="세 곳의 판번호가 여전히 다르다">
+      <text class="svg-hd" x="20" y="18">2026-09-06 저녁 재실측 — 아침과 같다</text>
+      <rect x="20" y="30" width="250" height="34" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"></rect>
+      <text class="svg-lbl" x="34" y="52">규약 레인 최신</text>
+      <text x="256" y="53" text-anchor="end" font-family="Consolas, monospace" font-size="14" font-weight="600" fill="var(--accent)">v0.1.24</text>
+
+      <rect x="290" y="30" width="240" height="34" fill="var(--surface)" stroke="var(--rule-2)" stroke-width="1.4"></rect>
+      <text class="svg-lbl" x="304" y="52">계측장비</text>
+      <text x="516" y="53" text-anchor="end" font-family="Consolas, monospace" font-size="14" font-weight="600" fill="var(--ink-2)">v0.1.23</text>
+
+      <rect x="550" y="30" width="230" height="34" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.8"></rect>
+      <text class="svg-lbl" x="564" y="52">웹/중앙</text>
+      <text x="766" y="53" text-anchor="end" font-family="Consolas, monospace" font-size="14" font-weight="600" fill="var(--bad)">v0.1.22</text>
+
+      <text class="svg-sub" x="20" y="94">검사는 «앞으로 어긋나면» 멈춘다 — 이미 어긋난 것을 되돌리지는 않는다.</text>
+      <text class="svg-badtx" x="20" y="114">그 일은 사람이 하거나, 봇을 켜서 봇이 제안하게 해야 한다.</text>
+    </svg>
+    <figcaption>
+      <b>검사는 미래를 막고, 지금의 어긋남은 그대로 남는다.</b> 그래서 다음 세션의 첫 일은
+      «만든 것을 실제로 켜는 것»이다.
+    </figcaption>
+  </figure>
+
+  <div class="note warn">
+    <div class="hd">그리고 시험원에게 더 급한 것이 하나 더 있다</div>
+    <p>
+      <strong>프로젝트 접수 화면은 아직 중앙 PC 에서 개편된 대로 동작하지 않는다.</strong>
+      화면 코드는 합쳐졌지만 데이터베이스 구조 변경 <strong>다섯 건(031~035)</strong>이
+      아직 어느 데이터베이스에도 적용되지 않았다.
+    </p>
+    <p>
+      이것은 검사나 봇보다 <strong>시험원이 직접 겪는 문제</strong>다 — 신청자로 검색이 안
+      걸리고, 시료 반입·반출 기록표는 아직 존재하지도 않는다.
+      ⚠️ 이 작업은 <strong>반드시 중앙 PC 에서</strong> 해야 한다(개발 PC 에는 같은 이름의
+      컨테이너가 돌아서, 여기서 하면 엉뚱한 데이터베이스가 바뀐다).
+    </p>
+  </div>
+
+  <div class="prompt-head">
+    <h3 style="margin:0">다음 세션에 붙여 넣을 것</h3>
+    <button class="copy" id="cp" type="button">전체 복사</button>
+  </div>
+  <pre class="prompt wide" id="pr">만든 것을 실제로 켠다 — 그리고 중앙 접수 화면을 시험원이 쓸 수 있게 만든다.
+
+## 왜 이 작업인가
+지난 세션이 저장소 사이를 지키는 검사 넷과 봇 설정을 만들었지만 **지금 실제로 지켜지는
+것은 하나도 없다** — PR 5개(#92 #95 #99 #100 #102)가 전부 열려 있고 봇은 꺼져 있다.
+검사는 합쳐져야 막고, 봇은 켜져야 알린다. 그 증거로 처음 잰 어긋남이 아직 그대로다:
+규약 최신 v0.1.24 / 계측장비 v0.1.23 / 웹·중앙 v0.1.22.
+
+그리고 그것보다 급한 것이 있다 — **접수 화면이 중앙 PC 에서 아직 개편된 대로 안 돈다.**
+마이그레이션 031~035 가 어느 DB 에도 적용되지 않았다.
+
+## 먼저 확인할 것
+- origin/main 이 또 움직였는지. 지난 세션에 여러 번 움직였다.
+- PR 5개가 머지됐는지. lane-check 는 전부 초록이었다.
+- ★ **내가 중앙 PC 에 있는가** — `powershell.exe -NoProfile -Command '$env:COMPUTERNAME'`.
+  중앙은 `SUW0521PC1WNBRE`(10.206.34.233). WSL 의 `hostname -I` 는 NAT 때문에 거짓을 말한다.
+  ⚠️ 개발 PC(`명준진경`)에도 `fcc-central-*` 컨테이너 다섯이 **같은 이름으로** 돌아
+  `docker ps` 로 구별되지 않는다. 여기서 적용하면 중앙이 아니라 개발 DB 가 바뀐다.
+
+## 1. 만든 것을 켠다
+- PR 5개를 머지한다(운영자 판단).
+- ⚠️ **판올림 봇 App 설치는 승인 지점**이다. 설정(`renovate.json`)은 이미 들어 있고
+  켜기 전까지 아무 일도 하지 않는다. 켤 때 진짜 검증기를 CI 에 넣어라:
+  `npx --yes --package renovate renovate-config-validator renovate.json`
+- 켜면 봇이 제안할 것: contracts v0.1.22→v0.1.24, platform self-pin v0.1.8→v0.1.10.
+  ★ self-pin 은 989c04e 이후 한 번도 안 움직였고 «의도적 지연인지» 기록이 없다.
+  봇 PR 이 그 질문을 사람 앞에 놓는다 — 의도적이면 규칙을 지우고 이유를 적어라.
+
+## 2. 중앙 PC 마이그레이션 (시험원에게 가장 급한 것)
+`~/handoff-central-migration-20260905.md` 와 런북 §4-a 를 따르라.
+배포 부류는 외우지 말고 `python3 scripts/platform_migration_deploy_class.py` 로 파생하라.
+- 031 · 034 = 무정지 / 032 · 033 · 035 = **정지 창 필요**(032 는 거부 조건 있음)
+- 운영자 판정(2026-09-05)은 **(가) 짧은 정지 창**이다.
+- 이미 실증된 것: 개발 PC 일회용 사본 DB 에서 전 구간을 돌렸고 「새로 깐 중앙」과
+  「업그레이드한 중앙」이 473컬럼·152색인 완전 동일이었다. 처음 하는 일이 아니다.
+★ 마이그레이션 적용 · 컨테이너 재기동은 **매번 따로 승인**받아라.
+
+## 3. 접수 화면을 중앙에서 직접 본다 (런북 §8 스모크와 별개)
+프로젝트 생성 필수 3칸 · 신청자 자동 채움 · `?q` 검색이 **applicant_name** 으로 걸리는지
+· 시료 반입·반출 기록(034)이 화면에서 쓰이는지.
+
+## 주의
+- `git add -A` / `git checkout .` 금지. 공유 트리다. 파일은 하나씩 지정하라.
+- 커밋은 공유 체크아웃 본체가 아니라 origin/main 에서 **전용 워크트리**를 따서 하라.
+- 시험은 전용 venv 에 `pip install -e '.[test]'` 까지. requirements.txt 만 깔면
+  PyYAML 이 없어 **28건이 그림자로 빨개진다.**
+- ⚠️ **origin/main 을 새로 받았으면 contracts 핀도 다시 맞춰라** — 어긋나면 무관한 검사
+  둘이 「새로 깨진 것」으로 보인다. (이제 새 검사가 그것을 이름으로 말해 준다.)
+- ⚠️ **전량 실행은 간헐적으로 빨개진다.** `test_a_rotation_flood_…`(3회)와
+  `test_double_release_is_pairing_error`(1회)는 단독·재실행에서 매번 통과한다.
+  빨강이 나오면 **먼저 그 이름인지 보고**, 아니면 진짜로 다뤄라.
+- 워크트리에서 브랜치를 옮긴 직후에는 `npm run codegen` 을 먼저. 빌드가 실패했으면
+  그 뒤의 e2e 결과를 믿지 마라(dist/ 가 옛것이다).
+- 17항목 자기감사 규약을 지키고, 게이트를 고쳐서 초록이 되면 그 아래를 확인하라.</pre>
+</section>
+
+<footer>
+  fcc-test-platform · 저장소 사이의 검사 4건 ·
+  PR <span class="mono">#95 #99 #100 #102</span> (교육자료 <span class="mono">#92</span>) ·
+  모든 수치는 2026-09-06 실측
+</footer>
+
+</main>
+</div>
+
+<script>
+  (function () {
+    var btn = document.getElementById('cp');
+    var pre = document.getElementById('pr');
+    if (!btn || !pre) return;
+    btn.addEventListener('click', function () {
+      var text = pre.innerText;
+      var done = function (msg) {
+        btn.textContent = msg;
+        setTimeout(function () { btn.textContent = '전체 복사'; }, 2200);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done('복사됨'); },
+          function () { select(); });
+      } else { select(); }
+      function select() {
+        var r = document.createRange();
+        r.selectNodeContents(pre);
+        var s = window.getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+        done('선택됨 — Ctrl+C');
+      }
+    });
+  })();
+</script>
+  </body>
+</html>

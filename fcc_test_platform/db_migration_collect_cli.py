@@ -220,7 +220,7 @@ def _row_dict(cursor, row) -> dict:
     if isinstance(row, Mapping):
         return dict(row)
     names = [description[0] for description in cursor.description]
-    return dict(zip(names, row))
+    return dict(zip(names, row, strict=True))
 
 
 def _evidence_type(row: Mapping) -> str:
@@ -275,9 +275,17 @@ def _index_orders(index_definition: str, columns: Sequence[str]) -> dict[str, st
     start = anchor.end() if anchor else index_definition.find('(') + 1
     if start <= 0:
         return {}
-    keys = [part.strip() for part in _split_top_level(_balanced_group(index_definition, start))]
+    # ⚠️ ``_index_columns`` 는 빈 항목을 건너뛴다(``if not column: continue``).
+    #    여기서 같은 규칙을 쓰지 않으면 두 목록의 «색인이 어긋나서» ``orders`` 가
+    #    엉뚱한 열에 붙는다 — 잘리는 것이 아니라 틀린 값이 실린다. 아래 zip 의
+    #    ``strict=True`` 가 그 어긋남을 잡으려면 필터가 같아야 한다.
+    keys = [
+        part.strip()
+        for part in _split_top_level(_balanced_group(index_definition, start))
+        if part.strip()
+    ]
     orders: dict[str, str] = {}
-    for column, key in zip(columns, keys):
+    for column, key in zip(columns, keys, strict=True):
         match = re.search(
             r'\s+(?P<direction>ASC|DESC)(?:\s+NULLS\s+(?P<nulls>FIRST|LAST))?\s*$',
             key,

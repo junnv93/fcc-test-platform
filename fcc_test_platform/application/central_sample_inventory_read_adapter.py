@@ -345,10 +345,10 @@ class PostgresCentralSampleInventoryReadAdapter:
             }
         sample_end = len(SAMPLE_COLUMNS)
         project_end = sample_end + len(PROJECT_COLUMNS)
-        sample = _sample_envelope(dict(zip(SAMPLE_COLUMNS, row[:sample_end])))
+        sample = _sample_envelope(dict(zip(SAMPLE_COLUMNS, row[:sample_end], strict=True)))
         project_values = row[sample_end:project_end]
         project_values = (project_values[0], *project_values[1:])
-        project = dict(zip(PROJECT_COLUMNS, project_values))
+        project = dict(zip(PROJECT_COLUMNS, project_values, strict=True))
         return {
             'sample': sample,
             'project': project,
@@ -435,7 +435,7 @@ class PostgresCentralSampleInventoryReadAdapter:
                 close()
         if columns is None:
             columns = tuple(str(item[0]) for item in (description or ()))
-        return [dict(zip(columns, row)) for row in raw]
+        return [dict(zip(columns, row, strict=True)) for row in raw]
 
 
 def _json(value):

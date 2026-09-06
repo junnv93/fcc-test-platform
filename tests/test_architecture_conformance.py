@@ -401,157 +401,36 @@ def _has_unii_literal_collection(src_path: Path) -> bool:
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# 자기 audit cascade 잔여 #12 정공 (2026-05-29) — GodObject self-enforcing
-# extraction threshold (ADR-0001 PARAMETER_OBJECT_REVISIT_THRESHOLD 패턴 격상)
+# 삭제됨 (2026-09-06) — GodObject 추출 threshold 감시 장치 155줄
 # ════════════════════════════════════════════════════════════════════════════
 #
-# 옛 `TestGodObjectGuard` 는 baseline 줄 수 (단순 magic 정수) 가 ratchet up
-# 되는 것을 막지 않음 — 매 sprint 가 +50 줄을 baseline 에 누적하면 silent 비대
-# 화. 사용자 추궁 또는 review-architecture 발견 전까지 추출 sprint trigger 없
-# 음 (cascade fragility 형태).
+# 여기에는 `EXTRACTION_HELPER_LINES_TYPICAL` · `EXTRACTION_TARGET_MODULE_LINES` ·
+# `EXTRACTION_THRESHOLD_GROWTH_RATIO` · `_EXTRACTION_MONITOR_FILES` ·
+# `_EXTRACTION_MONITOR_SNAPSHOTS` · `_baseline_lookup()` 이 있었다.
 #
-# 본 sealed invariant 가 `tests/test_composition_wiring_drift_high2.py::
-# TestParameterObjectRevisitThreshold` 패턴을 GodObject 영역에 격상 적용:
-#   - growth_ratio 가 도메인 정합 산식 (initial baseline × 20% growth) 으로
-#     derived constant 생성 (magic literal 0).
-#   - 본 sprint 가 monitor 추가하는 module (`test_runner_init.py`, baseline 510)
-#     이 threshold (612) 도달 시 본 invariant FAIL → 별 sprint 추출 강제.
-#   - meaningful headroom 가드 (≥ 1 sprint window) — trivially-true 회피.
+# ── 왜 지웠나: 대상이 떠났다 (전부 실측 2026-09-06) ──────────────────────────
+# ① `_baseline_lookup()` 이 읽던 SSOT 가 이 레포에 없다. 그 함수 본문의
+#    `TestGodObjectGuard._BASELINES` / `._INFRA_BASELINES` 에서 `TestGodObjectGuard`
+#    는 이 레포 어디에도 정의되지 않는다 — ruff F821 2건이 그것이었다.
+# ② 감시 대상 6개 모듈이 **전부 이 레포에 없다**: `test_runner_init.py`,
+#    `infrastructure/adapters/driven/sqlite_database_adapter.py`,
+#    `keystrings/keystring_base.py`, `keystrings/BLE_keystring.py`,
+#    `application/headless/api_contracts.py`,
+#    `reporting/infrastructure/adapters/ble_fcc_docx_patcher.py`.
+#    이 레포에는 `src/` 트리 자체가 없다.
+# ③ 장치 전체가 **닫힌 죽은 고리**였다. .py 441개 AST 전수 조사 결과, 위 여섯 이름은
+#    서로만 참조하고 바깥 소비자가 0개다. 주석이 약속한
+#    `test_monitor_covers_top_baselines_systemwide` 도 이 레포에 없다.
 #
-# 향후 모듈 추가는 `_EXTRACTION_MONITOR` dict 에 등재만 하면 자동 적용.
-
-
-
-# ── ADR-0001 cost-model 격상 (자기 audit 추궁 P1-4 정공) ────────────────
+# ── 그래서 「지운다」가 「잃는다」가 아닌 이유 ────────────────────────────────
+# 이 장치는 모노레포 `tests/test_architecture_conformance.py` 에 **소비자와 함께**
+# 온전히 살아 있다 (`TestGodObjectGuard` + `_baseline_lookup` 을 실제로 부르는
+# 검사 3건). 감시 대상 6개 모듈도 그쪽 트리에 있다. 즉 이사는 이미 끝났고,
+# 여기 남아 있던 것은 소비자만 잘려 나간 잔해다. 대상이 없는 곳에서 이것을
+# 「되살리는」 방법은 없다 — 없는 모듈의 baseline 을 지키는 봉인은 정의상 공허하다.
 #
-# 옛 본 모듈은 `EXTRACTION_THRESHOLD_GROWTH_RATIO=1.20` 을 magic 으로 두고
-# docstring 만으로 derived 라 주장 → ADR-0001 패턴의 진짜 격상 미달성.
-#
-# 본 산식 격상 — ADR-0001 의 cost-model crossover 패턴을 GodObject 영역에
-# 정합 적용:
-#
-#   1. EXTRACTION_HELPER_LINES_TYPICAL: 본 프로젝트 실측 helper 분리 단위
-#      (test_runner_init.py 의 `_audit_*_workflow_path` hook, file_naming 같은
-#      추출 helper 평균 ~50줄). 실측 anchor — 향후 별 sprint 실측 데이터로
-#      refine 가능 (ADR-0001 §Limitations L-1 패턴).
-#
-#   2. EXTRACTION_TARGET_MODULE_LINES: GodObject 추출 후 모듈 권장 크기 상한.
-#      SOLID SRP + 본 프로젝트 baseline 통계: median baseline ~250줄
-#      (test_runner_core 293 / test_runner_run 226 / sidebar_runtime ~200 등).
-#
-#   3. EXTRACTION_THRESHOLD_GROWTH_RATIO = 1 + (helper / target) = 1 + (50/250)
-#      = 1.20. 의미: 모듈이 target 크기 (~250줄) 의 helper 1개 분리 비용
-#      (50줄) 만큼 growth 한 시점 = extraction "self-pays" crossover.
-#
-# 본 산식이 magic 1.20 보다 도메인 정합 — 변경 시 두 component 중 하나의
-# 도메인 추정이 변경된 것 (구조적 의미 보존).
-
-#: 본 프로젝트 helper 모듈 분리 평균 크기 (실측 anchor — 별 sprint refine 가능).
-#:
-#: 측정 근거 (2026-05-29):
-#:   - test_runner_init.py γ-#1 `_audit_ant_gain_workflow_path` 함수: ~50줄
-#:   - test_runner_init.py γ-#3 `_audit_lookup_sheets_workflow_path`: ~60줄
-#:   - screenshot_utils._io_path / atomic_write helper 등 평균 ~40-60줄
-#:   → median ≈ 50줄
-EXTRACTION_HELPER_LINES_TYPICAL: int = 50
-
-#: GodObject 추출 후 모듈 권장 target 크기 (SOLID SRP 정합).
-#:
-#: 측정 근거 (2026-05-29 `_BASELINES` median):
-#:   - test_runner_core.py: 293
-#:   - test_runner_run.py: 226
-#:   - headless_test_runner.py: 200
-#:   → median ≈ 250 (200~300 범위)
-EXTRACTION_TARGET_MODULE_LINES: int = 250
-
-#: GodObject 추출 sprint trigger threshold growth ratio (**cost-model derived**).
-#:
-#: 산식 (magic literal 0):
-#:   ratio = 1.0 + (HELPER_LINES_TYPICAL / TARGET_MODULE_LINES)
-#:         = 1.0 + (50 / 250) = 1.20
-#:
-#: 의미: 모듈 크기가 baseline × 1.20 도달 = "helper 1개 분리하면 target 크기
-#: 회복" 시점 = extraction cost 가 향후 maintenance cost 보다 작아지는 crossover.
-#:
-#: ADR-0001 § Self-Enforcing Guard 의 cost-model 패턴 정합 격상 (옛 magic 1.20
-#: docstring 주장에서 derived 산식으로 진짜 격상 — 자기 audit P1-4 정공,
-#: 2026-05-29). 두 component 변경 시 ratio 자동 재계산.
-EXTRACTION_THRESHOLD_GROWTH_RATIO: float = 1.0 + (
-    EXTRACTION_HELPER_LINES_TYPICAL / EXTRACTION_TARGET_MODULE_LINES
-)
-
-#: Monitored modules — file_path 만 등재. initial_baseline 은
-#: `_baseline_lookup()` 로 `_BASELINES` ∪ `_INFRA_BASELINES` 에서 자동 derived
-#: (자기 audit P0-2 정공 — 옛 dict-based 중복 magic 폐기, cross-file SSOT 통합).
-#:
-#: snapshot semantics: monitor 등재 시점의 baseline 을 anchor 로 보존하기 위해
-#: `_EXTRACTION_MONITOR_SNAPSHOTS` 에서 immutable 값을 별도 유지. 본 frozenset
-#: 은 "어떤 모듈을 monitor 할까" 정책 SSOT, snapshot 은 "언제부터 monitor
-#: 시작했나" 의 historical anchor.
-#:
-#: 시스템 전반 확장 (자기 audit P1-5 정공) — test_runner_init 외 큰 baseline
-#: 모듈도 monitor 활성:
-_EXTRACTION_MONITOR_FILES: frozenset[str] = frozenset({
-    # 자기 audit cascade #12 — ~50줄/sprint 성장 중 (γ-#1 ant gain / γ-#3
-    # workflow path audit 누적). baseline 510 → threshold 612.
-    'test_runner_init.py',
-    # 자기 audit P1-5 — 1205 큰 baseline + dccf-cross-bw-share 등 지속 성장.
-    'infrastructure/adapters/driven/sqlite_database_adapter.py',
-    # 자기 audit P1-5 — Appium 원시함수 SSOT 810 + BLE/BT keystring 변경
-    # 빈도 높음.
-    'keystrings/keystring_base.py',
-    # 자기 audit P1-5 시스템 전반 강제 (test_monitor_covers_top_baselines_
-    # systemwide invariant surface) — 800+ 모든 baseline 등재:
-    'keystrings/BLE_keystring.py',                                # 850
-    'application/headless/api_contracts.py',                      # 895
-    'reporting/infrastructure/adapters/ble_fcc_docx_patcher.py',  # 835
-})
-
-#: Immutable snapshots — monitor 등재 시점의 baseline 값 anchor (drift 가드).
-#:
-#: 본 dict 의 값은 **별 sprint extraction 완료 후에만** 갱신 (current baseline
-#: 이 ratchet down 된 경우). 일반 sprint 가 본 값을 current baseline 에 맞춰
-#: 갱신하면 trigger 가 self-defeat → invariant 가 이를 차단.
-_EXTRACTION_MONITOR_SNAPSHOTS: dict[str, int] = {
-    'test_runner_init.py': 510,
-    'infrastructure/adapters/driven/sqlite_database_adapter.py': 1205,
-    'keystrings/keystring_base.py': 810,
-    'keystrings/BLE_keystring.py': 885,
-    'application/headless/api_contracts.py': 895,
-    'reporting/infrastructure/adapters/ble_fcc_docx_patcher.py': 835,
-}
-
-
-def _baseline_lookup(rel_path: str) -> int | None:
-    """`_BASELINES` ∪ `_INFRA_BASELINES` 통합 lookup — 중복 magic 0 (P0-2 정공).
-
-    `_EXTRACTION_MONITOR_FILES` 의 file_path 가 두 baseline dict 중 어느 쪽에
-    있든 자동 매핑. cross-file SSOT 봉인.
-    """
-    baselines = TestGodObjectGuard._BASELINES
-    infra = TestGodObjectGuard._INFRA_BASELINES
-    if rel_path in baselines:
-        return baselines[rel_path]
-    if rel_path in infra:
-        return infra[rel_path]
-    return None
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# ⚠️ 이 레포에 `src/` 가 생기고 저 모듈들이 따라오는 날, 복원처는 잔해가 아니라
+#    **모노레포의 온전한 판**이다. 그래서 위치를 여기 이름으로 적어 둔다.
 
 
 

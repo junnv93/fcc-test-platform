@@ -332,7 +332,7 @@ class TestTheGatesCanActuallyRunHere(unittest.TestCase):
         pyproject = REPO_ROOT / 'pyproject.toml'
         data = tomllib.loads(pyproject.read_text(encoding='utf-8'))
         extra = data['project']['optional-dependencies']['test']
-        names = {re.split(r'[<>=!\[]', item, 1)[0].strip().lower() for item in extra}
+        names = {re.split(r'[<>=!\[]', item, maxsplit=1)[0].strip().lower() for item in extra}
         for tool in ('mypy', 'import-linter'):
             with self.subTest(tool=tool):
                 self.assertIn(
@@ -367,7 +367,7 @@ class TestTheSiblingLaneIsADeclaredDependency(unittest.TestCase):
         import tomllib
         data = tomllib.loads((REPO_ROOT / 'pyproject.toml').read_text(encoding='utf-8'))
         names = {
-            re.split(r'[<>=!\[@ ]', item, 1)[0].strip().lower()
+            re.split(r'[<>=!\[@ ]', item, maxsplit=1)[0].strip().lower()
             for item in data['project']['dependencies']
         }
         self.assertIn(

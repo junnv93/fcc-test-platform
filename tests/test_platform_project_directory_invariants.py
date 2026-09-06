@@ -1469,7 +1469,7 @@ class TestProjectSearchSqlAgainstDdl(unittest.TestCase):
         pattern = search_like_pattern(term)
         params = ((status,) if by_status else ()) + (pattern,) * len(PROJECT_SEARCH_COLUMNS)
         rows = self.conn.execute(sql, params).fetchall()
-        return [dict(zip(PROJECT_LIST_COLUMNS, row))['project_id'] for row in rows]
+        return [dict(zip(PROJECT_LIST_COLUMNS, row, strict=True))['project_id'] for row in rows]
 
     def test_management_number_substring_is_found(self):
         self.assertEqual(self._search('RF-0002'), ['p2'])
@@ -1804,7 +1804,7 @@ class TestProjectDirectoryKeysetSqlAgainstDdl(unittest.TestCase):
         sql = PROJECT_LIST_SQL_VARIANTS[(True, False, after is not None, True)]
         params = ('active',) + (tuple(after) if after else ()) + (size,)
         rows = self.conn.execute(sql.replace('%s', '?'), params).fetchall()
-        return [dict(zip(PROJECT_LIST_COLUMNS, row)) for row in rows]
+        return [dict(zip(PROJECT_LIST_COLUMNS, row, strict=True)) for row in rows]
 
     def test_walking_pages_covers_every_row_exactly_once(self):
         seen: list[str] = []
@@ -1827,7 +1827,7 @@ class TestProjectDirectoryKeysetSqlAgainstDdl(unittest.TestCase):
 
     def _unpaged(self, sql):
         rows = self.conn.execute(sql.replace('%s', '?'), ('active',)).fetchall()
-        return [dict(zip(PROJECT_LIST_COLUMNS, row)) for row in rows]
+        return [dict(zip(PROJECT_LIST_COLUMNS, row, strict=True)) for row in rows]
 
     def test_unbounded_statement_is_the_pre_w3_statement_and_still_reads(self):
         # 정렬만 따로 얼려 비교한다 — 나머지 절은 현재 문장에서 그대로 가져오므로

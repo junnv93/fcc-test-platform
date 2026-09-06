@@ -529,11 +529,11 @@ class TestProjectStatusSqlAgainstDdl(unittest.TestCase):
         try:
             sql = PROJECT_LIST_SQL_BY_STATUS.replace('%s', '?')
             active = [
-                dict(zip(PROJECT_LIST_COLUMNS, r)) for r in conn.execute(sql, ('active',))
+                dict(zip(PROJECT_LIST_COLUMNS, r, strict=True)) for r in conn.execute(sql, ('active',))
             ]
             self.assertEqual({r['project_id'] for r in active}, {'p-a', 'p-b'})
             completed = [
-                dict(zip(PROJECT_LIST_COLUMNS, r))
+                dict(zip(PROJECT_LIST_COLUMNS, r, strict=True))
                 for r in conn.execute(sql, ('completed',))
             ]
             self.assertEqual({r['project_id'] for r in completed}, {'p-c'})
@@ -735,7 +735,7 @@ class TestSamplesSqlMatchesDdl(unittest.TestCase):
             sql = PROJECT_SAMPLES_SQL.replace('%s', '?')
             cur = conn.execute(sql, ('p1',))
             row = cur.fetchone()
-            mapped = dict(zip(PROJECT_SAMPLES_COLUMNS, row))
+            mapped = dict(zip(PROJECT_SAMPLES_COLUMNS, row, strict=True))
             self.assertEqual(mapped['sample_id'], 's1')
             self.assertEqual(mapped['sample_code'], 'SC-1')
             self.assertEqual(mapped['serial_number'], 'SN-1')
@@ -786,7 +786,7 @@ class TestSamplesSqlMatchesDdl(unittest.TestCase):
             )
             sql = PROJECT_INTAKES_SQL.replace('%s', '?')
             rows = [
-                dict(zip(PROJECT_INTAKES_COLUMNS, r))
+                dict(zip(PROJECT_INTAKES_COLUMNS, r, strict=True))
                 for r in conn.execute(sql, ('p1',)).fetchall()
             ]
             # Exactly one row per sample (latest only), ordered by sample_id.
@@ -885,15 +885,33 @@ class TestSamplesSqlMatchesDdl(unittest.TestCase):
         # sealed without a live PostgreSQL.
         from fcc_test_platform.application.central_project_read_adapter import (
             PostgresCentralProjectReadAdapter,
+            PROJECT_DETAIL_COLUMNS,
             PROJECT_DETAIL_SQL,
             PROJECT_INTAKES_SQL,
             PROJECT_SAMPLES_SQL,
         )
 
-        detail_row = (
-            'p1', 'SM-S921U', 'SM-S921U', None, None, None, 'active',
-            None, None, None, None, None, '2026-06-23T00:00:00Z',
+        # ⚠️ 2026-09-06 — 이 대역 행은 **13개 값**을 갖고 있었고
+        #    ``PROJECT_DETAIL_COLUMNS`` 는 12개다. ``dict(zip(...))`` 가 남는 하나를
+        #    조용히 버려서 한 칸씩 밀려 있었다: ``manufacturer`` 에 ``'active'`` 가
+        #    실리고 ``status`` 와 ``created_at`` 은 ``None`` 이 됐으며
+        #    ``'2026-06-23T00:00:00Z'`` 는 사라졌다. 이 시험이 그 필드들을 단언하지
+        #    않아 **초록이었다** — 어댑터 주석 106줄이 경고한 형태가 대역 안에 있었다.
+        #
+        #    이제 손으로 위치를 세지 않는다. 컬럼 튜플에서 파생하므로 커널이 필드를
+        #    더하거나 빼도 대역이 함께 움직이고, 어긋날 방법이 없다.
+        _DETAIL_VALUES = {
+            'project_id': 'p1',
+            'project_code': 'SM-S921U',
+            'model_name': 'SM-S921U',
+            'status': 'active',
+            'created_at': '2026-06-23T00:00:00Z',
+        }
+        assert set(_DETAIL_VALUES) <= set(PROJECT_DETAIL_COLUMNS), (
+            '대역이 컬럼 튜플에 없는 키를 채우려 한다: '
+            f'{sorted(set(_DETAIL_VALUES) - set(PROJECT_DETAIL_COLUMNS))}'
         )
+        detail_row = tuple(_DETAIL_VALUES.get(c) for c in PROJECT_DETAIL_COLUMNS)
         # sample_id, sample_code, serial_number, model_id, sample_number, ...
         sample_rows = [
             ('s1', 'SC-1', None, None, '#1', None, None, None, None, None,

@@ -199,7 +199,7 @@ class TestCentralReadService(unittest.TestCase):
             ).fetchall()
         finally:
             db.close()
-        payload = [dict(zip(REPORT_SESSION_COLUMNS, row)) for row in rows]
+        payload = [dict(zip(REPORT_SESSION_COLUMNS, row, strict=True)) for row in rows]
         self.assertEqual(len(payload), 1)
         self.assertEqual(payload[0]['provider_session_id'], '42')
         self.assertEqual(payload[0]['node_base_url'], 'http://node-a:8000')

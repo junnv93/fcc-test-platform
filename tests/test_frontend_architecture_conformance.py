@@ -4791,7 +4791,6 @@ class TestAxeScanCoversEveryRegisteredRoute(unittest.TestCase):
         15초 타임아웃이라, 원인을 찾기 전에 대기를 지우고 싶어진다 — 그 유혹을
         구조적으로 없애려면 두 선언이 같다는 것을 여기서 봉인해야 한다.
         """
-        app_src = _app_route_source()
         sentinels = _a11y_route_sentinels(_a11y_spec_source())
         modules = _app_route_modules()
         missing: list[str] = []

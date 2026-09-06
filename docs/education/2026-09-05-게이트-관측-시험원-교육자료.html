@@ -340,7 +340,7 @@
   <div class="kicker">
     <span>fcc-test-platform</span>
     <span>PR #82 · 게이트 관측</span>
-    <span>2026-09-05</span>
+    <span>2026-09-06 착지</span>
   </div>
   <h1 class="hd">초록인데 아무것도 검사하지 않았다</h1>
   <p class="standfirst">
@@ -883,25 +883,102 @@ GateEvidence: import-linter 게이트가 돌았다 — Analyzed 213 files, 927 d
 
   <h3>이번에 통과한 최종 상태</h3>
 
-<pre class="mono wide">CI (run 33996903367 · 2026-09-06 최신 main 위)
-  3076 passed, 30 skipped, 30 warnings
+<pre class="mono wide">main 에 착지함 — df7bae3 (run 33997725196)
+  3107 passed, 30 skipped, 828 subtests
   이 게이트의 skip: 0건
 
   GateEvidence: mypy 게이트가 돌았다 — 54 source files
   GateEvidence: import-linter 게이트가 돌았다 — Analyzed 259 files, 1299 dependencies · KEPT 3회
 
 로컬 (lane_check)
-  3079 passed, 27 skipped
+  3110 passed, 27 skipped
   선언된 실패 0개 / 관측된 실패 0개  →  일치</pre>
+
+  <h3>그런데 이 숫자들도 「돌았다」의 증거는 아니다</h3>
+
+  <p>
+    통과 수가 늘고 건너뜀이 줄었다는 것은 <strong>간접</strong> 증거다.
+    「원래 지킬 것이 없었던 것 아닌가」라는 반론이 남는다. 그 반론을 닫는 방법은
+    하나뿐이다 — <strong>위반을 넣어 보는 것</strong>(03절에서 쓴 그 방법이다).
+  </p>
+
+  <p>
+    그래서 같은 위반을 <strong>착지 전 <code>main</code></strong> 과
+    <strong>착지 후 <code>main</code></strong> 에 각각 넣었다. 조건은 동일하다 —
+    같은 파일 맨 위에 <code>import psycopg</code> 한 줄, 형제 저장소 폴더 없음.
+  </p>
+
+  <div class="tablebox wide">
+    <table>
+      <thead>
+        <tr><th><code>main</code></th><th>같은 위반을 넣었을 때</th><th>판정</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">9aed9cc<br><small>착지 전</small></td>
+          <td class="mono">10 passed, 1 skipped · exit 0</td>
+          <td class="n-bad">위반이 있는데 <strong>초록</strong></td>
+        </tr>
+        <tr>
+          <td class="mono">df7bae3<br><small>착지 후</small></td>
+          <td class="mono">1 failed — <code>3 != 2 KEPT</code></td>
+          <td class="n-good">위반을 <strong>지목하고 멈춘다</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
   <div class="note">
     <p>
-      <strong>참고 — 이 시험 하나는 간헐적으로 빨개진다.</strong>
+      <strong>이 두 줄이 이 문서 전체에서 가장 강한 증거다.</strong>
+      건너뜀 개수는 「없던 것」을 세는 일이라 반론의 여지가 있지만, 위반을 넣었을 때의
+      반응은 그렇지 않다. 앞으로 「이 검사가 정말 지키고 있나」를 물을 때는
+      숫자를 세기 전에 <strong>이것부터</strong> 해 보면 된다.
+    </p>
+    <p style="margin-bottom:0">
+      <small>
+        착지 전 수치는 형제 세션 <code>fcc-delivery-final-99</code> 가 병합 직전에 측정했다.
+        착지 후 수치는 병합 직후 같은 조건에서 측정했다. 두 주입 모두 되돌렸다.
+      </small>
+    </p>
+  </div>
+
+  <div class="note">
+    <p>
+      <strong>참고 — 이 시험 하나는 이따금 빨개진다.</strong>
       <code>test_token_revocation_custody.py</code> 의 시험들이 초 단위 실제 시계를
-      사용해서, 기계가 바쁘면 시간 경계를 넘어 판정이 뒤집힌다.
-      두 세션이 합쳐 <strong>네 번</strong> 관측했고, 매번 <em>실패하는 시험 이름이 달랐다</em>.
-      단독으로 다시 돌리면 네 번 다 통과했다. 이 시험이 빨개지면 코드 변경 탓이 아닐
-      수 있으니, <strong>단독 재실행부터</strong> 해 보면 된다. 근본 수정은 담당자 미정이다.
+      사용해서, <strong>초 경계를 어느 지점에서 넘느냐</strong>에 따라 판정이 뒤집힌다.
+      ⚠️ <strong>기계가 바빠서가 아니다</strong> — 부하를 걸어 반복하는 방식으로는
+      재현되지 않는다(12중 병렬 24회 재현 0건). 흔들리는 것은 실행 «속도»가 아니라
+      시계가 넘어가는 «자리»다.
+      이 시험이 빨개지면 코드 변경 탓이 아닐 수 있으니 <strong>단독 재실행부터</strong>
+      해 보면 된다 — 다만 <em>재실행해서 통과했다</em>를 「기계가 바빴다」의 근거로
+      읽지는 마라. 그것이 이 문서가 다루는 「재는 축이 재려는 축이 아니다」의 한 사례다.
+    </p>
+    <p>
+      <strong>그리고 아무 이름이나 나오는 것이 아니다 — 이름은 «둘»뿐이다.</strong>
+      기록에 이름이 남은 관측은 <strong>5회</strong>(4개 세션)인데, 나온 이름은
+      <code>test_a_rotation_flood_…</code> 와 <code>test_the_attackers_own_rotation_keeps_working</code>
+      둘뿐이다. 그리고 원인 분석이 초 경계 지점을 매개변수로 훑었을 때 빨개진 이름도
+      <strong>정확히 그 둘</strong>이었다(지점 k=5 · k=40 에서 하나씩).
+    </p>
+    <div class="note">
+      <p style="margin-bottom:0">
+        <strong>이 일치가 왜 중요한가.</strong> 설명이 관측을 «나중에 덮은» 것이 아니라
+        <strong>모형이 이름을 맞혔다.</strong> 그래서 이 결함은 무작위가 아니라
+        <strong>알아볼 수 있는 것</strong>이다 — 저 두 이름 중 하나가 나오면
+        시계 문제로 보면 되고, 다른 이름이면 다른 원인을 찾아야 한다.
+        06절이 말한 「간접 증거와 직접 증거」가 여기서도 같은 형태로 갈린다.
+      </p>
+    </div>
+    <p style="margin-bottom:0">
+      <small>
+        고칠 대상은 <strong>프로덕션이 아니라 시험 파일 둘</strong>이다 — 이 레인과
+        모노레포에 사본이 하나씩 있고(1,775줄 / 1,743줄, 파일 내용은 다르다) 양쪽
+        168행이 똑같이 실시계를 쓴다. 두 사본은 <em>같은</em> 프로덕션 코드를 잡으므로
+        프로덕션을 고쳐도 없어지지 않는다. 아직 착수한 웨이브가 없다.
+        원인·처방 분석: <code>.claude/evaluations/2026-09-06-token-custody-wall-clock-flake.md</code>
+      </small>
     </p>
   </div>
 </section>
@@ -1007,12 +1084,17 @@ tests/test_tool_entry_points_axis.py 를 착지시켰다. 이 세션이 경고�
     ⚠️ editable 설치로 확인하면 의미가 없다. 그 함정이 정확히 이 축이다.
   · 모노레포에서 scripts/ 사본을 지울 때 런북 16곳이 새 명령 이름을 가리키는가
 
-## 할 일 ④  간헐 실패의 소유자를 정하라
+## 할 일 ④  실시계 결함 — 원인은 밝혀졌다. 남은 것은 «전용 웨이브»다
 tests/test_token_revocation_custody.py 가 epoch_clock=lambda: int(time.time()) 로 초 단위
-실시계를 쓴다. 부하가 걸리면 시간 경계를 넘어 판정이 뒤집힌다. 관측 4회이고 매번
-«실패하는 시험 이름이 다르다» — 단일 시험이 아니라 파일 전체가 그 시계에 매여 있다는 뜻.
-네 번 다 단독 재실행은 통과했다. 고정 시계로 바꾸면 그 시험이 무엇을 보장하는지가
-달라지므로 함부로 고치지 말고, 소유자를 정한 뒤 판정하라.
+실시계를 쓴다. ⚠️ **부하 때문이 아니다** — 12중 병렬 24회로 재현 0건이고, 초 경계를
+넘는 «지점»을 매개변수로 훑으면 k=5·k=40 에서 서로 다른 시험 하나씩이 결정적으로
+빨개진다. 야생 관측에서 나온 이름도 정확히 그 둘이라, 모형이 이름을 맞힌 상태다.
+분석·처방 후보는 평가서에 있다(2026-09-06 착지):
+    .claude/evaluations/2026-09-06-token-custody-wall-clock-flake.md
+⚠️ 고정 시계로 바꾸면 그 시험이 «무엇을 보장하는지»가 달라진다 — 함부로 고치지 마라.
+그리고 **같은 결함이 모노레포의 시험 사본에도 있다**(양쪽 168행 모두 실시계, 파일은
+서로 다르다: 1775줄 vs 1743줄). 한쪽만 고치면 다른 쪽이 남으므로 두 레포를 함께 잡는
+웨이브로 다뤄라.
 
 ## 이 세션에서 배운 것 — 판정할 때 쓸 것
 (가) 「0건」을 받으면 도구를 의심하기 전에 «말뭉치가 답을 담고 있는지» 물어라.
