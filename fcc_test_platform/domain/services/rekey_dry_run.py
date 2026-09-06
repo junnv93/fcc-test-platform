@@ -17,7 +17,10 @@ local SQLite / central PG **연결·실행은 하지 않는다** (Phase D.1+ 의
 이 ADR-0005 `DuplicateConditionPolicy.REJECT` 로 검토. value-based new_hash 가 같으면
 condition values 가 동일하다는 뜻 (exact-duplicate condition = 데이터 오류 후보).
 
-purity: domain.services.measurement_history (hash SSOT) + stdlib only.
+purity: fcc_test_kernel.domain.services.measurement_history (hash SSOT) + stdlib only.
+⚠️ 그 SSOT 는 2026-09-07 에 커널로 상류 수리됐다 — 이 배포판과 모노레포 GUI 가
+   둘 다 쓰는 공유 서비스인데 한쪽에만 있었다. 사본을 두면 두 자리가 갈리는 날
+   «같은 조건이 다른 해시»를 낳고, 그것은 저장된 해시를 오염시킨다.
 """
 from __future__ import annotations
 
@@ -25,7 +28,7 @@ import hashlib
 from dataclasses import dataclass, field
 from typing import Mapping, Optional, Sequence, Tuple
 
-from fcc_test_platform.domain.services.measurement_history import (
+from fcc_test_kernel.domain.services.measurement_history import (
     ConditionFieldSet,
     compute_live_hash_for_field_set,
     compute_stable_hash_for_field_set,
