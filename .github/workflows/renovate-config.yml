@@ -1,0 +1,64 @@
+# 판올림 봇 설정의 **두 번째 눈** (2026-09-06).
+#
+# `tests/test_renovate_covers_every_lane_pin.py` 는 「이 트리의 핀이 customManager
+# 정규식에 잡히는가」를 본다. 그 검사는 Renovate 의 정규식 의미를 **Python 으로
+# 재구현**해서 보므로, 설정이 renovate 자신에게 **유효한가**는 묻지 못한다.
+#
+# ⚠️ 그 축이 왜 필요한가: Renovate 는 모르는 키가 하나라도 있으면 **설정 전체를
+#    거부한다.** 그러면 봇은 붙어 있는데 아무 PR 도 만들지 않고, 그것은
+#    「갱신할 것이 없다」와 화면에서 구별되지 않는다. 이 저장소가 여러 번 이름
+#    붙인 «공허함은 초록과 같은 모양이다» 형태다.
+#
+# ⚠️ **인자를 주지 않는다.** `renovate-config-validator renovate.json` 처럼 파일명을
+#    주면 그 파일을 **전역(global) 설정**으로 검증한다 — 저장소 설정과 허용 키가
+#    다른 «틀린 축»이다. 2026-09-06 실측:
+#
+#        $ renovate-config-validator renovate.json
+#         INFO: Validating renovate.json as global config     ← 틀린 축
+#        $ renovate-config-validator
+#         INFO: Validating renovate.json                      ← 저장소 설정
+#
+#    인자 없이 부르면 검증기가 저장소 설정 파일을 스스로 찾는다. 그 형태를
+#    `tests/test_renovate_config_is_validated_as_a_repository_config.py` 가 지킨다.
+#
+# ⚠️ 판을 고정한다. `renovate@latest` 는 어느 날 스키마가 바뀌면 이 게이트가
+#    **우리 커밋과 무관하게** 빨개진다 — 그러면 신호가 소음이 되고 사람은 게이트를
+#    끈다. 올리는 것은 사람의 판단이어야 한다.
+name: renovate-config
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'renovate.json'
+      - '.github/workflows/renovate-config.yml'
+  pull_request:
+    paths:
+      - 'renovate.json'
+      - '.github/workflows/renovate-config.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # push 는 커밋마다 그룹을 달리한다 — 대기 중인 런은 `cancel-in-progress: false`
+  # 로 지켜지지 않으므로, 그룹을 갈라야 모든 커밋이 자기 검증 기록을 갖는다.
+  # 근거와 실측: `.claude/evaluations/2026-09-06-ci-verification-record-per-commit.md`
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 봇 자신의 검증기로 설정을 읽힌다
+        # ⚠️ 인자 없음 — 저장소 설정 축으로 검증하게 한다(위 주석 참조).
+        run: npx --yes --package renovate@42.99.0 renovate-config-validator
