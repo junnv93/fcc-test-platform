@@ -270,7 +270,7 @@ class PostgresCentralClaimWriteAdapter:
         rows = list(cursor.fetchall())
         if not rows:
             return None
-        return dict(zip(ACTIVE_CLAIM_COLUMNS, rows[0]))
+        return dict(zip(ACTIVE_CLAIM_COLUMNS, rows[0], strict=True))
 
 
 def _set_serializable_best_effort(cursor) -> None:

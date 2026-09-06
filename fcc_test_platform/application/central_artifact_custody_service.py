@@ -241,7 +241,7 @@ class CentralArtifactCustodyService:
             'newest_observed_at': rollup.newest_observed_at,
             'sessions': [
                 _session_summary(row, snapshot)
-                for row, snapshot in zip(rows, snapshots)
+                for row, snapshot in zip(rows, snapshots, strict=True)
             ],
         }
 

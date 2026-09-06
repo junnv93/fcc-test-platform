@@ -504,7 +504,22 @@ class PostgresCentralResultSelectionAdapter(CentralResultSelectionPort):
                     # SELECT aliases in the effective query are stable; candidate
                     # rows are normalized below when a DB wrapper omits metadata.
                     columns = columns or SELECTION_ATTEMPT_COLUMNS
-                return [dict(zip(columns, row)) for row in rows]
+                # ⚠️ ``strict=False`` 는 여기서 **의도**다 (B905 는 명시적 선택을
+                #    요구하지 ``True`` 를 요구하지 않는다).
+                #
+                #    짧은 행이 오면 이 zip 이 잘라 «키가 모자란» dict 를 만들고,
+                #    ``read_selected_source`` 가 그 키 집합을 보고
+                #    *"selected source row does not satisfy the full
+                #    event-attempt-session shape"* 라는 **도메인 메시지**로 거절한다
+                #    (위 ``set(source) != set(SELECTED_SOURCE_COLUMNS)`` 가드).
+                #    즉 자름은 사고가 아니라 그 진단의 부품이다.
+                #
+                #    ``strict=True`` 로 바꾸면 그 가드보다 **먼저** ValueError 가 나고
+                #    호출자는 *"central selection read failed: zip() argument 2 is
+                #    shorter than argument 1"* 만 본다 — 실측 2026-09-06,
+                #    ``test_selected_source_rejects_legacy_four_column_event_only_rows``
+                #    가 그 퇴화를 잡았다.
+                return [dict(zip(columns, row, strict=False)) for row in rows]
             finally:
                 cursor.close()
         except CentralResultSelectionError:
@@ -524,7 +539,7 @@ class PostgresCentralResultSelectionAdapter(CentralResultSelectionPort):
     def _fetch_one(cursor, sql: str, params: tuple, columns: tuple[str, ...]) -> Optional[dict]:
         cursor.execute(sql, params)
         rows = list(cursor.fetchall())
-        return dict(zip(columns, rows[0])) if rows else None
+        return dict(zip(columns, rows[0], strict=True)) if rows else None
 
     @staticmethod
     def _resolve_provider_id(cursor, provider_id: str):

@@ -379,7 +379,7 @@ class PostgresCentralProjectReferenceAdapter(CentralProjectReferencePort):
     def _rows(cursor) -> list[dict]:
         descriptions = getattr(cursor, 'description', None) or ()
         columns = tuple(getattr(item, 'name', item[0]) for item in descriptions)
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        return [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
 
     @classmethod
     def _fetch_one(cls, cursor, sql: str, params: tuple,
@@ -401,7 +401,7 @@ class PostgresCentralProjectReferenceAdapter(CentralProjectReferencePort):
         descriptions = getattr(cursor, 'description', None) or ()
         names = tuple(getattr(item, 'name', item[0]) for item in descriptions)
         names = names or columns or _REFERENCE_COLUMNS
-        return [dict(zip(names, row)) for row in rows]
+        return [dict(zip(names, row, strict=True)) for row in rows]
 
     @staticmethod
     def _public(row: Mapping) -> dict:

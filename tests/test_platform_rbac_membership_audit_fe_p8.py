@@ -760,7 +760,7 @@ def _read_claim_rows(db_path: str) -> list[dict]:
             'FROM claim_events ORDER BY occurred_at'
         )
         cols = ('claim_id', 'action', 'operator', 'condition_hash')
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
 
 
 def _read_audit_rows(db_path: str) -> list[dict]:
@@ -769,7 +769,7 @@ def _read_audit_rows(db_path: str) -> list[dict]:
         cur = conn.execute(
             f'SELECT {", ".join(cols)} FROM audit_events ORDER BY occurred_at'
         )
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
 
 
 # ── 5. Membership write service ────────────────────────────────────────────
@@ -951,14 +951,14 @@ def _read_memberships(db_path: str) -> list[dict]:
             'SELECT project_id, user_id, role_key FROM project_membership'
         )
         cols = ('project_id', 'user_id', 'role_key')
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
 
 
 def _read_users(db_path: str) -> list[dict]:
     with SqliteConnectionContext(db_path) as conn:
         cur = conn.execute('SELECT id, issuer, subject, enabled FROM users ORDER BY id')
         cols = ('id', 'issuer', 'subject', 'enabled')
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
 
 
 # ── 6. G1 no-op audit grain policy structural guard ───────────────────────

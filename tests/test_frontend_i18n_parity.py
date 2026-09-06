@@ -2097,7 +2097,12 @@ class TestNoInlineRenderedEnglishLiteral(unittest.TestCase):
             rel = path.relative_to(SRC_DIR).as_posix()
             src = _strip_ts_comments(path.read_text(encoding="utf-8"))
 
-            def record(line_idx: int, snippet: str) -> None:
+            # ⚠️ ``rel`` 을 기본 인자로 «지금» 묶는다. 이 클로저는 오늘 자기 반복
+            #    안에서만 동기 호출되므로 늦은 바인딩 사고가 나지 않지만, 그 안전은
+            #    「호출 지점이 반복 밖으로 나가지 않는다」에 얹혀 있다 — 나중에
+            #    누가 이 함수를 목록에 모았다가 뒤에서 부르면 **전부 마지막 파일의
+            #    rel** 을 쓴다. 기본 인자 바인딩이 그 가능성을 구조적으로 없앤다.
+            def record(line_idx: int, snippet: str, rel: str = rel) -> None:
                 if f"{rel}:{snippet}" in RENDERED_ENGLISH_ALLOWLIST:
                     return
                 offenders.append(f"{rel}:{line_idx}: {snippet}")

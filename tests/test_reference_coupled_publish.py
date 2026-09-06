@@ -185,7 +185,7 @@ class TestCoupledGroupPublishIsAtomicAtTheServiceBoundary(unittest.TestCase):
         write = _FakeWrite()
         service = CentralReferenceService(read, write)
 
-        with self.assertRaises(ReferenceCoupledPublishError) as caught:
+        with self.assertRaises(ReferenceCoupledPublishError):
             service.publish(_PROVIDER, 'rev-a', published_by='tester')
 
         self.assertEqual([], write.single_calls, 'a half publish reached the store')

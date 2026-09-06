@@ -360,7 +360,7 @@ class PostgresCentralChamberWriteAdapter:
             rows = list(cursor.fetchall())
             if not rows:  # pragma: no cover — an upsert always returns its row
                 return {column: record.get(column) for column in CHAMBER_NODE_WRITE_COLUMNS}
-            return dict(zip(_NODE_ENVELOPE_COLUMNS, rows[0]))
+            return dict(zip(_NODE_ENVELOPE_COLUMNS, rows[0], strict=True))
 
         # ⚠️ 입력을 되울리지 않고 **DB 가 답한 행**을 돌려준다. 등록은 승인 칸을 쓰지
         # 못하므로(부재가 곧 보호) 입력에는 그 값이 아예 없고, 되울리면 저장된 판정이
@@ -420,7 +420,7 @@ class PostgresCentralChamberWriteAdapter:
                     f'unknown chamber_id: {chamber_id!r} — register the chamber '
                     'in the central registry before configuring its storage root'
                 )
-            return dict(zip(_NODE_ENVELOPE_COLUMNS, rows[0]))
+            return dict(zip(_NODE_ENVELOPE_COLUMNS, rows[0], strict=True))
 
         return self._in_transaction(_txn)
 
@@ -448,7 +448,7 @@ class PostgresCentralChamberWriteAdapter:
                     f'unknown chamber_id: {chamber_id!r} — register the chamber '
                     'in the central registry before ruling on web sessions'
                 )
-            return dict(zip(_NODE_ENVELOPE_COLUMNS, rows[0]))
+            return dict(zip(_NODE_ENVELOPE_COLUMNS, rows[0], strict=True))
 
         return self._in_transaction(_txn)
 

@@ -112,14 +112,14 @@ _CREATED_AT_SELECT: tuple[tuple[str, str], ...] = (
 
 _LIST_SELECT_PAIRS: tuple[tuple[str, str], ...] = (
     _IDENTITY_SELECT
-    + tuple(zip(EDITABLE_PROJECT_META_FIELDS, _META_SELECT_ITEMS))
+    + tuple(zip(EDITABLE_PROJECT_META_FIELDS, _META_SELECT_ITEMS, strict=True))
     + _STATUS_SELECT
     + (('sample_count', _SAMPLE_COUNT_SELECT),)
     + _CREATED_AT_SELECT
 )
 _DETAIL_SELECT_PAIRS: tuple[tuple[str, str], ...] = (
     _IDENTITY_SELECT
-    + tuple(zip(EDITABLE_PROJECT_META_FIELDS, _META_SELECT_ITEMS))
+    + tuple(zip(EDITABLE_PROJECT_META_FIELDS, _META_SELECT_ITEMS, strict=True))
     + _STATUS_SELECT
     + _CREATED_AT_SELECT
 )
@@ -545,4 +545,4 @@ class PostgresCentralProjectReadAdapter:
             close = getattr(connection, 'close', None)
             if callable(close):
                 close()
-        return [dict(zip(columns, row)) for row in rows]
+        return [dict(zip(columns, row, strict=True)) for row in rows]

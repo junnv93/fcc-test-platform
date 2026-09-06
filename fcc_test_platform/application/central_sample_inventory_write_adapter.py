@@ -453,9 +453,9 @@ class PostgresCentralSampleInventoryWriteAdapter:
             return dict(row)
         description = getattr(cursor, 'description', None)
         if description:
-            return dict(zip((str(item[0]) for item in description), row))
+            return dict(zip((str(item[0]) for item in description), row, strict=True))
         if columns:
-            return dict(zip(columns, row))
+            return dict(zip(columns, row, strict=True))
         return row
 
     def _open(self):
