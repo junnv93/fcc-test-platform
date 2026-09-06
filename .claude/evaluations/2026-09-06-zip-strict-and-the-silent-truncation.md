@@ -175,3 +175,59 @@ zip 이 짧은 쪽에 맞춰 **조용히 자른다**. 그 필드는 dict 에서 
 
 `ruff --isolated --select B905,B023,B017,B034,F841` **0건**.
 lane_check exit 0, 3,138 passed / 27 skipped / 828 subtests — ① 이후와 동일.
+
+---
+
+# ④ 게이트 — 서드파티 없이 ruff 와 «같은 집합» (2026-09-06)
+
+`tests/test_silent_defaults_conformance.py`. 셋을 봉인한다: `zip()` 의 암묵적 자름 ·
+`assertRaises(Exception)` 의 암묵적 「무엇이든 통과」 · `re.split(p, s, 1)` 의 위치 인자.
+
+## 경계 동등성 — 좌표 집합으로 쟀다
+
+기준 트리 `445bb62`(처분 전)에서:
+
+| | ruff 0.16.6 | 이 검사기 |
+|---|---:|---:|
+| B905 | 53 | 53 |
+| B017 | 2 | 2 |
+| B034 | 2 | 2 |
+
+⚠️ **수가 아니라 좌표 집합으로 대조했다** — 수 일치는 우연일 수 있다.
+`comm` 결과 **공통 57건, 어느 쪽에만 있는 것 0건.** 완전 동등.
+
+그 동등을 얻으려면 **ruff 의 B017 경계를 그대로 베껴야 했다.** 순진하게 짜면
+`test_reference_coupled_publish.py` 434·520 줄을 잡는데, 그 둘은 `as caught` 로 받아
+*"무엇을 던지든 'forbidden' 이 새면 안 된다"* 를 단언하는 **의도적 광범위 포착**이고
+ruff 도 통과시킨다. 그것까지 빨갛게 만드는 게이트는 다음 사람이 끈다.
+
+## 주입 — 실제 트리에 넣어 셋 다 red
+
+`scripts/lane_check.py` 에 넣고 좌표까지 확인했다.
+
+    zip(names, row)                     → scripts/lane_check.py:83: zip() without an explicit strict=
+    re.split(r'[ab]', 'x', 1)           → scripts/lane_check.py:83: re.split() passes maxsplit/count/flags positionally
+    with self.assertRaises(Exception):  → scripts/lane_check.py:84: assertRaises(Exception) without inspecting it
+
+셋 다 복원 뒤 `git diff --stat` 0줄을 확인했다.
+
+## 봉인하지 «않는» 것 — 명문화
+
+같은 웨이브가 처분한 **B023**(루프 변수 클로저)와 **F841**(잰 뒤 안 보는 지역 변수)은
+이 게이트에 없다. 둘 다 파이썬 스코프 분석을 요구하고, 없이 근사하면 거짓 양성이 난다.
+**그 둘은 오늘 처분됐을 뿐 재발이 막히지 않는다.** 모듈 docstring 에 같은 문장을 적어,
+다음 사람이 이 파일을 「①단계 전부를 지킨다」로 읽지 않게 했다.
+
+## 수치
+
+lane_check exit 0, **3,149 passed**(3,138 + 게이트 11) / 27 skipped / 828 subtests.
+skipped 는 웨이브 내내 27 로 움직이지 않았다. 경량 CI 레인
+(`-m "invariant and not hardware and not gui and not bench"`) 수집 11개 —
+파일명의 `conformance` 가 conftest 의 자동 부착을 태운다.
+
+## 남은 것 (이 PR 밖)
+
+③단계 자동수정 가능분 **79건**(F401 68 · F541 7 · B010 3 · B009 1 · B013 1)은
+처분하지 않았다. 성격이 다르고(기계적 정리) 디렉터리 단위로 쪼개 각 묶음이 독립적으로
+lane_check 를 통과해야 하며, F401 은 `__init__.py` 의 re-export 를 지울 수 있어
+그 파일을 건드리면 안 된다. 별도 웨이브다.
