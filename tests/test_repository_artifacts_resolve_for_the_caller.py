@@ -23,7 +23,7 @@ import sys
 import tempfile
 import unittest
 
-from fcc_test_platform.repository_anchor import repository_anchor
+from fcc_test_platform.repository_anchor import BOX_MARKERS, repository_anchor
 
 def _declared_package_files() -> list[pathlib.Path]:
     """선언된 패키지 아래의 모든 파이썬 파일 — 루트마다 «비지 않았음»을 함께 요구한다."""
@@ -128,8 +128,8 @@ class TestTheAnchorFollowsTheCallerNotTheModule(unittest.TestCase):
         """저장소 밖이면 옛 동작으로 돌아간다 — 이 변경은 «틀렸던 자리만» 움직인다."""
         with tempfile.TemporaryDirectory() as raw:
             bare = pathlib.Path(raw).resolve()
-            if any((c / 'pyproject.toml').is_file() for c in (bare, *bare.parents)):
-                self.skipTest('임시 디렉터리의 조상이 pyproject.toml 을 갖는다 — 이 축을 못 잰다')
+            if _holds_a_box_marker(bare):
+                self.skipTest(f'임시 디렉터리의 조상이 {BOX_MARKERS} 중 하나를 갖는다 — 이 축을 못 잰다')
             previous = os.getcwd()
             try:
                 os.chdir(bare)
@@ -174,13 +174,29 @@ def _probe(cwd: pathlib.Path) -> dict[str, str]:
     return json.loads(result.stdout)
 
 
+def _holds_a_box_marker(where: pathlib.Path) -> bool:
+    """``where`` 나 그 조상이 상자 표식을 갖는가 — **목록은 선언에서 파생한다.**
+
+    ⚠️ 하드코딩하면 표식이 늘어난 날 이 검사가 **조용히 틀린다.** 실측 2026-09-06:
+    `repository_anchor` 의 첫 판은 ``pyproject.toml`` 하나만 인정했는데, 컨테이너
+    이미지가 그 파일을 의도적으로 지우는 바람에 마이그레이션 러너가 죽었고
+    ``.extraction-layout.json`` 이 두 번째 표식으로 추가됐다(main `f7f01d2`).
+    그때 이 파일은 여전히 ``pyproject.toml`` 만 묻고 있었다 — 즉 「저장소 밖」이라고
+    부른 자리가 실제로는 «상자 안»일 수 있었고, 그 오판은 red 가 아니라 **조용한
+    거짓 측정**으로 나타난다. 세 번째 표식이 생겨도 여기는 안 고쳐도 되게 둔다.
+    """
+    return any(
+        (candidate / marker).is_file()
+        for candidate in (where, *where.parents)
+        for marker in BOX_MARKERS
+    )
+
+
 def _bare_directory(stack: contextlib.ExitStack) -> pathlib.Path | None:
-    """어떤 조상도 ``pyproject.toml`` 을 갖지 않는 임시 디렉터리, 없으면 ``None``."""
+    """어떤 조상도 상자 표식을 갖지 않는 임시 디렉터리, 없으면 ``None``."""
     raw = stack.enter_context(tempfile.TemporaryDirectory())
     bare = pathlib.Path(raw).resolve()
-    if any((c / 'pyproject.toml').is_file() for c in (bare, *bare.parents)):
-        return None
-    return bare
+    return None if _holds_a_box_marker(bare) else bare
 
 
 class TestToolsThatRequireARepositoryRefuseLoudlyOutsideOne(unittest.TestCase):
@@ -234,7 +250,7 @@ class TestToolsThatRequireARepositoryRefuseLoudlyOutsideOne(unittest.TestCase):
             bare = _bare_directory(stack)
             if bare is None:
                 raise unittest.SkipTest(
-                    '임시 디렉터리의 조상이 pyproject.toml 을 갖는다 — 이 축을 못 잰다'
+                    f'임시 디렉터리의 조상이 {BOX_MARKERS} 중 하나를 갖는다 — 이 축을 못 잰다'
                 )
             cls.outside = _probe(bare)
         cls.inside = _probe(pathlib.Path(__file__).resolve().parents[1])
