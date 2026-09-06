@@ -2,7 +2,7 @@
   "task": "work-claims-ledger-20260906",
   "branch": "chore/work-claims-ledger-20260906",
   "owner": "fcc-delivery-final-bf",
-  "status": "active",
+  "status": "merged",
   "base": "origin/main@39f3f0c",
   "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/b63bb2c9-57e1-4970-a8ee-1337511b3ecf/scratchpad/wt-claims",
   "scope": [
@@ -11,5 +11,5 @@
   ],
   "shared_outputs": [],
   "conflicts_with": [],
-  "sequencing": "githooks/pre-commit 이 요구하는 장부가 디렉터리째 부재해 세션들이 --force 로 우회해 왔다. 판정기(scripts/work_claim_status.py · work_claim_branch_guard.py)는 배송으로 왔는데 그것들이 SSOT 로 가리키는 .claude/work-claims/README.md 는 오지 않았다(실측: 이 저장소 이력에 없음, 모노레포에는 실재). 발명이 아니라 회수다. 코드 변경 0."
+  "sequencing": "githooks/pre-commit 이 요구하는 장부가 디렉터리째 부재해 세션들이 --force 로 우회해 왔다. 판정기(scripts/work_claim_status.py · work_claim_branch_guard.py)는 배송으로 왔는데 그것들이 SSOT 로 가리키는 .claude/work-claims/README.md 는 오지 않았다(실측: 이 저장소 이력에 없음, 모노레포에는 실재). 발명이 아니라 회수다. 코드 변경 0. 착지: PR #125 (c3a26f5). 장부가 자기 첫 항목을 규율대로 닫는다 — README 가 「끝나면 merged 로 바꾸고 unbind 한다」고 적었고, 그 규율을 세운 쪽이 먼저 지키지 않으면 다음 세션이 따를 이유가 없다."
 }
