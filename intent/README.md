@@ -50,9 +50,18 @@
 
 ### 경로 축 (서버가 막습니다)
 
-| # | 방아쇠 | 잡는 곳 | 초록이 되는 조건 |
+| # | 방아쇠 | 잡는 곳 | 오늘 상태 |
 |---|---|---|---|
-| **T1** | `migrations/` · `infra/` · 커널 핀 · 인증/RBAC · **게이트 자신**을 건드림 | `CODEOWNERS` + branch protection | **리드의 PR 승인** |
+| **T1** | `migrations/` · `infra/` · 커널 핀 · 인증/RBAC · **게이트 자신**을 건드림 | `CODEOWNERS` | 🔴 **아직 게이트가 아님 — 아래 참조** |
+
+> 🔴 **T1 은 오늘 «기록»이지 게이트가 아닙니다.** 실측: `require_code_owner_reviews: false`
+> — `CODEOWNERS` 는 리뷰어를 자동 요청할 뿐 막지 않습니다. 그리고 **켤 수도 없습니다**:
+> 협업자가 1명이고 GitHub 은 자기 PR 자기 승인을 금지하므로, 켜면 그 경로를
+> **아무도 고칠 수 없게** 됩니다. 이 규모에서 CODEOWNERS 는 **원리적으로 게이트가
+> 될 수 없습니다.**
+>
+> 진짜 강제는 **레인 시험**으로 갑니다 — `lane-check` 은 required 이고 관리자도
+> 우회하지 못합니다. 그 검사는 아직 없습니다(`plan.md` §6).
 
 `T1` 이 **게이트 자신**을 포함하는 이유: `githooks/` · `scripts/lane_check.py` ·
 `delivered_test_run_baseline.json` · `.github/workflows/` · `CLAUDE.md` · `.claude/`.
@@ -124,7 +133,8 @@ intent/
 | L1 Claude Code `PreToolUse` 훅 | 동료 PC | 승인된 `plan.md` 없이 코드 파일 편집 | 설정 삭제 |
 | L2 `githooks/pre-commit` | 커밋 시점 | intent 파일과 코드를 한 커밋에 섞는 것 | `--no-verify` |
 | L3 `tests/test_*.py` → `lane_check` | pre-push + CI | 형식 위반 · **방아쇠 T2~T5** | `FCC_SKIP_LANE_CHECK=1` (로컬만) |
-| L4 branch protection + `CODEOWNERS` | GitHub 서버 | 승인 없는 `main` 착지 · **방아쇠 T1** | **불가능** |
+| L4 branch protection | GitHub 서버 | 승인 없는 `main` 착지 · `lane-check` red | **불가능** |
+| — `CODEOWNERS` | (같은 자리) | 🔴 **오늘 아무것도 막지 않음** — 위 T1 주석 | 해당 없음 |
 
 > ⚠️ **L1~L3 은 실수 방지층이지 방어층이 아닙니다.** 셋 다 우회할 수 있습니다.
 > **실제로 강제되는 것은 L4 하나뿐**입니다 — 서버에서 돌고 로컬 설정으로 못 끕니다.

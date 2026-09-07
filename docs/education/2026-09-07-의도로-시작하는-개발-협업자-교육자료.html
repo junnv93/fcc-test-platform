@@ -254,7 +254,7 @@
           <td class="num">T1</td>
           <td><span class="mono">migrations/</span> · <span class="mono">infra/</span> · 커널 핀 · 인증/RBAC · <strong>게이트 자신</strong>을 건드림</td>
           <td class="bad">되돌릴 수 없다</td>
-          <td><strong>리드의 PR 승인</strong> (서버가 강제)</td>
+          <td class="warn">🔴 <strong>오늘은 강제 안 됨</strong> — 아래 참조</td>
         </tr>
         <tr>
           <td class="num">T2</td>
@@ -282,6 +282,21 @@
         </tr>
       </tbody>
     </table>
+  </div>
+
+  <div class="alert">
+    <p>
+      🔴 <strong>T1 은 오늘 «기록»이지 게이트가 아닙니다.</strong> 실측:
+      <span class="mono">require_code_owner_reviews: false</span> —
+      <span class="mono">CODEOWNERS</span> 는 리뷰어를 자동 요청할 뿐 막지 않습니다.
+    </p>
+    <p>
+      그리고 <strong>켤 수도 없습니다.</strong> 협업자가 1명이고 GitHub 은 자기 PR 자기
+      승인을 금지하므로, 켜면 그 경로를 <strong>아무도 고칠 수 없게</strong> 됩니다.
+      즉 이 규모에서 <span class="mono">CODEOWNERS</span> 는
+      <strong>원리적으로 게이트가 될 수 없습니다.</strong>
+      진짜 강제는 <strong>레인 시험</strong>으로 갑니다 — 그 검사는 아직 없습니다.
+    </p>
   </div>
 
   <div class="note">
@@ -712,7 +727,7 @@
         <tr>
           <td class="num">L4</td>
           <td>branch protection + CODEOWNERS</td>
-          <td>승인 없는 <span class="mono">main</span> 착지 · <strong>방아쇠 T1</strong></td>
+          <td>승인 없는 <span class="mono">main</span> 착지 · <span class="mono">lane-check</span> red</td>
           <td class="good"><strong>불가능</strong></td>
         </tr>
       </tbody>
@@ -727,6 +742,11 @@
     <p>
       <strong>실제로 강제되는 것은 L4 하나뿐입니다</strong> — 서버에서 돌고, 로컬 설정으로 끌 수 없습니다.
       이 문장이 지워지면 다음 사람이 L1~L3 을 강제라고 믿습니다.
+    </p>
+    <p>
+      🔴 <strong>그리고 L4 안에서도 «막는 것»은 <span class="mono">lane-check</span> 하나입니다.</strong>
+      <span class="mono">CODEOWNERS</span> 는 같은 자리에 있지만 오늘 아무것도 막지 않습니다(위 §1).
+      이름이 보장처럼 생겼는데 보장이 아닌 형태 — 이 문서가 계속 경계하는 바로 그것입니다.
     </p>
   </div>
 
