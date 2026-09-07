@@ -1,9 +1,9 @@
 {
   "task": "top-level-modules-in-the-type-gate-20260907",
-  "branch": "intent/top-level-modules-in-the-type-gate",
+  "branch": "spec/top-level-modules-in-the-type-gate",
   "owner": "fcc-delivery-final-b1",
   "status": "active",
-  "base": "origin/main@b3c619e",
+  "base": "origin/main@f143f2d",
   "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/b12f86b8-e3f2-496d-895c-2d89ffa673d8/scratchpad/wt-typegate",
   "scope": [
     "intent/top-level-modules-in-the-type-gate/intent.md",
