@@ -385,7 +385,12 @@ platform 에서 깨질 수 있고, 그 갈라짐은 **양방향**입니다.
 
 * `required_approving_review_count: 0` → 「동료 1인 승인」이 기계로 안 막힘 (두 레인 다)
 * `fcc-test-contracts` 의 **`enforce_admins: false`** → **관리자는 보호를 우회**할 수
-  있습니다 (platform 은 `true`). 이 비대칭이 의도인지 운영자 판정이 필요합니다
+  있습니다 (platform 은 `true`). ✅ **이것은 의도이고 근거가 적혀 있습니다** —
+  `fcc-test-contracts/CLAUDE.md` §`enforce_admins` 절: 태그 레인이 멈추면 공급 사슬
+  전체가 멈추고, 러너 할당량 문제의 **원인이 아직 해소되지 않았습니다.**
+  ⚠️ 그 대가로 그 레인에서는 **「red 면 서버가 막는다」가 거짓**입니다
+  (협업자 1명이 `admin` 이므로 실질적으로 아무나 우회 가능). 다시 판단해야 하는
+  때는 「의도인가」가 아니라 **「러너 전제가 바뀌었나」**입니다
 * `fcc-test-contracts` 에 **`.claude/rules/` 0개** — 그 레인을 여는 세션에는
   **경로 조건부 규칙이 하나도 도달하지 않습니다** (`CLAUDE.md` 는 있으므로 항상
   로드되는 규칙만 도달합니다)
