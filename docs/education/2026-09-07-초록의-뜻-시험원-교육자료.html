@@ -1,0 +1,632 @@
+<title>초록의 뜻</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --ground:#EEF1F4; --surface:#FFFFFF; --surface-2:#E3E8EE; --surface-3:#F6F8FA;
+    --ink:#0D1319; --ink-2:#414D5A; --ink-3:#6E7C8B;
+    --rule:#D2DAE2; --rule-2:#AFBAC6;
+    --accent:#14606E; --accent-soft:#DCEDEF;
+    --a:#A85A1F; --a-soft:#F7EADF; --a-line:#D9A877;
+    --b:#2C5AA0; --b-soft:#E2EAF6; --b-line:#8DAAD5;
+    --good:#16694C; --good-soft:#DDEFE6;
+    --warn:#8A5B00; --warn-soft:#F8EFD9;
+    --bad:#A6301A; --bad-soft:#FAE3DD;
+    --f-disp:"IBM Plex Sans KR","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+    --f-body:"Noto Sans KR","IBM Plex Sans KR","Malgun Gothic",system-ui,sans-serif;
+    --f-mono:"IBM Plex Mono","D2Coding",Consolas,ui-monospace,monospace;
+    --measure:64ch; --wide:104ch; --pad:clamp(1rem,4vw,2.5rem);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0E1217; --surface:#161C24; --surface-2:#1E2630; --surface-3:#131920;
+      --ink:#E6ECF3; --ink-2:#A6B2BF; --ink-3:#7A8794;
+      --rule:#28313C; --rule-2:#3A4551;
+      --accent:#5FB6C4; --accent-soft:#12262B;
+      --a:#DE9557; --a-soft:#2A1D11; --a-line:#6E4A25;
+      --b:#7FA8E0; --b-soft:#141E2E; --b-line:#2F4770;
+      --good:#4FBF93; --good-soft:#10251D;
+      --warn:#D5A44C; --warn-soft:#261F10;
+      --bad:#E5836A; --bad-soft:#2A1712;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0E1217; --surface:#161C24; --surface-2:#1E2630; --surface-3:#131920;
+    --ink:#E6ECF3; --ink-2:#A6B2BF; --ink-3:#7A8794;
+    --rule:#28313C; --rule-2:#3A4551;
+    --accent:#5FB6C4; --accent-soft:#12262B;
+    --a:#DE9557; --a-soft:#2A1D11; --a-line:#6E4A25;
+    --b:#7FA8E0; --b-soft:#141E2E; --b-line:#2F4770;
+    --good:#4FBF93; --good-soft:#10251D;
+    --warn:#D5A44C; --warn-soft:#261F10;
+    --bad:#E5836A; --bad-soft:#2A1712;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--f-body);font-size:16.5px;line-height:1.75;-webkit-text-size-adjust:100%}
+  .doc{max-width:var(--wide);margin:0 auto;padding:var(--pad)}
+  .col{max-width:var(--measure)}
+  p,li{color:var(--ink-2)}
+  strong{color:var(--ink);font-weight:700}
+  a{color:var(--accent)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  /* ── 표제 ── */
+  header.head{border-top:4px solid var(--ink);padding:1.5rem 0 1.4rem;
+    border-bottom:1px solid var(--rule);margin-bottom:2.6rem}
+  .eyebrow{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--ink-3);margin:0 0 .8rem}
+  h1{font-family:var(--f-disp);font-size:clamp(1.95rem,5.5vw,3rem);line-height:1.12;
+    letter-spacing:-.025em;font-weight:700;margin:0 0 .85rem;text-wrap:balance;color:var(--ink)}
+  .lede{font-size:1.05rem;margin:0;max-width:var(--measure)}
+  .meta{display:flex;flex-wrap:wrap;gap:.35rem 1.5rem;font-family:var(--f-mono);
+    font-size:.76rem;color:var(--ink-3);margin-top:1.4rem}
+
+  /* ── 섹션: 트랙 레일이 구조 장치다 ── */
+  section{margin:0 0 3.4rem;padding-left:1.15rem;border-left:3px solid var(--rule)}
+  section.tA{border-left-color:var(--a-line)}
+  section.tB{border-left-color:var(--b-line)}
+  section.both{border-left-color:var(--accent)}
+  h2{font-family:var(--f-disp);font-size:clamp(1.28rem,3.1vw,1.65rem);line-height:1.26;
+    font-weight:700;letter-spacing:-.015em;margin:0 0 .35rem;color:var(--ink);text-wrap:balance}
+  .s-sub{font-size:.93rem;color:var(--ink-3);margin:0 0 1.5rem;max-width:var(--measure)}
+  h3{font-family:var(--f-disp);font-size:1.03rem;font-weight:600;color:var(--ink);
+    margin:2.1rem 0 .55rem;letter-spacing:-.008em}
+
+  /* 트랙 태그 — 번호가 아니라 갈래 */
+  .tag{display:inline-block;font-family:var(--f-mono);font-size:.68rem;font-weight:600;
+    letter-spacing:.13em;text-transform:uppercase;padding:.16rem .5rem;margin-bottom:.6rem;
+    border:1px solid currentColor}
+  .tag.a{color:var(--a);background:var(--a-soft)}
+  .tag.b{color:var(--b);background:var(--b-soft)}
+  .tag.c{color:var(--accent);background:var(--accent-soft)}
+
+  .alert,.note,.done{border-left:3px solid var(--bad);background:var(--bad-soft);
+    padding:.9rem 1.05rem;margin:1.25rem 0;max-width:var(--measure)}
+  .note{border-left-color:var(--warn);background:var(--warn-soft)}
+  .done{border-left-color:var(--good);background:var(--good-soft)}
+  .alert p,.note p,.done p{margin:0;color:var(--ink);font-size:.94rem}
+  .alert p+p,.note p+p,.done p+p{margin-top:.55rem}
+  .key{font-family:var(--f-mono);font-size:.82em;background:var(--surface-2);color:var(--ink);
+    padding:.08rem .34rem;border:1px solid var(--rule);white-space:nowrap}
+
+  .scroll{overflow-x:auto;margin:1.3rem 0;border:1px solid var(--rule);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:.89rem;min-width:32rem}
+  th,td{padding:.55rem .78rem;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{background:var(--surface-2);color:var(--ink);font-family:var(--f-mono);
+    font-size:.71rem;letter-spacing:.09em;text-transform:uppercase;font-weight:600;
+    border-bottom:1px solid var(--rule-2)}
+  tbody tr:last-child td{border-bottom:0}
+  td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+  .mono{font-family:var(--f-mono);font-size:.86em;font-variant-numeric:tabular-nums}
+  .bad{color:var(--bad);font-weight:600}
+  .good{color:var(--good);font-weight:600}
+  .warn{color:var(--warn);font-weight:600}
+  .ca{color:var(--a);font-weight:600}
+  .cb{color:var(--b);font-weight:600}
+
+  pre{font-family:var(--f-mono);font-size:.79rem;line-height:1.65;background:var(--surface-3);
+    color:var(--ink);border:1px solid var(--rule);border-left:3px solid var(--rule-2);
+    padding:.8rem .95rem;overflow-x:auto;margin:1.05rem 0;font-variant-numeric:tabular-nums}
+
+  figure{margin:1.6rem 0}
+  .fig-wrap{border:1px solid var(--rule);background:var(--surface);padding:1rem;overflow-x:auto}
+  figure svg{display:block;width:100%;height:auto;min-width:30rem}
+  figcaption{font-size:.8rem;color:var(--ink-3);margin-top:.55rem;max-width:var(--measure);
+    font-family:var(--f-mono);line-height:1.6}
+  svg text{font-family:var(--f-body)}
+  svg text.m{font-family:var(--f-mono)}
+
+  /* 계기판 타일 — 수치가 요점인 곳에서만 */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(10.5rem,1fr));gap:1px;
+    background:var(--rule);border:1px solid var(--rule);margin:1.3rem 0}
+  .tile{background:var(--surface);padding:.85rem .95rem}
+  .tile .t-lbl{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--ink-3);margin:0 0 .3rem}
+  .tile .t-val{font-family:var(--f-mono);font-size:1.45rem;font-weight:600;color:var(--ink);
+    font-variant-numeric:tabular-nums;line-height:1.1}
+  .tile .t-note{font-size:.78rem;color:var(--ink-3);margin:.25rem 0 0;line-height:1.5}
+
+  /* 복붙 지시문 — 이 문서 고유 */
+  .brief{border:1px solid var(--rule);border-top:3px solid var(--accent);
+    background:var(--surface);padding:1.05rem 1.15rem;margin:1.3rem 0}
+  .brief .b-hd{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--accent);margin:0 0 .5rem}
+  .brief h3{margin-top:0}
+  .brief pre{border-left-color:var(--accent);background:var(--surface-3)}
+  .brief.a{border-top-color:var(--a)} .brief.a .b-hd{color:var(--a)}
+  .brief.a pre{border-left-color:var(--a)}
+  .brief.b{border-top-color:var(--b)} .brief.b .b-hd{color:var(--b)}
+  .brief.b pre{border-left-color:var(--b)}
+
+  .vs{display:grid;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr));gap:1px;
+    background:var(--rule);border:1px solid var(--rule);margin:1.3rem 0}
+  .vs>div{background:var(--surface);padding:.95rem 1.05rem}
+  .vs h4{margin:0 0 .55rem;font-size:.72rem;letter-spacing:.11em;text-transform:uppercase;
+    font-family:var(--f-mono);font-weight:600}
+  .vs .x h4{color:var(--bad)} .vs .o h4{color:var(--good)}
+  .vs p{margin:0 0 .45rem;font-size:.9rem} .vs p:last-child{margin-bottom:0}
+
+  ul.tight,ol.tight{padding-left:1.2rem;margin:.75rem 0;max-width:var(--measure)}
+  ul.tight li,ol.tight li{margin:.35rem 0}
+
+  footer.foot{border-top:1px solid var(--rule);margin-top:3rem;padding-top:1.25rem;
+    font-size:.82rem;color:var(--ink-3);font-family:var(--f-mono);line-height:1.7}
+</style>
+
+<main class="doc">
+
+<header class="head">
+  <p class="eyebrow">시험원 교육자료 · 2026-09-07 · fcc-test-platform @ a5cdc47</p>
+  <h1>초록의 뜻 — 검사가 «본 것»과 «통과한 것»</h1>
+  <p class="lede">
+    검사가 초록이면 우리는 「문제가 없다」고 읽습니다. 그런데 초록에는
+    <strong>두 가지</strong>가 섞여 있습니다 — <span class="cb">보고서 통과시킨 초록</span>과
+    <span class="ca">아무것도 안 보고 낸 초록</span>. 이번 세션은 그 둘을 가르는 작업만
+    했습니다. 이 문서는 <strong>무엇을 어떻게 갈랐는지</strong>를 수치로 보여 줍니다.
+  </p>
+  <div class="meta">
+    <span>대상 · 시험원 전원</span>
+    <span>실측 기준 · 2026-09-07</span>
+    <span>착지 · PR #137 · #147 · #149</span>
+  </div>
+</header>
+
+<section>
+  <span class="tag c">한 문장</span>
+  <h2>이번 세션이 지킨 명제</h2>
+  <div class="col">
+    <p style="font-size:1.08rem;color:var(--ink)">
+      <strong>「검사가 통과했다」와 「검사가 그것을 보았다」는 다른 문장이고,
+      출력에서는 구분되지 않는다.</strong>
+    </p>
+    <p>
+      아래 여섯 절은 전부 그 한 문장의 사례입니다. 형태가 매번 다르고,
+      <strong>매번 초록으로 보입니다.</strong>
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════ §1 ══════════════════ -->
+<section>
+  <span class="tag a">§1 · 가장 조용한 형태</span>
+  <h2>파일 하나가 63건을 0건으로 만듭니다</h2>
+  <p class="s-sub">그리고 「검사한 파일 수」는 양쪽이 똑같습니다.</p>
+
+  <div class="col">
+    <p>
+      타입 검사기(<span class="key">mypy</span>)는 우리가 쓰는 외부 부품
+      — 계약 패키지 — 안에 <span class="key">py.typed</span> 라는 <strong>빈 표시 파일</strong>이
+      있을 때만 그 부품의 타입 선언을 읽습니다. 없으면 그 부품에서 온 모든 값을
+      <strong>「무엇이든 될 수 있음」</strong>으로 접고 검사를 그만둡니다.
+    </p>
+    <p>
+      같은 코드·같은 검사기에서 그 <strong>표시 파일만</strong> 지웠다 넣었다 하며 쟀습니다.
+      다른 것은 한 글자도 안 움직였습니다.
+    </p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>검사 대상 층</th><th class="num">표시 파일 있음</th><th class="num">표시 파일 없음</th><th>검사한 파일 수</th></tr></thead>
+      <tbody>
+        <tr><td>domain</td><td class="num">0</td><td class="num">0</td><td class="mono">54 / 54</td></tr>
+        <tr><td>infrastructure</td><td class="num bad">1</td><td class="num">0</td><td class="mono">11 / 11</td></tr>
+        <tr><td>application</td><td class="num bad">57</td><td class="num">0</td><td class="mono">75 / 75</td></tr>
+        <tr><td>api</td><td class="num bad">5</td><td class="num">0</td><td class="mono">2 / 2</td></tr>
+        <tr><td><strong>합계</strong></td><td class="num bad"><strong>63</strong></td><td class="num good"><strong>0</strong></td><td class="mono">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="alert">
+    <p><strong>오른쪽 열의 「0」은 「문제가 없다」가 아니라 「아무것도 안 봤다」입니다.</strong></p>
+    <p>그런데 검사한 파일 수는 <span class="mono">54 / 11 / 75 / 2</span> 로 <strong>양쪽이 완전히 같습니다.</strong>
+       즉 「몇 개를 봤나」로는 두 상태를 <strong>구분할 수 없습니다.</strong></p>
+  </div>
+
+  <div class="col">
+    <p>
+      이 게이트에는 원래 <strong>「일했다는 증거」</strong>를 요구하는 장치가 있습니다 —
+      「검사한 파일이 0개면 공허하다」고 멈추는 검사입니다. 위 표가 보여 주듯
+      <strong>그 장치는 이 형태를 구조적으로 못 봅니다.</strong> 75개를 「봤다」고
+      보고하면서 63건을 0으로 냅니다.
+    </p>
+  </div>
+
+  <figure>
+    <div class="fig-wrap">
+      <svg viewBox="0 0 760 200" role="img" aria-label="표시 파일 유무에 따른 검사 흐름 비교">
+        <rect x="8" y="16" width="736" height="80" fill="none" stroke="var(--rule)"/>
+        <text x="20" y="38" class="m" font-size="12" fill="var(--good)">표시 파일 있음</text>
+        <rect x="20" y="48" width="120" height="34" fill="var(--surface-2)" stroke="var(--rule-2)"/>
+        <text x="80" y="69" font-size="12" text-anchor="middle" fill="var(--ink)">계약 패키지</text>
+        <path d="M144 65 h60" stroke="var(--good)" stroke-width="2" marker-end="url(#ag)"/>
+        <rect x="208" y="48" width="150" height="34" fill="var(--good-soft)" stroke="var(--good)"/>
+        <text x="283" y="69" font-size="12" text-anchor="middle" fill="var(--ink)">타입 선언을 읽는다</text>
+        <path d="M362 65 h60" stroke="var(--good)" stroke-width="2" marker-end="url(#ag)"/>
+        <rect x="426" y="48" width="130" height="34" fill="var(--surface-2)" stroke="var(--rule-2)"/>
+        <text x="491" y="69" font-size="12" text-anchor="middle" fill="var(--ink)">75 파일 검사</text>
+        <path d="M560 65 h60" stroke="var(--good)" stroke-width="2" marker-end="url(#ag)"/>
+        <text x="690" y="70" class="m" font-size="15" text-anchor="middle" fill="var(--bad)">63건</text>
+
+        <rect x="8" y="108" width="736" height="80" fill="none" stroke="var(--rule)"/>
+        <text x="20" y="130" class="m" font-size="12" fill="var(--bad)">표시 파일 없음</text>
+        <rect x="20" y="140" width="120" height="34" fill="var(--surface-2)" stroke="var(--rule-2)"/>
+        <text x="80" y="161" font-size="12" text-anchor="middle" fill="var(--ink)">계약 패키지</text>
+        <path d="M144 157 h60" stroke="var(--bad)" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ab)"/>
+        <rect x="208" y="140" width="150" height="34" fill="var(--bad-soft)" stroke="var(--bad)"/>
+        <text x="283" y="161" font-size="12" text-anchor="middle" fill="var(--ink)">전부 「무엇이든」으로</text>
+        <path d="M362 157 h60" stroke="var(--bad)" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ab)"/>
+        <rect x="426" y="140" width="130" height="34" fill="var(--surface-2)" stroke="var(--rule-2)"/>
+        <text x="491" y="161" font-size="12" text-anchor="middle" fill="var(--ink)">75 파일 검사</text>
+        <path d="M560 157 h60" stroke="var(--bad)" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ab)"/>
+        <text x="690" y="162" class="m" font-size="15" text-anchor="middle" fill="var(--good)">0건</text>
+        <defs>
+          <marker id="ag" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" fill="var(--good)"/></marker>
+          <marker id="ab" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" fill="var(--bad)"/></marker>
+        </defs>
+      </svg>
+    </div>
+    <figcaption>두 줄의 «검사한 파일 수»가 같다. 다른 것은 마지막 숫자뿐이고, 게이트는 그 숫자만으로 판정한다.</figcaption>
+  </figure>
+
+  <div class="note">
+    <p><strong>시험원이 가져갈 것</strong> — 「몇 건을 검사했다」는 수치는 <strong>검사가 무엇을 볼 수 있었는지를 말하지 않습니다.</strong>
+       수치를 인용할 때는 <strong>어느 환경에서 쟀는지</strong>를 함께 적어야 비교가 됩니다.</p>
+  </div>
+</section>
+
+<!-- ══════════════════ §2 ══════════════════ -->
+<section>
+  <span class="tag b">§2 · 시험원과 직접 닿는 자리</span>
+  <h2>계약표를 읽는 일곱 자리 — 셋만 검사되고 있었습니다</h2>
+  <p class="s-sub">그 표가 「이 조작에 어떤 권한이 필요한가」를 정합니다.</p>
+
+  <div class="col">
+    <p>
+      플랫폼의 모든 API 조작 <strong>80개</strong>는 표 하나에 적혀 있습니다.
+      한 줄은 이렇게 생겼습니다:
+    </p>
+  </div>
+
+  <pre>'export_sample_inventory': {
+    'request':    None,                  ← 요청 본문 스키마 (80/80 있음, 42개가 None)
+    'response':   'SampleInventory',     ← 응답 스키마       (80/80 있음)
+    'permission': 'platform:read',       ← <strong>필요한 권한</strong>       (80/80 있음)
+    'response_media_type': 'text/csv',   ← 응답 형식         (<strong>1/80 만 있음</strong>)
+}</pre>
+
+  <div class="col">
+    <p>
+      <strong>권한 줄이 시험원과 직접 닿습니다.</strong> 어떤 계정이 어떤 조작을 할 수
+      있는지가 그 한 글자에 달려 있습니다. 그리고 코드가 그 표를 읽는 자리가
+      <strong>일곱 군데</strong>입니다 — API 문서를 만드는 여섯 자리와, 실제로
+      <strong>권한을 확인하는 한 자리</strong>.
+    </p>
+    <p>
+      이번 세션 착수 시점에 그 일곱 중 <strong>검사되던 것은 셋</strong>이었습니다.
+      나머지 넷은 <strong>키 이름을 틀려도 아무도 말해 주지 않는</strong> 형태였습니다.
+    </p>
+  </div>
+
+  <figure>
+    <div class="fig-wrap">
+      <svg viewBox="0 0 720 176" role="img" aria-label="계약표를 읽는 일곱 자리와 검사 여부">
+        <rect x="250" y="14" width="220" height="40" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="360" y="32" font-size="12.5" text-anchor="middle" fill="var(--ink)">계약표 · 조작 80개</text>
+        <text x="360" y="47" class="m" font-size="11" text-anchor="middle" fill="var(--ink-2)">request · response · permission …</text>
+
+        <text x="150" y="86" class="m" font-size="11" fill="var(--ink-3)">API 문서 생성 (6)</text>
+        <text x="530" y="86" class="m" font-size="11" fill="var(--ink-3)">권한 확인 (1)</text>
+
+        <path d="M330 56 L200 74" stroke="var(--rule-2)" stroke-width="1.5"/>
+        <path d="M400 56 L520 74" stroke="var(--rule-2)" stroke-width="1.5"/>
+
+        <rect x="24" y="96" width="60" height="30" fill="var(--good-soft)" stroke="var(--good)"/><text x="54" y="116" class="m" font-size="11" text-anchor="middle" fill="var(--ink)">✓ 791</text>
+        <rect x="90" y="96" width="60" height="30" fill="var(--good-soft)" stroke="var(--good)"/><text x="120" y="116" class="m" font-size="11" text-anchor="middle" fill="var(--ink)">✓ 833</text>
+        <rect x="156" y="96" width="60" height="30" fill="var(--good-soft)" stroke="var(--good)"/><text x="186" y="116" class="m" font-size="11" text-anchor="middle" fill="var(--ink)">✓ 984</text>
+        <rect x="222" y="96" width="60" height="30" fill="var(--bad-soft)" stroke="var(--bad)"/><text x="252" y="116" class="m" font-size="11" text-anchor="middle" fill="var(--ink)">✗ 697</text>
+        <rect x="288" y="96" width="60" height="30" fill="var(--bad-soft)" stroke="var(--bad)"/><text x="318" y="116" class="m" font-size="11" text-anchor="middle" fill="var(--ink)">✗ 709</text>
+        <rect x="354" y="96" width="60" height="30" fill="var(--bad-soft)" stroke="var(--bad)"/><text x="384" y="116" class="m" font-size="11" text-anchor="middle" fill="var(--ink)">✗ 748</text>
+        <rect x="480" y="96" width="90" height="30" fill="var(--bad-soft)" stroke="var(--bad)"/><text x="525" y="116" class="m" font-size="11" text-anchor="middle" fill="var(--ink)">✗ 권한확인</text>
+
+        <text x="24" y="152" class="m" font-size="12" fill="var(--good)">착수 전 · 검사됨 3 / 7</text>
+        <text x="480" y="152" class="m" font-size="12" fill="var(--good)">착지 후 · 7 / 7</text>
+        <rect x="24" y="158" width="546" height="6" fill="var(--bad-soft)"/>
+        <rect x="24" y="158" width="234" height="6" fill="var(--good)"/>
+      </svg>
+    </div>
+    <figcaption>숫자는 소스 줄 번호. 착수 시점에 초록 셋 · 빨강 넷이었고, 착지 후 일곱 전부가 검사된다.</figcaption>
+  </figure>
+
+  <div class="col">
+    <p>
+      무엇이 달랐는지는 코드 한 글자 차이입니다. 검사기가 <strong>키 이름을 보는가</strong>가
+      갈립니다:
+    </p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>표를 읽는 형태</th><th>키 이름을 틀리면</th><th>실행할 때</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">row.get('permission')</td><td class="bad">아무 말도 안 한다</td><td>조용히 「권한 없음」</td></tr>
+        <tr><td class="mono">row.get('permisssion', 기본값)</td><td class="bad">아무 말도 안 한다</td><td>조용히 기본값</td></tr>
+        <tr><td class="mono">row['permission']</td><td class="good">검사기가 멈추고 이름을 댄다</td><td>안전</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="alert">
+    <p><strong>첫 두 줄이 위험합니다.</strong> 권한 키 이름을 한 글자 틀리면 값이 없는 것으로 읽히고,
+       그 자리는 <strong>「권한 없음 → 차단」</strong>으로 끝납니다. 시험원 입장에서는
+       <strong>「되던 조작이 갑자기 막힌다」</strong>로 나타나고, 코드 어디에도 빨간 표시가 없습니다.</p>
+  </div>
+</section>
+
+<!-- ══════════════════ §3 ══════════════════ -->
+<section>
+  <span class="tag a">§3 · 고치다가 더 나빠지는 자리</span>
+  <h2>「전부 검사되는 형태로 바꾸면 된다」 — 한 곳에서 틀립니다</h2>
+  <p class="s-sub">80개 중 1개에만 있는 키가 그 함정입니다.</p>
+
+  <div class="col">
+    <p>
+      §2 의 표를 보면 처방이 단순해 보입니다 — <span class="key">.get()</span> 을 전부
+      <span class="key">[ ]</span> 로 바꾸면 됩니다. <strong>한 자리에서 그것이 틀립니다.</strong>
+      <span class="key">response_media_type</span> 은 <strong>80개 중 1개</strong>
+      (<span class="mono">export_sample_inventory</span>)에만 있습니다.
+    </p>
+  </div>
+
+  <div class="vs">
+    <div class="x">
+      <h4>✗ 첨자만 쓰면</h4>
+      <p><span class="mono">op['response_media_type']</span></p>
+      <p>검사기 — <span class="bad">아무 말도 안 한다</span></p>
+      <p>실행 — <span class="bad">80건 중 79건에서 죽는다</span></p>
+      <p style="color:var(--ink-3);font-size:.85rem">고장이 «검사기가 침묵하는 쪽»으로 옮겨간 것이지 고쳐진 것이 아니다.</p>
+    </div>
+    <div class="o">
+      <h4>✓ 있는지 물어보고 읽으면</h4>
+      <p><span class="mono">'…' in op</span> 뒤 <span class="mono">op['…']</span></p>
+      <p>검사기 — <span class="good">키 이름을 검사한다</span></p>
+      <p>실행 — <span class="good">80건 전부 안전</span></p>
+      <p style="color:var(--ink-3);font-size:.85rem">검사되면서 안전한 유일한 형태.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <p><strong>여기에 구멍이 하나 더 있었습니다.</strong> 「있는지 물어보는」 쪽과 「읽는」 쪽에
+       키 이름이 <strong>두 번</strong> 등장하는데, 검사되는 것은 <strong>읽는 쪽 하나뿐</strong>입니다.
+       물어보는 쪽 이름을 틀리면 그 분기는 영원히 거짓이 되고, 아무도 말해 주지 않습니다.</p>
+    <p>→ 착지본은 그 이름을 <strong>상수 하나로 접어</strong> 한 번만 적게 했습니다. 그 한 자리를
+       틀리면 이제 빨개집니다.</p>
+  </div>
+</section>
+
+<!-- ══════════════════ §4 ══════════════════ -->
+<section>
+  <span class="tag c">§4 · 왜 검사를 «하나 더» 세웠나</span>
+  <h2>타입 검사기와 새 봉인은 겹치지 않습니다</h2>
+  <p class="s-sub">각자 상대가 못 보는 것을 봅니다. 실제로 되돌려 보며 쟀습니다.</p>
+
+  <div class="col">
+    <p>
+      고친 뒤에는 <strong>되돌려지지 않게</strong> 지켜야 합니다. 그래서 검사를 하나
+      세웠고, 그것이 정말 이빨이 있는지 <strong>일부러 코드를 망가뜨려</strong>
+      확인했습니다. 네 가지 되돌림을 각각 넣어 보고 누가 잡는지 쟀습니다.
+    </p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>되돌림</th><th>타입 검사기</th><th>새 봉인</th></tr></thead>
+      <tbody>
+        <tr><td><span class="mono">.get()</span> 로 되돌린다</td><td class="bad">조용</td><td class="good">🔴 잡는다</td></tr>
+        <tr><td>「있는지 묻기」를 빼고 첨자만 쓴다</td><td class="bad">조용</td><td class="good">🔴 잡는다</td></tr>
+        <tr><td>상수의 <span class="mono">Final</span> 표시를 뗀다</td><td class="good">🔴 잡는다</td><td class="bad">조용</td></tr>
+        <tr><td><span class="mono">or {}</span> 형태로 되돌린다</td><td class="good">🔴 잡는다</td><td class="bad">조용</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="alert">
+    <p><strong>표의 위 두 줄이 이 봉인을 세운 이유입니다</strong> — 타입 검사기만 믿으면
+       그 둘은 영원히 조용합니다. 그리고 아래 두 줄은 봉인이 못 봅니다.</p>
+    <p>즉 <strong>「검사가 하나 있으니 이 영역은 지켜진다」는 문장은 성립하지 않습니다.</strong>
+       무엇을 지키는 검사인지 «각각» 물어야 합니다.</p>
+  </div>
+
+  <div class="note">
+    <p><strong>봉인을 만들 때 쓴 규칙 하나</strong> — 「지적 45건」 같은 <strong>숫자를 못 박지 않았습니다.</strong>
+       숫자를 박으면 검사를 «넓히는» 개선이 회귀처럼 빨개지고, 다음 사람은 봉인을 고치는 대신
+       개선을 포기합니다. 박은 것은 <strong>「검사 안 되는 자리의 집합이 비어 있는가」</strong>입니다.</p>
+  </div>
+</section>
+
+<!-- ══════════════════ §5 ══════════════════ -->
+<section>
+  <span class="tag b">§5 · 초록에는 «시각»이 있다</span>
+  <h2><span class="mono">CLEAN</span> 은 「지금」이 아니라 「그때」의 초록입니다</h2>
+  <p class="s-sub">이번 세션의 실제 병합에서 관측했습니다.</p>
+
+  <div class="col">
+    <p>
+      코드를 올리면 서버가 <strong>「이것을 본체에 합치면 초록인가」</strong>를 검사합니다.
+      좋은 설계입니다 — 합친 결과를 봅니다. 그런데 <strong>본체가 그 뒤에 움직여도
+      검사를 다시 돌리지 않습니다.</strong>
+    </p>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><p class="t-lbl">검사가 합친 지점</p><p class="t-val">ae7d7d4</p><p class="t-note">이때는 초록이었다</p></div>
+    <div class="tile"><p class="t-lbl">실제 병합 지점</p><p class="t-val">d340506</p><p class="t-note">그 사이 2건이 들어왔다</p></div>
+    <div class="tile"><p class="t-lbl">차이</p><p class="t-val bad">2 PR</p><p class="t-note">5 커밋</p></div>
+  </div>
+
+  <div class="col">
+    <p>
+      이번 세션의 PR #137 이 정확히 그랬습니다. <strong>두 건만큼 낡은 초록 위에서
+      병합됐습니다.</strong> 마침 그 둘이 관계없는 문서만 건드려서 <strong>해는 없었지만</strong>,
+      그것은 «재 보고 나서만» 할 수 있는 말입니다.
+    </p>
+  </div>
+
+  <div class="alert">
+    <p>🔴 <strong>재는 방법에도 함정이 있습니다.</strong> 검사 기록의 마지막 한 줄만 보면
+       답이 <strong>언제나</strong> 「그때의 최신과 합쳤다」로 나옵니다 — 서버가 검사할 때마다
+       합치는 지점을 다시 계산하기 때문입니다.</p>
+    <p>물어야 하는 것은 <strong>한 수가 아니라 두 수의 차</strong>입니다 —
+       <span class="mono">검사가 합친 지점</span> 대 <span class="mono">실제 병합 지점</span>.
+       한쪽만 보면 이 현상을 <strong>영원히 못 봅니다.</strong></p>
+  </div>
+</section>
+
+<!-- ══════════════════ §6 ══════════════════ -->
+<section>
+  <span class="tag a">§6 · 정리 작업</span>
+  <h2>「저장 안 된 파일」의 절반은 착시였습니다</h2>
+  <p class="s-sub">기준점이 낡으면, 이미 저장된 파일이 저장 안 된 것처럼 보입니다.</p>
+
+  <div class="col">
+    <p>
+      정리를 시작하며 「저장되지 않은 변경」을 확인하니 다섯 건이 나왔습니다. 그런데
+      작업 폴더의 기준점이 <strong>본체보다 73건·65건 뒤처져</strong> 있었습니다.
+      다섯 건을 본체와 <strong>한 글자씩 대조</strong>하니 셋은 <strong>완전히 같았습니다</strong> —
+      이미 저장된 파일이 낡은 기준점 때문에 그렇게 보인 것입니다.
+    </p>
+  </div>
+
+  <div class="vs">
+    <div class="x">
+      <h4>✗ 착시 3건</h4>
+      <p>본체와 <strong>바이트 단위로 동일</strong></p>
+      <p>처방 — 저장하는 것이 아니라 <strong>기준점을 옮긴다</strong></p>
+      <p style="color:var(--ink-3);font-size:.85rem">그대로 저장했으면 「아무것도 안 바뀐 커밋」 셋이 생겼다.</p>
+    </div>
+    <div class="o">
+      <h4>✓ 진짜 2건</h4>
+      <p>본체에 <strong>존재하지 않는</strong> 교육자료 HTML 둘</p>
+      <p>둘 다 <strong>완성</strong>돼 있었고, 만든 세션은 이미 종료</p>
+      <p style="color:var(--ink-3);font-size:.85rem">주인이 떠난 완성물 → 회수해서 저장했다.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <p><strong>기준점을 옮길 때도 손실 0을 증명했습니다</strong> — 백업 → 본체와 동일 확인 →
+       이동 → 백업과 재대조. 「같아 보인다」로 넘기지 않았습니다.</p>
+  </div>
+</section>
+
+<!-- ══════════════════ §7 ══════════════════ -->
+<section>
+  <span class="tag b">§7 · 지울 수 있는 것과 없는 것</span>
+  <h2>「합쳐졌나」 하나로 판정하면 두 가지를 같은 답으로 봅니다</h2>
+  <p class="s-sub">정리 대상 126건 중 넷은 다른 이유로 남았습니다.</p>
+
+  <div class="tiles">
+    <div class="tile"><p class="t-lbl">삭제 · 원격</p><p class="t-val good">126</p><p class="t-note">두 저장소 합계</p></div>
+    <div class="tile"><p class="t-lbl">삭제 · 로컬</p><p class="t-val good">68</p><p class="t-note">〃</p></div>
+    <div class="tile"><p class="t-lbl">작업 폴더 정리</p><p class="t-val good">8</p><p class="t-note">종료된 세션 것만</p></div>
+    <div class="tile"><p class="t-lbl">남긴 것</p><p class="t-val warn">4</p><p class="t-note">사유가 각각 다르다</p></div>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>남긴 것</th><th>왜 남겼나</th><th>어떻게 알았나</th></tr></thead>
+      <tbody>
+        <tr><td>동료 세션 3건</td><td>지금 <strong>작업 중</strong></td><td>각 세션에 <strong>물어서</strong> 확인</td></tr>
+        <tr><td><span class="mono">wip/kc-…</span></td><td>합치면 <strong>등록부 전체가 깨진다</strong></td><td>차단 사유(없는 파일 하나)를 <strong>오늘 다시 확인</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="alert">
+    <p>🔴 <strong>작업 폴더 하나에 동료의 저장 안 된 수리 9건이 있었습니다.</strong>
+       그 폴더의 브랜치는 「합쳐짐」으로 나왔습니다 — 그런데 <strong>커밋이 하나도 없어서</strong>
+       그렇게 보인 것이었습니다. 「끝난 작업」과 「방금 만든 빈 것」에 판정 도구가
+       <strong>같은 답</strong>을 줍니다.</p>
+    <p>지웠으면 <strong>복구 경로가 없었습니다.</strong> 저장 안 된 파일을 하나씩 본체와 대조한 것이
+       그것을 막았습니다.</p>
+  </div>
+
+  <div class="col">
+    <p>
+      <span class="mono">wip/kc-…</span> 는 <strong>「합치면 안 된다」</strong>고 스스로 적고 있었습니다.
+      지울지 판정하려면 <strong>그 사유가 오늘도 참인가</strong>를 물어야 했고, 쟀습니다 —
+      필요한 계약 파일이 <strong>여전히 없습니다.</strong> 오늘 합치면 새 장비가 등록되는 게
+      아니라 <strong>기존 장비 셋까지 함께 사라집니다.</strong>
+    </p>
+    <p>
+      그런데 그 사유가 <strong>브랜치 안에만</strong> 있었습니다. 다음 정리 세션은 그것을
+      「아직 안 끝난 것」으로 읽고 지웁니다. 그래서 <strong>사유를 본체에 적었습니다</strong> —
+      «왜 남기나»와 «언제 없어지나»를 둘 다.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════ §8 ══════════════════ -->
+<section>
+  <span class="tag a">§8 · 이번 세션이 두 번 틀렸습니다</span>
+  <h2>「없다」와 「내가 못 봤다」는 출력이 같습니다</h2>
+
+  <div class="col">
+    <p>
+      이 문서가 말하는 규율을 <strong>제가 이번 세션에 두 번 어겼고, 둘 다 동료가
+      잡았습니다.</strong> 형태가 같습니다.
+    </p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>내가 보고한 것</th><th>실제</th><th>왜 틀렸나</th></tr></thead>
+      <tbody>
+        <tr><td>「이 브랜치는 뿌리가 다르다」</td><td>공통 조상이 있었다</td><td>변경 파일 994개를 「무관」으로 읽었다 — 실제로는 <strong>갈라진 시점이 오래된</strong> 것</td></tr>
+        <tr><td>「이 근거 문단이 본체에서 사라졌다」</td><td>다섯 줄 위에 그대로 있었다</td><td>함수 <strong>주변만</strong> 찾았다</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="alert">
+    <p><strong>둘 다 「찾아봤는데 없다」였고, 실제로는 「내 찾는 방법이 거기까지 못 갔다」였습니다.</strong>
+       출력은 구분되지 않습니다 — 둘 다 0건입니다.</p>
+    <p>→ 그래서 부재를 보고할 때는 <strong>「어디까지 봤는지」를 함께</strong> 적어야 합니다.
+       「없다」가 아니라 <strong>「이 범위에서 이 방법으로 찾았을 때 0건」</strong>입니다.</p>
+  </div>
+</section>
+
+<!-- ══════════════════ 요약 ══════════════════ -->
+<section>
+  <span class="tag c">한 장 요약</span>
+  <h2>초록을 볼 때 물어야 하는 것</h2>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>상황</th><th>물어야 하는 것</th><th>이번 세션의 사례</th></tr></thead>
+      <tbody>
+        <tr><td>검사가 초록이다</td><td>이 검사가 <strong>무엇을 볼 수 있었나</strong></td><td>표시 파일 하나에 63 ↔ 0 (§1)</td></tr>
+        <tr><td>「N건 검사함」이라고 나온다</td><td>그 N 이 <strong>본 것</strong>의 수인가</td><td>양쪽 다 75 (§1)</td></tr>
+        <tr><td>검사가 하나 있다</td><td>그것이 <strong>어느 되돌림</strong>을 잡나</td><td>4종 중 각자 2종 (§4)</td></tr>
+        <tr><td>병합 가능 · 초록이다</td><td>그 초록이 <strong>어느 시점</strong>의 것인가</td><td>2 PR 만큼 낡음 (§5)</td></tr>
+        <tr><td>저장 안 된 변경이 있다</td><td><strong>기준점</strong>이 맞는가</td><td>5건 중 3건이 착시 (§6)</td></tr>
+        <tr><td>브랜치가 「합쳐짐」이다</td><td><strong>비어 있어서</strong> 그런 건 아닌가</td><td>동료 수리 9건이 그 안에 (§7)</td></tr>
+        <tr><td>찾아봤는데 없다</td><td>내 방법이 <strong>어디까지</strong> 갔나</td><td>두 번 틀렸다 (§8)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="done">
+    <p><strong>공통점 하나</strong> — 위 일곱은 전부 <strong>「초록」 또는 「0건」으로 나타납니다.</strong>
+       빨간 것은 스스로 말하지만, 이 형태들은 말하지 않습니다. 그래서 <strong>묻는 쪽이
+       질문을 갖고 있어야</strong> 합니다.</p>
+  </div>
+</section>
+
+<footer class="foot">
+  <p>fcc-test-platform · 2026-09-07 · 착지 PR #137 · #147 · #149</p>
+  <p>수치는 전부 이 저장소에서 실행해 얻은 값이다. 인용할 때는 «어느 커밋·어느 환경»인지를 함께 적을 것.</p>
+</footer>
+
+</main>
