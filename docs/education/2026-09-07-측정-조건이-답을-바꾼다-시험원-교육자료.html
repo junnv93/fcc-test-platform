@@ -1,0 +1,523 @@
+<title>측정 조건이 답을 바꾼다</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+  :root {
+    --ground:#F5F7F6; --surface:#FFFFFF; --sunk:#ECF0EE;
+    --ink:#16201D; --ink-soft:#3B4A45; --muted:#66756F;
+    --rule:#D6DEDA; --rule-firm:#B4C0BB;
+    --accent:#1F6F5C;
+    --pass:#2E7D52; --hollow:#A9B8B1; --alarm:#A8412F; --alarm-soft:#F7E7E3;
+    /* 이 자료에만 있는 축 — 「어떤 조건에서 잰 값인가」를 표시한다 */
+    --rig:#8A6A21; --rig-soft:#F5EFDF;
+    --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+    --f-body:"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#101715; --surface:#18211E; --sunk:#1F2A26;
+      --ink:#E6EDEA; --ink-soft:#BCC8C3; --muted:#8B9A94;
+      --rule:#2A3733; --rule-firm:#3D4B46;
+      --accent:#4FAE93; --pass:#5FB47F; --hollow:#61706A;
+      --alarm:#DE8271; --alarm-soft:#301B16;
+      --rig:#C9A24B; --rig-soft:#26200F;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#101715; --surface:#18211E; --sunk:#1F2A26;
+    --ink:#E6EDEA; --ink-soft:#BCC8C3; --muted:#8B9A94;
+    --rule:#2A3733; --rule-firm:#3D4B46;
+    --accent:#4FAE93; --pass:#5FB47F; --hollow:#61706A;
+    --alarm:#DE8271; --alarm-soft:#301B16;
+    --rig:#C9A24B; --rig-soft:#26200F;
+  }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--f-body); font-size:15.5px; line-height:1.78;
+    -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:920px; margin:0 auto; padding:56px 24px 96px; }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--sunk);
+    padding:1px 5px; border-radius:2px; }
+
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:500;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin:0 0 14px; }
+  h1 { font-size:clamp(28px,4.4vw,40px); font-weight:700; line-height:1.24;
+    letter-spacing:-.02em; text-wrap:balance; margin:0 0 18px; }
+  .lede { font-size:17px; color:var(--ink-soft); max-width:62ch; margin:0 0 10px; }
+  .lede strong { color:var(--ink); font-weight:700; }
+
+  .thesis { background:var(--surface); border:1px solid var(--rule-firm);
+    border-left:4px solid var(--accent); padding:20px 24px; margin:32px 0 12px;
+    font-size:17px; line-height:1.72; }
+  .thesis b { color:var(--accent); }
+
+  .prereq { font-size:14.5px; color:var(--ink-soft); background:var(--sunk);
+    border:1px solid var(--rule); padding:16px 20px; margin:0 0 48px; }
+  .prereq dt { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+    color:var(--accent); margin-top:10px; }
+  .prereq dt:first-child { margin-top:0; }
+  .prereq dd { margin:2px 0 0; }
+
+  section { margin-bottom:60px; }
+  h2 { font-size:22px; font-weight:700; letter-spacing:-.01em; margin:0 0 8px;
+    padding-bottom:10px; border-bottom:2px solid var(--ink); text-wrap:balance; }
+  h2 .n { font-family:var(--f-mono); font-size:12px; color:var(--accent);
+    letter-spacing:.1em; margin-right:10px; }
+  h3 { font-size:16px; font-weight:700; margin:34px 0 8px; }
+  p { max-width:66ch; }
+  .note { color:var(--ink-soft); font-size:14.5px; }
+  .warn { color:var(--alarm); font-weight:700; }
+
+  /* ── 측정 카드: 값은 «조건»과 한 쌍으로만 나온다 ───────────────────── */
+  .meas { display:grid; grid-template-columns:repeat(auto-fit,minmax(268px,1fr));
+    gap:2px; background:var(--rule); border:1px solid var(--rule); margin:26px 0; }
+  .meas > div { background:var(--surface); padding:18px 20px 16px; }
+  .meas .v { font-family:var(--f-mono); font-size:30px; font-weight:700;
+    line-height:1.1; font-variant-numeric:tabular-nums; }
+  .meas .v.alarm { color:var(--alarm); }
+  .meas .v.pass { color:var(--pass); }
+  .meas .u { font-family:var(--f-mono); font-size:13px; font-weight:500;
+    color:var(--muted); margin-left:6px; }
+  .meas .cond { margin-top:12px; padding-top:11px; border-top:1px dashed var(--rule-firm);
+    font-family:var(--f-mono); font-size:11.5px; line-height:1.65; color:var(--rig); }
+  .meas .cond b { color:var(--rig); font-weight:700; }
+  .meas .what { font-size:14px; color:var(--ink-soft); margin-top:5px; }
+
+  /* ── 축 고정표: 한 줄만 다르고 나머지는 「같음」이라고 «적는다» ──────── */
+  table.axis { width:100%; border-collapse:collapse; margin:24px 0; font-size:14px; }
+  table.axis th, table.axis td { border:1px solid var(--rule); padding:9px 12px;
+    text-align:left; vertical-align:top; }
+  table.axis th { background:var(--sunk); font-family:var(--f-mono); font-size:11px;
+    letter-spacing:.09em; text-transform:uppercase; color:var(--muted); font-weight:600; }
+  table.axis td.n { font-family:var(--f-mono); font-variant-numeric:tabular-nums;
+    text-align:right; font-weight:600; white-space:nowrap; }
+  table.axis td.same { color:var(--muted); font-family:var(--f-mono); font-size:12px; }
+  table.axis td.moved { background:var(--rig-soft); color:var(--rig);
+    font-family:var(--f-mono); font-size:12px; font-weight:700; }
+  .scroll { overflow-x:auto; }
+
+  /* ── 범위 막대: 검사가 «부른» 것과 «안 부른» 것 ───────────────────── */
+  .cover { margin:26px 0 8px; }
+  .cover .bar { display:flex; height:44px; border:1px solid var(--rule-firm);
+    font-family:var(--f-mono); font-size:12px; font-weight:600; }
+  .cover .called { flex:139 1 0; background:var(--sunk); color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center; }
+  .cover .silent { flex:76 1 0; background:var(--alarm-soft); color:var(--alarm);
+    display:flex; align-items:center; justify-content:center;
+    border-left:2px solid var(--alarm); }
+  .cover .cap { display:flex; justify-content:space-between; font-family:var(--f-mono);
+    font-size:11px; color:var(--muted); margin-top:7px; }
+
+  /* ── 주입 결과표 ─────────────────────────────────────────────────── */
+  .inj { display:flex; flex-direction:column; gap:2px; background:var(--rule);
+    border:1px solid var(--rule); margin:26px 0; }
+  .inj .row { background:var(--surface); padding:16px 20px;
+    display:grid; grid-template-columns:1fr minmax(210px,auto); gap:8px 24px; align-items:center; }
+  .inj .lbl { font-family:var(--f-mono); font-size:12px; font-weight:600;
+    color:var(--accent); margin-bottom:3px; }
+  .inj .txt { font-size:14.5px; line-height:1.62; }
+  .inj .out { font-family:var(--f-mono); font-size:12px; line-height:1.7;
+    border-left:3px solid var(--rule-firm); padding-left:12px; }
+  .inj .out .g { color:var(--pass); font-weight:600; }
+  .inj .out .r { color:var(--alarm); font-weight:700; }
+
+  /* ── 15 대 1 그림 ────────────────────────────────────────────────── */
+  .lamps { display:flex; flex-wrap:wrap; gap:6px; margin:20px 0 10px; }
+  .lamp { width:26px; height:26px; border:1px solid var(--rule-firm);
+    background:var(--sunk); position:relative; }
+  .lamp.g { background:var(--pass); border-color:var(--pass); }
+  .lamp.r { background:var(--alarm); border-color:var(--alarm); }
+  .lampcap { font-family:var(--f-mono); font-size:11.5px; color:var(--muted); }
+
+  ul.check { list-style:none; padding:0; margin:22px 0 0;
+    display:flex; flex-direction:column; gap:2px;
+    background:var(--rule); border:1px solid var(--rule); }
+  ul.check li { background:var(--surface); padding:15px 20px 15px 46px; position:relative;
+    font-size:15px; line-height:1.66; }
+  ul.check li::before { content:"□"; position:absolute; left:20px; top:14px;
+    font-family:var(--f-mono); font-size:15px; color:var(--accent); }
+  ul.check li b { color:var(--accent); }
+
+  .close { border-top:2px solid var(--ink); margin-top:14px; padding-top:20px;
+    font-size:14.5px; color:var(--ink-soft); }
+  .close b { color:var(--ink); }
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">시험원 교육자료 · 2026-09-07</p>
+  <h1>측정 조건이 답을 바꾼다</h1>
+  <p class="lede">같은 코드를 같은 명령으로 검사했는데 <strong>44</strong>가 나오고,
+  다시 하니 <strong>45</strong>가 나왔습니다. 코드는 그대로였습니다.
+  달라진 것은 <strong>검사기가 무엇을 볼 수 있었는가</strong> 하나뿐입니다.</p>
+
+  <div class="thesis">
+    이 자료가 남기려는 것은 수가 아니라 <b>절차</b>입니다 —
+    <b>값을 적을 때는 언제나 그 값을 낸 조건을 함께 적는다.</b>
+    조건이 빠진 수는 다음 사람이 다시 잴 이유를 만들지 못하고,
+    그래서 틀린 채로 보고서 → 교육자료 → 지시문으로 옮겨 갑니다.
+  </div>
+
+  <dl class="prereq">
+    <dt>검사기</dt>
+    <dd>사람이 코드를 읽기 전에, 기계가 먼저 훑어 「여기서 선언한 것과 저기서 쓰는 것이
+    어긋난다」를 찾아 주는 프로그램입니다. 이 자료에 나오는 것은 <code>mypy</code> 입니다.</dd>
+    <dt>게이트</dt>
+    <dd>코드를 올리기 전에 자동으로 도는 검사 묶음입니다. 빨간 것이 하나라도 있으면
+    올라가지 않습니다.</dd>
+    <dt>리그(측정 환경)</dt>
+    <dd>검사기를 돌린 그 컴퓨터의 상태입니다 — 어떤 판의 부품이 깔려 있는지,
+    그 부품이 자기 규격서를 같이 싣고 왔는지. <b>이 자료의 주제가 이것입니다.</b></dd>
+  </dl>
+
+  <!-- 01 ─────────────────────────────────────────────────────────── -->
+  <section>
+    <h2><span class="n">01</span>같은 코드, 같은 명령, 다른 답</h2>
+    <p>지난 세션이 이 자리에서 <code>44</code>건을 기록했습니다. 이번 세션이 같은 명령을
+    다시 돌렸더니 <code>45</code>건이었습니다. 그 사이 코드가 바뀌어서가 아닙니다 —
+    <strong>검사기에게 부품의 규격서가 보이느냐 아니냐</strong>가 달랐습니다.</p>
+
+    <div class="meas">
+      <div>
+        <div><span class="v alarm">44</span><span class="u">건 / 16파일</span></div>
+        <div class="what">지난 세션이 기록한 수</div>
+        <div class="cond">조건 — 부품 판 <b>kernel 0.5.0</b><br>
+        규격서 파일(<code>py.typed</code>) <b>없음</b><br>
+        검사한 파일 수 215</div>
+      </div>
+      <div>
+        <div><span class="v alarm">45</span><span class="u">건 / 16파일</span></div>
+        <div class="what">이번 세션이 다시 잰 수</div>
+        <div class="cond">조건 — 부품 판 <b>kernel 0.5.4</b><br>
+        규격서 파일(<code>py.typed</code>) <b>있음</b><br>
+        검사한 파일 수 215</div>
+      </div>
+    </div>
+
+    <p class="note"><span class="warn">주의해서 볼 것.</span>
+    <strong>검사한 파일 수는 양쪽 다 215로 같습니다.</strong> 검사기는 두 경우 모두
+    같은 개수의 파일을 정직하게 훑었고, 훑었다고 정직하게 보고했습니다.
+    그런데 한쪽은 한 건을 못 봤습니다. <b>「몇 개를 봤는가」는 「무엇을 볼 수 있었는가」를
+    말해 주지 않습니다.</b></p>
+
+    <h3>규격서 파일이 없으면 무슨 일이 벌어지나</h3>
+    <p>이 시스템은 다른 저장소에서 만든 부품(<code>fcc-test-kernel</code>)을 가져다 씁니다.
+    그 부품 안에 <code>py.typed</code> 라는 파일이 하나 들어 있으면, 검사기는
+    「이 부품은 자기 규격을 밝혔다」고 보고 그 규격에 맞춰 검사합니다.
+    그 파일이 없으면 검사기는 그 부품에 대해 <strong>아무것도 모르는 것으로 처리하고
+    조용히 넘어갑니다.</strong> 빨간불이 아니라, 애초에 질문을 하지 않습니다.</p>
+  </section>
+
+  <!-- 02 ─────────────────────────────────────────────────────────── -->
+  <section>
+    <h2><span class="n">02</span>두 축이 함께 움직이면 아무것도 말할 수 없다</h2>
+    <p>44에서 45로 바뀌는 사이, 실제로는 <strong>두 가지</strong>가 함께 움직였습니다.</p>
+    <ul>
+      <li><b>코드</b> — 그 사이 다른 사람들의 작업 29건이 들어왔습니다.</li>
+      <li><b>리그</b> — 부품 판이 올라가면서 규격서 파일이 생겼습니다.</li>
+    </ul>
+    <p>이 상태로는 <strong>「+1이 어디서 왔는가」에 답할 수 없습니다.</strong> 그래서
+    한 축을 고정했습니다 — <b>코드를 한 시점에 묶어 두고, 규격서 파일만 뺐다 넣었다</b>
+    하며 다시 쟀습니다.</p>
+
+    <div class="scroll">
+    <table class="axis">
+      <thead>
+        <tr><th>측정</th><th>코드(트리)</th><th>규격서 파일</th><th>검사한 파일</th><th>결과</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="same">A</td>
+          <td class="same">main@9565be6 — 같음</td>
+          <td class="moved">있음</td>
+          <td class="n">215</td>
+          <td class="n">45건</td>
+        </tr>
+        <tr>
+          <td class="same">B</td>
+          <td class="same">main@9565be6 — 같음</td>
+          <td class="moved">없음</td>
+          <td class="n">215</td>
+          <td class="n">44건</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>코드가 완전히 같은 상태에서 규격서 파일 하나만으로 <strong>45 대 44</strong>가
+    갈렸습니다. 그러므로 <b>+1은 전부 리그 축이고, 그 사이 들어온 29건의 작업은 이
+    결과와 무관합니다.</b> 축을 고정하지 않았다면 이 문장을 쓸 수 없습니다 —
+    「코드가 바뀌어서 하나 늘었나 보다」로 끝났을 것이고, 실제 결함 하나가 그대로 남았을
+    겁니다.</p>
+
+    <p class="note">이 절차에는 이름을 붙여 둘 값이 있습니다.
+    <b>두 가지가 함께 움직였으면, 하나를 고정하고 다시 재기 전까지는 원인을 말하지 않는다.</b></p>
+  </section>
+
+  <!-- 03 ─────────────────────────────────────────────────────────── -->
+  <section>
+    <h2><span class="n">03</span>그 +1은 잡음이 아니라 실제 결함이었다</h2>
+    <p>규격서 파일이 켜지자 드러난 그 한 건은 이런 것이었습니다.</p>
+
+    <p>이 시스템에는 「데이터베이스 연결이 갖춰야 할 조건」을 적어 둔 <strong>기준
+    문서가 한 곳</strong>에 있습니다. 그런데 한 파일이 그 기준을 <strong>자기 안에 베껴
+    두고</strong> 쓰고 있었습니다. 그리고 시간이 지나면서 원본과 사본이 갈라졌습니다.</p>
+
+    <div class="scroll">
+    <table class="axis">
+      <thead><tr><th></th><th>결과를 돌려주는 형태</th><th>한 줄씩 읽는 기능</th></tr></thead>
+      <tbody>
+        <tr><td class="same">기준 문서(원본)</td><td class="moved">여러 형태를 허용</td><td class="same">있음</td></tr>
+        <tr><td class="same">그 파일의 사본</td><td class="moved">한 가지만 허용</td><td class="same">없음</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>둘이 다르므로 <strong>원본을 만족하는 연결이 사본의 조건은 만족하지 못합니다.</strong>
+    실제 운영에서는 같은 연결을 쓰기 때문에 화면에는 아무 일도 일어나지 않았지만,
+    선언상으로는 틀린 상태였습니다.</p>
+
+    <p><span class="warn">여기가 이 자료의 핵심입니다.</span>
+    그 기준 문서에는 이런 경고가 <strong>이미 적혀 있었습니다</strong> —
+    「모듈마다 사본을 두지 않는다. 같은 것을 열한 번 선언하면 그중 하나가 조용히
+    갈리는 날이 온다.」 예고된 그대로 일어났습니다. 그런데
+    <b>규격서 파일이 없는 동안에는 그 갈라짐이 존재하면서도 보이지 않았습니다.</b>
+    사본을 남기는 비용은 그때까지 <strong>침묵으로</strong> 지불되고 있었습니다.</p>
+  </section>
+
+  <!-- 04 ─────────────────────────────────────────────────────────── -->
+  <section>
+    <h2><span class="n">04</span>「이 줄만 이상하다」는 아직 판정이 아니다</h2>
+    <p>이번에 닫아야 할 목록에는 「이건 실행 중에 멈출 수도 있다」로 넘겨받은 자리가
+    둘 있었습니다. 인계 문서에 <strong>「결함이라고 확정하지 마라. 가르는 것이 먼저다」</strong>
+    라고 적혀 있었고, 갈라 보니 <strong>둘 다 결함이 아니었습니다.</strong></p>
+
+    <h3>후보 ① — 「옆줄에는 기본값이 있는데 이 줄만 없다」</h3>
+    <p>두 줄이 나란히 있는데 한 줄에만 「값이 없으면 이걸 쓴다」가 붙어 있었습니다.
+    그래서 <strong>빠뜨린 것처럼 보였습니다.</strong> 확인해 보니, 이 함수가 실행되기
+    <strong>전에</strong> 설정을 검사하는 단계가 따로 있고, 그 단계에서 값이 없으면
+    <strong>실행 자체가 중단</strong>됩니다.</p>
+    <p>즉 두 줄은 같은 규칙의 「지킴/어김」이 아니라 <b>애초에 다른 종류</b>였습니다 —
+    한쪽은 없어도 되는 항목이라 기본값이 있고, 다른 쪽은 반드시 있어야 하는 항목이라
+    앞 단계가 막습니다. <strong>관찰의 결론이 아니라 전제가 틀렸습니다.</strong></p>
+
+    <h3>후보 ② — 「네 줄 위에는 확인이 있는데 여기는 없다」</h3>
+    <p>같은 이름을 쓰는 자리가 그 함수 안에 <strong>스무 곳</strong> 있었습니다.
+    그런데 검사기가 지적한 것은 <strong>둘뿐</strong>이었습니다.</p>
+
+    <div class="lamps" aria-hidden="true">
+      <span class="lamp g"></span><span class="lamp g"></span><span class="lamp g"></span>
+      <span class="lamp g"></span><span class="lamp g"></span><span class="lamp g"></span>
+      <span class="lamp g"></span><span class="lamp g"></span><span class="lamp g"></span>
+      <span class="lamp r"></span><span class="lamp g"></span><span class="lamp g"></span>
+      <span class="lamp g"></span><span class="lamp g"></span><span class="lamp g"></span>
+      <span class="lamp r"></span><span class="lamp g"></span><span class="lamp g"></span>
+      <span class="lamp g"></span><span class="lamp g"></span>
+    </div>
+    <p class="lampcap">같은 이름을 쓰는 스무 곳 · 지적된 것은 둘</p>
+
+    <p>만약 원인이 「값이 비어 있을 수 있다」였다면 <strong>스무 곳이 전부 지적되어야
+    합니다.</strong> 일부만 지적됐다는 것은 원인이 값이 아니라 <b>그 두 곳의 위치</b>에
+    있다는 뜻입니다. 실제로 그 둘만 함수 안에 중첩된 별도 블록 안에 있었고, 검사기는
+    그런 블록 안에서는 바깥에서 확인한 사실을 이어 쓰지 않습니다.</p>
+
+    <p class="note"><b>지적 건수의 «분포»가 원인의 종류를 가릅니다.</b>
+    값의 문제면 전부, 자리의 문제면 일부입니다.
+    지적된 줄만 보지 말고 <strong>지적되지 «않은» 줄을 세십시오.</strong></p>
+  </section>
+
+  <!-- 05 ─────────────────────────────────────────────────────────── -->
+  <section>
+    <h2><span class="n">05</span>검사가 아예 부르지 않던 자리</h2>
+    <p>45건이 왜 한 곳에 몰려 쌓였는가 — 사람이 게을러서가 아니었습니다.
+    게이트는 검사할 범위를 <strong>설정 파일에 적힌 이름 목록</strong>에서 뽑아
+    그 목록대로 검사기를 <strong>따로따로</strong> 불렀습니다. 목록에 없는 자리는
+    빨간불도 초록불도 아니고, <strong>호출 자체가 없었습니다.</strong></p>
+
+    <div class="cover">
+      <div class="bar">
+        <div class="called">게이트가 부른 139</div>
+        <div class="silent">부르지 않은 76</div>
+      </div>
+      <div class="cap"><span>검사 대상 전체 215</span><span>45건이 전부 오른쪽에 있었다</span></div>
+    </div>
+
+    <p>그래서 이번 작업은 <strong>45건을 고치는 것과 게이트를 넓히는 것을 한 묶음</strong>
+    으로 처리했습니다. 고치기만 하면 다음 달에 같은 자리에 같은 것이 다시 쌓입니다.</p>
+
+    <h3>넓힐 때 「몇 개를 봤나」를 어떻게 확인하는가</h3>
+    <p>기존 게이트는 <strong>「검사한 파일이 0보다 크면 통과」</strong>였습니다.
+    그것이 통과시키는 상태가 둘 있습니다.</p>
+    <ul>
+      <li>이름을 조금 잘못 적으면 검사기가 <strong>파일 하나만</strong> 훑고
+      「1개 검사함」이라고 정직하게 보고합니다. 0보다 크므로 통과합니다.</li>
+      <li>규격서 파일 유무로 결과가 갈릴 때도 <strong>검사한 파일 수는 같습니다</strong>
+      (01절에서 본 215 대 215). 그러니 개수로는 구분되지 않습니다.</li>
+    </ul>
+    <p>그래서 개수를 <strong>고정된 숫자로 적어 두는 대신</strong>, 코드 폴더를 직접 세어
+    나온 값과 <strong>같은지</strong>를 봅니다. 이렇게 하면 파일이 늘어난 날에는 양쪽이
+    같이 움직여 조용하고, <strong>게이트가 조용히 좁아진 날에만</strong> 빨개집니다.</p>
+  </section>
+
+  <!-- 06 ─────────────────────────────────────────────────────────── -->
+  <section>
+    <h2><span class="n">06</span>검사기가 실제로 반응하는지 확인한다</h2>
+    <p>검사를 만든 것과 그 검사가 <strong>반응하는 것</strong>은 다른 이야기입니다.
+    반응하지 않는 검사는 화면에서 통과와 구별되지 않습니다. 그래서 일부러 고장을
+    넣고 빨개지는지 확인했습니다 — 네 번, 한 번에 하나씩.</p>
+
+    <div class="inj">
+      <div class="row">
+        <div>
+          <div class="lbl">주입 1</div>
+          <div class="txt">게이트 밖 자리에 타입 오류를 하나 넣는다</div>
+        </div>
+        <div class="out">
+          기존 검사 <span class="g">통과</span><br>
+          새 검사 <span class="r">실패</span>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="lbl">주입 2</div>
+          <div class="txt">새 검사가 보는 범위만 몰래 좁힌다</div>
+        </div>
+        <div class="out">
+          오류 개수 축 <span class="g">통과</span><br>
+          파일 수 비교 <span class="r">실패 215≠51</span>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="lbl">주입 3</div>
+          <div class="txt">별도 컴퓨터 환경을 새로 만들어 규격서 파일만 지운다</div>
+        </div>
+        <div class="out">
+          다른 15개 <span class="g">전부 통과</span><br>
+          리그 검사 <span class="r">실패</span>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="lbl">주입 4</div>
+          <div class="txt">규격서를 되돌리고 부품 하나만 지운다</div>
+        </div>
+        <div class="out">
+          다른 14개 <span class="g">전부 통과</span><br>
+          리그 검사 <span class="r">실패</span>
+        </div>
+      </div>
+    </div>
+
+    <p><strong>주입 1이 이번 작업의 근거입니다.</strong> 같은 고장을 넣었는데
+    기존 검사는 통과하고 새 검사만 빨개졌습니다. 「게이트가 그 자리를 안 부른다」는
+    진단이 말이 아니라 화면으로 확인된 것이고, 동시에 새 검사가 헛돌지 않는다는
+    확인이기도 합니다.</p>
+
+    <h3>주입 3·4에서 「새 환경」을 따로 만든 이유</h3>
+    <p>쓰던 환경을 망가뜨려서 재면 안 됩니다. <strong>이 검사가 잡으려는 고장은
+    측정 자체를 통과시키는 종류</strong>라서, 망가진 상태에서 다른 검사들이 초록이면
+    그것이 「이상 없음」인지 「보이지 않음」인지 구분할 수 없기 때문입니다.
+    그리고 되돌리는 것을 잊으면 그 뒤의 모든 측정이 조용히 거짓이 됩니다.</p>
+  </section>
+
+  <!-- 07 ─────────────────────────────────────────────────────────── -->
+  <section>
+    <h2><span class="n">07</span>「15개는 초록, 하나만 빨강」 — 그 그림이 증거다</h2>
+    <p>주입 3에서 나온 화면이 이 자료가 남기려는 가장 중요한 그림입니다.</p>
+
+    <div class="lamps" aria-hidden="true">
+      <span class="lamp g"></span><span class="lamp g"></span><span class="lamp g"></span>
+      <span class="lamp g"></span><span class="lamp g"></span><span class="lamp g"></span>
+      <span class="lamp g"></span><span class="lamp g"></span><span class="lamp g"></span>
+      <span class="lamp g"></span><span class="lamp g"></span><span class="lamp g"></span>
+      <span class="lamp g"></span><span class="lamp g"></span><span class="lamp g"></span>
+      <span class="lamp r"></span>
+    </div>
+    <p class="lampcap">규격서 파일이 없는 환경 · 검사 15개 통과 · 리그 검사만 실패</p>
+
+    <p>그 환경에서 검사기는 <strong>정상적으로 돌았고, 초록이었고, 검사한 파일 수도
+    맞았습니다.</strong> 오류 개수도 0이었습니다. 그 어느 축으로도 「이 환경은 볼 수 없는
+    상태다」를 알 수 없었습니다. <b>새로 세운 리그 검사 하나만이 그것을 말했습니다.</b></p>
+
+    <p>그래서 그 검사는 <strong>건너뛰지 않고 빨개지도록</strong> 만들었습니다.
+    부품이 없을 때 조용히 건너뛰게 하면, 「안 봤다」와 「이상 없다」가 화면에서
+    같은 값이 됩니다.</p>
+  </section>
+
+  <!-- 08 ─────────────────────────────────────────────────────────── -->
+  <section>
+    <h2><span class="n">08</span>보고받은 수치를 그대로 믿지 않는다</h2>
+    <p>이번 세션에는 다른 담당이 「이 방식은 이런 경우에 조용히 틀어진다」고 알려 온
+    것이 있었습니다. <strong>재 보니 성립하지 않았습니다.</strong></p>
+
+    <div class="scroll">
+    <table class="axis">
+      <thead><tr><th>상태</th><th>폴더를 세어 나온 값</th><th>검사기가 보고한 값</th></tr></thead>
+      <tbody>
+        <tr><td class="same">지금</td><td class="n">215</td><td class="n">215</td></tr>
+        <tr><td class="moved">지목된 폴더를 치움</td><td class="n">214</td><td class="n">214</td></tr>
+        <tr><td class="same">되돌림</td><td class="n">215</td><td class="n">215</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>양쪽이 <strong>같이</strong> 움직입니다. 둘 다 같은 폴더를 세기 때문에 어긋날 수가
+    없습니다. 다만 그 지적은 <strong>진짜 의존 축을 가리키고 있었습니다</strong> —
+    이 방식은 검사기의 계산 규칙 하나에 기대고 있고, 설치 선언은 검사기 판을
+    「이 이상」으로만 정합니다. 그래서 그 축을 따로 쟀습니다.</p>
+
+    <div class="meas">
+      <div>
+        <div><span class="v pass">215</span><span class="u">네 판 전부 동일</span></div>
+        <div class="what">검사기 판을 바꿔 가며 같은 코드를 측정</div>
+        <div class="cond">1.15.0 → 215 · 1.20.2 → 215<br>
+        2.0.0 → 215 · 2.3.1 → 215<br>
+        <b>주버전 경계를 넘어 안정적</b></div>
+      </div>
+    </div>
+
+    <p class="note"><b>반증만 적으면 절반입니다.</b> 지적이 틀렸다고만 적으면 다음 사람이
+    같은 질문을 다시 합니다. 그 지적이 가리킨 진짜 축을 재서 함께 적어야 끝납니다.
+    두 결과 모두 코드 주석에 남겼습니다.</p>
+  </section>
+
+  <!-- 09 ─────────────────────────────────────────────────────────── -->
+  <section>
+    <h2><span class="n">09</span>시험원 체크리스트</h2>
+    <p>이 아홉 줄은 소프트웨어에만 해당하는 것이 아니라, <strong>「기계가 이상 없다고
+    말할 때 그것을 어디까지 믿을 것인가」</strong>를 다루는 자리라면 그대로 적용됩니다.</p>
+
+    <ul class="check">
+      <li>수를 받았으면 <b>그 수를 낸 조건</b>이 함께 적혀 있는가. 없으면 그 수는
+      아직 재사용할 수 없다.</li>
+      <li>두 가지가 함께 바뀌었으면, <b>하나를 고정하고 다시 재기 전까지</b>
+      원인을 말하지 않는다.</li>
+      <li>「이상 없음」을 봤을 때 <b>몇 개를 봤는지</b> 묻는다. 그리고 그 개수가
+      <b>봐야 할 개수와 같은지</b> 묻는다. 「0보다 크다」는 답이 아니다.</li>
+      <li>개수가 맞아도 <b>「볼 수 있는 상태였는가」</b>는 별개다. 이번 사례에서
+      두 환경의 검사 파일 수는 215로 같았고 결과는 달랐다.</li>
+      <li>지적이 일부에만 나왔으면 <b>지적되지 «않은» 자리를 센다.</b>
+      분포가 원인의 종류를 가른다.</li>
+      <li>「옆줄과 다르다」는 관찰이지 판정이 아니다. <b>앞 단계가 무엇을 막고 있는지</b>
+      먼저 확인한다.</li>
+      <li>새로 만든 검사에는 <b>일부러 고장을 넣어</b> 빨개지는지 확인한다.
+      반응하지 않는 검사는 통과와 구별되지 않는다.</li>
+      <li>그 확인은 <b>쓰던 환경을 망가뜨려서 하지 않는다.</b> 별도 환경을 세운다.</li>
+      <li>부품이나 도구가 없을 때 <b>건너뛰지 말고 빨개지게</b> 한다.
+      건너뛰면 「안 봤다」와 「이상 없다」가 같은 값이 된다.</li>
+    </ul>
+  </section>
+
+  <div class="close">
+    <p><b>이번 작업의 결과.</b> 게이트 밖에 있던 45건은 0이 됐고,
+    게이트는 이제 그 자리를 부릅니다. 검사한 파일 215개, 오류 0건,
+    경계 계약 3건 유지, 전체 시험 3,380건 통과 · 실패 0건.</p>
+    <p><b>남은 것.</b> 이번에 닫은 것은 <strong>「검사를 부르는 범위」</strong>입니다.
+    <strong>「얼마나 엄격하게 볼 것인가」</strong>는 아직 열려 있고,
+    그 자리에 183건이 기다리고 있습니다. 다음 세션의 일입니다.</p>
+  </div>
+
+</div>
