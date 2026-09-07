@@ -605,7 +605,32 @@
 <!-- ─────────────────────────────────────────── -->
 <section>
   <h2><span class="n">5</span><span>우리 레포의 오늘 — 실측</span></h2>
-  <p class="s-sub">문서를 쓰기 전에 이 레포의 상태를 직접 쟀습니다. 아래는 전부 2026-09-07 관측값입니다.</p>
+  <p class="s-sub">문서를 쓰기 전에 이 레포의 상태를 직접 쟀습니다. 아래는 전부 2026-09-07 <strong>오전</strong> 관측값입니다.</p>
+
+  <div class="alert">
+    <p>
+      🔴 <strong>시점 경고 (2026-09-07 12:08 재측정) — 아래 타일과 서술은 «그날 오전»의 값입니다.</strong>
+      본문은 <strong>지우지 않고 그대로 둡니다</strong> — 이 절이 가르치는 것은 「오늘의 숫자」가
+      아니라 <strong>「규칙이 왜 도달하지 않았나」</strong>이고, 그 설명은 여전히 유효하기 때문입니다.
+      다만 <strong>숫자는 그 뒤 바뀌었습니다</strong>:
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>타일</th><th>이 절의 값 (오전)</th><th>12:08 재측정</th></tr></thead>
+        <tbody>
+          <tr><td>세션마다 로드되는 규칙</td><td class="bad">0 — <span class="mono">CLAUDE.md</span> 부재</td><td class="good"><span class="mono">CLAUDE.md</span> 가 <strong>두 레인 다 생겼습니다</strong> (platform PR #143 · contracts <span class="mono">f8992ee</span>)</td></tr>
+          <tr><td><span class="mono">.claude/rules/</span></td><td>3개 (전부 조건부)</td><td><strong>platform 4개</strong> · <strong>contracts 0개</strong></td></tr>
+          <tr><td><span class="mono">main</span> 브랜치 보호</td><td class="bad">없음 — <span class="mono">404 Branch not protected</span></td><td class="good"><strong>두 레인 다 켜졌습니다</strong> — <span class="mono">lane-check</span> required. ⚠️ contracts 는 <span class="mono">enforce_admins: false</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      ⚠️ <strong>「셋 다 <span class="mono">paths:</span> 조건부라 도달하지 않는다」는 진단 자체는 오늘도
+      참입니다</strong> — platform 의 규칙 4개는 여전히 전부 조건부이고,
+      <span class="mono">CLAUDE.md</span> 가 그 자리를 메운 것입니다.
+      그리고 <strong>contracts 레인에는 조건부 규칙조차 0개</strong>입니다.
+    </p>
+  </div>
 
   <div class="tiles">
     <div class="tile">

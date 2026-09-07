@@ -383,7 +383,21 @@ platform 에서 깨질 수 있고, 그 갈라짐은 **양방향**입니다.
 
 그리고 오늘 **강제되지 않는** 것들 — 협업자가 늘면 결정해야 합니다:
 
-* `required_approving_review_count: 0` → 「동료 1인 승인」이 기계로 안 막힘
-* `fcc-test-contracts` 의 `main` 에 **branch protection 없음**
-* `fcc-test-contracts` 에 **`CLAUDE.md` 도 `.claude/rules/` 도 없음** — 그 레인을 여는
-  세션에는 규칙이 하나도 도달하지 않습니다
+* `required_approving_review_count: 0` → 「동료 1인 승인」이 기계로 안 막힘 (두 레인 다)
+* `fcc-test-contracts` 의 **`enforce_admins: false`** → **관리자는 보호를 우회**할 수
+  있습니다 (platform 은 `true`). 이 비대칭이 의도인지 운영자 판정이 필요합니다
+* `fcc-test-contracts` 에 **`.claude/rules/` 0개** — 그 레인을 여는 세션에는
+  **경로 조건부 규칙이 하나도 도달하지 않습니다** (`CLAUDE.md` 는 있으므로 항상
+  로드되는 규칙만 도달합니다)
+
+<!-- 정정 이력 — 지우지 마세요. -->
+> 🔴 **정정 (2026-09-07 12:08 실측).** 이 목록의 옛 판은 두 항목이 오늘 거짓입니다:
+>
+> | 옛 항목 | 오늘 실측 |
+> |---|---|
+> | *「`fcc-test-contracts` 의 `main` 에 **branch protection 없음**」* | ✅ 켜졌습니다 — `lane-check` required |
+> | *「`fcc-test-contracts` 에 **`CLAUDE.md` 도 `.claude/rules/` 도 없음**」* | `CLAUDE.md` 는 **있습니다**(`f8992ee`, 138줄). `.claude/rules/` 만 0개 |
+>
+> 즉 **둘 다 「전부 없음」에서 「절반」으로 좁아졌습니다.**
+> 「없다」를 적은 문장은 **가장 빨리 낡습니다** — 없던 것이 생기는 데는 커밋 하나면
+> 충분하고, 그 커밋은 이 문서에 알림을 보내지 않습니다.

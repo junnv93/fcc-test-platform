@@ -110,11 +110,17 @@ python3 scripts/merge_readiness_guard.py merge <PR번호> --update
 
 <!-- 낡은 문장을 믿고 잘못된 판정을 내린 사례가 이 레포에 반복해서 있었다. -->
 
-| 어디 | 뭐라고 적혀 있나 | 실측 (2026-09-07) |
+| 어디 | 뭐라고 적혀 있나 | 실측 (2026-09-07 12:08) |
 |---|---|---|
 | `README.md`, `.github/workflows/checks.yml` | GitHub Actions 가 러너를 못 받아 **휴면** | **거짓.** 러너 정상(`runner_name` 채워짐, 최근 런 `success`) |
 | `README.md` | 이 레포는 **private** 이라 Actions 가 분당 과금 | **거짓.** 레포는 **PUBLIC** — 표준 러너 무과금 |
-| `fcc-test-contracts/README.md` | 이 레인은 **읽기 전용 납품물** | **거짓.** 배송 기계는 2026-08-31 퇴역, 여기서 고친다 |
+| `fcc-test-contracts/README.md` · `CODEOWNERS` | 이 레인은 **읽기 전용 납품물**, PR 병합 불가 | **거짓.** 배송 기계는 2026-08-31 퇴역, 거기서 고치고 PR 로 머지한다 |
+| 온보딩 문서 다수 | `fcc-test-contracts` 의 `main` 은 **무방비** | **거짓.** `lane-check` **required**. 단 `enforce_admins: false` — **관리자는 우회 가능**(platform 은 `true`) |
+
+⚠️ **「없다」를 적은 문장이 가장 빨리 낡는다.** 없던 것이 생기는 데는 커밋 하나면
+충분하고, 그 커밋은 그 문장에 알림을 보내지 않는다. 고칠 때는 **파일이 아니라 그
+«사실»을** `git grep` 하라 — 같은 사실을 말하는 자리가 다른 파일, 심지어 **다른
+레포**에 있다(2026-09-07 실측: 같은 문단이 두 레인의 `README.md` 에 있었다).
 
 구조·품질 판정은 **이 레포에 직접 도구를 돌려서** 하라. 원본 수치를 인용하지 마라.
 
@@ -124,14 +130,26 @@ python3 scripts/merge_readiness_guard.py merge <PR번호> --update
 
 | 파일 | 내용 | 로드 조건 |
 |---|---|---|
+| `.claude/rules/intent-workflow.md` | 의도 흐름 — **무조건 로드** (`paths:` 없음) | **항상** |
 | `.claude/rules/supervisor-workflow.md` | 워크트리·claim 위생 · 머지 신선도 · 병렬 레인 락 | `.claude/**` · `scripts/supervisor_*` 등 |
 | `.claude/rules/check-axis-blindness.md` | 「이 검사가 재는 축에 같은 값을 갖는 다른 상태가 있는가」 판별 | `tests/**` · 게이트 스크립트 |
 | `.claude/rules/incomplete-landing-lifecycle.md` | reviewer FAIL 과 release readiness 분리 | `.claude/**` |
 | `intent/README.md` | 의도 기반 흐름의 규칙 본문 | (규칙 파일이 아님 — §P0-1 이 가리킨다) |
 | `.claude/README.md` | 이 디렉터리가 물려받은 것과 물려받지 않은 것 | — |
 
-⚠️ 위 셋은 전부 `paths:` 조건부다. **그 경로를 만지지 않는 세션에는 로드되지 않는다.**
-모든 세션에 참인 규칙을 그쪽에 쓰면 필요한 순간에 도달하지 않는다 — 이 파일에 써라.
+⚠️ **규칙은 넷이고, 그중 셋이 `paths:` 조건부다.** 그 경로를 만지지 않는 세션에는
+로드되지 않는다. 모든 세션에 참인 규칙을 그쪽에 쓰면 필요한 순간에 도달하지 않는다 —
+이 파일이나 `intent-workflow.md` 처럼 `paths:` 없는 규칙에 써라.
+
+<!-- 정정 이력 — 지우지 마세요. -->
+> 🔴 **정정 (2026-09-07 12:08).** 이 표의 옛 판은 규칙을 **셋만** 적었고
+> `intent-workflow.md` 가 **빠져 있었습니다.** 그리고 표 아래 문장은
+> *「위 셋은 전부 `paths:` 조건부다」* 였습니다 — 그 문장은 이 표에 대해서는 참이지만
+> **레포에 대해서는 거짓**이었습니다(무조건 규칙이 하나 있었으므로).
+>
+> ⚠️ **지도에서 빠진 규칙은 「있는데 아무도 모르는」 상태가 됩니다.** 규칙을 더할 때는
+> 파일을 만드는 것으로 끝내지 말고 **이 표에 등재**하십시오.
+> 재는 법: `ls .claude/rules/*.md | wc -l` 을 이 표의 행 수와 대조.
 
 ⚠️ **`.claude/` 는 모노레포와 동기화하지 않는다.** 여기 문서가 모노레포의 사고를
 인용하는 것은 정상이지만(그것이 규칙의 근거다), 앞으로의 정정은 **여기서** 한다.

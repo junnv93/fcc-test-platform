@@ -150,23 +150,49 @@ Team members via source control***.
 
 ### 오늘의 상태 — `fcc-test-contracts` 는 «절반» 메워졌습니다
 
-실측 (2026-09-07 **09:58**, `origin/main` 기준):
+실측 (**2026-09-07 12:08**, `origin/main` 기준):
 
-| 레인 | `CLAUDE.md` | `.claude/rules/` | `main` 보호 |
-|---|---|---|---|
-| `fcc-test-platform` | ✅ 있음 (PR #143) | ✅ 3개 | ✅ `lane-check` required |
-| `fcc-test-contracts` | ✅ 138줄 (`f8992ee`, **09:43:43**) | 🔴 **0개** | 🔴 **없음** |
+| 레인 | `CLAUDE.md` | `.claude/rules/` | `main` 보호 | `enforce_admins` |
+|---|---|---|---|---|
+| `fcc-test-platform` | ✅ 있음 (PR #143) | ✅ **4개** | ✅ `lane-check` required | ✅ `true` |
+| `fcc-test-contracts` | ✅ 138줄 (`f8992ee`, **09:43:43**) | 🔴 **0개** | ✅ `lane-check` required | 🔴 **`false`** |
 
 ```bash
 git -C fcc-test-contracts fetch origin
 git -C fcc-test-contracts ls-tree --name-only origin/main CLAUDE.md
+git -C fcc-test-contracts ls-tree --name-only -r origin/main .claude/rules | wc -l
 gh api repos/junnv93/fcc-test-contracts/branches/main/protection
 ```
 
-⚠️ **커널 레인의 `main` 은 여전히 무방비입니다** — `{"message":"Branch not protected"}`.
-협업자를 초대하는 순간, 그 사람은 계약 커널의 `main` 에 **직접 push 할 수 있습니다.**
-platform 이 그것을 소비하므로 여기의 사고는 platform 전체로 번집니다.
-**초대보다 이것이 먼저입니다.**
+<!-- 정정 이력 — 지우지 마세요. §4-a 가 바로 이 표가 낡는 사고를 기록한 절입니다. -->
+> 🔴 **정정 (2026-09-07 12:08 실측).** 이 표의 옛 판은 두 칸이 틀렸습니다:
+>
+> | 칸 | 옛 판 | 오늘 실측 |
+> |---|---|---|
+> | contracts `main` 보호 | 🔴 **없음** (`404 Branch not protected`) | ✅ `lane-check` required |
+> | platform `.claude/rules/` | ✅ 3개 | ✅ **4개** |
+>
+> 그리고 옛 판에는 이 문단이 붙어 있었습니다:
+>
+> > *「⚠️ **커널 레인의 `main` 은 여전히 무방비입니다** — `{"message":"Branch not protected"}`.
+> > 협업자를 초대하는 순간, 그 사람은 계약 커널의 `main` 에 **직접 push 할 수 있습니다.**
+> > … **초대보다 이것이 먼저입니다.**」*
+>
+> **초대보다 먼저 하라던 그 일은 실제로 초대보다 먼저 이뤄졌습니다.**
+> 보호가 켜졌고(01:5x 경), 그 뒤 초대 2건이 나갔습니다.
+>
+> ⚠️ **다만 `.claude/rules/` 0개는 여전히 참입니다** — 「절반 메워졌다」는 이 절의
+> 제목은 오늘도 유효합니다. 그리고 `enforce_admins: false` 라는 **새 비대칭**이
+> 드러났습니다(`05-github-access.md` §3).
+
+⚠️ **커널 레인에는 오늘도 «경로 규칙»이 도달하지 않습니다** — `CLAUDE.md` 는 항상
+로드되지만 `.claude/rules/` 가 비어 있으므로, 「이 파일을 여는 순간에만 발화하는」
+규칙이 그 레인에는 하나도 없습니다.
+
+⚠️ **관리자는 커널 `main` 을 여전히 우회할 수 있습니다** — `enforce_admins: false`.
+협업자(`push` 권한)는 못 하지만 `admin` 권한을 받은 사람은 할 수 있으므로,
+`05-github-access.md` §2 의 **「`admin` 을 주지 마십시오」가 이 레인에서 더 강한
+요구**가 됩니다.
 
 ---
 

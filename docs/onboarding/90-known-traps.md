@@ -17,15 +17,21 @@
 문서가 낡는 것은 이 프로젝트에서 **가장 자주 재발하는 사고 유형**입니다.
 낡은 문장은 틀렸다고 말해 주지 않고, **맞는 문장과 똑같이 생겼습니다.**
 
-### 2026-09-07 에 실측으로 찾은 «거짓» 서술 다섯 — 셋은 고쳤고 둘은 남았습니다
+### 2026-09-07 에 실측으로 찾은 «거짓» 서술 — 하루에 **열하나**
 
-| 어디 | 뭐라고 적혀 있었나 | 실측 | 오늘 상태 |
-|---|---|---|---|
-| `README.md` | `checks.yml` 은 오늘 **휴면** | 최근 런 전부 `success` | ✅ **고침** (정정 주석 포함) |
-| `README.md` | 이 레포들은 **private** | 둘 다 `public` | ✅ **고침** |
-| `docs/operations/` **3개 파일** | 중앙 **5개** 서비스 | **7개** | ✅ **고침** (세 파일 모두) |
-| `fcc-test-contracts/README.md` | 「여기서 고치지 마세요」 | 배송 기계 퇴역(2026-08-31) | 🔴 **남음 — 다른 레포** |
-| `fcc-test-contracts/CODEOWNERS` | 모노레포에서 **배송된다** | 그 디렉터리도 스크립트도 없다 | 🔴 **남음 — 다른 레포** |
+| # | 어디 | 뭐라고 적혀 있었나 | 실측 | 상태 |
+|---|---|---|---|---|
+| 1 | `README.md` | `checks.yml` 은 오늘 **휴면** | 최근 런 전부 `success` | ✅ 고침 (정정 주석) |
+| 2 | `README.md` | 이 레포들은 **private** | 둘 다 `public` | ✅ 고침 |
+| 3 | `docs/operations/` **3개 파일** | 중앙 **5개** 서비스 | **7개** | ✅ 고침 (세 파일 모두) |
+| 4 | `fcc-test-contracts/README.md` | 「여기서 고치지 마세요」 | 배송 기계 퇴역(2026-08-31) | ✅ 고침 — contracts PR #56 |
+| 5 | `fcc-test-contracts/CODEOWNERS` | 모노레포에서 **배송된다** | 그 디렉터리도 스크립트도 없다 | ✅ 고침 — contracts PR #56 |
+| 6 | `05-github-access.md` §1·§3 | contracts `main` **무방비** (`404`) | `lane-check` **required** | ✅ 고침 (12:08) |
+| 7 | `06-workspace-and-claude-md.md` §4 | contracts `main` **「없음」** | 켜짐 | ✅ 고침 (12:08) |
+| 8 | `02-how-we-collaborate.md` §4 | contracts `main` **「아예 없음」** | 켜짐 | ✅ 고침 (12:08) |
+| 9 | `20-platform-codev-kickoff.md` | contracts 에 **`CLAUDE.md` 도 없음** | `f8992ee`, 138줄 — **있음** | ✅ 고침 (12:08) |
+| 10 | `05` §1 · 교육자료 2건 | 대기 중 초대 **0** | **2** (`JJDHJJ`·`kkulhong`) | ✅ 고침 (12:08) |
+| 11 | `README.md` §훅 한계 | 「protection 이 required 로 거는 **날에** 생긴다」 | **이미 걸려 있다** | ✅ 고침 (12:08) |
 
 **재는 명령:**
 
@@ -33,11 +39,27 @@
 gh run list --repo junnv93/fcc-test-platform --limit 5
 gh api repos/junnv93/fcc-test-platform --jq .visibility
 python3 -c "import yaml;print(list(yaml.safe_load(open('infra/docker-compose.central.yml'))['services']))"
-ls ~/FCC_mobile_test_automation/packaging/          # → No such file or directory
+ls ~/FCC_mobile_test_automation/packaging/                          # → No such file or directory
+gh api repos/junnv93/fcc-test-contracts/branches/main/protection     # 6·7·8
+gh api repos/junnv93/fcc-test-platform/invitations --jq '.[].invitee.login'   # 10
 ```
 
-앞의 셋은 `CLAUDE.md` 가 이미 표로 잡고 있었고, **뒤의 둘은 이 온보딩 작업이 새로
+앞의 셋은 `CLAUDE.md` 가 이미 표로 잡고 있었고, **4~11 은 이 온보딩 작업이 새로
 찾았습니다.** 즉 이 목록은 **완전하지 않습니다** — 당신도 찾게 됩니다.
+
+### ⚠️ 6~11 이 가르치는 것 — 「고쳤다」가 «그 사실을 말하는 모든 자리»를 뜻하지 않습니다
+
+**6·7·8 은 서로 다른 세 파일에 적힌 «같은 하나의 사실»입니다.** contracts 의 보호가
+켜진 사건은 하나인데, 그것을 거짓으로 만든 문장은 **다섯 파일에 흩어져** 있었습니다.
+
+그리고 **11 은 같은 파일 «안에서» 갈라진 사례**입니다 — `README.md` 는 §CI 에서
+「protection 이 required 로 요구한다」로 이미 고쳐 놓고, 200줄 아래 §훅 한계에서는
+「그 날이 오면」이라고 미래형으로 말하고 있었습니다.
+
+> ### 🧭 스스로 묻는 질문
+> **「이 사실을 말하는 자리가 여기 말고 또 어디인가?」**
+> 고칠 때 `git grep` 으로 «그 사실»을 찾으십시오 — 파일 이름이 아니라 **문장**을.
+> 한 자리를 고치는 것은 **정정이 아니라 갈라짐을 만드는 일**이 될 수 있습니다.
 
 ⚠️ **고칠 때 옛 문장을 «지우지» 마십시오.** 세 파일 모두 정정 주석을 남겼습니다 —
 옛 판을 믿고 잘못 판단한 사례가 이 레포에 있고, 그것을 막는 것은 삭제가 아니라 기록입니다.
