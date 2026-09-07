@@ -2,7 +2,7 @@
 
 Author: Claude (초안) / 세션 fcc-delivery-final-b1
 Date: 2026-09-07
-Status: draft
+Status: accepted
 Slug: top-level-modules-in-the-type-gate
 
 ## Problem
