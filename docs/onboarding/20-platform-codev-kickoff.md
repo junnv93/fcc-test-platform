@@ -106,6 +106,85 @@ intent/_templates/intent.md 서식으로 새 intent 를 만들어줘.
 
 ---
 
+## 3-a. 실행 런북 — 기능 하나를 처음부터 끝까지
+
+**의도 하나가 브랜치 셋이 됩니다.** 각 단계에 붙여넣을 멘트와 완료 판정입니다.
+
+### 단계 1 — `intent.md` (브랜치 `intent/<슬러그>`)
+
+```
+intent/_templates/intent.md 서식으로 새 intent 를 만들어줘.
+
+문제는: (겪은 문제를 «그냥 말로». 정식 문서로 쓰려 애쓰지 마라 — 그게 네 일이다)
+
+⚠️ 해결책을 문제로 쓰지 마라. 「누가 · 무엇을 못 해서 · 어떤 비용이 나는지」를 물어봐라.
+⚠️ Open questions 를 「없음」으로 비우지 마라.
+⚠️ 이 레포는 PUBLIC 이다. 의뢰자를 실명이 아니라 «역할»로 써라.
+⚠️ intent.md «하나만» 만들고 멈춰라. PR 도 그 파일 하나만이다.
+```
+
+**✅ 완료 판정**
+
+```bash
+git diff origin/main --stat        # intent/<슬러그>/intent.md 한 줄이어야 한다
+python3 scripts/human_judgment_triggers.py 2>/dev/null || true   # 방아쇠 확인
+```
+
+🔴 **여기서 멈추십시오.** 동료 1인(작성자 제외)이 머지하면 승인된 것입니다.
+
+### 단계 2 — `spec.md` (브랜치 `spec/<슬러그>`)
+
+```
+intent/<슬러그>/intent.md 가 승인됐다. spec.md 초안을 써줘.
+
+⚠️ §2 「범위 밖」을 «비우지» 마라 — 무엇을 안 하는지가 범위를 정한다.
+⚠️ §4 「영향받는 경계」에 계약 커널이 닿는지 «반드시» 판정해라.
+   닿으면 그것은 2-레포 작업이고 커널 태그가 «먼저» 나가야 한다.
+⚠️ §7 열린 질문에 답이 없으면 방아쇠 T3 가 «빨간 채로» 남는다.
+   답을 아는 사람에게 물어서 「→ 답(이름): 내용」으로 적어라.
+```
+
+**✅ 완료 판정** — T3 가 걸리지 않아야 합니다(답 없는 열린 질문 0).
+
+### 단계 3 — `plan.md` + 코드 (브랜치 `feature/<슬러그>`)
+
+```
+spec.md 가 승인됐다. plan mode 로 plan.md 를 쓰고 구현해줘.
+
+⚠️ §1 「바뀌는 파일」 표가 «방아쇠 T4 의 판정 대상»이다.
+   표에 없는 파일이 diff 에 있으면 검사가 빨간 채로 남는다 —
+   표에 추가하거나 「Scope-Extended-By: <이름> — <사유>」를 적어라.
+
+⚠️ 새 검사를 만들면 «일부러 깨진 입력을 주입»해서 빨개지는지 확인하고,
+   그 주입이 «착지했는지» 부터 확인해라.
+
+⚠️ 커밋 규율:
+   - git add <파일...> 명시. -A / . 금지
+   - push 는 git push origin HEAD:refs/heads/<이름> (브랜치를 «바꾸지» 마라)
+   - 훅을 git -c 로 «임시로» 켜지 마라 — 이미 설정돼 있다
+   - 커밋 메시지에 17항목 자가점검. 상태 뒤에 «사유»가 없으면 거부된다
+```
+
+**✅ 완료 판정 — push «전»에**
+
+```bash
+QT_QPA_PLATFORM=offscreen python3 scripts/lane_check.py --root .
+#   → 선언된 실패 0개 / 관측된 실패 0개  ✅ 일치
+
+python3 scripts/merge_readiness_guard.py merge <PR번호> --update
+```
+
+### 단계 4 — 머지
+
+```bash
+gh pr merge <N> --merge        # ⚠️ --squash 금지 (자가점검이 사라진다)
+```
+
+⚠️ **`CLEAN` 은 「그때의 base」에 대한 진술입니다.** base 가 움직여도 CI 는 다시 안
+돕니다 — **머지 직전에 다시 물으십시오.**
+
+---
+
 ## 4. 게이트 — 무엇이 «진짜» 막나
 
 | 층 | 어디서 | 무엇을 막나 | 우회 |
@@ -304,7 +383,26 @@ platform 에서 깨질 수 있고, 그 갈라짐은 **양방향**입니다.
 
 그리고 오늘 **강제되지 않는** 것들 — 협업자가 늘면 결정해야 합니다:
 
-* `required_approving_review_count: 0` → 「동료 1인 승인」이 기계로 안 막힘
-* `fcc-test-contracts` 의 `main` 에 **branch protection 없음**
-* `fcc-test-contracts` 에 **`CLAUDE.md` 도 `.claude/rules/` 도 없음** — 그 레인을 여는
-  세션에는 규칙이 하나도 도달하지 않습니다
+* `required_approving_review_count: 0` → 「동료 1인 승인」이 기계로 안 막힘 (두 레인 다)
+* `fcc-test-contracts` 의 **`enforce_admins: false`** → **관리자는 보호를 우회**할 수
+  있습니다 (platform 은 `true`). ✅ **이것은 의도이고 근거가 적혀 있습니다** —
+  `fcc-test-contracts/CLAUDE.md` §`enforce_admins` 절: 태그 레인이 멈추면 공급 사슬
+  전체가 멈추고, 러너 할당량 문제의 **원인이 아직 해소되지 않았습니다.**
+  ⚠️ 그 대가로 그 레인에서는 **「red 면 서버가 막는다」가 거짓**입니다
+  (협업자 1명이 `admin` 이므로 실질적으로 아무나 우회 가능). 다시 판단해야 하는
+  때는 「의도인가」가 아니라 **「러너 전제가 바뀌었나」**입니다
+* `fcc-test-contracts` 에 **`.claude/rules/` 0개** — 그 레인을 여는 세션에는
+  **경로 조건부 규칙이 하나도 도달하지 않습니다** (`CLAUDE.md` 는 있으므로 항상
+  로드되는 규칙만 도달합니다)
+
+<!-- 정정 이력 — 지우지 마세요. -->
+> 🔴 **정정 (2026-09-07 12:08 실측).** 이 목록의 옛 판은 두 항목이 오늘 거짓입니다:
+>
+> | 옛 항목 | 오늘 실측 |
+> |---|---|
+> | *「`fcc-test-contracts` 의 `main` 에 **branch protection 없음**」* | ✅ 켜졌습니다 — `lane-check` required |
+> | *「`fcc-test-contracts` 에 **`CLAUDE.md` 도 `.claude/rules/` 도 없음**」* | `CLAUDE.md` 는 **있습니다**(`f8992ee`, 138줄). `.claude/rules/` 만 0개 |
+>
+> 즉 **둘 다 「전부 없음」에서 「절반」으로 좁아졌습니다.**
+> 「없다」를 적은 문장은 **가장 빨리 낡습니다** — 없던 것이 생기는 데는 커밋 하나면
+> 충분하고, 그 커밋은 이 문서에 알림을 보내지 않습니다.

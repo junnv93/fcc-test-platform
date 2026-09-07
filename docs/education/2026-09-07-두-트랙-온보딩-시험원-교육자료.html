@@ -553,17 +553,18 @@
 
   <div class="note">
     <p>
-      🔴 <strong>문서 세 곳이 「중앙 5개 서비스」라고 적습니다. 실측은 7개입니다.</strong>
+      ✅ <strong>문서 세 곳이 「중앙 5개 서비스」라고 적고 있었고, 실측은 7개입니다 —
+      이 웨이브에서 «고쳤습니다».</strong>
       <span class="key">central-migrate</span>(일회성)와
       <span class="key">platform-api-node</span>(브라우저와 노드의 인증 모드가 반대라
       갈라놓은 두 번째 인스턴스)가 나중에 붙었고 문장이 따라오지 않았습니다.
     </p>
     <p>
-      ⚠️ <strong>다만 그 문서들의 결론은 여전히 참입니다</strong> — provider 저장소를
+      ⚠️ <strong>그 문서들의 결론은 처음부터 참이었습니다</strong> — provider 저장소를
       실제로 필요로 하는 서비스는 <span class="key">headless-api</span> 하나뿐입니다.
-      틀린 것은 분모입니다. 그런데 <strong>결론이 맞다고 분모를 그냥 두면, 다음 사람이
+      <strong>틀렸던 것은 분모</strong>이고, 결론이 맞다고 분모를 두면 다음 사람이
       <span class="mono">docker compose ps</span> 에서 7줄을 보고 「뭔가 잘못됐다」고
-      판단합니다.</strong>
+      판단합니다. <strong>그래서 고쳤고, 각 자리에 정정 주석을 남겼습니다.</strong>
     </p>
   </div>
 </section>
@@ -639,7 +640,7 @@ POST  /session/workbook      .xlsx 업로드 → «불투명 핸들» 반환</pr
     <div class="tile"><p class="t-lbl">선언된 실패</p><p class="t-val good">0</p><p class="t-note">실패를 보면 내 환경이거나 새로 깨진 것</p></div>
     <div class="tile"><p class="t-lbl">사후 평가 기록</p><p class="t-val">49</p><p class="t-note">실패에서 배운 것이 문서로 남았다</p></div>
     <div class="tile"><p class="t-lbl">등재 provider</p><p class="t-val warn">3</p><p class="t-note">실물 <strong>1</strong> · 예시 2 ← 최전선</p></div>
-    <div class="tile"><p class="t-lbl">협업자</p><p class="t-val">1</p><p class="t-note">이 문서가 그것을 바꾸려는 것</p></div>
+    <div class="tile"><p class="t-lbl">협업자</p><p class="t-val">1</p><p class="t-note">초대 <strong>2건 발송</strong>(<span class="mono">JJDHJJ</span>·<span class="mono">kkulhong</span>) — <strong>수락 대기</strong> · 12:08 실측</p></div>
   </div>
 
   <div class="col">
@@ -1013,9 +1014,12 @@ docs/PROVIDER-KICKOFF.md 를 읽고 §1 의 「0단계」부터 시작해줘.
 각 파일을 만들기 전에 «무엇을 왜 그 위치에 두는지» 를 한 줄로 설명하고,
 내가 승인하면 쓴다. 한 번에 다 쓰지 마라.</pre>
     <p style="font-size:.9rem;margin:.6rem 0 0;color:var(--ink-2)">
-      전체 지시문과 단계별 복붙 블록은
-      <span class="mono">docs/onboarding/10-provider-lane-kickoff.md</span> 에 있습니다.
-      <strong>그 파일을 당신 레포로 복사해 가십시오.</strong>
+      <strong>그 다음은 <span class="mono">docs/onboarding/11-provider-runbook.md</span> 를
+      «따라 하십시오»</strong> — provider 화 전체를 <strong>의도 다섯</strong>으로 쪼개고,
+      각 단계마다 <strong>붙여넣을 멘트</strong>와 <strong>「다 됐는지」를 실행해서 확인하는
+      명령</strong>이 붙어 있습니다.
+      <span class="mono">10-provider-lane-kickoff.md</span> 는 그 지도이고,
+      <strong>당신 레포로 복사해 가는 파일</strong>입니다.
     </p>
   </div>
 </section>
@@ -1215,8 +1219,17 @@ docs/PROVIDER-KICKOFF.md 를 읽고 §1 의 「0단계」부터 시작해줘.
       로컬 PC 에서 도는 것은 <strong>그 PC 의 주인이 끌 수 있기 때문</strong>입니다.
     </p>
     <p>
-      실제로 강제되는 것은 <strong>L4 하나뿐</strong>입니다. 실측:
+      실제로 강제되는 것은 <strong>L4 하나뿐</strong>입니다. 실측(<span class="mono">fcc-test-platform</span>):
       <span class="mono">enforce_admins: true</span> — <strong>관리자도 우회 못 합니다.</strong>
+    </p>
+    <p>
+      ⚠️ <strong>그런데 이것은 «이 레인만» 참입니다.</strong> 계약 커널
+      <span class="mono">fcc-test-contracts</span> 는 <span class="mono">enforce_admins: false</span>
+      이고, <strong>거기서는 L4 도 관리자가 우회할 수 있습니다.</strong> 그 레포의 협업자는
+      1명이고 그 1명이 <span class="mono">admin</span> 이므로 실질적으로 「언제든」입니다.
+      ✅ 그것은 <strong>의도</strong>입니다 — 태그 레인이 멈추면 공급 사슬 전체가 멈추므로
+      비상구를 남겼습니다(근거: <span class="mono">contracts/CLAUDE.md</span>).
+      <strong>대가는 그 레인에서 「red 면 서버가 막는다」가 거짓이라는 것</strong>입니다.
     </p>
     <p>
       🔴 <strong>그런데 <span class="mono">required_approving_review_count: 0</span> 입니다.</strong>
@@ -1477,22 +1490,48 @@ git push origin HEAD:refs/heads/&lt;이름&gt;  <span style="color:var(--bad)">#
   <div class="col">
     <p>
       <strong>낡은 문장은 틀렸다고 말해 주지 않고, 맞는 문장과 똑같이 생겼습니다.</strong>
-      이 교육자료를 만들면서 기존 문서를 재검증했고, <strong>오늘 거짓인 서술 다섯</strong>을
-      찾았습니다.
+      이 교육자료를 만들면서 기존 문서를 재검증했고 <strong>거짓인 서술 다섯</strong>을
+      찾았습니다. 그리고 <strong>같은 날 오후에 여섯이 더 나왔습니다</strong> — 그중 하나는
+      <strong>이 자료 자신</strong>이었습니다.
     </p>
   </div>
 
   <div class="scroll">
     <table>
-      <thead><tr><th>어디</th><th>뭐라고 적혀 있나</th><th>실측 (2026-09-07)</th></tr></thead>
+      <thead><tr><th>어디</th><th>뭐라고 적혀 있었나</th><th>실측</th><th>오늘</th></tr></thead>
       <tbody>
-        <tr><td class="mono">README.md:228</td><td><span class="mono">checks.yml</span> 은 오늘 <strong>휴면</strong></td><td class="bad">거짓 — 최근 런 3건 전부 success</td></tr>
-        <tr><td class="mono">README.md:67</td><td>이 레포들은 <strong>private</strong></td><td class="bad">거짓 — 둘 다 public</td></tr>
-        <tr><td class="mono">contracts/README.md:74</td><td>「여기서 고치지 마세요」</td><td class="bad">거짓 — 배송 기계는 퇴역했다</td></tr>
-        <tr><td class="mono">docs/operations/ 3개</td><td>중앙 <strong>5개</strong> 서비스</td><td class="bad">거짓 — 실측 7개</td></tr>
-        <tr><td class="mono">contracts/CODEOWNERS</td><td>모노레포에서 <strong>배송된다</strong></td><td class="bad">거짓 — 그 디렉터리가 없다</td></tr>
+        <tr><td class="mono">README.md</td><td><span class="mono">checks.yml</span> 은 오늘 <strong>휴면</strong></td><td>최근 런 전부 success</td><td class="good">✅ 고침</td></tr>
+        <tr><td class="mono">README.md</td><td>이 레포들은 <strong>private</strong></td><td>둘 다 public</td><td class="good">✅ 고침</td></tr>
+        <tr><td class="mono">docs/operations/ 3개</td><td>중앙 <strong>5개</strong> 서비스</td><td>실측 <strong>7개</strong></td><td class="good">✅ 고침</td></tr>
+        <tr><td class="mono">contracts/README.md</td><td>「여기서 고치지 마세요」</td><td>배송 기계는 퇴역했다</td><td class="good">✅ 고침<br><span class="mono" style="font-size:.85em">contracts PR #56</span></td></tr>
+        <tr><td class="mono">contracts/CODEOWNERS</td><td>모노레포에서 <strong>배송된다</strong></td><td>그 디렉터리가 없다</td><td class="good">✅ 고침<br><span class="mono" style="font-size:.85em">contracts PR #56</span></td></tr>
+        <tr><td class="mono">05 · 06 · 02 · 20</td><td>contracts <span class="mono">main</span> 은 <strong>무방비</strong></td><td><span class="mono">lane-check</span> required</td><td class="good">✅ 고침 <span class="mono" style="font-size:.85em">12:08</span></td></tr>
+        <tr><td class="mono">20-platform-codev</td><td>contracts 에 <strong>CLAUDE.md 도 없음</strong></td><td><span class="mono">f8992ee</span>, 138줄 — 있다</td><td class="good">✅ 고침</td></tr>
+        <tr><td class="mono">README.md §훅 한계</td><td>protection 이 거는 <strong>「날에」</strong> 생긴다</td><td>이미 걸려 있다</td><td class="good">✅ 고침</td></tr>
+        <tr><td class="mono">CLAUDE.md §참조</td><td>규칙이 <strong>셋</strong></td><td><strong>넷</strong> — 하나가 지도 밖</td><td class="good">✅ 고침</td></tr>
+        <tr><td class="mono">05 · 20 · <strong>이 자료</strong></td><td><span class="mono">enforce_admins</span> 근거가 <strong>어디에도 없다</strong></td><td>contracts <span class="mono">CLAUDE.md</span> 에 한 절</td><td class="good">✅ 고침</td></tr>
       </tbody>
     </table>
+  </div>
+
+  <div class="alert">
+    <p>
+      🔴 <strong>그중 하나는 «이 표 자신»이었습니다.</strong> 위 4·5행은 몇 시간 전까지
+      <strong>「🔴 남음 — 다른 레포」</strong> 였고, 그 사이 <span class="mono">contracts</span>
+      PR #56 이 둘을 고쳤습니다. <strong>그런데 이 표는 따라오지 않았습니다.</strong>
+    </p>
+    <p>
+      ⚠️ <strong>같은 사실을 말하는 자리가 «여럿»입니다.</strong>
+      <span class="mono">90-known-traps.md</span> §0 의 같은 표는 고쳐졌는데
+      이 표는 놓쳤습니다 — <strong>정정은 파일 단위가 아니라 문단 단위로 일어나고,
+      한 자리를 고치는 것은 «갈라짐»을 만드는 일이 될 수 있습니다.</strong>
+    </p>
+    <p>
+      🧭 <strong>고칠 때 물어야 하는 것</strong> — 「이 사실을 말하는 자리가 여기 말고
+      또 어디인가?」 <strong>파일 이름이 아니라 «문장»을 <span class="mono">git grep</span>
+      하고, 형제 레포에서도 돌리십시오.</strong> 실제로 같은 문단이 두 레인의
+      <span class="mono">README.md</span> 에 글자 그대로 있었습니다.
+    </p>
   </div>
 
   <div class="note">
@@ -1530,9 +1569,10 @@ git push origin HEAD:refs/heads/&lt;이름&gt;  <span style="color:var(--bad)">#
     <table>
       <thead><tr><th class="num">#</th><th>무엇</th><th>누가</th><th>왜 이 순서</th></tr></thead>
       <tbody>
-        <tr><td class="num">1</td><td class="warn">⚠️ <span class="mono">fcc-test-contracts</span> 의 <span class="mono">main</span> 에 branch protection 켜기</td><td>운영자</td><td class="bad">오늘 <strong>보호가 전혀 없습니다.</strong> 초대하는 순간 누구나 계약 커널의 <span class="mono">main</span> 에 직접 push 할 수 있고, platform 이 그것을 소비합니다</td></tr>
-        <tr><td class="num">2</td><td class="warn">⚠️ <span class="mono">fcc-test-contracts</span> 에 <span class="mono">.claude/rules/</span> 세우기</td><td>운영자</td><td><span class="mono">CLAUDE.md</span> 는 <strong>09:43 에 생겼습니다</strong>(<span class="mono">f8992ee</span>). 경로별 규칙은 아직 <strong>0개</strong>입니다</td></tr>
-        <tr><td class="num">3</td><td>두 레포에 <strong>각각</strong> 초대 (<span class="mono">permission=push</span>)</td><td>운영자</td><td>개인 계정이라 Team 이 없어 <strong>일괄 부여 경로가 없습니다.</strong> <span class="mono">admin</span> 을 주지 마십시오 — 게이트를 끌 수 있습니다</td></tr>
+        <tr><td class="num">1</td><td class="good">✅ <span class="mono">fcc-test-contracts</span> 의 <span class="mono">main</span> 에 branch protection 켜기</td><td>운영자</td><td class="good"><strong>완료</strong> — <span class="mono">lane-check</span> 가 required 입니다. ⚠️ 다만 <span class="mono">enforce_admins: false</span> 라 <strong>관리자는 우회할 수 있습니다</strong>(platform 은 <span class="mono">true</span>). ✅ 그것은 <strong>의도</strong>이고 근거는 <span class="mono">contracts/CLAUDE.md</span> 에 있습니다 — 태그 레인이 멈추면 공급 사슬이 멈춥니다. 대가: 그 레인에서 <strong>「red 면 서버가 막는다」는 거짓</strong>입니다</td></tr>
+        <tr><td class="num">2</td><td class="warn">⚠️ <span class="mono">fcc-test-contracts</span> 에 <span class="mono">.claude/rules/</span> 세우기</td><td>운영자</td><td><strong>오늘도 0개입니다.</strong> <span class="mono">CLAUDE.md</span> 는 <strong>09:43 에 생겼고</strong>(<span class="mono">f8992ee</span>) 항상 로드되지만, <strong>경로 조건부 규칙은 하나도 없습니다</strong></td></tr>
+        <tr><td class="num">3</td><td class="good">✅ 두 레포에 <strong>각각</strong> 초대 (<span class="mono">permission=push</span>)</td><td>운영자</td><td><strong>발송 완료</strong> — <span class="mono">JJDHJJ</span> · <span class="mono">kkulhong</span>, 두 레포 각각. ⏳ <strong>아직 수락 전</strong>입니다(<span class="mono">collaborators</span> 는 1명). 개인 계정이라 Team 이 없어 <strong>일괄 부여 경로가 없습니다.</strong> <span class="mono">admin</span> 을 주지 마십시오 — 게이트를 끌 수 있습니다</td></tr>
+        <tr><td class="num">3-b</td><td class="warn">⏳ 초대 <strong>수락</strong>을 확인하고 <span class="mono">required_approving_review_count</span> 를 <span class="mono">1</span> 로</td><td>운영자</td><td><strong>순서를 뒤집지 마십시오.</strong> 수락 전에 올리면 GitHub 이 자기 PR 자기 승인을 금지하므로 <strong>아무것도 머지할 수 없게 됩니다.</strong> <span class="mono">invitations</span> 에 이름이 있는 동안은 아직 협업자가 아닙니다</td></tr>
         <tr><td class="num">4</td><td>⭐ <span class="mono">07-first-day-scripts.md</span> 를 열고 <strong>그대로 따라 치기</strong></td><td>합류자</td><td><strong>폴더 생성 · clone · 훅 · 파이썬 환경 · Claude 에게 칠 첫 멘트</strong>까지 명령 단위로 있습니다. 각 단계에 확인 명령이 붙어 있습니다</td></tr>
         <tr><td class="num">5</td><td><span class="mono">/context</span> 로 <span class="mono">CLAUDE.md</span> 로드 확인</td><td>합류자</td><td>「파일이 있다」가 아니라 <strong>「로드됐다」</strong>를 보십시오</td></tr>
         <tr><td class="num">6</td><td><span class="mono">docs/onboarding/</span> 를 순서대로 읽기 (아래 §순서)</td><td>합류자</td><td>이 교육자료는 <strong>지도</strong>이고, 그쪽이 <strong>작업 지시</strong>입니다</td></tr>
@@ -1540,7 +1580,33 @@ git push origin HEAD:refs/heads/&lt;이름&gt;  <span style="color:var(--bad)">#
     </table>
   </div>
 
-  <h3>읽는 순서 — <span class="mono">docs/onboarding/</span> 문서 13개</h3>
+  <div class="alert">
+    <p>
+      🔴 <strong>정정 (2026-09-07 12:08 실측) — 지우지 않고 남깁니다.</strong>
+      위 표의 1·3 행은 <strong>이 자료가 쓰인 뒤 몇 시간 만에 낡았습니다.</strong> 옛 판은 이랬습니다:
+    </p>
+    <p>
+      1행 — <em>"⚠️ <span class="mono">fcc-test-contracts</span> 의 <span class="mono">main</span> 에
+      branch protection 켜기 … 오늘 <strong>보호가 전혀 없습니다.</strong> 초대하는 순간 누구나
+      계약 커널의 <span class="mono">main</span> 에 직접 push 할 수 있고"</em>
+      → <strong>보호가 켜졌습니다.</strong> 「누구나」는 이제 「<strong>관리자만</strong>」입니다
+      (<span class="mono">enforce_admins: false</span>).
+    </p>
+    <p>
+      3행 — 초대가 <strong>실제로 발송됐습니다</strong>(01:32 · 01:58). 다만
+      <strong>발송은 수락이 아닙니다</strong> — 그래서 3-b 행을 새로 넣었습니다.
+    </p>
+    <p>
+      ⚠️ <strong>이것이 이 자료 §「문서를 그대로 믿지 마십시오」가 말한 바로 그 유형입니다.</strong>
+      「없다」·「전혀」·「오늘」을 담은 문장은 <strong>쓴 날에는 참이라 재측정할 이유가 생기지
+      않습니다.</strong> 재는 법:
+    </p>
+    <pre>gh api repos/junnv93/fcc-test-contracts/branches/main/protection
+gh api repos/junnv93/fcc-test-platform/invitations   --jq '.[].invitee.login'
+gh api repos/junnv93/fcc-test-platform/collaborators --jq '.[].login'</pre>
+  </div>
+
+  <h3>읽는 순서 — <span class="mono">docs/onboarding/</span> 문서 15개</h3>
 
   <div class="scroll">
     <table>
@@ -1556,8 +1622,10 @@ git push origin HEAD:refs/heads/&lt;이름&gt;  <span style="color:var(--bad)">#
         <tr><td class="mono">02-how-we-collaborate.md</td><td>누가 · 무엇을 · 어떤 순서로 · 무엇이 막나</td><td class="num">20</td></tr>
         <tr><td><strong class="warn">🟡 코드 전</strong><br><span class="mono" style="font-size:.85em">전원</span></td>
             <td class="mono">90-known-traps.md</td><td class="bad">이미 밟은 지뢰 — 건너뛰지 마십시오</td><td class="num">30</td></tr>
-        <tr><td rowspan="2" style="vertical-align:middle"><strong class="ca">🔵 트랙 A</strong></td>
-            <td class="mono">10-provider-lane-kickoff.md</td><td>★ <strong>당신 레포로 «복사해 가는» 파일</strong></td><td class="num">40</td></tr>
+        <tr><td rowspan="4" style="vertical-align:middle"><strong class="ca">🔵 트랙 A</strong></td>
+            <td class="mono">11-provider-runbook.md</td><td>★★ <strong>«따라 하는» 실행 런북</strong> — 의도 다섯 · 단계마다 멘트 + 완료 판정</td><td class="num">45</td></tr>
+        <tr><td class="mono">10-provider-lane-kickoff.md</td><td>★ <strong>당신 레포로 «복사해 가는» 파일</strong></td><td class="num">40</td></tr>
+        <tr><td class="mono">91-provider-lessons-from-the-monorepo.md</td><td>★ 첫 provider 의 <strong>평가 759건</strong>에서 회수 — 복붙 프롬프트 8 · 실수의 계급 7</td><td class="num">35</td></tr>
         <tr><td class="mono">15-image-handoff-walkthrough.md</td><td><strong>이미지 빌드 → 중앙 이관</strong> 명령 단위 + 체크리스트</td><td class="num">30</td></tr>
         <tr><td rowspan="2" style="vertical-align:middle"><strong class="cb">🔵 트랙 B</strong></td>
             <td class="mono">20-platform-codev-kickoff.md</td><td>개발 규율 · 게이트 다섯 층 · 커밋 위생</td><td class="num">40</td></tr>

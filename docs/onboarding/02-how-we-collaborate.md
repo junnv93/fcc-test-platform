@@ -116,15 +116,29 @@
 
 ## 4. 🔴 오늘 «강제되지 않는» 것 — 알고 지키십시오
 
-실측 (2026-09-07, `gh api …/branches/main/protection`):
+실측 (**2026-09-07 12:08**, `gh api …/branches/main/protection`):
 
-| 규칙 | 오늘 강제? | 실측 |
-|---|---|---|
-| `lane-check` 초록이어야 머지 | ✅ **강제** | `required_status_checks: ["lane-check"]` |
-| 관리자도 우회 못 함 | ✅ **강제** | `enforce_admins: true` |
-| **동료 1인 승인** | 🔴 **강제 안 됨** | `required_approving_review_count: 0` |
-| **CODEOWNERS 리뷰** | 🔴 강제 안 됨 | `require_code_owner_reviews: false` |
-| **`fcc-test-contracts` 의 `main` 보호** | 🔴 **아예 없음** | `404 Branch not protected` |
+| 규칙 | `fcc-test-platform` | `fcc-test-contracts` | 실측 키 |
+|---|---|---|---|
+| `lane-check` 초록이어야 머지 | ✅ **강제** | ✅ **강제** | `required_status_checks: ["lane-check"]` |
+| 관리자도 우회 못 함 | ✅ **강제** | 🔴 **강제 안 됨** | `enforce_admins` — `true` / **`false`** |
+| **동료 1인 승인** | 🔴 강제 안 됨 | 🔴 강제 안 됨 | `required_approving_review_count: 0` |
+| **CODEOWNERS 리뷰** | 🔴 강제 안 됨 | 🔴 강제 안 됨 | `require_code_owner_reviews: false` |
+| force push · 브랜치 삭제 | ✅ 금지 | ✅ 금지 | `allow_force_pushes` · `allow_deletions` = `false` |
+
+<!-- 정정 이력 — 지우지 마세요. -->
+> 🔴 **정정 (2026-09-07 12:08 실측).** 이 표의 옛 판에는 이 행이 있었습니다:
+>
+> > *「| **`fcc-test-contracts` 의 `main` 보호** | 🔴 **아예 없음** | `404 Branch not protected` |」*
+>
+> **그 행은 오늘 거짓입니다** — 보호가 켜졌고 `lane-check` 가 required 입니다.
+> 다만 **그 자리를 다른 결함이 물려받았습니다**: contracts 의 `enforce_admins` 는
+> `false` 이므로 **관리자는 우회할 수 있습니다.** 옛 판의 「누구나」가
+> 「관리자만」으로 좁아진 것이지 사라진 것이 아닙니다.
+>
+> 그리고 옛 표는 **platform 값만 적고 열 이름을 안 달았습니다** — 그래서 읽는 사람이
+> `enforce_admins: true` 를 «두 레인 다» 로 읽을 수 있었습니다. 이번 판은 레인별로
+> 열을 나눴습니다.
 
 **즉 「동료 1인 승인」은 오늘 사람이 지키는 규율이고, 기계가 막는 게이트가 아닙니다.**
 
@@ -133,6 +147,11 @@
 **협업자가 둘 이상이 되면** `required_approving_review_count` 를 `1` 로 올릴 수 있고,
 그때 비로소 그 규칙에 이빨이 생깁니다.
 ⚠️ 순서는 **초대 먼저, 인상은 그 다음**입니다 — 뒤집으면 아무것도 머지할 수 없게 됩니다.
+
+**오늘 서 있는 자리 (2026-09-07 12:08):** 초대 2건(`JJDHJJ` · `kkulhong`)이 두 레포에
+각각 **발송됐고 아직 수락되지 않았습니다.** `collaborators` 는 여전히 `junnv93` 1명이므로
+`required_approving_review_count` 는 **아직 올릴 수 없습니다.**
+재는 법: `gh api repos/junnv93/fcc-test-platform/collaborators --jq '.[].login'`
 
 ---
 

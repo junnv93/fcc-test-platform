@@ -64,8 +64,10 @@ git clone https://github.com/junnv93/fcc-test-contracts.git
 cd fcc-test-platform
 ```
 
-⚠️ **HTTPS 를 쓰세요.** 이 레포들은 private 이고, 배송 머신에서는 SSH 키가 등록돼 있지
-않습니다(실측 2026-08-30: `Permission denied (publickey)`). `gh auth login` 후
+⚠️ **HTTPS 를 쓰세요.** 두 레인은 **public** 이라 clone·`pip install` 에 자격증명이
+필요 없지만, **SSH 키가 등록되지 않은 기계에서는 SSH 가 막힙니다**
+(실측 2026-08-30: `Permission denied (publickey)`).
+<!-- 정정 2026-09-07: 옛 판은 「이 레포들은 private 이고」였다. 실측 gh api …--jq .visibility → public. --> `gh auth login` 후
 `gh auth setup-git` 을 한 번 돌리면 HTTPS 자격증명이 붙습니다.
 
 ---
@@ -221,12 +223,17 @@ import 실패하면 수집 전체를 중단합니다. 그러면 상자가 **0개
 git config core.hooksPath githooks
 ```
 
-⚠️ **왜 GitHub 이 대신 해 주지 않나.** 2026-08-30 실측: 이 계정의 GitHub Actions 는
-잡을 **러너에 배정하지 못합니다**. 본문이 `echo` 한 줄뿐인 워크플로조차 2초 만에
-`steps: []` · `runner_name: ""` 로 실패합니다 — 즉 *검사가 실패한 것*이 아니라
-*시작조차 못 한 것*이고, 두 상태는 화면에서 똑같은 빨간 X 로 보입니다.
-`.github/workflows/checks.yml` 은 그래서 오늘 **휴면**입니다. 지우지 마세요 —
-결제/가시성이 풀리는 날 같은 검사를 그대로 이어받습니다.
+✅ **GitHub Actions 가 이것을 대신 해 줍니다** (실측 2026-09-07).
+`.github/workflows/checks.yml` 의 `lane-check` 잡이 **모든 PR 과 `main` push 에서 돌고**,
+`main` 의 branch protection 이 그것을 **required** 로 요구합니다(`enforce_admins: true` —
+관리자도 우회하지 못합니다). 최근 런은 전부 `success` 이고 `runner_name` 이 채워집니다.
+
+<!-- 정정 이력 — 지우지 마세요. 이 문단의 옛 판을 믿고 「CI 가 없다」고 판단한 사례가 있습니다. -->
+> 🔴 **정정 (2026-09-07).** 이 문단의 옛 판은 *"2026-08-30 실측: 이 계정의 GitHub Actions 는
+> 잡을 **러너에 배정하지 못합니다** … `checks.yml` 은 그래서 오늘 **휴면**입니다"* 였습니다.
+> **그 서술은 쓰인 날에는 참이었고 오늘은 거짓입니다.** 이 레포가 **public** 이 되면서
+> 표준 러너를 무과금으로 받습니다.
+> 재는 법: `gh run list --repo junnv93/fcc-test-platform --limit 5`
 
 ### 이 검사가 판정하는 것
 
@@ -262,9 +269,26 @@ pip install -e '.[test,oidc]'
 
 ### 한계 — 이것은 실수 방지층이지 방어층이 아닙니다
 
-설치가 clone 마다 opt-in 이고, `--no-verify` 한 번이면 사라집니다. 진짜 강제는
-러너가 돌아오고 branch protection 이 이 검사를 required 로 거는 날에 생깁니다.
-그날까지 이것이 **가장 값싼 근사**입니다.
+설치가 clone 마다 opt-in 이고, `--no-verify` 한 번이면 사라집니다.
+**그래서 훅은 «로컬에서 빨리 알려 주는 층»이지 마지막 방어선이 아닙니다** —
+마지막 방어선은 서버의 branch protection 입니다(위 §CI 참조).
+
+<!-- 정정 이력 — 지우지 마세요. -->
+> 🔴 **정정 (2026-09-07 12:08 실측).** 이 문단의 옛 판은 이랬습니다:
+>
+> > *"진짜 강제는 러너가 돌아오고 branch protection 이 이 검사를 required 로 거는
+> > **날에 생깁니다.** 그날까지 이것이 **가장 값싼 근사**입니다."*
+>
+> **그날은 이미 왔습니다.** 러너는 정상이고(위 §CI 정정 참조),
+> `main` 의 branch protection 이 `lane-check` 를 **required** 로 걸고 있습니다
+> (`enforce_admins: true` — 관리자도 우회하지 못합니다).
+>
+> ⚠️ **이 파일은 그 사실을 §CI 에서는 이미 고쳤고 여기서는 안 고쳤습니다** —
+> 같은 파일의 두 문단이 서로 모순한 채로 있었습니다. **정정은 파일 단위가 아니라
+> 문단 단위로 일어나므로, 한 곳을 고쳐도 같은 사실을 말하는 다른 곳은 따라오지
+> 않습니다.** 고칠 때는 그 사실을 말하는 자리를 `git grep` 으로 «전부» 찾으십시오.
+>
+> 재는 법: `gh api repos/junnv93/fcc-test-platform/branches/main/protection`
 
 우회해야 하면 `FCC_SKIP_LANE_CHECK=1 git push`, 그리고 **왜 우회했는지 적으세요.**
 

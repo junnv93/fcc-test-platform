@@ -107,9 +107,13 @@ provider 가 늘어도 중앙은 그대로 platform 하나이고, provider 마�
 
 먼저 이것부터. 「왜 이미지로 넘기나」의 답이 여기서 나옵니다.
 
-**headless API 는 당신 분야의 시험 지식을 서빙하는 서비스입니다.** 중앙 5개 서비스 중
-**유일하게 provider 소유**이고, 나머지 넷(nginx · platform-api · postgres · keycloak)은
-분야를 모릅니다.
+**headless API 는 당신 분야의 시험 지식을 서빙하는 서비스입니다.** 중앙 **7개** 서비스 중
+**유일하게 provider 소유**이고, 나머지 여섯(`web`(nginx) · `platform-api` ·
+`platform-api-node` · `central-migrate` · `postgres` · `keycloak`)은 분야를 모릅니다.
+
+<!-- 정정 2026-09-07: 옛 판은 「중앙 5개 서비스 중 … 나머지 넷」이었다.
+     central-migrate(일회성 러너)와 platform-api-node(노드 전용 인스턴스)가 나중에 붙었다.
+     재는 법: python3 -c "import yaml;print(list(yaml.safe_load(open('infra/docker-compose.central.yml'))['services']))" -->
 
 실측(Unlicensed, 계약 아티팩트 `docs/api/headless-api.openapi.json`) — **36 경로**:
 
@@ -142,7 +146,7 @@ sys.path 에서 /app/src 를 빼면
   headless-api   → ModuleNotFoundError
 ```
 
-**즉 중앙 5개 서비스 중 provider 저장소를 실제로 필요로 하는 것은 이 하나뿐입니다.**
+**즉 중앙 7개 서비스 중 provider 저장소를 실제로 필요로 하는 것은 이 하나뿐입니다.**
 그 하나 때문에 예전에는 이미지 하나가 셋을 겸하며 빌드 컨텍스트를 provider 저장소
 루트로 잡고 있었고, 그래서 **중앙 PC 에 provider 저장소가 있어야 했습니다.**
 

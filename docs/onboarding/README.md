@@ -84,7 +84,11 @@
 ### 🔵 트랙별
 
 ```
- 트랙 A   10-provider-lane-kickoff.md        ★ 당신 레포로 «복사해 가는» 파일    40분
+ 트랙 A   11-provider-runbook.md             ★★ «따라 하는» 실행 런북 —
+                                               의도 다섯 · 각 단계 멘트+완료 판정   45분
+          10-provider-lane-kickoff.md        ★ 당신 레포로 «복사해 가는» 파일    40분
+          91-provider-lessons-from-…md       ★ 모노레포가 «이미 겪은 것» —
+                                               복붙 프롬프트 8개 + 실수의 계급     35분
           15-image-handoff-walkthrough.md    이미지 빌드 → 중앙 이관 (명령 단위)  30분
 
  트랙 B   20-platform-codev-kickoff.md       개발 규율 · intent 흐름 · 게이트      40분
@@ -104,10 +108,12 @@
 | `04-why-two-repos.md` | ★ **왜 나뉘었나** · `contracts` 와 `platform` 의 성격과 역할 | 전원 |
 | `00-project-map.md` | 세 레포 · 중앙 스택 · 계측 통신 · 완료 상태 | 전원 |
 | `02-how-we-collaborate.md` | **협업 흐름 · 승인 모델 · 방아쇠 · 공유 트리 규율** | 전원 |
+| `11-provider-runbook.md` | ★★ **«따라 하는» 실행 런북** — 의도 다섯 · 단계마다 📋 멘트 + ✅ 완료 판정 | 트랙 A |
 | `10-provider-lane-kickoff.md` | ★ **당신 레포에 복사.** Claude Code 지시문 포함 | 트랙 A |
 | `15-image-handoff-walkthrough.md` | **이미지 빌드 → 중앙 이관** 명령 단위 + 체크리스트 | 트랙 A |
 | `20-platform-codev-kickoff.md` | 플랫폼 개발 규율 · 게이트 다섯 층 · 커밋 위생 | 트랙 B |
 | `30-domain-model.md` | 시료 · 세션 · 결과 · 성적서가 데이터로 어떻게 남나 | 전원 |
+| `91-provider-lessons-from-the-monorepo.md` | ★ 첫 provider 의 **평가 759건·커밋 5,209개**에서 회수 — **복붙 프롬프트 8개** · 소유 경계 · 실수의 계급 7 | 트랙 A |
 | `90-known-traps.md` | **반복해 밟은 것들.** 각 항목에 실측 근거 + 자문 질문 | 전원 |
 
 교육자료(HTML)는 `docs/education/` 에 있습니다.
