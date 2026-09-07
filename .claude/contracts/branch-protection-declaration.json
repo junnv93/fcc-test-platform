@@ -1,0 +1,43 @@
+{
+  "_why": [
+    "이 세션(2026-09-07)은 하루에 «네 번» 틀렸고, 네 번 다 「이 게이트가 무엇을",
+    "강제하는가」에 대한 진술이었다: strict 의 근거 · 삭제 금지의 범위 ·",
+    "enforce_admins 의 사유 · CODEOWNERS 가 게이트인가.",
+    "",
+    "강제를 «주장하는» 산문은 손으로 쓰면 반드시 낡거나 틀린다. 그래서 값을",
+    "여기 한 곳에 두고, 검사가 (1) 이것과 GitHub 실제 설정을 대조하고",
+    "(2) 이것과 산문을 대조한다. 산문이 값을 직접 적으면 그 순간 두 번째 사본이",
+    "생기고, 이 저장소는 사본 드리프트를 여러 번 치렀다."
+  ],
+  "repo": "junnv93/fcc-test-platform",
+  "branch": "main",
+  "declared_at": "2026-09-07",
+  "values": {
+    "required_pull_request_reviews.required_approving_review_count": 0,
+    "required_pull_request_reviews.require_code_owner_reviews": false,
+    "required_status_checks.strict": false,
+    "required_status_checks.contexts": ["lane-check"],
+    "enforce_admins.enabled": true,
+    "required_linear_history.enabled": false,
+    "allow_force_pushes.enabled": false,
+    "allow_deletions.enabled": false
+  },
+  "why_each_value": {
+    "required_pull_request_reviews.required_approving_review_count":
+      "협업자가 1명이고 GitHub 은 자기 PR 자기 승인을 금지한다. 1이면 모든 머지가 --admin 을 요구한다. ⚠️ 두 번째 협업자가 추가되는 날 1 로 올린다.",
+    "required_pull_request_reviews.require_code_owner_reviews":
+      "켜면 협업자 1명이라 CODEOWNERS 경로를 아무도 못 고친다. 이 규모에서 CODEOWNERS 는 원리적으로 게이트가 될 수 없다.",
+    "required_status_checks.strict":
+      "lane-check 이 PR 헤드가 아니라 «합친 트리»(refs/pull/N/merge)를 검사하므로 strict 의 이득 대부분을 이미 갖는다. 켜면 워크트리 여럿이 재기저로 직렬화된다. ⚠️ 남는 구멍: GitHub 은 base 가 움직여도 검사를 다시 돌리지 않는다.",
+    "required_status_checks.contexts":
+      "실측한 check run 의 «이름». 워크플로 이름(checks)이 아니다.",
+    "enforce_admins.enabled":
+      "끄면 관리자가 lane-check 을 우회할 수 있고, 협업자 1명이 곧 관리자라 「red 면 서버가 막는다」가 거짓이 된다. ⚠️ 러너가 죽으면 머지가 전면 정지하고 탈출구는 protection 을 손으로 고치는 것뿐이다 — 이 계정에는 전례가 있다.",
+    "required_linear_history.enabled":
+      "no-squash 규칙이 머지 커밋을 쓴다. 켜면 머지가 전부 금지된다.",
+    "allow_force_pushes.enabled":
+      "main 오착지의 유일한 복구가 revert 가 된다는 뜻이기도 하다.",
+    "allow_deletions.enabled":
+      "⚠️ 이 값은 «보호 패턴(main)에만» 적용된다. 기능 브랜치 삭제는 그대로 된다."
+  }
+}

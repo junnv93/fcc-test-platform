@@ -2,9 +2,9 @@
 
 Intent: ./intent.md
 Spec: ./spec.md
-Engineer: (담당 배정 대기)
+Engineer: 세션 3d (리드 위임)
 Date: 2026-09-07
-Status: draft
+Status: accepted
 Slug: intent-driven-workflow
 Branch: feature/intent-driven-workflow
 
@@ -102,15 +102,16 @@ A2~A3 은 **각각 따로** 묻습니다. 하나의 「진행해라」로 묶지
 
 ### A1 — 적용된 값과 그 근거 (2026-09-07 완료)
 
-| 값 | 설정 | 왜 |
-|---|---|---|
-| PR 필수 | **켬** | main 직접 push 차단. 실측: 최근 50개 착지가 **전부 PR 머지**, 직접 push **0건** — 아무것도 깨지지 않는다 |
-| 필수 승인 수 | **0** | ⚠️ 협업자가 **1명뿐**이고 GitHub 은 **자기 PR 자기 승인을 금지**한다. 1로 두면 모든 머지가 `gh pr merge --admin` 을 요구하고, 그것을 형제 세션 6개에 통보 없이 강제하게 된다 |
-| 필수 검사 | **`lane-check`** | 실측한 정확한 check run 이름. 워크플로 이름(`checks`)이 아니다 |
-| `strict` (up-to-date 강제) | **끔** | ⚠️ **근거 2회 정정 (2026-09-07).** 초판 *"guard 가 이미 한다"* 는 **거짓**이었다(아래 §신선도). 참 근거는 **`lane-check` 이 PR 헤드가 아니라 «합친 트리»를 검사한다**는 것 — `checks.yml` 이 `pull_request` 로 걸리고 `checkout@v4` 에 `ref:` 가 없어 `refs/pull/N/merge` 가 체크아웃된다. 실증(run 34067524062): `HEAD is now at 378ea31 Merge f88193fe… into 6e1fcb26…`. 즉 필수 검사가 이미 「합치면 초록인가」를 묻는다. 반면 `strict=true` 는 main 이 움직일 때마다 **워크트리 6개를 재기저로 직렬화**한다 |
-| `required_linear_history` | **끔** | **no-squash 규칙이 머지 커밋을 쓴다.** 켜면 머지 커밋이 금지되어 **전부 막힌다** |
-| `enforce_admins` | **켬** | ⚠️ **근거 정정 + 설정 변경 (2026-09-07).** 초판은 「승인 수 0 과 같은 이유」로 껐는데 **그 사유는 성립하지 않습니다** — 승인 수가 0이면 자기 승인 문제가 애초에 안 생깁니다. 끈 실제 효과는 **「관리자는 `lane-check` 도 우회할 수 있다」** 였고, 협업자 1명이 곧 관리자이므로 「red 면 서버가 막는다」가 **거짓**이 됩니다. 켰습니다. 탈출구는 관리자가 protection 자체를 고치는 것 — **일부러 시끄럽고 의도적인** 경로입니다 |
-| force push · 브랜치 삭제 | **금지 — 단 `main` 에만** | ⚠️ **범위 정정.** `allow_deletions: false` 는 **보호 패턴(`main`)에만** 적용된다. **기능 브랜치 삭제는 그대로 됩니다** — 실측: 보호가 켜진 뒤 형제 세션이 머지된 기능 브랜치 둘을 삭제해 성공했고, 기능 브랜치에는 규칙이 **0개**다. 이것을 「삭제가 막혔다」로 전달하면 머지 뒤 정리를 안 하게 되어 원격에 브랜치가 쌓인다. main 오착지의 유일한 복구가 revert 라는 것은 여전히 참이다 |
+> 🔑 **값의 SSOT 는 산문이 아니다.**
+> `.claude/contracts/branch-protection-declaration.json` 이 값을 들고,
+> `tests/test_documented_gate_values_match_the_live_config.py` 가 그것을
+> **GitHub 실제 설정과 대조**한다.
+>
+> ⚠️ 값을 여기 «다시» 적지 마라. 이 세션은 하루에 네 번 틀렸고 네 번 다
+> 「이 게이트가 무엇을 강제하는가」에 대한 산문이었다. 사본을 만들면 갈라지고,
+> 갈라진 쪽을 읽은 사람이 틀린 것을 믿는다.
+>
+> 각 값의 **근거**는 그 JSON 의 `why_each_value` 에 있다 — 값 옆에.
 
 > ⚠️ **「필수 승인 수 0」은 임시값입니다.** 뒤집는 조건이 명확합니다 —
 > **두 번째 협업자가 추가되는 날 1 로 올립니다.** 그때까지는 「PR 은 필수인데

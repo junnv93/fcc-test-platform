@@ -65,6 +65,11 @@ auto memory 는 **기계-로컬이라 팀과 공유되지 않습니다** — 동
 
 ### branch protection 적용값과 그 값이어야 하는 이유
 
+> 🔑 **값과 근거의 SSOT 는 `.claude/contracts/branch-protection-declaration.json`**
+> 이고, `tests/test_documented_gate_values_match_the_live_config.py` 가 그것을
+> GitHub 실제 설정과 대조합니다. 아래 표는 그 뒤에 쓰인 «요약»이고, 어긋나면
+> 검사가 말합니다.
+
 | 값 | 설정 | 왜 |
 |---|---|---|
 | PR 필수 | 켬 | 실측: 최근 50개 착지 **전부 PR 머지**, 직접 push **0건**(`--first-parent`) |
