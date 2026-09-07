@@ -1046,11 +1046,91 @@ class TestNoServerStateMirrorEffect(unittest.TestCase):
     """
 
     #: (file, what the effect used to overwrite) — the measured-zero surfaces.
+    #:
+    #: ⚠️ **2026-09-07 — 이 목록이 손으로 적혀 있었고 네 번째가 조용히 빠져 있었다.**
+    #: `inventory/SampleEditor.tsx` 가 정확히 이 docstring 이 말하는 결함을 갖고 있었는데
+    #: 여기 없어서 검사되지 않았다. 그래서 아래에 «파생 축»(`DECLARED_EFFECT_STATE_WRITES`)
+    #: 을 더했다 — 이 튜플은 이제 「이미 고쳐진 표면이 되돌아가지 않는다」만 지키고,
+    #: 「새 표면이 조용히 빠지지 않는다」는 파생 축이 지킨다. 두 축이 필요하다:
+    #: 이 튜플만으로는 목록에 없는 파일을 못 보고, 파생 축만으로는 고쳐진 파일이
+    #: 「후보에서 빠졌다」와 「원래 없었다」를 구분하지 못한다.
     _SURFACES = (
         ("chambers/ChamberAdminPanel.tsx", "the operator's chamber registry edits"),
         ("test-plans/BulkRowsEditor.tsx", "the operator's unsaved bulk CSV"),
         ("equipment-lists.tsx", "the tester's unsaved §6 equipment rows"),
+        ("inventory/SampleEditor.tsx", "the PM's unsaved sample fields"),
     )
+
+    #: DOM 타이머는 상태 setter 가 아니다. 빼지 않으면 debounce 만 쓰는 파일이
+    #: 전부 후보가 되어 선언이 소음으로 채워지고, 소음으로 채워진 선언은 안 읽힌다.
+    _NOT_STATE_SETTERS = frozenset({"setTimeout", "setInterval"})
+
+    #: `useEffect` 안에서 상태 setter 를 부르는 라우트 — **후보**이지 결함이 아니다.
+    #:
+    #: 결함은 「서버 payload 를 폼 state 로 **복사**」하는 것 하나뿐이고, 아래 여덟은
+    #: 구독 · debounce · URL 동기화 · UI 불변식 · 맥락 전환이다. 그래서 이 축은
+    #: 「없음」이 아니라 **집합 등호**다 — 새 자리가 생기면 여기에 «무엇인지 한 줄»을
+    #: 적어야 초록이 된다. **그 한 줄을 적는 동안 「이게 서버 상태 미러인가」를 묻게
+    #: 되는 것**이 이 검사의 값이고, 그 물음이 2026-09-07 까지 아무 데서도 안 일어났다.
+    DECLARED_EFFECT_STATE_WRITES = {
+        "_layout.tsx":
+            "UI — 라우트가 바뀌면 모바일 메뉴를 닫고, 열려 있는 동안만 Escape 리스너를 건다",
+        "control.tsx":
+            "구독 — 스트림을 (재)활성화할 때 버퍼와 상태를 리셋한다(P0-1/P2-3). "
+            "서버 payload 를 폼에 복사하는 것이 아니라 스트림 수명주기다",
+        "grid-poc.tsx":
+            "UI 불변식 — WAI-ARIA roving tabindex 의 activeCell 이 보이는 영역 안에 "
+            "정확히 하나 있도록 유지한다",
+        "my-projects.tsx":
+            "debounce — 입력 draft 를 늦춰 검색어/신청자 필터에 반영한다",
+        "projects.tsx":
+            "debounce + URL 동기화 — techDraft 와 쿼리 파라미터를 맞춘다",
+        "projects/ProjectResultSelection.tsx":
+            "맥락 전환 — 프로젝트/프로바이더 «범위»가 바뀌면 선택 결과를 비운다. "
+            "previousScope ref 가 같은 범위에서는 발화하지 않게 막는다",
+        "reports.tsx":
+            "맥락 전환 — 프로젝트 맥락이 바뀌면 요청 폼을 비운다(다른 대상으로 옮겨간 것이지 "
+            "같은 대상의 편집을 덮는 것이 아니다)",
+        "test-plans/GenerateTestPlanForm.tsx":
+            "파생 기본값 — 카탈로그가 도착하면 기술/스테이지/선택의 기본값을 맞춘다",
+    }
+
+    @staticmethod
+    def _effect_state_writes(src: str) -> set[str]:
+        """`useEffect(...)` 안에서 불리는 상태 setter 이름.
+
+        ⚠️ **줄 단위·중괄호 단위로 읽지 않는다.** `useEffect(() => setX(v), [d])` 처럼
+        본문에 중괄호가 없는 형태를 그런 스캐너는 못 본다 — 이 저장소가 여러 번 치른
+        값이다. 여기서는 여는 괄호부터 **괄호를 세어** 호출 전체를 잘라 낸다.
+        """
+        writes: set[str] = set()
+        for match in re.finditer(r"\buseEffect\s*\(", src):
+            index, depth = match.end() - 1, 0
+            while index < len(src):
+                if src[index] == "(":
+                    depth += 1
+                elif src[index] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                index += 1
+            call = src[match.end():index]
+            writes |= {
+                name
+                for name in re.findall(r"\b(set[A-Z]\w*)\s*\(", call)
+                if name not in TestNoServerStateMirrorEffect._NOT_STATE_SETTERS
+            }
+        return writes
+
+    def _observed_effect_state_writes(self) -> dict[str, set[str]]:
+        observed: dict[str, set[str]] = {}
+        for path in sorted(ROUTES_DIR.rglob("*.tsx")):
+            writes = self._effect_state_writes(
+                _strip_ts_comments(path.read_text(encoding="utf-8"))
+            )
+            if writes:
+                observed[path.relative_to(ROUTES_DIR).as_posix()] = writes
+        return observed
 
     def test_editing_surfaces_declare_no_effect(self) -> None:
         offenders: list[str] = []
@@ -1068,6 +1148,65 @@ class TestNoServerStateMirrorEffect(unittest.TestCase):
             f"server payload into state: {offenders}",
         )
 
+    def test_every_effect_that_writes_state_is_declared(self) -> None:
+        """**새 표면이 조용히 빠지지 않는다** — 손 목록이 놓쳤던 축.
+
+        위 `_SURFACES` 는 「이미 고쳐진 넷이 되돌아가지 않는다」만 지킨다. 그것만으로는
+        목록에 없는 다섯 번째 파일이 서버 상태를 폼에 복사해도 아무 일도 일어나지 않는다 —
+        `inventory/SampleEditor.tsx` 가 그 자리에서 두 웨이브를 보냈다.
+        """
+        observed = set(self._observed_effect_state_writes())
+        declared = set(self.DECLARED_EFFECT_STATE_WRITES)
+        self.assertEqual(
+            observed,
+            declared,
+            "`useEffect` 안에서 상태를 쓰는 라우트 집합이 선언과 다르다.\n"
+            f"  선언에 없는데 트리에 있다: {sorted(observed - declared)}\n"
+            f"  선언에 있는데 트리에 없다: {sorted(declared - observed)}\n"
+            "새로 생긴 자리라면 `DECLARED_EFFECT_STATE_WRITES` 에 «무엇인지 한 줄»을 "
+            "적어라. 적으면서 물어야 하는 것은 하나다 — **이것이 서버 payload 를 폼 "
+            "state 로 복사하는가?** 그렇다면 선언하지 말고 "
+            "`localOverride ?? serverValue` 로 고쳐라.",
+        )
+
+    def test_every_declaration_carries_a_reason(self) -> None:
+        """사유 없는 선언은 거부한다 — 이름만 있는 목록은 다시 «손 목록»이다.
+
+        ⚠️ 길이 하한(`>= N 자`)을 두려다 `TestNumericThresholdsDoNotFreezeTodaysArrangement`
+        에 걸렸고, 그 판정이 옳았다. 명제는 「몇 자 이상인가」가 아니라 **「사유가 있는가」**
+        이고, 그 둘을 섞으면 오늘의 문장 길이가 내일의 기준이 된다.
+        """
+        thin = sorted(
+            rel for rel, why in self.DECLARED_EFFECT_STATE_WRITES.items() if not why.strip()
+        )
+        self.assertEqual(thin, [], f"사유 없는 선언: {thin}")
+
+    def test_the_scanner_sees_a_brace_less_effect_body(self) -> None:
+        """주입 — **중괄호 없는 본문**을 못 보면 이 검사는 우회된다.
+
+        `useEffect(() => setValues(initialValues(sample)), [sample])` 는 결함의 가장 짧은
+        철자다. 줄 단위 또는 `{...}` 를 찾는 스캐너는 이것을 통과시킨다.
+        """
+        braced = "useEffect(() => {\n  setValues(initialValues(sample));\n}, [sample]);"
+        braceless = "useEffect(() => setValues(initialValues(sample)), [sample]);"
+        nested = "useEffect(() => { if (a(b(c))) { setValues(f(g(h))); } }, [x]);"
+        for label, src in (("braced", braced), ("braceless", braceless), ("nested", nested)):
+            with self.subTest(form=label):
+                self.assertIn("setValues", self._effect_state_writes(src))
+
+    def test_the_scanner_ignores_timers_and_non_effects(self) -> None:
+        """비-공허 반대편 — 아무거나 잡으면 선언이 소음으로 찬다."""
+        self.assertEqual(set(), self._effect_state_writes("useEffect(() => { tick(); }, []);"))
+        self.assertEqual(
+            set(), self._effect_state_writes("useEffect(() => { setTimeout(f, 5); }, []);")
+        )
+        self.assertEqual(set(), self._effect_state_writes("useMemo(() => setX(1), []);"))
+
+    def test_the_scanner_is_not_vacuous_on_the_real_tree(self) -> None:
+        """실제 트리에서 0을 세면 「위반 없음」과 「스캐너가 죽었다」가 같아진다."""
+        observed = self._observed_effect_state_writes()
+        self.assertGreater(len(observed), 0, "라우트 트리에서 후보를 하나도 못 찾았다 — 스캐너가 죽었다")
+
     def test_the_override_state_is_actually_present(self) -> None:
         """Non-vacuous: "no effect" must mean "derives", not "dropped the state"."""
         panel = _strip_ts_comments(
@@ -1080,6 +1219,14 @@ class TestNoServerStateMirrorEffect(unittest.TestCase):
             (TEST_PLANS_DIR / "BulkRowsEditor.tsx").read_text(encoding="utf-8")
         )
         self.assertIn("localCsv ?? exportedCsv", bulk)
+
+        # 2026-09-07 추가. ⚠️ 「effect 를 지웠다」가 「state 를 지웠다」로 통과하면
+        # 이 검사는 결함을 «더 나쁘게» 만든 변경을 초록으로 낸다.
+        editor = _strip_ts_comments(
+            (ROUTES_DIR / "inventory" / "SampleEditor.tsx").read_text(encoding="utf-8")
+        )
+        self.assertIn("edits[editKey]", editor)
+        self.assertIn("...initialValues(sample)", editor)
 
     def test_bulk_import_stays_a_single_atomic_put(self) -> None:
         """Edit safety must not have been bought by weakening the write.
