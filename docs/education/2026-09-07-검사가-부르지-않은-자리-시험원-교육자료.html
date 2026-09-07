@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>검사가 부르지 않은 자리 — 시험원 교육자료</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+  :root {
+    --ground:#F5F7F6; --surface:#FFFFFF; --sunk:#ECF0EE;
+    --ink:#16201D; --ink-soft:#3B4A45; --muted:#66756F;
+    --rule:#D6DEDA; --rule-firm:#B4C0BB;
+    --accent:#1F6F5C;
+    --pass:#2E7D52; --hollow:#A9B8B1; --alarm:#A8412F; --alarm-soft:#F7E7E3;
+    --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+    --f-body:"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#101715; --surface:#18211E; --sunk:#1F2A26;
+      --ink:#E6EDEA; --ink-soft:#BCC8C3; --muted:#8B9A94;
+      --rule:#2A3733; --rule-firm:#3D4B46;
+      --accent:#4FAE93; --pass:#5FB47F; --hollow:#61706A;
+      --alarm:#DE8271; --alarm-soft:#301B16;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#101715; --surface:#18211E; --sunk:#1F2A26;
+    --ink:#E6EDEA; --ink-soft:#BCC8C3; --muted:#8B9A94;
+    --rule:#2A3733; --rule-firm:#3D4B46;
+    --accent:#4FAE93; --pass:#5FB47F; --hollow:#61706A;
+    --alarm:#DE8271; --alarm-soft:#301B16;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--f-body); font-size:15.5px; line-height:1.78;
+    -webkit-font-smoothing:antialiased; }
+  img { max-width:100%; }
+  .wrap { max-width:920px; margin:0 auto; padding:56px 24px 88px; }
+
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:500;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin:0 0 14px; }
+  h1 { font-size:clamp(28px,4.4vw,40px); font-weight:700; line-height:1.25;
+    letter-spacing:-.02em; text-wrap:balance; margin:0 0 18px; }
+  .lede { font-size:17px; color:var(--ink-soft); max-width:60ch; margin:0 0 10px; }
+  .lede strong { color:var(--ink); font-weight:700; }
+
+  .thesis { background:var(--surface); border:1px solid var(--rule-firm);
+    border-left:4px solid var(--accent); padding:20px 24px; margin:32px 0 44px;
+    font-size:17px; line-height:1.7; }
+  .thesis b { color:var(--accent); }
+
+  section { margin-bottom:56px; }
+  h2 { font-size:22px; font-weight:700; letter-spacing:-.01em; margin:0 0 6px;
+    padding-bottom:10px; border-bottom:2px solid var(--ink); }
+  h2 .n { font-family:var(--f-mono); font-size:12px; color:var(--accent);
+    letter-spacing:.1em; margin-right:10px; }
+  h3 { font-family:var(--f-mono); font-size:14px; font-weight:600; margin:32px 0 8px; }
+  p { max-width:66ch; }
+  .note { color:var(--ink-soft); font-size:14.5px; }
+
+  .forms { display:flex; flex-direction:column; gap:2px; margin:26px 0;
+    background:var(--rule); border:1px solid var(--rule); }
+  .form { background:var(--surface); padding:20px 22px; display:grid;
+    grid-template-columns:1fr auto; gap:18px 26px; align-items:start; }
+  .form-name { font-family:var(--f-mono); font-size:13px; font-weight:600;
+    color:var(--accent); margin-bottom:4px; }
+  .form-what { font-size:15px; line-height:1.65; }
+  .form-what code { font-size:.88em; }
+  .compare { display:grid; grid-template-columns:auto auto; gap:3px 0;
+    font-family:var(--f-mono); font-size:12px; font-variant-numeric:tabular-nums;
+    border:1px solid var(--rule); align-self:start; min-width:224px; }
+  .compare div { padding:7px 11px; background:var(--surface); }
+  .compare .hd { background:var(--sunk); color:var(--muted); font-size:10px;
+    letter-spacing:.1em; text-transform:uppercase; }
+  .compare .val { text-align:right; font-weight:600; }
+  .compare .val.hollow { color:var(--hollow); }
+  .compare .val.real { color:var(--pass); }
+  .compare .val.alarm { color:var(--alarm); }
+
+  .swatches { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:2px; background:var(--rule); border:1px solid var(--rule); margin:26px 0; }
+  .sw { background:var(--surface); padding:18px 20px; }
+  .sw .dot { width:13px; height:13px; display:inline-block; margin-right:9px; vertical-align:-1px; }
+  .sw .dot.real { background:var(--pass); }
+  .sw .dot.hollow { background:var(--hollow); }
+  .sw b { font-family:var(--f-mono); font-size:13px; }
+  .sw p { margin:8px 0 0; font-size:14px; color:var(--ink-soft); max-width:none; }
+
+  .tw { overflow-x:auto; margin:22px 0; }
+  table { border-collapse:collapse; width:100%; font-size:14.5px; }
+  th { font-family:var(--f-mono); font-size:10px; font-weight:500; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--muted); text-align:left;
+    padding:0 14px 9px; border-bottom:1px solid var(--rule-firm); white-space:nowrap; }
+  td { padding:12px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.mono, td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  td.num { text-align:right; font-weight:600; }
+
+  code { font-family:var(--f-mono); font-size:.9em; background:var(--sunk);
+    padding:1.5px 5px; border:1px solid var(--rule); }
+  pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.62;
+    background:var(--sunk); border:1px solid var(--rule); padding:14px 16px;
+    overflow-x:auto; margin:16px 0; }
+  pre b { color:var(--alarm); font-weight:600; }
+  pre i { color:var(--muted); font-style:normal; }
+
+  .checks { display:flex; flex-direction:column; gap:2px; background:var(--rule);
+    border:1px solid var(--rule); margin:26px 0; }
+  .check { background:var(--surface); padding:18px 22px; display:grid;
+    grid-template-columns:34px 1fr; gap:16px; }
+  .check .q { font-family:var(--f-mono); font-size:17px; font-weight:600; color:var(--accent); }
+  .check .body b { display:block; font-size:15.5px; margin-bottom:5px; }
+  .check .body span { font-size:14px; color:var(--ink-soft); }
+  .check .body .how { display:block; margin-top:9px; font-family:var(--f-mono);
+    font-size:12px; color:var(--muted); }
+
+  .alarm-box { background:var(--alarm-soft); border:1px solid var(--alarm);
+    padding:18px 22px; margin:24px 0; }
+  .alarm-box b { color:var(--alarm); }
+  .alarm-box p { margin:0; max-width:none; }
+  .alarm-box p + p { margin-top:10px; }
+
+  .seealso { background:var(--surface); border:1px solid var(--rule-firm);
+    padding:16px 20px; margin:24px 0; font-size:14.5px; }
+  .seealso b { font-family:var(--f-mono); font-size:12px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--muted); display:block; margin-bottom:8px; }
+  .seealso p { margin:0; }
+
+  .foot { border-top:1px solid var(--rule-firm); padding-top:20px; margin-top:52px;
+    font-size:13px; color:var(--muted); }
+  .foot p { max-width:70ch; margin:0 0 8px; }
+
+  @media (max-width:700px) { .form { grid-template-columns:1fr; } .compare { min-width:0; } }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">fcc-test-platform · 시험원 교육자료 · 2026-09-07</p>
+  <h1>검사가 부르지 않은 자리</h1>
+  <p class="lede">
+    타입 검사가 <strong>초록</strong>을 냈습니다. 그런데 그 검사는 저장소의 파일 중
+    <strong>75개를 한 번도 부르지 않았습니다.</strong> 그 자리에 실제 오류
+    <strong>44건</strong>이 쌓여 있었고, 검사 화면에는 아무 표시도 없었습니다.
+  </p>
+
+  <div class="thesis">
+    검사 결과는 <b>빨강</b>·<b>초록</b> 둘처럼 보이지만 실제로는 셋입니다 —
+    <b>통과</b>, <b>위반</b>, 그리고 <b>부르지 않음</b>.
+    세 번째는 화면에서 통과와 <b>똑같이</b> 보입니다.
+  </div>
+
+  <section>
+    <h2><span class="n">01</span>같은 화면, 다른 두 초록</h2>
+    <p class="note">
+      아래 둘은 실제 검사 출력에서 구별되지 않습니다. 이 문서에서만 색으로 갈라 두었습니다.
+    </p>
+    <div class="swatches">
+      <div class="sw">
+        <b><i class="dot real"></i>통과</b>
+        <p>검사가 대상 파일을 읽고, 규칙을 적용하고, 위반이 없어서 초록.</p>
+      </div>
+      <div class="sw">
+        <b><i class="dot hollow"></i>부르지 않음</b>
+        <p>검사가 그 파일을 대상 목록에 갖고 있지 않아서, 읽지도 않고 초록.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">02</span>부르지 않는 두 가지 방식</h2>
+    <p class="note">
+      둘 다 이번에 이 저장소에서 직접 재서 확인했습니다. 원인은 다르지만 결과는 같습니다 —
+      <b>화면에 경고가 남지 않습니다.</b>
+    </p>
+
+    <div class="forms">
+      <div class="form">
+        <div>
+          <div class="form-name">① 목록에 없어서 아예 안 부른다</div>
+          <div class="form-what">
+            타입 검사 설정(<code>mypy.ini</code>)에 검사할 대상이 네 개 적혀 있고,
+            게이트는 <b>그 목록에서 실행 명령을 만듭니다</b>. 그래서 목록에 없는 것은
+            빨강도 초록도 아니라 <b>침묵</b>입니다.
+            <code>fcc_test_platform/</code> 바로 아래 <b>75개 파일</b>이 그 자리였고,
+            대부분이 <b>운영자가 직접 실행하는 명령줄 도구와 증거 기록 파일</b>입니다.
+          </div>
+        </div>
+        <div class="compare">
+          <div class="hd">부른 것</div><div class="hd val">결과</div>
+          <div>네 대상</div><div class="val hollow">초록</div>
+          <div>최상위 75파일</div><div class="val alarm">44건 방치</div>
+        </div>
+      </div>
+
+      <div class="form">
+        <div>
+          <div class="form-name">② 불렀는데 한 개만 봤다</div>
+          <div class="form-what">
+            목록에 <code>fcc_test_platform</code> 을 더하면 고쳐질 것 같지만, 그 이름은
+            <b>파일 하나</b>(패키지 초기화 파일)에만 걸립니다. 검사는 성실히 돌고
+            <code>checked 1 source file</code> 을 보고합니다 —
+            <b>「돌았고 초록」인데 본 것은 한 파일</b>입니다.
+            이름 끝에 <code>.*</code> 를 붙여야 전부를 덮습니다.
+          </div>
+        </div>
+        <div class="compare">
+          <div class="hd">설정</div><div class="hd val">본 파일</div>
+          <div><code>…platform</code></div><div class="val hollow">1</div>
+          <div><code>…platform.*</code></div><div class="val real">218</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="alarm-box">
+      <p><b>⚠️ ②가 ①보다 위험합니다.</b> ①은 「목록에 없다」가 눈에 보이지만,
+      ②는 <b>고친 것처럼 보입니다</b> — 설정에 이름이 들어가 있고, 검사가 실제로 돌고,
+      파일 수까지 보고합니다. 그 수가 1이라는 것만 아무도 안 봅니다.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">03</span>시험원이 초록을 볼 때 묻는 네 질문</h2>
+    <p class="note">
+      아래 넷은 이번에 실제로 오판을 막았거나, 묻지 않아서 오판이 난 자리들입니다.
+    </p>
+
+    <div class="checks">
+      <div class="check">
+        <div class="q">1</div>
+        <div class="body">
+          <b>검사가 「무엇을 몇 개 보았다」고 말하는가</b>
+          <span>파일 수를 보고하지 않는 검사는 「돌았는지」조차 알 수 없습니다.
+          이 저장소의 게이트는 이미 그 수를 요구하고 있고, 의존 관계 검사는 한 걸음 더 나아가
+          「분석한 의존 수」까지 봅니다.</span>
+          <span class="how">확인법 — 출력에서 <code>checked N source files</code> ·
+          <code>Analyzed N files, M dependencies</code> 를 찾는다</span>
+        </div>
+      </div>
+
+      <div class="check">
+        <div class="q">2</div>
+        <div class="body">
+          <b>그 수가 예상과 같은가</b>
+          <span>「1개를 보았다」와 「218개를 보았다」는 둘 다 0보다 큽니다. 그래서
+          <b>「0보다 큰가」만 묻는 검사는 형태 ②를 통과시킵니다.</b>
+          수를 보고했다는 것과 그 수가 옳다는 것은 다릅니다.</span>
+          <span class="how">확인법 — 대상 디렉터리의 파일 개수와 대조한다</span>
+        </div>
+      </div>
+
+      <div class="check">
+        <div class="q">3</div>
+        <div class="body">
+          <b>지금 설치된 것이 선언된 것과 같은가</b>
+          <span>같은 코드가 설치 상태에 따라 다른 답을 냅니다.
+          이 축은 <b>「검사기가 못 보던 것」(2026-09-06) 교육자료가 자세히 다룹니다</b> —
+          같은 코드가 네 개의 수를 내는 실측이 거기 있습니다. 이 저장소에는 그것을 재는 검사도
+          이미 있습니다.</span>
+          <span class="how">확인법 — <code>test_the_installed_version_equals_the_declared_tag</code> ·
+          설치 직후 버전과 선언 태그를 대조</span>
+        </div>
+      </div>
+
+      <div class="check">
+        <div class="q">4</div>
+        <div class="body">
+          <b>일부러 틀린 것을 넣으면 빨개지는가</b>
+          <span>앞의 셋을 다 통과해도 검사 자체가 무력할 수 있습니다.
+          <b>가장 확실한 방법은 위반을 직접 넣어 보고 빨개지는지 확인하는 것</b>입니다.
+          그리고 넣은 것이 <b>의도한 자리에 들어갔는지</b>부터 봐야 합니다 —
+          이번 세션에서 주입이 엉뚱한 곳(주석)에 착지해 「초록」이 나온 적이 있습니다.</span>
+          <span class="how">확인법 — 주입 → 빨강 확인 → 되돌림 → <code>git diff</code> 가 비었는지 확인</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="seealso">
+      <b>함께 읽을 것</b>
+      <p>
+        검사가 <b>부르기는 했는데 내용을 못 읽는</b> 경우(설치본에 타입 표식이 없을 때)와
+        <b>같은 코드가 환경마다 다른 수를 내는</b> 축은
+        <code>2026-09-06-검사기가-못-보던-것-시험원-교육자료.html</code> 이 다룹니다.
+        이 문서는 그 앞 단계 — <b>「애초에 부르기는 했는가」</b>를 다룹니다.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">04</span>그 자리에서 무엇이 나왔나</h2>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>파일 계열</th><th class="num">건수</th><th>성격</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">cutover_bundle_cli</td><td class="num">6</td><td>전환 묶음 생성 — 값 타입이 섞여 넓어짐</td></tr>
+          <tr><td class="mono">keyset_cursor_live_proof_cli</td><td class="num">5</td><td>커서 증명 — 빈 값으로 깔고 덮는 자리</td></tr>
+          <tr><td class="mono">cross_session_…_evidence_cli</td><td class="num">4</td><td>세션 간 선택 증거</td></tr>
+          <tr><td class="mono">central_id_resolver 계열</td><td class="num">5</td><td>식별자 캐시 — <b>선언과 쓰임이 다름</b></td></tr>
+          <tr><td class="mono">extraction · qa · ingestion evidence</td><td class="num">6</td><td>증거 검증 — 값 없음 확인이 검사에 안 보임</td></tr>
+          <tr><td class="mono">그 외 8파일</td><td class="num">18</td><td>어댑터 · 조립 · 서명 다운로드 등</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>24건을 닫았고, 그중 23건은 결함이 아니었습니다</h3>
+    <p>
+      대부분은 <b>「사람은 이미 알고 있는데 코드에 안 적힌」</b> 것이었습니다. 예를 들어 값이
+      없는지 확인하는 코드가 이미 있는데, 같은 값을 <b>두 번 꺼내는 바람에</b> 검사 도구가 그
+      확인을 못 본 형태입니다. 실행에는 문제가 없고, 한 번만 꺼내도록 고치면 확인이 보입니다.
+    </p>
+
+    <div class="alarm-box">
+      <p><b>🔴 다만 하나는 성격이 다릅니다 — 실물과 시험용 대역이 갈렸습니다.</b></p>
+      <p>식별자 캐시에서 <b>실제로 도는 구현</b>은 세 조각짜리 키(<code>챔버·대상·번호</code>)로
+      저장하고 꺼냅니다. 그런데 <b>시험용 대역</b>은 같은 세 조각으로 <b>꺼내기만 하고 저장하지는
+      않습니다</b>. 그래서 그 조회는 시험용 대역에서 <b>항상 실패</b>하고 다른 경로로 빠지며,
+      실물에서는 성공합니다.</p>
+      <p>즉 <b>그 자리를 시험용 대역으로 시험하면 실물의 동작을 확인할 수 없습니다.</b>
+      이번에는 <b>고치지 않고 기록만 했습니다</b> — 고치는 것은 동작을 바꾸는 일이라
+      별도 판단이 필요합니다.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">05</span>왜 이것으로 끝나지 않는가</h2>
+
+    <h3>44건을 다 고쳐도, 검사 범위를 안 넓히면 다시 쌓입니다</h3>
+    <p>
+      44건이 쌓인 원인은 <b>사람이 실수했기 때문이 아니라 검사가 그 자리를 부르지 않았기
+      때문</b>입니다. 지금 전부 고쳐도 <b>목록을 넓히지 않으면</b> 새로 들어오는 코드에서
+      같은 일이 반복됩니다. 그래서 <b>수리와 범위 확대는 한 묶음</b>이어야 합니다 —
+      수리만 하면 다음 달에 같은 문서를 다시 쓰게 됩니다.
+    </p>
+
+    <h3>남은 20건에 「실행 중 멈출 수 있는」 후보가 둘 있습니다</h3>
+    <p>
+      앞의 24건과 달리 다음 둘은 실제로 동작을 멈출 수 있는 자리입니다.
+      둘 다 <b>바로 옆줄에는 안전장치가 있는데 이 줄만 빠진</b> 형태입니다.
+    </p>
+<pre><i># 전환 작업 실행기 — 제한 시간을 읽는 자리</i>
+cwd     = Path(str(raw_step.get('cwd') <b>or PROJECT_ROOT</b>))   <i>← 없을 때 기본값을 준다</i>
+timeout = float(raw_step.get('timeout_seconds'))          <i>←</i> <b>이 줄만 기본값이 없다</b>
+
+<i># 세션 간 증거 수집기 — 조회 결과를 쓰는 자리</i>
+<b>if source is None: raise</b> RuntimeError(...)                 <i>← source 는 확인한다</i>
+provider_id = <b>ids</b>['provider_id']                           <i>←</i> <b>ids 는 확인하지 않는다</b></pre>
+    <p class="note">
+      둘 다 아직 <b>결함이라고 확정하지 않았습니다.</b> 그 값이 항상 채워지는 경로만 있다면
+      문제가 아닙니다 — 다음 작업의 첫 일이 <b>그것을 가르는 것</b>입니다.
+    </p>
+
+    <h3>그리고 44라는 수 자체가 다시 재야 합니다</h3>
+    <p>
+      44는 특정 시점의 코드와 특정 설치 상태에서 잰 값입니다. 그 사이 공유 라이브러리의 판이
+      올라갔고, 그러면 <b>보이는 것이 달라집니다</b>(질문 3번의 축). 새로 재지 않고 이어서
+      고치면 「내가 고친 것」과 「그 사이 남이 고친 것」이 섞여
+      <b>무엇을 했는지 말할 수 없게 됩니다.</b>
+    </p>
+  </section>
+
+  <footer class="foot">
+    <p>
+      <b>이 문서의 수치는 전부 실측입니다.</b> 도구를 직접 돌려 얻었고, 형태 ②는 설정을 실제로
+      넣었다 뺐다 하며 양쪽을 비교했습니다. 측정 조건(어느 시점의 코드, 어떤 설치 상태)이
+      바뀌면 수치도 바뀝니다 — 인용하실 때는 그 조건을 함께 보십시오.
+    </p>
+    <p>
+      기준 시점 <span style="font-family:var(--f-mono)">7bba811</span> ·
+      설치 <span style="font-family:var(--f-mono)">contracts 0.1.23 · kernel 0.5.0</span> ·
+      진행 중 작업 <span style="font-family:var(--f-mono)">3bca6fd</span>
+    </p>
+  </footer>
+
+</div>
+</body>
+</html>
