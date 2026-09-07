@@ -1,0 +1,26 @@
+{
+  "slug": "central-runbook-names-the-repo-that-builds-20260907",
+  "status": "active",
+  "opened_at": "2026-09-07",
+  "branch": "docs/central-runbook-names-the-repo-that-builds-20260907",
+  "base": "origin/main (a5cdc47)",
+  "summary": "An operator asked how to rebuild the images and bring the homepage up on the central PC. Measuring the answer showed the deployment docs would produce the wrong stack. Three defects, all of the same family: prose that was true when written and was never re-derived. (1) infra/central/ONPREM_DEPLOYMENT.md tells you to cd into the provider repository at four places. That file was last touched by the extraction delivery commit and never updated for the 2026-09-03 placement change, while the gated runbook says the central PC holds this repository and not the provider one. The two repositories each carry an infra/docker-compose.central.yml and they differ: the provider copy defines six services with no build stanza for web, this one defines seven including platform-api-node. So following the deployment doc verbatim brings up a stack without the instance that splits browser and node auth, and cannot build the web image. infra/central/LOCAL_DEVELOPMENT.md has the same cd. (2) Three operational docs print an expected container list that predates platform-api-node, so an operator who counts them concludes the stack is broken when it is healthy. (3) ONPREM_DEPLOYMENT.md corrects python to python3 in section 5 and then commits that same mistake in the verification section of the same file. Separately, the operational-validation runbook verifies PUBLIC_HOST with hostname -I, which on this WSL setup lists nine addresses of which the Windows host actually owns one; the other eight pass a check the runbook itself warns will bounce the login.",
+  "scope": [
+    "infra/central/ONPREM_DEPLOYMENT.md",
+    "infra/central/LOCAL_DEVELOPMENT.md",
+    "docs/operations/central-pc-operational-validation-runbook.md",
+    "docs/operations/central-pc-fcc-platform-verification-guide.md",
+    "docs/operations/central-pc-update-deploy-runbook.md",
+    "tests/test_central_docker_compose.py",
+    ".claude/work-claims/central-runbook-names-the-repo-that-builds-20260907.json"
+  ],
+  "non_scope": [
+    "The provider repository's copy of infra/docker-compose.central.yml. It is the other lane's file and the monorepo CI is left alone by operator decision (2026-09-07).",
+    "Fixing the central PC itself. This claim changes documents and a seal; whether the deployment is re-run is the operator's call and container start is an approval point.",
+    "The chamber PC cd sites in central-pc-update-deploy-runbook.md and the operational-validation runbook. Those name the provider repository correctly - the chamber PC is where it belongs."
+  ],
+  "sequencing_notes": "Cut from origin/main at a5cdc47. Confirmed with the sibling session holding fcc-test-platform that none of these paths are touched by its 47 landed files (its scope is intent/, .claude/, githooks/, scripts/, tests/ new-6, docs/education/1).",
+  "invariants_touched": [
+    "tests/test_central_docker_compose.py"
+  ]
+}
