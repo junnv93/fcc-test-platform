@@ -1,0 +1,659 @@
+<title>진행률 릴레이 계약 점검</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#F6F8FA; --surface:#FFFFFF; --surface-2:#EDF1F5;
+  --ink:#161A20; --ink-soft:#59636F; --ink-faint:#8B95A1;
+  --rule:#D9E0E7; --rule-strong:#B9C3CE;
+  --declared:#9A6A00; --declared-bg:#FBF3E0; --declared-edge:#E5CE9B;
+  --measured:#0B6E77; --measured-bg:#DEF0F1; --measured-edge:#9CCDD1;
+  --alarm:#A63525; --alarm-bg:#FBEAE6; --alarm-edge:#E7B7AC;
+  --ok:#2E6E45;
+  --shadow:0 1px 2px rgba(22,26,32,.06), 0 8px 24px -12px rgba(22,26,32,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#10141A; --surface:#181D25; --surface-2:#212832;
+    --ink:#E7ECF2; --ink-soft:#9BA6B4; --ink-faint:#6E7986;
+    --rule:#2B333E; --rule-strong:#3B4551;
+    --declared:#E3B45F; --declared-bg:#2A2313; --declared-edge:#4E4225;
+    --measured:#54C1CB; --measured-bg:#0E2C2F; --measured-edge:#1F4E52;
+    --alarm:#E68C78; --alarm-bg:#331C18; --alarm-edge:#5A322A;
+    --ok:#79C596;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#10141A; --surface:#181D25; --surface-2:#212832;
+  --ink:#E7ECF2; --ink-soft:#9BA6B4; --ink-faint:#6E7986;
+  --rule:#2B333E; --rule-strong:#3B4551;
+  --declared:#E3B45F; --declared-bg:#2A2313; --declared-edge:#4E4225;
+  --measured:#54C1CB; --measured-bg:#0E2C2F; --measured-edge:#1F4E52;
+  --alarm:#E68C78; --alarm-bg:#331C18; --alarm-edge:#5A322A;
+  --ok:#79C596;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans KR","Malgun Gothic",system-ui,sans-serif;
+  font-weight:400; line-height:1.75; font-size:16px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1120px; margin:0 auto; padding:0 24px 96px}
+.col{max-width:70ch; margin-inline:auto}
+
+/* ── 머리 ─────────────────────────────────────── */
+header.top{padding:64px 0 40px; border-bottom:1px solid var(--rule)}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace; font-size:11.5px; font-weight:500;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--measured);
+}
+h1{
+  font-family:"Gowun Batang",serif; font-weight:700;
+  font-size:clamp(30px,5.2vw,46px); line-height:1.24; letter-spacing:-.015em;
+  margin:14px 0 0; text-wrap:balance;
+}
+.lede{font-size:17.5px; color:var(--ink-soft); margin:18px 0 0; text-wrap:pretty}
+.record{
+  display:flex; flex-wrap:wrap; gap:0 28px; margin-top:28px; padding-top:18px;
+  border-top:1px solid var(--rule);
+  font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-faint);
+}
+.record b{font-weight:500; color:var(--ink-soft)}
+
+/* ── 절 ───────────────────────────────────────── */
+section{padding:56px 0 0}
+.sec-num{
+  font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:500;
+  letter-spacing:.1em; color:var(--ink-faint);
+}
+h2{
+  font-family:"Gowun Batang",serif; font-weight:700;
+  font-size:clamp(23px,3.4vw,30px); line-height:1.35; letter-spacing:-.01em;
+  margin:8px 0 20px; text-wrap:balance;
+}
+h3{
+  font-size:16.5px; font-weight:600; margin:36px 0 10px; letter-spacing:-.005em;
+}
+p{margin:0 0 16px; text-wrap:pretty}
+strong{font-weight:600}
+.q{color:var(--ink-soft)}
+
+code{
+  font-family:"IBM Plex Mono",monospace; font-size:.88em;
+  background:var(--surface-2); padding:.12em .38em; border-radius:3px;
+  border:1px solid var(--rule);
+}
+
+/* ── 패널(넓게 빠지는 것) ───────────────────────── */
+.panel{
+  background:var(--surface); border:1px solid var(--rule);
+  border-radius:10px; box-shadow:var(--shadow);
+  padding:26px 26px 22px; margin:28px 0;
+}
+.panel-title{
+  font-family:"IBM Plex Mono",monospace; font-size:11.5px; font-weight:500;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--ink-faint);
+  margin-bottom:16px;
+}
+.scroll{overflow-x:auto; -webkit-overflow-scrolling:touch}
+
+/* ── 코드 ─────────────────────────────────────── */
+pre{
+  font-family:"IBM Plex Mono",monospace; font-size:13px; line-height:1.62;
+  background:var(--surface-2); border:1px solid var(--rule);
+  border-radius:8px; padding:16px 18px; margin:0; overflow-x:auto;
+  color:var(--ink);
+}
+pre .c{color:var(--ink-faint)}
+pre .bad{color:var(--alarm); font-weight:500}
+pre .good{color:var(--measured); font-weight:500}
+pre .key{color:var(--declared)}
+
+/* ── 층 도해 ───────────────────────────────────── */
+.layers{display:flex; flex-direction:column; gap:12px}
+.layer{
+  display:grid; grid-template-columns:38px 1fr; gap:16px; align-items:start;
+  background:var(--surface-2); border:1px solid var(--rule);
+  border-left:3px solid var(--alarm); border-radius:8px; padding:16px 18px;
+}
+.layer .n{
+  font-family:"IBM Plex Mono",monospace; font-size:17px; font-weight:600;
+  color:var(--alarm); line-height:1.4;
+}
+.layer h4{margin:0 0 6px; font-size:15px; font-weight:600}
+.layer .where{
+  font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--ink-faint);
+  display:block; margin-bottom:8px;
+}
+.layer p{margin:0; font-size:14.5px; color:var(--ink-soft)}
+.layer pre{margin-top:10px; font-size:12.5px}
+
+/* ── 표 ───────────────────────────────────────── */
+table{border-collapse:collapse; width:100%; font-size:14px}
+th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--rule); vertical-align:top}
+th{
+  font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:500;
+  letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint);
+  border-bottom:1px solid var(--rule-strong);
+}
+td.num{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; white-space:nowrap}
+td.mono{font-family:"IBM Plex Mono",monospace; font-size:12.5px}
+tr:last-child td{border-bottom:none}
+
+/* ── 표식 ─────────────────────────────────────── */
+.tag{
+  display:inline-block; font-family:"IBM Plex Mono",monospace;
+  font-size:11px; font-weight:500; letter-spacing:.04em;
+  padding:2px 8px; border-radius:999px; white-space:nowrap;
+}
+.tag.d{background:var(--declared-bg); color:var(--declared); border:1px solid var(--declared-edge)}
+.tag.m{background:var(--measured-bg); color:var(--measured); border:1px solid var(--measured-edge)}
+.tag.a{background:var(--alarm-bg); color:var(--alarm); border:1px solid var(--alarm-edge)}
+
+.note{
+  border-left:3px solid var(--declared); background:var(--declared-bg);
+  padding:14px 18px; border-radius:0 8px 8px 0; margin:22px 0; font-size:15px;
+}
+.note.warn{border-left-color:var(--alarm); background:var(--alarm-bg)}
+.note p:last-child{margin-bottom:0}
+
+/* ── 흐름도 ───────────────────────────────────── */
+.flow svg{display:block; width:100%; height:auto; min-width:640px}
+.flow text{font-family:"IBM Plex Sans KR",sans-serif}
+.flow .mono{font-family:"IBM Plex Mono",monospace}
+
+/* ── 다음 세션 블록 ─────────────────────────────── */
+.prompt{
+  background:var(--surface-2); border:1px solid var(--rule-strong);
+  border-radius:10px; padding:0; overflow:hidden; margin:24px 0;
+}
+.prompt-bar{
+  display:flex; justify-content:space-between; align-items:center; gap:12px;
+  padding:11px 16px; border-bottom:1px solid var(--rule);
+  background:var(--surface);
+}
+.prompt-bar span{
+  font-family:"IBM Plex Mono",monospace; font-size:11.5px;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint);
+}
+button.copy{
+  font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:500;
+  color:var(--measured); background:var(--measured-bg);
+  border:1px solid var(--measured-edge); border-radius:6px;
+  padding:5px 12px; cursor:pointer;
+}
+button.copy:hover{filter:brightness(.97)}
+button.copy:focus-visible{outline:2px solid var(--measured); outline-offset:2px}
+.prompt pre{
+  border:none; border-radius:0; background:transparent;
+  max-height:none; font-size:12.5px; line-height:1.7; white-space:pre-wrap;
+}
+
+hr.soft{border:none; border-top:1px solid var(--rule); margin:44px 0 0}
+footer{padding:44px 0 0; font-size:13.5px; color:var(--ink-faint)}
+@media (prefers-reduced-motion: reduce){*{animation:none!important; transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="col">
+    <div class="eyebrow">멀티챔버 P7 / B4 · 중앙 진행 릴레이</div>
+    <h1>진행률 릴레이 계약 점검</h1>
+    <p class="lede">웹 화면의 챔버 진행률이 어떤 통로로 오는지, 그 통로의 코드가 <strong>스스로에 대해 적어 둔 설명이 3개월 동안 사실과 달랐던</strong> 경위, 그리고 같은 일이 조용히 반복되지 않도록 무엇을 세웠는지에 대한 기록입니다.</p>
+    <div class="record">
+      <div><b>레포</b> fcc-test-platform</div>
+      <div><b>PR</b> #138 · #139</div>
+      <div><b>기준</b> main@9565be6</div>
+      <div><b>측정</b> 2026-09-07</div>
+    </div>
+  </div>
+</header>
+
+<!-- ─────────────────────────────────────────────── -->
+<section>
+  <div class="col">
+    <div class="sec-num">01</div>
+    <h2>이 통로가 실제로 하는 일</h2>
+    <p>챔버 노드(시험실 PC)가 측정 중일 때, 진행률은 <strong>노드가 중앙으로 밀어 보내는</strong> 방식으로 옵니다. 중앙이 노드에 접속해 가져오는 것이 아닙니다 — 사내망 챔버 PC 로 들어오는 연결을 만들지 않으려고 그렇게 정했습니다(ADR-0015 Option B).</p>
+  </div>
+
+  <div class="panel flow">
+    <div class="panel-title">진행 이벤트 한 건이 지나는 길</div>
+    <div class="scroll">
+      <svg viewBox="0 0 980 250" role="img" aria-label="챔버 노드에서 브라우저까지 진행 이벤트가 지나는 경로">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--rule-strong)"/>
+          </marker>
+        </defs>
+
+        <!-- 노드 -->
+        <rect x="8" y="60" width="176" height="86" rx="8" fill="var(--surface-2)" stroke="var(--rule-strong)"/>
+        <text x="96" y="90" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink)">챔버 노드</text>
+        <text x="96" y="111" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">측정 중 진행률 발생</text>
+        <text x="96" y="129" text-anchor="middle" font-size="10.5" class="mono" fill="var(--ink-faint)">in_use + progress</text>
+
+        <line x1="188" y1="103" x2="252" y2="103" stroke="var(--rule-strong)" stroke-width="1.5" marker-end="url(#ar)"/>
+        <text x="220" y="92" text-anchor="middle" font-size="10" class="mono" fill="var(--ink-faint)">heartbeat</text>
+
+        <!-- 중앙 ingest -->
+        <rect x="256" y="60" width="186" height="86" rx="8" fill="var(--surface-2)" stroke="var(--rule-strong)"/>
+        <text x="349" y="90" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink)">중앙 수신</text>
+        <text x="349" y="111" text-anchor="middle" font-size="10.5" class="mono" fill="var(--ink-soft)">push_chamber_heartbeat</text>
+        <text x="349" y="129" text-anchor="middle" font-size="10.5" fill="var(--ink-faint)">권위 기록은 여기(C1 원장)</text>
+
+        <line x1="446" y1="103" x2="510" y2="103" stroke="var(--measured)" stroke-width="1.5" marker-end="url(#ar)"/>
+        <text x="478" y="92" text-anchor="middle" font-size="10" class="mono" fill="var(--measured)">publish</text>
+
+        <!-- 버스 -->
+        <rect x="514" y="46" width="192" height="114" rx="8" fill="var(--measured-bg)" stroke="var(--measured-edge)"/>
+        <text x="610" y="74" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink)">진행 이벤트 버스</text>
+        <text x="610" y="95" text-anchor="middle" font-size="10.5" class="mono" fill="var(--ink-soft)">ChamberProgressBroadcaster</text>
+        <text x="610" y="117" text-anchor="middle" font-size="11" fill="var(--ink-soft)">구독자마다 대기열 64칸</text>
+        <text x="610" y="135" text-anchor="middle" font-size="11" fill="var(--ink-soft)">가득 차면 가장 오래된 것부터 버림</text>
+
+        <line x1="710" y1="103" x2="774" y2="103" stroke="var(--measured)" stroke-width="1.5" marker-end="url(#ar)"/>
+        <text x="742" y="92" text-anchor="middle" font-size="10" class="mono" fill="var(--measured)">subscribe</text>
+
+        <!-- WS -->
+        <rect x="778" y="60" width="194" height="86" rx="8" fill="var(--surface-2)" stroke="var(--rule-strong)"/>
+        <text x="875" y="90" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink)">웹 브라우저</text>
+        <text x="875" y="111" text-anchor="middle" font-size="10.5" class="mono" fill="var(--ink-soft)">/platform/chambers/events</text>
+        <text x="875" y="129" text-anchor="middle" font-size="11" fill="var(--ink-faint)">WebSocket 실시간 표시</text>
+
+        <!-- 폴백 -->
+        <path d="M349 150 L349 200 L875 200 L875 152" fill="none" stroke="var(--rule-strong)" stroke-width="1.2" stroke-dasharray="4 4" marker-end="url(#ar)"/>
+        <text x="612" y="220" text-anchor="middle" font-size="11.5" fill="var(--ink-faint)">WebSocket 이 끊기면 브라우저가 주기적 조회로 자동 강등 — 이 경로는 그대로 살아 있습니다</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="col">
+    <p>가운데 <strong>버스</strong>가 이번 점검의 대상입니다. 이 버스는 두 가지 일을 합니다 — 수신 쪽에서 이벤트를 <span class="tag m">publish</span> 로 받아들이고, WebSocket 쪽에 <span class="tag m">subscribe</span> 로 흘려보냅니다. 그리고 재시작할 때 열린 구독을 모두 닫는 <span class="tag m">dispose</span> 가 있습니다.</p>
+    <p class="q">진행 이벤트는 <strong>사라져도 되는 신호</strong>입니다. 대기열이 차면 오래된 것부터 버립니다 — 진행률은 누적이 아니라 그때그때의 상태라서 최신 것만 의미가 있고, 권위 있는 기록은 중앙 수신 단계의 heartbeat 원장이 따로 갖고 있기 때문입니다.</p>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section>
+  <div class="col">
+    <div class="sec-num">02</div>
+    <h2>결함 — 선언이 실제 계약보다 좁았다</h2>
+    <p>이 버스에는 <strong>「이 버스는 이런 일을 한다」고 코드가 스스로 적어 둔 명세</strong>가 따로 있습니다. 다른 부분들은 버스의 실물이 아니라 그 명세만 보고 작성됩니다. 그래야 나중에 버스를 다른 것으로 갈아 끼워도 나머지가 안 깨집니다.</p>
+    <p>그 명세가 스스로를 <span class="tag d">publish 전용</span>이라고 선언하고 있었습니다. 그런데 <strong>WebSocket 쪽은 그 명세로 받은 객체에 대고 <code>.subscribe()</code> 를 부르고 있었습니다.</strong> 명세에 없는 기능을 부르고 있었던 것입니다.</p>
+    <p>들어온 문제 기술은 여기까지였는데, 실제로 재어 보니 <strong>어긋난 자리가 한 곳이 아니라 세 겹</strong>이었습니다.</p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">좁힘 세 겹 — 아래로 갈수록 앞의 것을 덮는다</div>
+    <div class="layers">
+
+      <div class="layer">
+        <div class="n">①</div>
+        <div>
+          <h4>명세가 <code>subscribe</code> 를 아예 안 적었다</h4>
+          <span class="where">domain/ports/output/chamber_progress_broadcast_port.py</span>
+          <p>명세에는 <code>publish</code> 하나뿐이었습니다. 실제 버스는 세 가지를 하는데 명세는 하나만 말하고 있었습니다.</p>
+        </div>
+      </div>
+
+      <div class="layer">
+        <div class="n">②</div>
+        <div>
+          <h4>실물이 <strong>자기가 돌려주는 것</strong>을 스스로 숨겼다</h4>
+          <span class="where">infrastructure/adapters/driven/chamber_progress_broadcaster.py</span>
+          <p>이게 숨은 겹입니다. <code>subscribe()</code> 는 「끝나면 구독을 반드시 해제해 주는 물건」을 돌려주는데, 선언은 그냥 「이벤트가 나오는 것」이라고만 적혀 있었습니다.</p>
+<pre><span class="c"># 선언</span>
+def subscribe(self) -&gt; <span class="bad">'AsyncIterator[ChamberProgressEvent]'</span>:
+    <span class="c"># 실제로 돌려주는 것 — 구독 해제를 보장하는 물건</span>
+    return <span class="good">_SubscriptionScope(self)</span></pre>
+        </div>
+      </div>
+
+      <div class="layer">
+        <div class="n">③</div>
+        <div>
+          <h4>호출부가 앞의 둘을 <strong>건너뛰었다</strong></h4>
+          <span class="where">api/platform_routes.py</span>
+          <p>①과 ② 때문에 WebSocket 쪽은 자기가 쓰려는 형태를 정당화할 근거가 없었습니다. 그래서 검사기에게 <strong>「따지지 말라」고 지시하는 문법</strong>(<code>cast</code>)으로 둘 다 넘어갔습니다.</p>
+<pre>subscribable = <span class="bad">cast</span>('_SubscribableProgressBroadcaster', broadcaster)
+async with subscribable.subscribe() as subscription:
+    async for event in subscription:</pre>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="note warn">
+      <p><strong>②를 두면 ①만 고쳐도 소용이 없습니다.</strong> 명세에 <code>subscribe</code> 를 적어 넣어도, 실물이 <em>스스로</em> 「나는 구독 해제를 보장하는 물건이 아니다」라고 말하고 있으므로 호출부는 여전히 <code>cast</code> 없이는 못 씁니다. 처음 제시된 세 가지 해법 중 무엇을 골랐어도 ②는 따로 고쳐야 했습니다.</p>
+    </div>
+
+    <h3>왜 이게 위험한가</h3>
+    <p><code>async with</code> 로 감싸는 것이 <strong>구독 해제의 유일한 보장</strong>입니다. 브라우저가 창을 닫거나 연결이 끊길 때 그 구독이 정리되지 않으면, 죽은 대기열이 버스에 남아 이후의 모든 진행 이벤트가 그 빈 통을 채우게 됩니다.</p>
+    <p>더 큰 위험은 <strong>다음 사람</strong>입니다. 이 부분을 나중에 손대는 사람이 명세의 「publish 전용」을 읽고 그 전제로 배선을 바꾸면, <strong>진행률 표시가 조용히 멈춥니다</strong> — 오류도 안 나고 로그도 안 남고, 그냥 막대가 안 움직입니다.</p>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section>
+  <div class="col">
+    <div class="sec-num">03</div>
+    <h2>왜 3개월 동안 아무도 못 봤나</h2>
+    <p>「publish 전용」이라는 결정을 뒤집으려면 그 결정의 <strong>근거</strong>부터 찾아야 했습니다. 찾아보니 <strong>근거가 없었습니다</strong> — 근거 자리에 앉아 있던 것은 <em>사실을 주장하는 문장 하나</em>였고, 그 문장이 처음부터 거짓이었습니다.</p>
+    <div class="note">
+      <p>명세가 적어 둔 근거:<br><span class="tag d">주장</span> <em>“subscribe 는 WebSocket 쪽이 버스 <strong>실물에 직접 접근</strong>한다 — 그래서 명세는 publish 만 담으면 된다.”</em></p>
+    </div>
+    <p>이 문장이 참이면 「publish 전용」이 말이 됩니다. 그래서 그 문장이 참인지 <strong>두 시점에서</strong> 쟀습니다.</p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">근거 문장의 진위 — 두 시점에서 실측</div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>무엇을 물었나</th><th>어떻게 쟀나</th><th>결과</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>이 통로를 <strong>만든 날</strong>에는 참이었나?<br><span class="q">(2026-06-18, 최초 커밋)</span></td>
+            <td class="mono">모노레포 0f2aaeef 의<br>WebSocket 핸들러 원문</td>
+            <td><span class="tag a">거짓</span><br><span class="q">그날에도 실물이 아니라 <strong>명세 타입으로 선언된 프로퍼티</strong>를 통해 받고 있었습니다. 직접 접근한 적이 없습니다.</span></td>
+          </tr>
+          <tr>
+            <td>오늘은 참인가?</td>
+            <td class="mono">api 층이 infrastructure 에서<br>가져오는 이름 수 (구문 분석)</td>
+            <td><span class="tag a">거짓 · 불가능</span><br><span class="q"><strong>0개</strong>. 지금 구조에서는 직접 접근이 가능하지도 않습니다.</span></td>
+          </tr>
+          <tr>
+            <td>그 결정을 정한 설계 문서가<br>따로 있나?</td>
+            <td class="mono">ADR-0015 전문 172줄에서<br>publish · subscribe · port 검색</td>
+            <td><span class="tag m">해당 없음</span><br><span class="q"><strong>2회</strong>뿐이고 둘 다 <em>다른</em> 버스를 서술합니다. 그 문서가 정한 것은 「노드가 미느냐 중앙이 가져오느냐」이지 명세의 모양이 아닙니다.</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="note warn">
+      <p><strong>이 문장은 동작을 바꾸지 않습니다.</strong> 주석과 설명문은 프로그램이 실행할 때 아무 일도 하지 않으므로, 시험을 아무리 돌려도 <strong>거짓인 설명문은 절대 빨간불이 되지 않습니다.</strong> 3개월을 살아남은 이유가 이것입니다.</p>
+    </div>
+    <p>같은 자리에서 <strong>같은 형태의 거짓 문장을 하나 더</strong> 찾았습니다. 다른 명세가 “조립 부분이 엄격 검사 대상이므로 여기서 검사된다”고 적고 있었는데, 실제로 검사기에 그 파일을 넣어 보니 <strong>검사 대상이 아니었습니다.</strong> 그 문장은 고치지 않고 <strong>사실대로 정정만</strong> 했습니다 — 고치려면 이번 작업의 범위를 넘어가기 때문이고, 넘어가는 대신 <em>무엇이 사실인지</em>를 적어 두는 편이 다음 사람에게 정확합니다.</p>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section>
+  <div class="col">
+    <div class="sec-num">04</div>
+    <h2>고친 것</h2>
+    <p>근거가 없으므로 <strong>명세를 실제 계약에 맞게 넓히는</strong> 쪽을 택했습니다. 「읽기 기능만 따로 떼어 두 개의 명세로 나누는」 안도 있었지만, 이 저장소의 28개 명세를 전수 조사해 보니 <strong>명세가 둘로 갈린 경우는 예외 없이 실물도 둘이었습니다.</strong> 진행 버스는 실물이 하나입니다.</p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">명세 — 전후</div>
+    <div class="scroll">
+<pre><span class="c">── 전 ────────────────────────────────────────────</span>
+class ChamberProgressBroadcastPort(Protocol):
+    <span class="c">"""진행 이벤트를 fan-out 하는 outbound port (<span class="bad">publish-only</span>)."""</span>
+    def publish(self, event: ChamberProgressEvent) -&gt; None: ...
+
+<span class="c">── 후 ────────────────────────────────────────────</span>
+class <span class="good">ChamberProgressSubscription</span>(Protocol):
+    <span class="c"># 「끝나면 구독을 반드시 해제한다」를 산문이 아니라 «타입»으로 적는다</span>
+    async def __aenter__(self) -&gt; AsyncIterator[ChamberProgressEvent]: ...
+    async def __aexit__(self, exc_type, exc, tb) -&gt; None: ...
+
+class ChamberProgressBroadcastPort(Protocol):
+    def publish(self, event: ChamberProgressEvent) -&gt; None: ...
+    <span class="good">def subscribe(self) -&gt; ChamberProgressSubscription: ...</span>
+    <span class="good">def dispose(self) -&gt; None: ...</span></pre>
+    </div>
+  </div>
+
+  <div class="col">
+    <p>실물 쪽은 두 군데를 고쳤습니다. <strong>돌려주는 것을 사실대로 적었고</strong>(겹 ②), 그리고 <strong>명세를 명시적으로 상속</strong>하게 했습니다 — 이러면 검사기가 <em>정의된 그 자리에서</em> 명세와 실물이 어긋났는지 매번 확인합니다.</p>
+
+    <div class="note">
+      <p><strong>왜 「명시적 상속」이 필요한가.</strong> 이 저장소에는 「실물이 명세를 만족하는가」를 확인하는 관습적 방법이 하나 있는데, 그것은 <strong>메서드가 있는지 «이름»만 봅니다.</strong> 이번 결함 ②는 이름은 멀쩡하고 <em>돌려주는 것의 종류</em>가 어긋난 경우라, 그 방법으로는 원리적으로 못 잡습니다. 그래서 검사기가 보는 자리를 따로 만들었습니다.</p>
+    </div>
+
+    <p>호출부에서는 <code>cast</code> 와 임시로 만들어 뒀던 명세 두 개를 <strong>걷어냈습니다</strong>(38줄 삭제). 이제 이렇게 씁니다 — 건너뛰는 문법 없이, 명세가 그것을 정식으로 허락합니다.</p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">호출부 — 현재</div>
+<pre>async with broadcaster.subscribe() as subscription:
+    async for event in subscription:
+        await websocket.send_json(event.as_wire())</pre>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section>
+  <div class="col">
+    <div class="sec-num">05</div>
+    <h2>새로 세운 검사가 <strong>진짜로</strong> 잡는지 확인한 방법</h2>
+    <p>시험원 입장에서 가장 옮겨 쓸 만한 부분입니다. <strong>검사를 만들어 놓고 초록불이 뜨는 것은 아무것도 증명하지 않습니다.</strong> 그 검사가 애초에 아무것도 안 보고 있어도 똑같이 초록불이기 때문입니다.</p>
+    <p>그래서 <strong>결함을 일부러 넣어 보고 정말 빨간불이 되는지</strong> 확인했습니다. 넷을 넣었고 넷 다 잡혔으며, 되돌린 뒤 초록으로 복귀하는 것과 소스가 원래 바이트 그대로인 것까지 확인했습니다.</p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">주입 시험 — 결함을 넣어 red, 되돌려 green</div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th style="width:34%">무엇을 망가뜨렸나</th><th style="width:22%">기대</th><th>실제로 나온 것</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>실물의 <code>subscribe</code> 반환 선언을 <strong>옛 상태로 되돌린다</strong><br><span class="q">= 결함 ②를 그대로 재현</span></td>
+            <td><span class="tag a">빨강</span> 검사기</td>
+            <td class="mono">Return type ... incompatible with<br>ChamberProgressSubscription <span class="q">[override]</span></td>
+          </tr>
+          <tr>
+            <td>명세에서 <code>subscribe</code> 선언을 뗀다<br><span class="q">= 결함 ①을 재현</span></td>
+            <td><span class="tag a">빨강</span> 검사기</td>
+            <td class="mono">"ChamberProgressBroadcastPort"<br>has no attribute "subscribe"</td>
+          </tr>
+          <tr>
+            <td>실물에서 <strong>명시적 상속을 뗀다</strong><br><span class="q">= 검사 자리 자체를 없앤다</span></td>
+            <td><span class="tag a">빨강</span> 시험</td>
+            <td class="mono">test_the_implementation_declares<br>_the_port_explicitly FAILED</td>
+          </tr>
+          <tr>
+            <td>구독 해제 보장 장치를 뗀다<br><span class="q">= 구독이 새는 상태</span></td>
+            <td><span class="tag a">빨강</span> 시험</td>
+            <td class="mono">test_the_wired_broadcaster_speaks<br>_the_relay_spelling FAILED</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="col">
+    <h3>회귀가 없다는 것도 대조군으로 확인했습니다</h3>
+    <p>작업 도중 기준 브랜치가 두 번 움직였고, 그중 한 번은 <strong>의존 부품의 버전이 바뀌었습니다</strong>. 그래서 설치 환경을 새로 만들어 <strong>두 기준에서 각각</strong> 전량을 다시 돌렸습니다.</p>
+  </div>
+
+  <div class="panel">
+    <div class="scroll">
+      <table>
+        <thead><tr><th>기준 커밋</th><th>설치된 부품</th><th>대조군(내 변경 없음)</th><th>내 변경 적용</th><th>차이</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">0da711d</td><td class="mono">contracts 0.1.22</td><td class="num">3,277 통과 · 0 실패</td><td class="num">3,279 통과 · 0 실패</td><td class="num">+2</td></tr>
+          <tr><td class="mono">85c43a4</td><td class="mono">contracts 0.1.23</td><td class="num">3,277 통과 · 0 실패</td><td class="num">3,279 통과 · 0 실패</td><td class="num">+2</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin:14px 0 0; font-size:14px; color:var(--ink-soft)">네 번 모두 끝까지 완주했고, 늘어난 2건은 이번에 <strong>새로 추가한 검사 두 개</strong>입니다. 두 기준에서 차이가 같으므로 부품 버전이 결과를 흔든 것이 아닙니다.</p>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section>
+  <div class="col">
+    <div class="sec-num">06</div>
+    <h2>아직 막히지 않는 것</h2>
+    <p>고친 것만 적고 끝내면 이 문서도 위에서 지적한 「거짓이 되는 설명문」이 됩니다. <strong>지금 검사 밖에 있는 것</strong>을 그대로 적습니다.</p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">현재 검사 범위 — main@9565be6 실측</div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>대상</th><th>파일 수</th><th>검사기가 부르는가</th><th>실제 타입 오류</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>네 개의 하위 층<br><span class="q">domain · infrastructure · application · api</span></td>
+            <td class="num">137</td>
+            <td><span class="tag m">부른다</span></td>
+            <td class="num" style="color:var(--ok)">0</td>
+          </tr>
+          <tr>
+            <td><strong>최상위 모듈</strong><br><span class="q">조립 부분 · 중앙 동기화 · 운영자 명령들</span></td>
+            <td class="num">75</td>
+            <td><span class="tag a">부르지 않는다</span></td>
+            <td class="num" style="color:var(--alarm)">45 <span class="q">(16개 파일)</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="col">
+    <p>검사 설정에는 네 개의 층만 이름이 적혀 있고, <strong>검사기를 부르는 명령 자체가 그 이름 목록에서 만들어집니다.</strong> 목록에 없으면 부르지도 않고, 부르지 않으면 그 45건은 영원히 안 보입니다.</p>
+    <p>오류가 있는 파일들은 사소한 것이 아닙니다 — 중앙 동기화 어댑터(9건), 세션·프로젝트 식별자 해소기(7건), 그리고 이관 작업 때 운영자가 직접 실행하는 명령들입니다.</p>
+
+    <div class="note warn">
+      <p><strong>그리고 여기에 함정이 있습니다.</strong> 「최상위도 검사하자」며 설정에 <code>[mypy-fcc_test_platform]</code> 한 줄을 넣으면 <strong>아무 일도 일어나지 않습니다</strong>(45 → 45). 그 이름은 최상위 <em>모듈들</em>이 아니라 패키지 자기 자신 하나에만 걸립니다. 그런데 검사기는 <code>파일 1개를 검사했다</code>고 <strong>성실히 보고하며 통과</strong>합니다 — 「안 봤다」가 「위반이 없다」와 똑같은 초록으로 나옵니다.</p>
+      <p>제대로 걸리는 이름은 <code>[mypy-fcc_test_platform.*]</code> 이고, 그때 수치가 <strong>228건 / 47개 파일</strong>로 뜁니다(선언이 빠진 곳까지 함께 드러나기 때문).</p>
+    </div>
+
+    <p class="q">이 함정은 PR #139 로 저장소 안에 기록해 두었습니다 — 다음 사람이 같은 한 줄을 넣고 초록불을 받은 뒤 「최상위도 이제 검사된다」고 믿는 일을 막기 위해서입니다.</p>
+  </div>
+</section>
+
+<hr class="soft">
+
+<!-- ─────────────────────────────────────────────── -->
+<section>
+  <div class="col">
+    <div class="sec-num">07</div>
+    <h2>다음 세션에서 할 일</h2>
+    <p><strong>왜 이것인가.</strong> 이번 작업으로 네 개의 하위 층은 전부 깨끗해졌습니다. 그런데 그 층들 <em>바깥</em>에 75개 파일이 있고, 거기에 <strong>이미 45건의 실제 타입 오류가 앉아 있습니다.</strong> 새로 생긴 것이 아니라 <strong>처음부터 아무도 안 본 것</strong>입니다.</p>
+    <p>그중에는 프로그램이 시작할 때 모든 부품을 서로 연결하는 <strong>조립 부분</strong>이 들어 있습니다. 이번에 정정한 거짓 문장(“여기는 검사된다”)이 바로 그 파일에 대한 것이었고, 이번 작업이 명세에 새로 적어 넣은 <code>dispose</code> 도 그 파일에서만 쓰이므로 <strong>지금은 선언만 있고 검사는 안 되는 상태</strong>입니다.</p>
+    <p>즉 다음 작업은 「타입 정리」가 아니라 <strong>이번에 남긴 구멍을 닫는 일</strong>입니다. 그리고 그 안에는 사람이 내려야 할 판정이 하나 있습니다 — <strong>45건만 볼 것인가, 선언까지 요구해 228건을 볼 것인가.</strong> 뒤쪽을 고르면 그 순간 저장소가 빨개지므로, 검사를 켜는 것과 고치는 것을 한 번에 낼지 나눌지도 함께 정해야 합니다.</p>
+  </div>
+
+  <div class="prompt">
+    <div class="prompt-bar">
+      <span>다음 세션에 붙여 넣을 것</span>
+      <button class="copy" id="cp" type="button">복사</button>
+    </div>
+    <pre id="pt">최상위 75개 모듈을 검사 안으로 들인다 (fcc-test-platform)
+
+## 지금 상태 (main@9565be6 실측, 2026-09-07)
+
+PR #132 로 네 하위 패키지(domain · infrastructure · application · api, 137파일)는
+전량 strict 이고 mypy 4팩 모두 Success 다. 그런데 그 **바깥**이 있다:
+
+    최상위 모듈            75개   ← mypy.ini 의 네 절 어디에도 매치되지 않는다
+    -p fcc_test_platform   45 errors / 16 files   ← 100% 최상위. 네 팩은 0
+    api_composition 단독   3 errors
+
+⚠️ 게이트(tests/test_architecture_gate_conformance.py:92-93)가 **절 이름에서 mypy
+호출 인자를 파생**한다. 목록에 없으면 부르지도 않고, 부르지 않으면 그 45건은
+영원히 안 보인다. 오류가 있는 곳: central_backend_sync_adapter(9) ·
+central_id_resolver(7) · extraction_evidence(6) · cutover_bundle_cli(6) ·
+keyset_cursor_live_proof_cli(5) 외.
+
+## ⚠️ 착수 전에 반드시 읽을 것 — 함정이 기록돼 있다
+
+`.claude/evaluations/2026-09-07-progress-port-declares-its-real-contract.md` 의
+§후속. 요지: **`[mypy-fcc_test_platform]` 은 no-op 이다**(45 → 45, 변화 0).
+그 절은 패키지 `__init__` 하나에만 매치된다. 그런데 게이트가 그것을 «부르긴 하고»
+`checked 1 source file` 을 성실히 보고하며 통과한다 — 「안 봤다」가 「위반이 없다」와
+같은 초록이 된다. 부재가 아니라 위장이다.
+
+    [mypy-fcc_test_platform]      → 45 / 16   (변화 0)
+    [mypy-fcc_test_platform.*]    → 228 / 47  (선언 부재 183 추가)
+
+## 사람이 내려야 할 판정 (이것이 이 웨이브의 본체다)
+
+1. 45(실제 오류만)를 볼 것인가, 228(선언까지 요구)을 볼 것인가.
+2. 게이트를 켜는 PR 과 고치는 PR 을 나눌 것인가 한 번에 낼 것인가.
+   ⚠️ 켜는 순간 main 이 빨개진다. baseline 을 둘지도 여기서 갈린다 —
+   `.importlinter` 는 「답은 등재가 아니라 코드다」라고 못박지만 그것은
+   import-linter 계약 셋에 대한 말이고, 이 상자에는 다른 종류의 baseline 이
+   정당하게 산다(`delivered_test_run_baseline.json` — 개수가 아니라 **이름 집합**,
+   고쳐진 실패도 red 라 낡으면 스스로 빨개진다). 어느 쪽인지 먼저 가르라.
+
+## 이번 웨이브가 같이 닫아야 할 두 구멍 (PR #138 이 남긴 것)
+
+- `dispose` 축에 게이트가 없다. 포트가 그것을 선언하고 조립 루트 필드가 그 타입을
+  갖게 됐지만, 그 모듈이 strict 집합 밖이라 아무도 안 부른다.
+- `platform_routes._PrincipalResolver` docstring 을 「검사되지 않는다」로 **정정만**
+  했다. 참으로 만들려면 `PlatformApiRuntime.create_router` 에 반환 선언이 필요하고,
+  그러면 같은 본문의 `api_adapter: object` 도 함께 드러난다. 그것이 이 웨이브다.
+
+## 작업 방법 (이 연쇄에서 값을 치른 것들)
+
+- 판정은 셋을 다 거쳐라: ① 같은 환경의 대조군 ② 개수가 아닌 **실패 이름 집합**
+  ③ CI 와 같은 설치(`pip install -e '.[test]'`, checks.yml). 양쪽이 완주했는지
+  먼저 단언하라 — 빈 집합 둘은 「일치」와 같은 값이다.
+- ⚠️ **리그가 답을 바꾼다.** 수치를 말할 땐 어디서 쟀는지 같이 적어라. 그리고
+  main 이 작업 중에 움직이며 **형제 핀을 바꾼다**(오늘 하루에 contracts 0.1.22 →
+  0.1.26). 재기저했으면 venv 를 새로 만들어 다시 재라.
+- ⚠️ **「실제 오류 N건」은 언제나 «N건 이상»이다.** 선언을 채우는 행위가 상류 타입을
+  해소시켜 없던 오류를 드러낸다. 예산으로 쓰지 마라.
+- 새 봉인을 붙였으면 **주입으로 이빨을 확인**하라 — 결함을 넣어 red, 복원해서 green,
+  복원 후 소스 바이트 동일(`__pycache__` 제거 포함). 그리고 **주입이 착지했는지**부터
+  확인하라(공허한 주입은 초록과 같은 모양이다).
+- ⚠️ **범위 절을 더했으면 「수가 실제로 움직였는지」 대조하라.** 집합이 비지 않았어도
+  «틀린» 집합일 수 있다 — 위 no-op 이 정확히 그 형태다.
+- 공유 레포는 `origin/main` 기준 전용 워크트리를 만들고 끝나면 지운다.
+  push 는 `FCC_LANE_CHECK_PYTHON` 을 선언대로 설치한 venv 로.
+  ⚠️ 삭제 push 는 이제 훅이 알아서 건너뛴다(PR #146). 우회 필요 없다.
+- work-claim 을 **편집 전에** 만들어 `bind` 하고, **머지 전에** `merged` 로 닫아라.
+  남의 claim 은 닫지 마라. 내 PR 은 내가 머지한다.
+- 태그 push 와 컨테이너 재기동만 승인 지점이고 매번 따로 묻는다.
+
+## 곁가지
+
+- 설계서 §9(`platform_routes.py` 분해 여부)는 순수한 설계 질문으로 남아 있다.
+  걸린 작업이 없다. 급하지 않다.
+- ⚠️ 두 레포의 branch protection 실질이 다르다: platform 은 `enforce_admins=true`
+  라 실제로 강제되고, contracts 는 `false` + 유일 협업자가 admin 이라 **평시에도
+  강제되지 않는다**(태그 레인이라 할당량 사고 시 공급 사슬이 멈추는 것을 피한 판정).
+  contracts 의 초록을 platform 의 초록과 같은 무게로 읽지 마라.</pre>
+  </div>
+</section>
+
+<footer>
+  <div class="col">
+    <p>기록: PR #138(판정·구현) · #139(범위 함정 실측) — 둘 다 <code>fcc-test-platform</code> main 에 병합. 이 문서의 모든 수치는 <code>main@9565be6</code> 에서 CI 와 같은 설치(<code>pip install -e '.[test]'</code>)로 다시 잰 값입니다.</p>
+  </div>
+</footer>
+
+</div>
+
+<script>
+document.getElementById('cp').addEventListener('click', function(){
+  var t = document.getElementById('pt').innerText;
+  var btn = this;
+  navigator.clipboard.writeText(t).then(function(){
+    btn.textContent = '복사됨';
+    setTimeout(function(){ btn.textContent = '복사'; }, 1800);
+  }).catch(function(){
+    var r = document.createRange(); r.selectNodeContents(document.getElementById('pt'));
+    var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    btn.textContent = '선택됨 — 직접 복사';
+    setTimeout(function(){ btn.textContent = '복사'; }, 2600);
+  });
+});
+</script>
