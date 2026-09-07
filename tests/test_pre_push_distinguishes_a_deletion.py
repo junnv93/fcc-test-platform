@@ -106,26 +106,85 @@ class TestTheOnlySilentFailurePathIsSealed(unittest.TestCase):
 class TestAnInteractiveTerminalCannotHangTheHook(unittest.TestCase):
     """`$(cat)` 은 EOF 를 기다린다 — stdin 이 터미널이면 거기서 멈춘다.
 
-    ⚠️ 그러면 규칙 ③(「ref 를 하나도 못 봤으면 건너뛰지 않는다」)이 겨냥한
-    바로 그 시나리오(사람이 훅을 손으로 부름)에 **도달조차 못 한다.**
+    그러면 규칙 ③(「ref 를 하나도 못 봤으면 건너뛰지 않는다」)이 겨냥한 바로 그
+    시나리오(사람이 훅을 손으로 부름)에 **도달조차 못 한다.**
 
-    ⚠️ **이 멈춤은 재현하지 못했다.** 이 환경에 `/dev/tty` 가 없고, `script` 로
-    만든 pty 는 마스터 쪽이 즉시 EOF 라 `cat` 이 막히지 않았다. 그래서 가드의
-    근거는 «관측»이 아니라 «비대칭»이다 — 가드는 공짜이고 없을 때의 대가는
-    사람이 멈추는 것이다. 이 문단이 지워지면 다음 사람이 「측정됐다」로 읽는다.
+    ■ 이 멈춤은 «측정됐다» — 그리고 처음엔 재현 방법이 틀렸다
+
+    `script` 로 만든 pty 는 **마스터 쪽이 즉시 EOF** 라 `cat` 이 막히지 않는다.
+    그래서 첫 판은 「재현 못 함」으로 적고 가드의 근거를 「비대칭」이라 했다.
+    `pty.openpty()` 로 **마스터를 잡고 있으면** 재현된다.
+
+    ⚠️ **양방향이다.** 가드가 있으면 안 멈추고, 가드를 «떼면» 멈춘다.
+    앞의 것만 단언하면 「stdin 이 원래 안 막힌다」와 구별되지 않는다.
     """
 
-    def test_the_hook_does_not_read_stdin_when_it_is_a_terminal(self) -> None:
+    _SNIPPET_GUARDED = 'if [ -t 0 ]; then _r=""; else _r=$(cat || true); fi; echo OK'
+    _SNIPPET_BARE = '_r=$(cat || true); echo OK'
+
+    @staticmethod
+    def _finishes_on_a_held_pty(script: str, timeout: float = 3.0) -> bool:
+        """마스터를 «잡은 채» pty 를 stdin 으로 주고, 끝나는지 본다."""
+        import os
+        import pty
+        master, slave = pty.openpty()
+        proc = subprocess.Popen(['bash', '-c', script], stdin=slave,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                text=True)
+        os.close(slave)
+        try:
+            proc.communicate(timeout=timeout)
+            return True
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+            return False
+        finally:
+            try:
+                os.close(master)
+            except OSError:
+                pass
+
+    def test_without_the_guard_a_held_terminal_hangs_the_read(self) -> None:
+        """주입 — 가드를 떼면 «실제로» 멈춘다. 이것이 가드의 근거다."""
+        self.assertFalse(
+            self._finishes_on_a_held_pty(self._SNIPPET_BARE),
+            '가드 없는 형태가 tty 에서 «안 멈췄다» — 그러면 이 가드의 근거가 '
+            '사라지고, 이 봉인은 공허하다')
+
+    def test_with_the_guard_the_same_terminal_does_not_hang(self) -> None:
+        """대조 — 축 하나(가드)만 다르다."""
+        self.assertTrue(
+            self._finishes_on_a_held_pty(self._SNIPPET_GUARDED),
+            '가드가 있는데도 멈췄다')
+
+    def test_a_pipe_never_hangs_either_way(self) -> None:
+        """대조군 — 「tty 라서」가 원인임을 고정한다. 파이프면 둘 다 안 멈춘다."""
+        for script in (self._SNIPPET_BARE, self._SNIPPET_GUARDED):
+            with self.subTest(script=script[:24]):
+                proc = subprocess.run(['bash', '-c', script],
+                                      stdin=subprocess.DEVNULL,
+                                      capture_output=True, text=True, timeout=5)
+                self.assertEqual(0, proc.returncode)
+
+    def test_the_hook_carries_the_guard(self) -> None:
+        """위 조각이 아니라 «훅 자신»이 그것을 들고 있는가."""
         source = HOOK.read_text(encoding='utf-8')
         self.assertIn('if [ -t 0 ]; then', source,
                       'tty 가드가 없다 — 손으로 부른 훅이 멈춘다')
-        guard = source[source.index('if [ -t 0 ]; then'):]
-        self.assertIn("_refs=''", guard.split('fi', 1)[0],
+        self.assertIn("_refs=''", source.split('if [ -t 0 ]; then', 1)[1].split('fi', 1)[0],
                       'tty 일 때 빈 값으로 가지 않는다')
 
-    def test_the_unreproduced_status_is_recorded(self) -> None:
-        """안 잰 것을 «안 쟀다»고 적는 것이 이 저장소의 규율이다."""
-        self.assertIn('재현하지 못했다', HOOK.read_text(encoding='utf-8'))
+    def test_the_hook_records_that_this_was_measured_not_assumed(self) -> None:
+        """근거의 «종류»가 문서에 남아야 한다.
+
+        첫 판은 「재현하지 못했다」였고 그것이 참이었다. 지금은 측정됐으므로
+        그 문장이 거짓이다 — 이 단언이 그 갈아 끼움을 강제했다.
+        """
+        source = HOOK.read_text(encoding='utf-8')
+        self.assertIn('측정됐다', source)
+        self.assertNotIn('재현하지 못했다', source,
+                         '낡은 「재현 못 함」 문장이 남아 있다 — 지금은 거짓이다')
 
 
 class TestChildrenDoNotInheritTheConsumedStdin(unittest.TestCase):
