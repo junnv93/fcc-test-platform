@@ -194,7 +194,9 @@ Session API 프로세스가 `0.0.0.0:9000`에서 수신 대기해야 한다.
 
 ```bash
 cd /path/to/fcc-test-platform    # ⚠️ 중앙 PC 는 FCC 저장소를 두지 않는다 (2026-09-03)
-hostname -I
+# ⚠️ LAN IP 판정은 Windows 호스트에게 묻는다 — reboot-ops-guide §1.1 (SSOT)
+powershell.exe -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 |
+  Where-Object { \$_.InterfaceAlias -notlike '*WSL*' -and \$_.IPAddress -ne '127.0.0.1' }).IPAddress"
 grep -E '^PUBLIC_HOST=|^WEB_PORT=|^KEYCLOAK_PORT=' infra/central/central.env
 
 docker compose -f infra/docker-compose.central.yml \

@@ -272,8 +272,22 @@ cp infra/central/central.env.example infra/central/central.env
 
 ```bash
 grep -E '^PUBLIC_HOST=|^POSTGRES_PASSWORD=|^KEYCLOAK_ADMIN_PASSWORD=' infra/central/central.env
-hostname -I    # PUBLIC_HOST 와 같은 IP 가 목록에 있어야 한다
 ```
+
+`PUBLIC_HOST` 는 **Windows 호스트가 LAN 에서 가진 IP** 여야 한다:
+
+```bash
+powershell.exe -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 |
+  Where-Object { \$_.InterfaceAlias -notlike '*WSL*' -and \$_.IPAddress -ne '127.0.0.1' }).IPAddress"
+```
+
+> 🔴 **`hostname -I` 로 판정하지 마라.** 이 절의 옛 판이 그렇게 적었고 그것은
+> **틀린 답을 통과시킨다** — 실측 2026-09-07: `hostname -I` 9개 중 Windows 호스트가
+> 실제로 가진 것은 **1개**뿐이고, 나머지 여덟은 WSL·docker 브리지다.
+>
+> **근거와 뿌리는 `fcc-central-pc-reboot-ops-guide.md` §1.1 이 SSOT 다** —
+> 중앙 PC 의 WSL 은 NAT, 개발 PC 는 mirrored 라 **같은 명령이 두 기계에서 다른 것을
+> 답한다.** 여기 다시 적지 마라. 사본은 갈라진다.
 
 `PUBLIC_HOST` 가 브라우저 접속 주소와 다르면 **로그인 직후 튕기거나 403** 이 난다.
 `central.env` 는 gitignore 대상이므로 커밋되지 않는다.
