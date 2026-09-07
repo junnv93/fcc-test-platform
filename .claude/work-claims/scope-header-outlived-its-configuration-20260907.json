@@ -2,8 +2,8 @@
   "task": "scope-header-outlived-its-configuration-20260907",
   "branch": "docs/scope-header-outlived-its-configuration-20260907",
   "owner": "fcc-delivery-final-06b8",
-  "status": "bind",
-  "base": "origin/main@0b8461d",
+  "status": "merged",
+  "base": "origin/main@4434a40 (재기저; 최초 base 0b8461d)",
   "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/06b82a1d-30f5-4560-a3c3-f0e7947bd931/scratchpad/wt-tl",
   "scope": [
     "mypy.ini",
@@ -17,6 +17,6 @@
   "shared_outputs": [],
   "conflicts_with": [],
   "sequencing": "산문 전용. 동작 무변경 — mypy 설정 «값»도 게이트도 «안» 고친다. PR #158/#159 웨이브가 최상위 75모듈을 게이트 안으로 들이면서 mypy.ini 의 `[mypy]` «아래» 블록은 다시 썼는데 «위» 머리말(:10-86)은 그대로 남아, 한 파일 안에서 두 서술이 정면으로 모순한다. 같은 형태의 죽은 현재형 진술이 살아있는 코드 주석 둘에도 있다(platform_routes.py:304 · api_composition.py:233). 셋 다 주입으로 반증했다. ⚠️ .claude/evaluations/* 와 다른 work-claims 는 «그때의 관측»이라 고치지 않는다. ⚠️ 범위 확대(3 → 6 파일): 지시받은 3곳을 고친 뒤 «문장»으로 다시 훑으니 같은 죽은 사실이 두 곳 더 있었다(tests 둘). 그리고 첫 훑기는 공유 체크아웃의 «낡은 main»(b3c619e)에서 돌아 이미 고쳐진 자리를 미수정으로 보였다 — 워크트리에서 다시 쟀다.",
-  "pr": null,
-  "result": null
+  "pr": "https://github.com/junnv93/fcc-test-platform/pull/170",
+  "result": "산문 전용, 동작 무변경을 «기계로 증명»했다 — mypy.ini 는 configparser 파싱 결과 전후 동일, 변경 .py 넷은 docstring 제거 AST 전후 동일. 걷어낸 죽은 현재형 여섯: mypy.ini 다섯(:10 「아래 층만 강제한다」 · :25 「application 나머지는 아직이다」 · :48 「범위 밖」 표제 · :77 「다음 웨이브는 183건」 · :85 「두 축이 아직 다르다」) + api/platform_routes.py:304 「아무 데서도 검사되지 않는다」 + api_composition.py:233 「strict 집합 밖」. ⚠️ 갈라짐에 «방향»이 있다 — 고치는 사람은 절 옆을 고치므로 두 곳에 적힌 정책은 언제나 머리말이 낡는다. 지목받은 곳은 셋인데 «문장으로» 훑으니 여섯이었다(tests 둘 + 설계서 §S1). 그중 test_undefined_name_conformance.py:17 은 «전제가 죽었는데 결론은 참»인 자매 형태라 사유를 「범위의 크기」에서 「트리의 위치」로 옮겼다. ⚠️ 첫 훑기는 공유 체크아웃의 낡은 main(b3c619e)에서 돌아 틀린 답을 냈다. 새 봉인은 «일부러» 안 붙였다 — _PrincipalResolver 가 검사 밖이던 기제(선언 없는 def 를 mypy 가 건너뜀)를 disallow_untyped_defs=True 가 구성상 없앴고, 되돌림은 TestTheStrictScopeCoversThePackage 가 지킨다. 실측 두 기저: 0b8461d 3380 passed / 4434a40 3383 passed·859 subtests·선언된 실패 0/관측된 실패 0, mypy -p 215 Success·게이트 18 passed 양쪽 동일. 주입 셋(A progress_broadcaster→object ⇒ dispose 오류, B principal_resolver=object() ⇒ arg-type, C api_adapter→object ⇒ arg-type×2+attr-defined) 전부 red, 복원 후 바이트 동일. ⚠️ 주입 A 가 처음엔 엉뚱한 필드에 갔다 — dispose 축을 진 것은 이웃 필드였다. CI lane-check pass(2m4s). 🔴 미해결(소유 미정): tests/test_undefined_name_conformance.py:76 _EXCLUDED_DIR_PARTS 가 디렉터리 «이름» 정확 일치라 트리 안의 .venv-ci 가 말뭉치로 세어져 red 3건을 낸다. pyvenv.cfg 파생으로 고칠 수 있으나 동작 변경이라 이 판에서 제외. 평가서 §후속에 적었다."
 }
