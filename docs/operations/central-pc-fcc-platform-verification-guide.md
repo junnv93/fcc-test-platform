@@ -134,8 +134,13 @@ docker compose -f infra/docker-compose.central.yml \
 확인한다.
 
 ```bash
-hostname -I
+powershell.exe -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 |
+  Where-Object { \$_.InterfaceAlias -notlike '*WSL*' -and \$_.IPAddress -ne '127.0.0.1' }).IPAddress"
 ```
+
+> 🔴 **`hostname -I` 를 쓰지 마라.** 이 절의 옛 판이 그랬고, 중앙 PC 의 WSL 은 NAT 라
+> 그 목록에 LAN 주소가 **나오지 않는다.** 근거는
+> `fcc-central-pc-reboot-ops-guide.md` §1.1 (SSOT).
 
 여기서 나온 중앙 PC의 사내망 IP가 `<CENTRAL_IP>`다. 플랫폼에 설정된 값과 같은지 대조한다.
 
@@ -146,7 +151,8 @@ grep -E '^PUBLIC_HOST=|^WEB_PORT=' infra/central/central.env
 
 판단 기준:
 
-- `hostname -I`의 IP와 `PUBLIC_HOST`가 **같아야 한다.**
+- 위 PowerShell 이 낸 IP 중 하나와 `PUBLIC_HOST` 가 **같아야 한다.**
+  (⚠️ `hostname -I` 로 대조하지 마라 — `fcc-central-pc-reboot-ops-guide.md` §1.1)
 - 예: `PUBLIC_HOST=172.30.1.10`, `WEB_PORT=8080`이면 접속 주소는
   `http://172.30.1.10:8080`이다.
 
@@ -315,7 +321,9 @@ cd /path/to/fcc-test-platform
 docker compose -f infra/docker-compose.central.yml ps
 
 # 3) 중앙 PC IP와 PUBLIC_HOST 대조
-hostname -I
+#    ⚠️ hostname -I 로 하지 마라 — reboot-ops-guide §1.1 (SSOT)
+powershell.exe -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 |
+  Where-Object { \$_.InterfaceAlias -notlike '*WSL*' -and \$_.IPAddress -ne '127.0.0.1' }).IPAddress"
 grep -E '^PUBLIC_HOST=|^WEB_PORT=' infra/central/central.env
 ```
 
