@@ -248,9 +248,16 @@ class PlatformApiRuntime:
     #
     # ⚠️ 이웃 필드들과 달리 ``object`` 가 **아니다**. 이 필드는 아래
     # :meth:`dispose` 에서 실제로 호출되는데, ``object`` 로 두면 그 호출이 어떤
-    # 선언에도 대조되지 않는다 — 실측(2026-09-07, 이 모듈은 strict 집합 밖이라
-    # 게이트가 안 부르지만 직접 부르면): `"object" has no attribute "dispose"`.
+    # 선언에도 대조되지 않는다 — `"object" has no attribute "dispose"`.
     # Port 가 ``dispose`` 를 적게 된 지금 그 호출을 선언에 묶는다.
+    #
+    # ✅ **그리고 이제 게이트가 그것을 «부른다».** 이 주석은 한때
+    # *"이 모듈은 strict 집합 밖이라 게이트가 안 부르지만 직접 부르면"* 이라고
+    # 적었다 — 참이었고, `#158`·`#159` 뒤로 **거짓**이다. 이 모듈은
+    # `[mypy-fcc_test_platform.*]` 안이고 게이트가 `-p fcc_test_platform` 을 통째로
+    # 부른다. 재확인(2026-09-07, CI 와 같은 리그): 이 필드를 ``object`` 로 되돌리면
+    # 게이트의 mypy 팔이 위 오류 하나로 red 가 된다 — 「선언만 하고 검사는 안 된다」가
+    # 아니라 둘 다다.
     progress_broadcaster: Optional[ChamberProgressBroadcastPort] = None
     # 신원 축 EMS 정합 (2026-08-21) — the process-local access-token revocation
     # list. Held on the runtime because BOTH the login service (writer) and the
