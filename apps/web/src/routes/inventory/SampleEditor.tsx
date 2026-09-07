@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 
 import { createSample, patchSample, type SampleInventoryItem } from '@/api/platform-client';
 import { useT } from '@/i18n';
@@ -116,6 +116,10 @@ function initialValues(sample?: SampleInventoryItem): FormValues {
   };
 }
 
+/** 아직 id 가 없는 «등록 중» 시료의 override 키. 실제 `sample_id`(UUID)와 겹치지
+ *  않아야 하므로 UUID 가 될 수 없는 철자를 쓴다. */
+const NEW_SAMPLE_EDIT_KEY = 'new';
+
 function nullable(value: string): string | null {
   const trimmed = value.trim();
   return trimmed === '' ? null : trimmed;
@@ -190,11 +194,22 @@ export function SampleEditor({
   onConflict,
 }: SampleEditorProps): JSX.Element {
   const { t } = useT();
-  const [values, setValues] = useState<FormValues>(() => initialValues(sample));
-
-  useEffect(() => {
-    setValues(initialValues(sample));
-  }, [sample]);
+  //: 사용자가 **만진 칸만** 담는다. 표시값은 매 렌더 `서버 ?? 없으면 빈칸` 위에
+  //  이것을 덮어 파생하므로 **동기화할 것이 없고, 따라서 덮어쓸 effect 도 없다.**
+  //
+  //  ⚠️ 2026-09-07 까지 이 자리는 `useEffect(() => setValues(initialValues(sample)),
+  //     [sample])` 였다. 그 형태는 아래 시료가 custody 사건을 하나 받을 때마다
+  //     **입력 중이던 값을 조용히 날렸다** — 같은 화면의 `SampleCustodyPanel` 이
+  //     `invalidateQueries(['sample-inventory'])` 를 부르고, `detail` 이 그 접두사에
+  //     걸려 재조회되며, `custody_event_count`·`custody_state` 가 «반드시» 바뀌어
+  //     `sample` 의 신원이 갈리기 때문이다. 경고도 없었다.
+  //
+  //  ⚠️ **시료 id 로 키를 단다.** 키가 없으면 다른 시료를 고를 때 앞 시료의 편집이
+  //     새 시료 위로 샌다. 형제 표면 `ChamberAdminPanel` 의 `edits[chamber.chamber_id]`
+  //     와 같은 형태다.
+  const [edits, setEdits] = useState<Record<string, Partial<FormValues>>>({});
+  const editKey = sample?.sample_id ?? NEW_SAMPLE_EDIT_KEY;
+  const values: FormValues = { ...initialValues(sample), ...(edits[editKey] ?? {}) };
 
   const save = useMutation({
     mutationFn: async (): Promise<SampleInventoryItem> => {
@@ -215,11 +230,22 @@ export function SampleEditor({
         ...intake,
       });
     },
-    onSuccess: onSaved,
+    onSuccess: (updated) => {
+      // 저장된 뒤에는 서버가 진실이다 — **이 시료의** override 만 비운다.
+      // 전체를 비우면 다른 시료에 입력 중이던 값까지 사라진다.
+      setEdits((current) => {
+        const { [editKey]: _saved, ...rest } = current;
+        return rest;
+      });
+      onSaved(updated);
+    },
   });
 
   function update(key: FormKey, value: string): void {
-    setValues((current) => ({ ...current, [key]: value }));
+    setEdits((current) => ({
+      ...current,
+      [editKey]: { ...(current[editKey] ?? {}), [key]: value },
+    }));
   }
 
   function submit(event: FormEvent<HTMLFormElement>): void {

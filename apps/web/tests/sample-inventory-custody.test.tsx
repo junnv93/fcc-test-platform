@@ -18,6 +18,12 @@ import type { ReactElement } from 'react';
  *  ② PM 축의 반입/반출이 화면에서 보이고 추가·삭제된다 (예전엔 TEXT 한 칸이었다).
  *  ③ 시험 실무자 축의 1:N 이 보인다 (예전엔 최신 1건만 보였다).
  *  ④ Accessory 는 Conducted/Radiated 칸을 갖지 않는다.
+ *  ⑤ **저장 안 한 편집이 서버 재조회에서 살아남는다** (2026-09-07 추가).
+ *
+ * ⚠️ ⑤ 가 뒤늦게 붙은 이유가 이 파일의 교훈이다. ①~④ 는 「보이나」를 묻고 전부 초록이었는데,
+ *    그 초록 아래에서 `SampleEditor` 가 `useEffect(() => setValues(initialValues(sample)),
+ *    [sample])` 로 **입력 중이던 값을 조용히 날리고 있었다.** 「그려지나」를 묻는 시험은
+ *    「입력한 것이 남아 있나」를 묻지 않는다 — 둘은 다른 명제다.
  */
 const platformApi = vi.hoisted(() => ({
   fetchProjectsPage: vi.fn(),
@@ -40,6 +46,7 @@ vi.mock('@/api/platform-client', () => platformApi);
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 const SAMPLE_ID = '22222222-2222-4222-8222-222222222222';
 const EVENT_ID = '33333333-3333-4333-8333-333333333333';
+const OTHER_SAMPLE_ID = '44444444-4444-4444-8444-444444444444';
 
 function makeJwt(payload: Record<string, unknown>): string {
   const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).replace(/=+$/u, '');
@@ -316,6 +323,83 @@ describe('④ 분류가 폼에 있다', () => {
     );
     expect(screen.getByTestId('sample-editor-intake_cert')).toHaveValue(
       '20251104-1432333773\n20251027-1724065293',
+    );
+  });
+});
+
+describe('⑤ 저장 안 한 편집이 서버 재조회에서 살아남는다', () => {
+  /**
+   * 이 결함의 도달 경로 — 실측(2026-09-07):
+   *
+   *   PM 이 시료 칸을 입력 중 (아직 저장 안 함)
+   *     → 같은 화면 아래 custody 패널에서 반입/반출 사건 추가
+   *     → SampleCustodyPanel 이 invalidateQueries(['sample-inventory'])
+   *     → detail 키 ['sample-inventory','detail',…] 가 그 접두사에 걸려 재조회
+   *     → custody_event_count · custody_state 가 «반드시» 바뀌므로 sample 신원이 갈림
+   *     → 옛 useEffect 발화 → 입력 중이던 값 전부 폐기. 경고 없음.
+   *
+   * `SampleEditor` 는 이제 표시값을 `서버 위에 override` 로 파생하므로 동기화할 것이
+   * 없고, 따라서 덮어쓸 것도 없다.
+   */
+  it('keeps a typed-but-unsaved field when a custody event refetches the sample', async () => {
+    const user = userEvent.setup();
+    // 사건 추가가 시료 payload 를 «실제로» 바꾸는 것을 재현한다 — 안 바꾸면
+    // react-query 의 structural sharing 이 신원을 유지해 옛 코드도 통과한다.
+    let custodyEventCount = 6;
+    platformApi.fetchSample.mockImplementation(async () =>
+      sample({ custody_event_count: custodyEventCount }),
+    );
+    platformApi.appendSampleCustodyEvent.mockImplementation(async () => {
+      custodyEventCount = 7;
+      return { custody_event_id: EVENT_ID };
+    });
+
+    renderRoute(`/inventory?project=${PROJECT_ID}&sample=${SAMPLE_ID}`);
+
+    const label = await screen.findByTestId('sample-editor-label_number');
+    await user.clear(label);
+    await user.type(label, 'YIP-EDITED-999');
+    expect(label).toHaveValue('YIP-EDITED-999');
+
+    // 아래 패널에서 사건 하나를 추가한다 — 저장 버튼은 «누르지 않는다».
+    await user.click(await screen.findByTestId('sample-custody-add'));
+    await waitFor(() => expect(platformApi.appendSampleCustodyEvent).toHaveBeenCalled());
+    // 재조회가 실제로 일어났는지부터 확인한다 — 안 일어났으면 이 시험은 공허하다.
+    await waitFor(() => expect(platformApi.fetchSample.mock.calls.length).toBeGreaterThan(1));
+
+    expect(await screen.findByTestId('sample-editor-label_number')).toHaveValue('YIP-EDITED-999');
+  });
+
+  /**
+   * ⚠️ **이 팔은 회귀 시험이 아니다.** 옛 코드(매 `sample` 변경마다 초기화)에서도
+   * 통과한다 — 실측했다. 이것이 막는 것은 «수정이 새로 만든» 위험이다: override 를
+   * 시료 id 로 키 달지 않으면 앞 시료의 편집이 다음 시료 위로 샌다. 위 팔이 옛 코드에서
+   * 빨갛고 이 팔은 초록인 것이 정상이고, 둘의 «역할이 다르다»는 것을 적어 둔다.
+   */
+  it('does not carry one sample\'s unsaved edit onto another sample', async () => {
+    const user = userEvent.setup();
+    platformApi.fetchSampleInventory.mockResolvedValue({
+      items: [sample(), sample({ sample_id: OTHER_SAMPLE_ID, sample_number: '#9' })],
+      next_cursor: null,
+      as_of: null,
+      filters: {},
+    });
+    platformApi.fetchSample.mockImplementation(async (_project: string, sampleId: string) =>
+      sampleId === OTHER_SAMPLE_ID
+        ? sample({ sample_id: OTHER_SAMPLE_ID, sample_number: '#9', label_number: 'ORIGINAL-9' })
+        : sample(),
+    );
+
+    renderRoute(`/inventory?project=${PROJECT_ID}&sample=${SAMPLE_ID}`);
+    const label = await screen.findByTestId('sample-editor-label_number');
+    await user.clear(label);
+    await user.type(label, 'BELONGS-TO-2');
+
+    // 다른 시료로 옮긴다. override 는 시료 id 로 키가 달려 있어야 한다.
+    await user.click(await screen.findByTestId('inventory-sample-#9'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('sample-editor-label_number')).toHaveValue('ORIGINAL-9'),
     );
   });
 });
