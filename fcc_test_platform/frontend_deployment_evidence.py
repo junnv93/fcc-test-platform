@@ -73,7 +73,7 @@ def frontend_deployment_errors(manifest: Mapping) -> list[FrontendDeploymentIssu
     return issues
 
 
-def _validate_https_url(value, path: str, issues: list[FrontendDeploymentIssue]) -> None:
+def _validate_https_url(value: object, path: str, issues: list[FrontendDeploymentIssue]) -> None:
     raw = _text(value)
     if not raw:
         return
@@ -86,7 +86,7 @@ def _validate_https_url(value, path: str, issues: list[FrontendDeploymentIssue])
         issues.append(_issue('local_url', path, f'{path} must not point at localhost'))
 
 
-def _validate_cache_policy(value, issues: list[FrontendDeploymentIssue]) -> None:
+def _validate_cache_policy(value: object, issues: list[FrontendDeploymentIssue]) -> None:
     policy = _mapping(value)
     if not policy:
         issues.append(_issue('missing_cache_policy', 'asset_cache_policy', 'asset_cache_policy is required'))
@@ -98,7 +98,7 @@ def _validate_cache_policy(value, issues: list[FrontendDeploymentIssue]) -> None
         issues.append(_issue('html_cache_not_no_store', 'asset_cache_policy.html_cache_control', 'html_cache_control must include no-store'))
 
 
-def _validate_environment(value, backend_base_url, issues: list[FrontendDeploymentIssue]) -> None:
+def _validate_environment(value: object, backend_base_url: object, issues: list[FrontendDeploymentIssue]) -> None:
     environment = _mapping(value)
     if not environment:
         issues.append(_issue('missing_environment', 'environment', 'environment is required'))
@@ -125,7 +125,7 @@ def _validate_environment(value, backend_base_url, issues: list[FrontendDeployme
             issues.append(_issue('unredacted_secret', f'{path}.value', 'secret-like environment values must be redacted'))
 
 
-def _validate_secret_scan(value, issues: list[FrontendDeploymentIssue]) -> None:
+def _validate_secret_scan(value: object, issues: list[FrontendDeploymentIssue]) -> None:
     scan = _mapping(value)
     if not scan:
         issues.append(_issue('missing_secret_scan', 'secret_scan', 'secret_scan is required'))
@@ -151,11 +151,11 @@ def _require_text(mapping: Mapping, key: str, path: str, issues: list[FrontendDe
         issues.append(_issue('missing_required_field', path, f'{key} is required'))
 
 
-def _mapping(value) -> Mapping:
+def _mapping(value: object) -> Mapping:
     return value if isinstance(value, Mapping) else {}
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()

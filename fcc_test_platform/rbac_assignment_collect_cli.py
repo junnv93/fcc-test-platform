@@ -12,10 +12,14 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import sys
-from typing import Mapping, Sequence
+from typing import Any, Mapping, Sequence, TYPE_CHECKING
 
 
 from fcc_test_platform.rbac_assignment_evidence import rbac_assignment_evidence_errors  # noqa: E402
+from fcc_test_platform.application.central_db_surfaces import ScriptConnection
+
+if TYPE_CHECKING:
+    from fcc_test_platform.application.central_db_surfaces import ScriptCursor
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -116,7 +120,7 @@ def build_manifest_from_rows(
     }
 
 
-def _connect(dsn: str):
+def _connect(dsn: str) -> ScriptConnection:
     try:
         import psycopg
 
@@ -127,7 +131,7 @@ def _connect(dsn: str):
         return psycopg2.connect(dsn)
 
 
-def _fetch(connection, db_schema_name: str, table_name: str, columns: tuple[str, ...]) -> list[dict]:
+def _fetch(connection: ScriptConnection, db_schema_name: str, table_name: str, columns: tuple[str, ...]) -> list[dict]:
     schema = _quote_ident(db_schema_name)
     table = _quote_ident(table_name)
     column_sql = ', '.join(_quote_ident(column) for column in columns)
@@ -136,7 +140,7 @@ def _fetch(connection, db_schema_name: str, table_name: str, columns: tuple[str,
         return [_row_dict(cursor, row) for row in cursor.fetchall()]
 
 
-def _fetch_role_permissions(connection, db_schema_name: str) -> list[dict]:
+def _fetch_role_permissions(connection: ScriptConnection, db_schema_name: str) -> list[dict]:
     schema = _quote_ident(db_schema_name)
     with connection.cursor() as cursor:
         cursor.execute(
@@ -151,7 +155,7 @@ def _fetch_role_permissions(connection, db_schema_name: str) -> list[dict]:
         return [_row_dict(cursor, row) for row in cursor.fetchall()]
 
 
-def _fetch_user_roles(connection, db_schema_name: str) -> list[dict]:
+def _fetch_user_roles(connection: ScriptConnection, db_schema_name: str) -> list[dict]:
     schema = _quote_ident(db_schema_name)
     with connection.cursor() as cursor:
         cursor.execute(
@@ -166,14 +170,23 @@ def _fetch_user_roles(connection, db_schema_name: str) -> list[dict]:
         return [_row_dict(cursor, row) for row in cursor.fetchall()]
 
 
-def _row_dict(cursor, row) -> dict:
+def _row_dict(cursor: ScriptCursor, row: Sequence[Any] | Mapping[str, Any]) -> dict:
     if isinstance(row, Mapping):
         return dict(row)
-    names = [description[0] for description in cursor.description]
+    columns = cursor.description
+    if columns is None:
+        # PEP 249: `description` 은 **행을 내는 질의 뒤에만** 채워진다. 이 함수는
+        # SELECT 결과를 받는 자리에서만 불리므로 여기 오면 호출자가 규약을 어긴
+        # 것이다 — `or []` 로 접으면 「컬럼이 없다」와 「질의가 SELECT 가 아니었다」가
+        # 빈 dict 하나로 같아진다.
+        raise RuntimeError(
+            '_row_dict was called after a statement that returns no rows '
+            '(cursor.description is None)')
+    names = [description[0] for description in columns]
     return dict(zip(names, row, strict=True))
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()

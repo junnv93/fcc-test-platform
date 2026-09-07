@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Mapping, SupportsIndex, SupportsInt
 
 from fcc_test_platform.artifact_storage import normalize_relative_path
 from fcc_test_platform.evidence_primitives import is_sha256_hex
@@ -60,7 +60,7 @@ def frontend_qa_errors(manifest: Mapping) -> list[FrontendQaIssue]:
     return issues
 
 
-def _validate_viewports(value, issues: list[FrontendQaIssue]) -> None:
+def _validate_viewports(value: object, issues: list[FrontendQaIssue]) -> None:
     if not isinstance(value, list):
         issues.append(_issue('missing_viewports', 'viewport_results', 'viewport_results must be a list'))
         return
@@ -97,7 +97,7 @@ def _validate_viewports(value, issues: list[FrontendQaIssue]) -> None:
         issues.append(_issue('missing_required_view', 'viewport_results.views_verified', f'{view} view must be verified'))
 
 
-def _validate_screenshots(value, issues: list[FrontendQaIssue]) -> None:
+def _validate_screenshots(value: object, issues: list[FrontendQaIssue]) -> None:
     if not isinstance(value, list):
         issues.append(_issue('missing_screenshots', 'screenshots', 'screenshots must be a list'))
         return
@@ -118,7 +118,7 @@ def _validate_screenshots(value, issues: list[FrontendQaIssue]) -> None:
             issues.append(_issue('invalid_sha256', f'{path}.sha256', 'sha256 must be 64 lowercase hex characters'))
 
 
-def _validate_relative_path(value, path: str, issues: list[FrontendQaIssue]) -> None:
+def _validate_relative_path(value: object, path: str, issues: list[FrontendQaIssue]) -> None:
     try:
         normalize_relative_path(str(value or ''))
     except ValueError as exc:
@@ -130,17 +130,19 @@ def _require_text(mapping: Mapping, key: str, path: str, issues: list[FrontendQa
         issues.append(_issue('missing_required_field', path, f'{key} is required'))
 
 
-def _mapping(value) -> Mapping:
+def _mapping(value: object) -> Mapping:
     return value if isinstance(value, Mapping) else {}
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()
 
 
-def _int(value) -> int | None:
+def _int(value: object) -> int | None:
+    if not isinstance(value, (str, bytes, bytearray, SupportsInt, SupportsIndex)):
+        return None
     try:
         return int(value)
     except (TypeError, ValueError):

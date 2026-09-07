@@ -43,6 +43,7 @@ from typing import Mapping, Optional, Sequence
 
 from fcc_test_platform.repository_anchor import repository_anchor
 from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # noqa: E402
+from fcc_test_platform.application.central_db_surfaces import ScriptConnection
 
 # The record, not a directory walk: this lane delivers docs/platform/migrations/
 # to migrations/ at the box root, so the box has a docs/ an ancestor walk finds
@@ -74,7 +75,7 @@ _NON_TRANSACTIONAL_MARKER_RE = re.compile(
 # runner is a SINGLE file in the central image (no evidence-tooling import chain).
 # The lock-id algorithm is byte-identical to the evidence runner's and is sealed
 # against drift by tests/test_central_db_migration_runner.py::TestLockIdParity.
-def _connect(dsn: str):
+def _connect(dsn: str) -> ScriptConnection:
     try:
         import psycopg
 
@@ -421,7 +422,7 @@ _RECONCILE_LEDGER_SQL = (
 )
 
 
-def _read_applied(connection) -> dict[str, str]:
+def _read_applied(connection: ScriptConnection) -> dict[str, str]:
     """version → checksum from the ledger; empty dict if the ledger doesn't exist yet."""
     try:
         with connection.cursor() as cursor:
@@ -439,7 +440,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _invalid_index_names(connection) -> set[str]:
+def _invalid_index_names(connection: ScriptConnection) -> set[str]:
     """Names of indexes PostgreSQL currently marks INVALID (failed CONCURRENTLY).
 
     NOT fail-open: this runner only ever talks to PostgreSQL (advisory locks,
@@ -454,7 +455,7 @@ def _invalid_index_names(connection) -> set[str]:
 
 
 def _apply_non_transactional(
-    connection,
+    connection: ScriptConnection,
     *,
     sql_text: str,
     version: str,

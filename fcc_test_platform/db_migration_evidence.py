@@ -172,7 +172,7 @@ def _validate_table(
             issues.append(_issue('index_predicate_mismatch', f'{index_path}.where', 'partial index predicate must match schema'))
 
 
-def _columns_by_name(value) -> dict[str, Mapping]:
+def _columns_by_name(value: object) -> dict[str, Mapping]:
     if isinstance(value, Mapping):
         return {str(name): _mapping(spec) for name, spec in value.items()}
     if not isinstance(value, list):
@@ -186,7 +186,7 @@ def _columns_by_name(value) -> dict[str, Mapping]:
     return columns
 
 
-def _indexes_by_name(value) -> dict[str, Mapping]:
+def _indexes_by_name(value: object) -> dict[str, Mapping]:
     if isinstance(value, Mapping):
         return {str(name): _mapping(spec) for name, spec in value.items()}
     if not isinstance(value, list):
@@ -234,17 +234,17 @@ def _require_hash(
         issues.append(_issue('invalid_sha256', path, f'{key} must be a SHA-256 hex digest'))
 
 
-def _mapping(value) -> Mapping:
+def _mapping(value: object) -> Mapping:
     return value if isinstance(value, Mapping) else {}
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()
 
 
-def _normalise_orders(value) -> dict[str, str]:
+def _normalise_orders(value: object) -> dict[str, str]:
     if not isinstance(value, Mapping):
         return {}
     return {
@@ -254,7 +254,7 @@ def _normalise_orders(value) -> dict[str, str]:
     }
 
 
-def _normalise_predicate(value) -> str | None:
+def _normalise_predicate(value: object) -> str | None:
     if not _text(value):
         return None
     result = _strip_postgresql_casts(_text(value))
@@ -263,7 +263,7 @@ def _normalise_predicate(value) -> str | None:
     return _normalise_boolean_expression(result)[0]
 
 
-def _normalise_order_key(value) -> str:
+def _normalise_order_key(value: object) -> str:
     text = _text(value)
     if len(text) >= 2 and text[0] == text[-1] == '"':
         candidate = text[1:-1].replace('""', '"')
@@ -272,7 +272,7 @@ def _normalise_order_key(value) -> str:
     return text
 
 
-def _normalise_order_value(value) -> str:
+def _normalise_order_value(value: object) -> str:
     return ' '.join(_text(value).upper().split())
 
 

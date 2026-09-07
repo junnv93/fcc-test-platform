@@ -27,7 +27,7 @@ PySide6 / sqlalchemy / sqlite3 imports — enforced by
 """
 from __future__ import annotations
 
-from typing import Iterable, Mapping, Optional
+from typing import Callable, Iterable, Mapping, Optional
 
 from fcc_test_platform.central_id_resolver import (
     CentralIdResolutionError,
@@ -236,7 +236,7 @@ def envelopes_from_outbox_events(
     *,
     provider_id: str,
     central_id_resolver: CentralIdResolverPort,
-    payload_parser,
+    payload_parser: Callable[[str], Mapping],
     chamber_id: str | None = None,
 ) -> tuple[str, list[dict]]:
     """Convert a batch of outbox events (list_pending_result_events shape) into
@@ -330,7 +330,7 @@ def _required_int(payload: Mapping, key: str) -> int:
         raise OutboxEnvelopeBuildError(f'payload.{key} must be an integer') from exc
 
 
-def _optional_text(value) -> str:
+def _optional_text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()

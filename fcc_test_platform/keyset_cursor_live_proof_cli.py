@@ -89,6 +89,8 @@ from fcc_test_kernel.application.central_contract.pagination import CursorError,
 from fcc_test_platform.domain.ports.output.central_chamber_write_port import (  # noqa: E402
     ChamberNotFoundError,
 )
+from fcc_test_platform.application.central_db_surfaces import ScriptConnection, require_row
+from typing import Any, Callable, Mapping, Sequence
 
 
 ENV_DSN = 'FCC_KEYSET_PROOF_DB_URL'
@@ -143,7 +145,7 @@ def _occurred_at(index: int) -> str:
 # ── seeding ─────────────────────────────────────────────────────────────────
 
 
-def _seed(connection, seed: str) -> dict:
+def _seed(connection: ScriptConnection, seed: str) -> dict:
     """Create the minimal identity graph + N claim/attempt rows. Idempotent."""
     project_id = _uuid5(seed, 'project')
     provider_id = _uuid5(seed, 'provider')
@@ -215,7 +217,7 @@ def _seed(connection, seed: str) -> dict:
     }
 
 
-def _cleanup(connection, ids: dict) -> None:
+def _cleanup(connection: ScriptConnection, ids: dict) -> None:
     cursor = connection.cursor()
     try:
         cursor.execute(
@@ -242,7 +244,7 @@ def _cleanup(connection, ids: dict) -> None:
 # ── proof steps ─────────────────────────────────────────────────────────────
 
 
-def _prove_parameter_types(connect, project_id: str, seed: str) -> dict:
+def _prove_parameter_types(connect: Callable[[], ScriptConnection], project_id: str, seed: str) -> dict:
     """Observe the server-side inferred parameter types for both paged queries.
 
     psycopg3 promotes a statement to a server-side prepared statement after
@@ -287,7 +289,7 @@ def _prove_parameter_types(connect, project_id: str, seed: str) -> dict:
     return observed
 
 
-def _walk(page_fn, project_id: str) -> list:
+def _walk(page_fn: Callable[..., Mapping[str, Any]], project_id: str) -> list:
     """Page through every row following next_cursor; return the ordered items."""
     collected: list = []
     cursor = None
@@ -352,7 +354,7 @@ def _prove_page_boundaries(service: CentralReadService, ids: dict) -> dict:
     }
 
 
-def _prove_out_of_domain_cursor(connect, service: CentralReadService,
+def _prove_out_of_domain_cursor(connect: Callable[[], ScriptConnection], service: CentralReadService,
                                 project_id: str) -> dict:
     """A forged cursor is a 400 at the boundary — and would be a 503 without it."""
     forged = {
@@ -401,7 +403,7 @@ def _prove_out_of_domain_cursor(connect, service: CentralReadService,
     return {'boundary': boundary, 'database_counterfactual': database}
 
 
-def _prove_conditional_heartbeat_insert(connect, chamber_id: str, seed: str) -> dict:
+def _prove_conditional_heartbeat_insert(connect: Callable[[], ScriptConnection], chamber_id: str, seed: str) -> dict:
     """M2 companion — the existence gate resolves its own parameter types on a
     real server, and ``rowcount`` discriminates registered from unregistered."""
     adapter = PostgresCentralChamberWriteAdapter(connect)
@@ -443,7 +445,7 @@ def _prove_conditional_heartbeat_insert(connect, chamber_id: str, seed: str) -> 
             'SELECT count(*) FROM chamber_heartbeat_events WHERE chamber_id LIKE %s',
             (f'{chamber_id}%',),
         )
-        written = cursor.fetchone()[0]
+        written = require_row(cursor)[0]
         cursor.close()
     if written != 1:
         raise LiveProofError(
@@ -457,7 +459,7 @@ def _prove_conditional_heartbeat_insert(connect, chamber_id: str, seed: str) -> 
     }
 
 
-def _prove_equipment_config_row_lock(connect, chamber_id: str, seed: str) -> dict:
+def _prove_equipment_config_row_lock(connect: Callable[[], ScriptConnection], chamber_id: str, seed: str) -> dict:
     """The per-key PATCH merge survives two concurrent writers — and only because
     of ``FOR UPDATE``.
 
@@ -561,7 +563,7 @@ def _prove_equipment_config_row_lock(connect, chamber_id: str, seed: str) -> dic
     }
 
 
-def _reset_config(connect, chamber_id: str) -> None:
+def _reset_config(connect: Callable[[], ScriptConnection], chamber_id: str) -> None:
     with connect() as connection:
         cursor = connection.cursor()
         cursor.execute(UPDATE_CHAMBER_EQUIPMENT_CONFIG_SQL, (
@@ -571,7 +573,7 @@ def _reset_config(connect, chamber_id: str) -> None:
         connection.commit()
 
 
-def _read_config(connect, chamber_id: str) -> dict:
+def _read_config(connect: Callable[[], ScriptConnection], chamber_id: str) -> dict:
     with connect() as connection:
         cursor = connection.cursor()
         cursor.execute(
@@ -583,11 +585,16 @@ def _read_config(connect, chamber_id: str) -> dict:
     return dict(_decode_config(row[0] if row else None))
 
 
-def _decode_config(raw) -> dict:
+def _decode_config(raw: object) -> dict:
     if raw in (None, ''):
         return {}
-    if isinstance(raw, (dict,)):
+    if isinstance(raw, dict):
         return raw
+    if not isinstance(raw, (str, bytes, bytearray)):
+        # 이 자리는 jsonb 컬럼을 읽는다 — 드라이버는 dict 나 텍스트를 준다.
+        # 그 밖이 오면 조용히 {} 로 접지 않고 무엇이 왔는지 말한다.
+        raise TypeError(f'chamber equipment config must be JSON text or a mapping, '
+                        f'not {type(raw).__name__!r}')
     return json.loads(raw)
 
 
@@ -600,7 +607,7 @@ def run_live_proof(dsn: str, *, proof_seed: str = 'default') -> dict:
     except ImportError as exc:  # pragma: no cover - environment gate
         raise LiveProofError('psycopg (v3) is required for the live proof') from exc
 
-    def _connect():
+    def _connect() -> ScriptConnection:
         return psycopg.connect(dsn)
 
     with _connect() as connection:
@@ -630,7 +637,7 @@ def run_live_proof(dsn: str, *, proof_seed: str = 'default') -> dict:
     return evidence
 
 
-def main(argv=None) -> int:
+def main(argv: Sequence[str] | None=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--dsn', default=os.environ.get(ENV_DSN, ''),
                         help=f'PostgreSQL DSN (default: {ENV_DSN} env)')

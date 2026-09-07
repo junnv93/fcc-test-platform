@@ -20,6 +20,8 @@ from fcc_test_platform.ingestion_execution_evidence import (
 from fcc_test_platform.provider_ingestion_plan import INGESTION_TABLE_ORDER
 from fcc_test_platform.provider_ingestion_worker import IngestionRetryPolicy, execute_platform_ingestion_plan
 from fcc_test_platform.postgres_ingestion_writer import PostgresIngestionWriter
+from fcc_test_platform.application.central_db_surfaces import ScriptConnection
+from typing import Callable
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description='Platform ingestion execution evidence helper.')
     subparsers = parser.add_subparsers(dest='command', required=True)
@@ -135,8 +137,8 @@ def _execute(args: argparse.Namespace) -> int:
     return 0 if not ingestion_execution_errors(manifest) else 1
 def _read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding='utf-8'))
-def _psycopg_connection_factory(dsn: str):
-    def connect():
+def _psycopg_connection_factory(dsn: str) -> Callable[[], ScriptConnection]:
+    def connect() -> ScriptConnection:
         psycopg = importlib.import_module('psycopg')
         return psycopg.connect(dsn)
 

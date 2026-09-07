@@ -1,17 +1,16 @@
 {
   "task": "top-level-modules-in-the-type-gate-20260907",
-  "branch": "spec/top-level-modules-in-the-type-gate",
+  "branch": "feature/top-level-modules-in-the-type-gate",
   "owner": "fcc-delivery-final-b1",
-  "status": "active",
+  "status": "merged",
   "base": "origin/main@f143f2d",
   "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/b12f86b8-e3f2-496d-895c-2d89ffa673d8/scratchpad/wt-typegate",
   "scope": [
-    "intent/top-level-modules-in-the-type-gate/intent.md",
-    "intent/top-level-modules-in-the-type-gate/spec.md",
-    "intent/top-level-modules-in-the-type-gate/plan.md",
     "mypy.ini",
     "tests/test_architecture_gate_conformance.py",
-    "fcc_test_platform/*.py (최상위 모듈 — 정확한 목록은 plan.md §1)",
+    "fcc_test_platform/application/central_db_surfaces.py",
+    "fcc_test_platform/*.py — 최상위 모듈 40파일 (정확한 목록은 plan.md §1)",
+    "intent/top-level-modules-in-the-type-gate/{intent,spec,plan}.md",
     ".claude/work-claims/top-level-modules-in-the-type-gate-20260907.json"
   ],
   "shared_outputs": [
@@ -19,5 +18,7 @@
     "tests/test_architecture_gate_conformance.py"
   ],
   "conflicts_with": [],
-  "sequencing": "⚠️ `branch` 필드가 **단계마다 바뀐다.** intent/ → spec/ → feature/ 세 브랜치를 순서대로 지나므로, 각 단계의 첫 커밋이 이 필드를 그 단계의 브랜치로 갱신한다. 브랜치 가드는 HEAD 와 이 필드를 대조하므로 갱신을 같은 커밋에 넣어야 통과한다(README §작업이 끝나면 이 관례를 이미 기록한다 — 가드가 막는 것은 결함이 아니라 규율이다). ■ 왜 이 범위인가: 실측 2026-09-07(main b3c619e, 선언대로 설치한 리그) — strict 4층은 각각 0건인데 `mypy -p fcc_test_platform` 전량은 45건이다. 그 45건이 전부 최상위 모듈에 있고, 어느 strict 절도 그 자리를 source file 로 넘기지 않는다. 게이트 4회 호출이 넘기는 것은 139 source files, 전량은 215 다. ■ 앞선 웨이브의 순서를 따른다: 실제 타입 오류를 «먼저» 처분하고 남는 것을 순수 선언 작업으로 만든다(#112 → #128, #132 가 같은 형태). ⚠️ PR #132 가 같은 자리에 적었다 — 선언을 붙이면 상류가 Any 를 벗으며 «없던» 오류가 새로 드러난다. 그래서 183 은 하한이다."
+  "sequencing": "⚠️ `branch` 필드가 **단계마다 바뀐다.** intent/ → spec/ → feature/ 세 브랜치를 순서대로 지나므로, 각 단계의 첫 커밋이 이 필드를 그 단계의 브랜치로 갱신한다. 브랜치 가드는 HEAD 와 이 필드를 대조하므로 갱신을 같은 커밋에 넣어야 통과한다(README §작업이 끝나면 이 관례를 이미 기록한다 — 가드가 막는 것은 결함이 아니라 규율이다). ■ 왜 이 범위인가: 실측 2026-09-07(main b3c619e, 선언대로 설치한 리그) — strict 4층은 각각 0건인데 `mypy -p fcc_test_platform` 전량은 45건이다. 그 45건이 전부 최상위 모듈에 있고, 어느 strict 절도 그 자리를 source file 로 넘기지 않는다. 게이트 4회 호출이 넘기는 것은 139 source files, 전량은 215 다. ■ 앞선 웨이브의 순서를 따른다: 실제 타입 오류를 «먼저» 처분하고 남는 것을 순수 선언 작업으로 만든다(#112 → #128, #132 가 같은 형태). ⚠️ PR #132 가 같은 자리에 적었다 — 선언을 붙이면 상류가 Any 를 벗으며 «없던» 오류가 새로 드러난다. 그래서 183 은 하한이다. ✅ 세 단계 모두 착지: intent #157(f143f2d) → spec #160(b08c698) → 이 PR.",
+  "pr": "#157 (intent) → #160 (spec) → 이 PR (feature)",
+  "result": "strict 범위가 네 층 열거 → 패키지 한 절로 접혔다. 게이트가 mypy 에 넘기는 source files 139 → 215(실측, 증거줄로 확인). 183건을 닫았고 그 도중 선언이 상류의 Any 를 벗기며 45건이 새로 드러나 그것도 닫았다(합 228) — mypy.ini 의 api 웨이브 주석 「선언은 층을 따라 전파된다」가 이번에도 참이었다. cast +0 · type: ignore 순증가 −1(둘 삭제). 새 봉인 TestTheStrictScopeCoversThePackage 는 주입을 «상주»시켜 매번 이빨을 확인한다 — 층 열거는 76개를 놓치고 오늘의 범위는 0개를 놓친다. ⚠️ 형제 #158 이 «호출 축»(실제 타입 오류 45)을 먼저 닫았고 strict 축을 일부러 남겼다 — 이 작업이 그 남은 축이다. 그쪽 봉인 둘은 무접촉. ⚠️ 내 반환형 삽입 도구가 주석 안의 «:» 를 골라 세 자리를 훼손했고, 그것을 잡은 것은 게이트(no-untyped-def)였다. AST 로 전수 확인해 손으로 고쳤다."
 }

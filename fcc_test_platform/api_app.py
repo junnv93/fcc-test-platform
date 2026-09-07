@@ -10,9 +10,14 @@ Uses the modern FastAPI ``lifespan`` constructor exclusively. Legacy
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from typing import AsyncIterator, Mapping, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
+    from fcc_test_platform.api_composition import PlatformApiRuntime
 
 
-def create_app(environ=None):
+def create_app(environ: Mapping[str, str] | None=None) -> 'FastAPI':
     """Create the configured platform read FastAPI app.
 
     1. ``PlatformApiConfig.from_env(environ)`` — central DSN + auth from env.
@@ -49,7 +54,7 @@ def create_app(environ=None):
     runtime = create_platform_runtime_from_config(config)
 
     @asynccontextmanager
-    async def lifespan(_app):
+    async def lifespan(_app: object) -> AsyncIterator[None]:
         try:
             yield
         finally:
@@ -64,7 +69,7 @@ def create_app(environ=None):
     return app
 
 
-def _attach_runtime(app, runtime) -> None:
+def _attach_runtime(app: object, runtime: PlatformApiRuntime) -> None:
     state = getattr(app, 'state', None)
     if state is not None:
         setattr(state, 'platform_runtime', runtime)

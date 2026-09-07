@@ -6,7 +6,7 @@ file-server artifacts, DOCX, PDF, or generated report files.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Mapping, SupportsIndex, SupportsInt
 
 from fcc_test_platform.artifact_storage import normalize_relative_path
 from fcc_test_platform.evidence_primitives import is_sha256_hex
@@ -163,7 +163,7 @@ def _validate_source_snapshot(snapshot: Mapping, issues: list[ReportReconstructi
         )
 
 
-def _validate_outputs(value, issues: list[ReportReconstructionIssue]) -> None:
+def _validate_outputs(value: object, issues: list[ReportReconstructionIssue]) -> None:
     if not isinstance(value, list):
         issues.append(_issue('missing_generated_outputs', 'generated_outputs', 'generated_outputs must be a list'))
         return
@@ -267,7 +267,7 @@ def _validate_missing_artifact_acceptance(
         )
 
 
-def _validate_relative_path(value, path: str, issues: list[ReportReconstructionIssue]) -> None:
+def _validate_relative_path(value: object, path: str, issues: list[ReportReconstructionIssue]) -> None:
     try:
         normalize_relative_path(str(value or ''))
     except ValueError as exc:
@@ -297,24 +297,26 @@ def _generated_output(output: Mapping) -> dict:
     }
 
 
-def _mapping(value) -> Mapping:
+def _mapping(value: object) -> Mapping:
     return value if isinstance(value, Mapping) else {}
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()
 
 
-def _required_value(value, key: str) -> str:
+def _required_value(value: object, key: str) -> str:
     text = _text(value)
     if not text:
         raise ValueError(f'{key} is required')
     return text
 
 
-def _int(value) -> int | None:
+def _int(value: object) -> int | None:
+    if not isinstance(value, (str, bytes, bytearray, SupportsInt, SupportsIndex)):
+        return None
     try:
         return int(value)
     except (TypeError, ValueError):

@@ -213,11 +213,11 @@ def _require_text(
         issues.append(_issue('missing_required_field', path, f'{key} is required', evidence_key))
 
 
-def _mapping(value) -> Mapping:
+def _mapping(value: object) -> Mapping:
     return value if isinstance(value, Mapping) else {}
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()
