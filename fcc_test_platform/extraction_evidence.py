@@ -151,7 +151,8 @@ def _validate_repository(
         seen_futures.add(future_path)
         for key in ('current_path', 'future_path', 'kind', 'source_sha256', 'destination_sha256'):
             _require_text(entry, key, f'{entry_path}.{key}', issues)
-        if _int(entry.get('byte_size')) is None or _int(entry.get('byte_size')) <= 0:
+        byte_size = _int(entry.get('byte_size'))
+        if byte_size is None or byte_size <= 0:
             issues.append(_issue('invalid_byte_size', f'{entry_path}.byte_size', 'byte_size must be positive'))
         if entry.get('copied') is not True:
             issues.append(_issue('entry_not_copied', f'{entry_path}.copied', 'copied must be true'))
@@ -259,8 +260,8 @@ def _has_declared_transform(entry: Mapping) -> bool:
     return any(
         isinstance(transform, Mapping)
         and transform.get('type') == 'python_import_rewrite'
-        and _int(transform.get('count')) is not None
-        and _int(transform.get('count')) > 0
+        and (count := _int(transform.get('count'))) is not None
+        and count > 0
         for transform in transforms
     )
 
@@ -284,7 +285,8 @@ def _validate_transforms(
             continue
         if _text(transform.get('type')) != 'python_import_rewrite':
             issues.append(_issue('unknown_transform', f'{transform_path}.type', 'unsupported extraction transform'))
-        if _int(transform.get('count')) is None or _int(transform.get('count')) <= 0:
+        count = _int(transform.get('count'))
+        if count is None or count <= 0:
             issues.append(_issue('invalid_transform_count', f'{transform_path}.count', 'transform count must be positive'))
 
 

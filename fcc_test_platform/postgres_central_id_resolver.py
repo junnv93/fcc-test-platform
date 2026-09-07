@@ -190,7 +190,10 @@ class PostgresCentralIdResolver:
         self._connection_factory = connection_factory
         self._session_uuid_namespace = session_uuid_namespace
         self._lock = threading.Lock()
-        self._session_cache: dict[tuple[str, int], str] = {}
+        # 키는 ``(chamber, target, local_id)`` 다 — 바로 아래 :232/:237 이 그 모양으로
+        # 읽고 쓴다. ⚠️ 2튜플 선언은 낡은 것이었다: target 을 뺀 키는 첫 target 의
+        # uuid 를 둘째에게 넘겨, 이름이 피하는 바로 그 충돌을 캐시로 되살린다.
+        self._session_cache: dict[tuple[str, str, int], str] = {}
         self._project_cache: dict[str, str] = {}
         # Model→project cache holds **resolved projects only** — see
         # ``resolve_project_by_model_number`` for why an unresolved outcome must

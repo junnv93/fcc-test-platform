@@ -413,7 +413,9 @@ def _prove_conditional_heartbeat_insert(connect, chamber_id: str, seed: str) -> 
     })
 
     def _record(target: str, label: str) -> dict:
-        record = {column: None for column in HEARTBEAT_EVENT_COLUMNS}
+        # 열 전부를 None 으로 깔고 아는 것만 덮는다. 주석이 없으면 dict[str, None]
+        # 으로 추론돼 바로 아래 update() 의 문자열이 전부 거부된다.
+        record: dict[str, str | None] = {column: None for column in HEARTBEAT_EVENT_COLUMNS}
         record.update({
             'id': _uuid5(seed, f'heartbeat-{label}'),
             'chamber_id': target,

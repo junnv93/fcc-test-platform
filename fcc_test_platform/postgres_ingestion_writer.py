@@ -323,6 +323,12 @@ def build_postgres_upsert(table: str, record: Mapping, idempotency_key: tuple[st
         raise ValueError('record must be a non-empty mapping')
     legacy_key_fields = idempotency_fields_for_record(table, record)
     provider_key_fields = PROVIDER_SCOPED_IDEMPOTENCY_KEYS_BY_TABLE.get(table)
+    # ⚠️ 항수가 «표마다 다르다» — 그것이 이 변수의 성질이다. provider-scoped 키는
+    #    4항(`measurement_attempts`), legacy 키는 표에 따라 1~3항이다. 선언이 없으면
+    #    mypy 는 첫 대입에서 `tuple[str, str, str, str]` 을 굳히고, 둘째 가지를
+    #    「회귀」로 신고한다. 두 상수는 각자 «고정» 항수라 옳고, 가변인 것은 둘을
+    #    합류시키는 이 이름이다 — 그러니 사실이 적힐 자리는 상수가 아니라 여기다.
+    expected_key_fields: tuple[str, ...]
     if provider_key_fields and len(idempotency_key) == len(provider_key_fields):
         expected_key_fields = provider_key_fields
     else:
@@ -342,7 +348,8 @@ def build_postgres_upsert(table: str, record: Mapping, idempotency_key: tuple[st
             )
         ):
             raise ValueError('idempotency_key values must match table idempotency fields')
-    conflict_fields = expected_key_fields
+    # 같은 이유로 가변 항수다 — chamber-scoped 는 3항, 위 합류값은 1~4항이다.
+    conflict_fields: tuple[str, ...] = expected_key_fields
     if table == 'test_sessions' and 'chamber_id' not in record:
         conflict_fields = CHAMBER_SCOPED_IDEMPOTENCY_KEYS_BY_TABLE[table]
     columns = sorted(str(column) for column in record)
@@ -544,7 +551,14 @@ def build_postgres_results_projection_update(
             'AND latest_attempt."is_latest" = true '
             'AND latest_attempt."status" = \'completed\''
         )
-        parameters = (provider_id, provider_result_id, session_id, condition_hash, attempt_number)
+        # ⚠️ 두 가지가 «다른 모양»의 파라미터 튜플을 낸다 — 위는 5항(끝이 int),
+        #    아래는 7항(전부 str|None). 반환 선언 `tuple[str, tuple]` 이 이미
+        #    「튜플의 모양은 가지마다 다르다」고 말하고 있고, 이 선언은 그것을
+        #    지역 변수에도 적는다. 없으면 mypy 가 첫 가지의 모양을 굳혀서
+        #    둘째 가지를 신고한다.
+        parameters: tuple[object, ...] = (
+            provider_id, provider_result_id, session_id, condition_hash, attempt_number,
+        )
         return statement, parameters
     statement = (
         'UPDATE "measurement_results" '

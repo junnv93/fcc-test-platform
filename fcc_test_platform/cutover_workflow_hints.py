@@ -198,7 +198,9 @@ def attach_issue_hints(issues: list[dict], workflow_hints: Mapping[str, dict]) -
     enriched = []
     for issue in issues:
         evidence_key = issue.get('evidence_key')
-        if evidence_key in workflow_hints:
+        # ⚠️ `in` 만으로는 Any|None 이 좁혀지지 않는다. None 은 어차피 miss 하므로
+        #    isinstance 를 앞세워도 동작은 같고, 아래 첨자가 검사된다.
+        if isinstance(evidence_key, str) and evidence_key in workflow_hints:
             with_hint = dict(issue)
             with_hint['workflow_hint'] = workflow_hints[evidence_key]
             enriched.append(with_hint)

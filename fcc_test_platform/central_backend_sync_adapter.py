@@ -44,7 +44,7 @@ from __future__ import annotations
 import json
 import logging
 from collections import defaultdict
-from typing import Callable, Iterable, Mapping, Optional
+from typing import Callable, Iterable, Mapping, Optional, Sequence
 
 from fcc_test_platform.central_id_resolver import (
     CentralIdResolutionError,
@@ -393,7 +393,15 @@ class CentralBackendSyncAdapter:
             }
         return {}
 
-    def _session_project_id(self, attempt_envelopes: list[Mapping]) -> str:
+    # ⚠️ 아래 네 메서드의 `attempt_envelopes` 가 `list` 가 아니라 `Sequence` 인
+    #    이유: `list` 는 «불변(invariant)»이라 `list[dict]` 는 `list[Mapping]` 이
+    #    **아니다**. 호출부(:211 `envelopes_from_outbox_events`)가 내주는 것은
+    #    `list[dict]` 이고, 그것을 `list[Mapping]` 자리에 넣으면 mypy 가 거부한다.
+    #    항목을 «넣을» 수 있는 자리라면 그 거부가 옳다 — 넣는 쪽이 Mapping 을 넣어
+    #    dict 목록을 오염시킬 수 있으니까. 그런데 이 네 메서드는 **읽기만 한다**
+    #    (전부 `for envelope in attempt_envelopes:` 뿐이다). `Sequence` 는 공변이고,
+    #    「나는 읽기만 한다」를 타입으로 말하는 것이 곧 그 사실의 선언이다.
+    def _session_project_id(self, attempt_envelopes: Sequence[Mapping]) -> str:
         """Central project uuid for this session's parent row ('' when unknown).
 
         Two sources, in this order — and the order is the point:
@@ -460,7 +468,7 @@ class CentralBackendSyncAdapter:
         return ''
 
     @staticmethod
-    def _session_sample_id(attempt_envelopes: list[Mapping]) -> str:
+    def _session_sample_id(attempt_envelopes: Sequence[Mapping]) -> str:
         """First declared sample FK for the session bucket, if present."""
         for envelope in attempt_envelopes:
             candidate = str(envelope.get('session_sample_id') or '').strip()
@@ -469,7 +477,7 @@ class CentralBackendSyncAdapter:
         return ''
 
     @staticmethod
-    def _session_model_number(attempt_envelopes: list[Mapping]) -> str:
+    def _session_model_number(attempt_envelopes: Sequence[Mapping]) -> str:
         """First non-empty model number in the bucket ('' when absent).
 
         Every envelope in a bucket belongs to one local session, so they carry
@@ -482,7 +490,7 @@ class CentralBackendSyncAdapter:
         return ''
 
     @staticmethod
-    def _session_target_identity(attempt_envelopes: list[Mapping]) -> str:
+    def _session_target_identity(attempt_envelopes: Sequence[Mapping]) -> str:
         """Target identity for the bucket ('' when the target is not identified).
 
         Model and sample are read from the **same** envelope rather than as two

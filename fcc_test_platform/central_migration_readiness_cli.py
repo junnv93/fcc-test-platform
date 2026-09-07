@@ -240,12 +240,30 @@ def judge_refusal_guard(count: int | None, detail: str, column_present: bool | N
     )
 
 
+def _ledger_entries(value: object) -> list[str]:
+    """원장 페이로드의 배열 필드 하나 — 「JSON 은 무엇이든 줄 수 있다」를 여기서 한 번 접는다.
+
+    ⚠️ `collect_ledger` 는 최상위가 dict 인지 **만** 본다(:408 `isinstance(payload, dict)`).
+    그 안의 값 타입은 컨테이너 안 `fcc-platform-db-migrate status` 의 출력이 정하고,
+    이 모듈에는 그것을 강제할 자리가 없다 — 그러니 「배열일 것」은 «앎»이 아니라
+    «기대»다. 배열이 아니면 「없다」로 읽는다: 문자열이 오면 `for item in value` 가
+    한 «글자»씩 돌아서, 원장이 망가졌을 때 판정문에 글자 목록이 실린다.
+
+    ⚠️ 가드를 두 호출부에 각각 흩뿌리지 않고 여기 한 번만 두는 이유가 그것이다 —
+    흩뿌리면 「이 값은 정말 무엇이든 될 수 있다」는 사실이 두 자리에 적히고,
+    셋째 필드가 생기는 날 그중 하나가 빠진다.
+    """
+    if not isinstance(value, (list, tuple)):
+        return []
+    return [str(item) for item in value]
+
+
 def judge_ledger(status: Mapping[str, object] | None) -> AxisResult:
     """미적용·드리프트 — 그리고 드리프트가 `001` «뿐인가»."""
     if status is None:
         return AxisResult('ledger', VERDICT_UNKNOWN, '마이그레이션 원장을 읽지 못했다')
-    drift = [str(item) for item in (status.get('drift') or [])]
-    pending = [str(item) for item in (status.get('pending') or [])]
+    drift = _ledger_entries(status.get('drift'))
+    pending = _ledger_entries(status.get('pending'))
     unexpected = [d for d in drift if not d.startswith(RECONCILABLE)]
     if unexpected:
         return AxisResult(
@@ -334,8 +352,15 @@ def _box_markers_from_source() -> Sequence[str] | None:
     except (OSError, SyntaxError):
         return None
     for node in tree.body:
-        targets = node.targets if isinstance(node, ast.Assign) else []
-        if not any(isinstance(t, ast.Name) and t.id == 'BOX_MARKERS' for t in targets):
+        # ⚠️ 좁힘을 «문»으로 한다. 이 자리는 한때
+        #        targets = node.targets if isinstance(node, ast.Assign) else []
+        #    이었는데, 조건식 안의 `isinstance` 는 그 식 «밖»으로 좁힘을 내보내지
+        #    못한다 — 아래 `node.value` 가 여전히 `ast.stmt` 를 보고, 그 타입에는
+        #    `value` 가 없다. 런타임에는 맞는 코드였다(빈 targets 는 continue 로
+        #    걸린다). 즉 「맞게 도는데 그 이유가 안 적힌」 자리였다.
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(isinstance(t, ast.Name) and t.id == 'BOX_MARKERS' for t in node.targets):
             continue
         value = node.value
         if not isinstance(value, (ast.Tuple, ast.List)):

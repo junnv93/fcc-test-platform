@@ -78,28 +78,30 @@ def main(argv: list[str] | None = None) -> int:
             }
             for key, path in missing_paths
         ], workflow_hints)
+        commands = next_commands(issues, workflow_hints, EVIDENCE_FILENAMES, evidence_root=args.evidence_root)
         payload = {
             'ready': False,
             'issues': issues,
             'diagnostics': _diagnostics(issues, workflow_hints),
             'expected_files': _expected_files(args.evidence_root),
             'workflow_hints': workflow_hints,
-            'next_commands': next_commands(issues, workflow_hints, EVIDENCE_FILENAMES, evidence_root=args.evidence_root),
+            'next_commands': commands,
         }
-        _write_next_commands(args.next_commands_output, payload['next_commands'])
+        _write_next_commands(args.next_commands_output, commands)
         print(json.dumps(payload, sort_keys=True, indent=2))
         return 2
     manifests, read_issues = _read_manifests(paths)
     if read_issues:
         issues = attach_issue_hints(workflow_issues + read_issues, workflow_hints)
+        commands = next_commands(issues, workflow_hints, EVIDENCE_FILENAMES, evidence_root=args.evidence_root)
         payload = {
             'ready': False,
             'issues': issues,
             'diagnostics': _diagnostics(issues, workflow_hints),
             'workflow_hints': workflow_hints,
-            'next_commands': next_commands(issues, workflow_hints, EVIDENCE_FILENAMES, evidence_root=args.evidence_root),
+            'next_commands': commands,
         }
-        _write_next_commands(args.next_commands_output, payload['next_commands'])
+        _write_next_commands(args.next_commands_output, commands)
         print(json.dumps(payload, sort_keys=True, indent=2))
         return 2
     context_issues: list[dict] = []
@@ -115,14 +117,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     if context_issues:
         issues = attach_issue_hints(workflow_issues + context_issues, workflow_hints)
+        commands = next_commands(issues, workflow_hints, EVIDENCE_FILENAMES, evidence_root=args.evidence_root)
         payload = {
             'ready': False,
             'issues': issues,
             'diagnostics': _diagnostics(issues, workflow_hints),
             'workflow_hints': workflow_hints,
-            'next_commands': next_commands(issues, workflow_hints, EVIDENCE_FILENAMES, evidence_root=args.evidence_root),
+            'next_commands': commands,
         }
-        _write_next_commands(args.next_commands_output, payload['next_commands'])
+        _write_next_commands(args.next_commands_output, commands)
         print(json.dumps(payload, sort_keys=True, indent=2))
         return 2
 
@@ -135,12 +138,13 @@ def main(argv: list[str] | None = None) -> int:
             extraction_manifest=extraction_manifest,
         )
     ], workflow_hints)
+    commands = next_commands(issues, workflow_hints, EVIDENCE_FILENAMES, evidence_root=args.evidence_root)
     payload = {
         'ready': not issues,
         'issues': issues,
         'diagnostics': _diagnostics(issues, workflow_hints),
         'workflow_hints': workflow_hints,
-        'next_commands': next_commands(issues, workflow_hints, EVIDENCE_FILENAMES, evidence_root=args.evidence_root),
+        'next_commands': commands,
         'bundle': bundle,
     }
     if args.output:
@@ -148,7 +152,7 @@ def main(argv: list[str] | None = None) -> int:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(json.dumps(bundle, sort_keys=True, indent=2) + '\n', encoding='utf-8')
         payload['output'] = str(output_path)
-    _write_next_commands(args.next_commands_output, payload['next_commands'])
+    _write_next_commands(args.next_commands_output, commands)
     print(json.dumps(payload, sort_keys=True, indent=2))
     return 0 if not issues else 1
 
@@ -172,6 +176,7 @@ def _read_context(path_value: str, context_field: str, issues: list[dict]) -> Ma
 
 def render_document(document: Mapping) -> dict:
     """Return ``document`` with every catalog-owned field derived afresh."""
+    catalog = list(catalog_entries())
     entries = [
         {
             'key': entry.key,
@@ -181,12 +186,15 @@ def render_document(document: Mapping) -> dict:
             'required_contexts': list(entry.required_contexts),
             'completion_group': entry.completion_group,
         }
-        for entry in catalog_entries()
+        for entry in catalog
     ]
     by_key = {entry['key']: entry for entry in entries}
     groups: dict[str, list[str]] = {}
-    for entry in entries:
-        groups.setdefault(entry['completion_group'], []).append(entry['key'])
+    # ⚠️ dict 사본(`entries`)이 아니라 «원본»에서 만든다. 그 dict 는 값이 str 과
+    #    list[str] 로 섞여 있어 항목을 꺼내면 Sequence[str] 로 넓어지는데, 아래 두
+    #    자리는 str 을 요구한다.
+    for cat in catalog:
+        groups.setdefault(cat.completion_group, []).append(cat.key)
     rendered = dict(document)
     rendered['required_evidence_keys'] = list(catalog_keys())
     rendered['manifest_required_evidence_keys'] = list(catalog_keys())
