@@ -47,10 +47,13 @@ Branch: feature/intent-driven-workflow
 | **25** | **`scripts/check_gate_declaration.py`** | 선언 == GitHub 실제. 닿지 못하면 «판정 불가»라 말한다 | | **R10** |
 | **26** | **`tests/test_documented_gate_values_match_the_live_config.py`** | 위의 봉인. **몇 개를 대조했는지 센다** | | **R10** |
 | 27 | `intent/README.md` (수정) | T1 이 게이트가 아님을 명시 · 선언 인용 | | R9 |
-| 28 | `.claude/evaluations/2026-09-07-…md` (수정) | 정정 ④ · 선언 인용 | | — |
-| 29 | `docs/education/2026-09-07-…html` | 동료 교육 문서 | 흐름이 확정된 뒤 | R2 |
+| 28 | `.claude/evaluations/2026-09-07-intent-driven-workflow-and-branch-protection.md` (수정) | 정정 ④ · 선언 인용 | | — |
+| 29 | `docs/education/2026-09-07-의도로-시작하는-개발-협업자-교육자료.html` | 동료 교육 문서 | 흐름이 확정된 뒤 | R2 |
 | 30 | `fcc-test-contracts/CLAUDE.md` | 커널 레인용 (별도 PR) | | R1 |
 | — | **branch protection 켜기** | GitHub 설정 | **§4 A1** — 코드 변경 아님 | R7 |
+
+> ⚠️ **경로는 «말줄임표 없이» 적어라.** `…` 를 쓰면 판정기가 실제 경로와 맞추지
+> 못하고 T4 가 계속 발화한다. 이 표의 첫 개정판이 그것으로 두 번 더 빨갰다.
 
 > 🔄 **2026-09-07 개정 — T4 가 이 표를 향해 발화했다.** 초판은 16행이었고 실제로
 > 만든 것은 30행이었다. 판정기가 「표에 없는 파일 11건」이라고 이름으로 말했고,

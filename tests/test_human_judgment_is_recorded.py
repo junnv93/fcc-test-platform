@@ -184,6 +184,33 @@ class TestT4UnplannedFilesBlock(unittest.TestCase):
                          '삼종세트 자신이 T4 를 발화시켰다')
 
 
+class TestThePlanTableExtractorSeesEveryShapeOfPath(unittest.TestCase):
+    """판정기가 「적을 수 없는 것」을 요구하면 T4 는 장식이 된다.
+
+    첫 판은 「`/` 가 있거나 `.md`/`.py` 로 끝나는 것」만 경로로 셌고, 그래서
+    루트의 점파일(`.gitignore`)은 표에 적어도 계속 T4 를 발화시켰다.
+    사람은 그럴 때 어테스테이션으로 도망간다.
+    """
+
+    def _planned(self, row: str) -> set[str]:
+        return judge._planned_paths(_PLAN_HEAD + row)
+
+    def test_a_nested_path(self) -> None:
+        self.assertIn('scripts/x.py', self._planned('| 1 | `scripts/x.py` | a | b |\n'))
+
+    def test_a_root_dotfile(self) -> None:
+        self.assertIn('.gitignore', self._planned('| 1 | `.gitignore` | a | b |\n'),
+                      '루트 점파일을 계획에 적을 수 없다 — T4 가 영원히 발화한다')
+
+    def test_a_root_file_with_an_extension(self) -> None:
+        self.assertIn('CODEOWNERS.md',
+                      self._planned('| 1 | `CODEOWNERS.md` | a | b |\n'))
+
+    def test_prose_outside_the_table_is_not_counted(self) -> None:
+        """선언은 «표»이지 산문이 아니다."""
+        self.assertEqual(set(), judge._planned_paths('본문에서 `scripts/y.py` 를 언급한다\n'))
+
+
 class TestT1IsReportedButDoesNotBlock(unittest.TestCase):
     """T1 — 오늘 «게이트가 아니다». 그 사실이 판정기 안에 있어야 한다."""
 

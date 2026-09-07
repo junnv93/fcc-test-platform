@@ -223,7 +223,13 @@ def _planned_paths(text: str) -> set[str]:
             continue
         for token in re.findall(r'`([^`]+)`', line):
             token = token.strip()
-            if '/' in token or token.endswith('.md') or token.endswith('.py'):
+            # ⚠️ 세 갈래여야 한다. 처음에는 앞의 둘만 봤고, 그러자 루트의 «점파일»
+            #    (`.gitignore`)이 계획에 «들어갈 수 없었다» — 표에 적어도 T4 가
+            #    계속 발화했다. 판정기가 「적을 수 없는 것」을 요구하면 사람은
+            #    어테스테이션으로 도망가고, 그러면 T4 는 장식이 된다.
+            if ('/' in token
+                    or token.startswith('.')          # 루트 점파일
+                    or re.match(r'^[\w-]+\.[\w]+$', token)):   # 확장자 있는 파일
                 planned.add(token.lstrip('/'))
     return planned
 
