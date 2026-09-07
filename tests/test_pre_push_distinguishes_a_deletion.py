@@ -103,6 +103,31 @@ class TestTheOnlySilentFailurePathIsSealed(unittest.TestCase):
             '실재하지 않거나 주입이 대상을 못 맞혔다. 어느 쪽이든 이 봉인은 공허하다')
 
 
+class TestAnInteractiveTerminalCannotHangTheHook(unittest.TestCase):
+    """`$(cat)` 은 EOF 를 기다린다 — stdin 이 터미널이면 거기서 멈춘다.
+
+    ⚠️ 그러면 규칙 ③(「ref 를 하나도 못 봤으면 건너뛰지 않는다」)이 겨냥한
+    바로 그 시나리오(사람이 훅을 손으로 부름)에 **도달조차 못 한다.**
+
+    ⚠️ **이 멈춤은 재현하지 못했다.** 이 환경에 `/dev/tty` 가 없고, `script` 로
+    만든 pty 는 마스터 쪽이 즉시 EOF 라 `cat` 이 막히지 않았다. 그래서 가드의
+    근거는 «관측»이 아니라 «비대칭»이다 — 가드는 공짜이고 없을 때의 대가는
+    사람이 멈추는 것이다. 이 문단이 지워지면 다음 사람이 「측정됐다」로 읽는다.
+    """
+
+    def test_the_hook_does_not_read_stdin_when_it_is_a_terminal(self) -> None:
+        source = HOOK.read_text(encoding='utf-8')
+        self.assertIn('if [ -t 0 ]; then', source,
+                      'tty 가드가 없다 — 손으로 부른 훅이 멈춘다')
+        guard = source[source.index('if [ -t 0 ]; then'):]
+        self.assertIn("_refs=''", guard.split('fi', 1)[0],
+                      'tty 일 때 빈 값으로 가지 않는다')
+
+    def test_the_unreproduced_status_is_recorded(self) -> None:
+        """안 잰 것을 «안 쟀다»고 적는 것이 이 저장소의 규율이다."""
+        self.assertIn('재현하지 못했다', HOOK.read_text(encoding='utf-8'))
+
+
 class TestChildrenDoNotInheritTheConsumedStdin(unittest.TestCase):
     """자식이 stdin 을 읽으면 ref 줄이 사라진다 — 부류 전체에 면역을 준다."""
 
