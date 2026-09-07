@@ -36,6 +36,7 @@ Docker 만 둡니다. **당신의 코드는 이미지 파일로만 건너갑니�
 | 무엇 | 어디 |
 |---|---|
 | 프로젝트 전체 지도 · 통신 구조 | `00-project-map.md` |
+| ★ **첫 provider 가 이미 겪은 것** — 복붙 프롬프트 8개 · 실수의 계급 | **`91-provider-lessons-from-the-monorepo.md`** |
 | **이미 밟은 지뢰** ⚠️ 코드 만지기 전에 | `90-known-traps.md` |
 | 계약 적합성 절차 (원본) | `fcc_test_contracts/artifacts/provider_onboarding.md` |
 | 배포 경로 (원본) | `docs/operations/provider-integration-guide.md` |

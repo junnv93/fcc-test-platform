@@ -553,17 +553,18 @@
 
   <div class="note">
     <p>
-      🔴 <strong>문서 세 곳이 「중앙 5개 서비스」라고 적습니다. 실측은 7개입니다.</strong>
+      ✅ <strong>문서 세 곳이 「중앙 5개 서비스」라고 적고 있었고, 실측은 7개입니다 —
+      이 웨이브에서 «고쳤습니다».</strong>
       <span class="key">central-migrate</span>(일회성)와
       <span class="key">platform-api-node</span>(브라우저와 노드의 인증 모드가 반대라
       갈라놓은 두 번째 인스턴스)가 나중에 붙었고 문장이 따라오지 않았습니다.
     </p>
     <p>
-      ⚠️ <strong>다만 그 문서들의 결론은 여전히 참입니다</strong> — provider 저장소를
+      ⚠️ <strong>그 문서들의 결론은 처음부터 참이었습니다</strong> — provider 저장소를
       실제로 필요로 하는 서비스는 <span class="key">headless-api</span> 하나뿐입니다.
-      틀린 것은 분모입니다. 그런데 <strong>결론이 맞다고 분모를 그냥 두면, 다음 사람이
+      <strong>틀렸던 것은 분모</strong>이고, 결론이 맞다고 분모를 두면 다음 사람이
       <span class="mono">docker compose ps</span> 에서 7줄을 보고 「뭔가 잘못됐다」고
-      판단합니다.</strong>
+      판단합니다. <strong>그래서 고쳤고, 각 자리에 정정 주석을 남겼습니다.</strong>
     </p>
   </div>
 </section>
@@ -1477,20 +1478,20 @@ git push origin HEAD:refs/heads/&lt;이름&gt;  <span style="color:var(--bad)">#
   <div class="col">
     <p>
       <strong>낡은 문장은 틀렸다고 말해 주지 않고, 맞는 문장과 똑같이 생겼습니다.</strong>
-      이 교육자료를 만들면서 기존 문서를 재검증했고, <strong>오늘 거짓인 서술 다섯</strong>을
-      찾았습니다.
+      이 교육자료를 만들면서 기존 문서를 재검증했고 <strong>거짓인 서술 다섯</strong>을
+      찾았습니다. <strong>이 레포의 셋은 고쳤고</strong>, 나머지 둘은 다른 레포라 별도로 나갑니다.
     </p>
   </div>
 
   <div class="scroll">
     <table>
-      <thead><tr><th>어디</th><th>뭐라고 적혀 있나</th><th>실측 (2026-09-07)</th></tr></thead>
+      <thead><tr><th>어디</th><th>뭐라고 적혀 있었나</th><th>실측</th><th>오늘</th></tr></thead>
       <tbody>
-        <tr><td class="mono">README.md:228</td><td><span class="mono">checks.yml</span> 은 오늘 <strong>휴면</strong></td><td class="bad">거짓 — 최근 런 3건 전부 success</td></tr>
-        <tr><td class="mono">README.md:67</td><td>이 레포들은 <strong>private</strong></td><td class="bad">거짓 — 둘 다 public</td></tr>
-        <tr><td class="mono">contracts/README.md:74</td><td>「여기서 고치지 마세요」</td><td class="bad">거짓 — 배송 기계는 퇴역했다</td></tr>
-        <tr><td class="mono">docs/operations/ 3개</td><td>중앙 <strong>5개</strong> 서비스</td><td class="bad">거짓 — 실측 7개</td></tr>
-        <tr><td class="mono">contracts/CODEOWNERS</td><td>모노레포에서 <strong>배송된다</strong></td><td class="bad">거짓 — 그 디렉터리가 없다</td></tr>
+        <tr><td class="mono">README.md</td><td><span class="mono">checks.yml</span> 은 오늘 <strong>휴면</strong></td><td>최근 런 전부 success</td><td class="good">✅ 고침</td></tr>
+        <tr><td class="mono">README.md</td><td>이 레포들은 <strong>private</strong></td><td>둘 다 public</td><td class="good">✅ 고침</td></tr>
+        <tr><td class="mono">docs/operations/ 3개</td><td>중앙 <strong>5개</strong> 서비스</td><td>실측 <strong>7개</strong></td><td class="good">✅ 고침</td></tr>
+        <tr><td class="mono">contracts/README.md</td><td>「여기서 고치지 마세요」</td><td>배송 기계는 퇴역했다</td><td class="bad">🔴 남음<br><span class="mono" style="font-size:.85em">다른 레포</span></td></tr>
+        <tr><td class="mono">contracts/CODEOWNERS</td><td>모노레포에서 <strong>배송된다</strong></td><td>그 디렉터리가 없다</td><td class="bad">🔴 남음<br><span class="mono" style="font-size:.85em">다른 레포</span></td></tr>
       </tbody>
     </table>
   </div>

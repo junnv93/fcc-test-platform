@@ -17,18 +17,30 @@
 문서가 낡는 것은 이 프로젝트에서 **가장 자주 재발하는 사고 유형**입니다.
 낡은 문장은 틀렸다고 말해 주지 않고, **맞는 문장과 똑같이 생겼습니다.**
 
-### 2026-09-07 에 실측으로 확인된 «오늘 거짓인» 서술
+### 2026-09-07 에 실측으로 찾은 «거짓» 서술 다섯 — 셋은 고쳤고 둘은 남았습니다
 
-| 어디 | 뭐라고 적혀 있나 | 실측 | 확인 명령 |
+| 어디 | 뭐라고 적혀 있었나 | 실측 | 오늘 상태 |
 |---|---|---|---|
-| `README.md:228` | `checks.yml` 은 오늘 **휴면** | **거짓** — 최근 런 3건 전부 `success` | `gh run list --repo junnv93/fcc-test-platform` |
-| `README.md:67` | 이 레포들은 **private** | **거짓** — 둘 다 `public` | `gh api repos/junnv93/fcc-test-platform --jq .visibility` |
-| `fcc-test-contracts/README.md:74` | 「여기서 고치지 마세요」 | **거짓** — 배송 기계 퇴역(2026-08-31). 여기서 고칩니다 | `ls FCC_mobile_test_automation/packaging/` → 없음 |
-| `docs/operations/` **3개 파일** | 중앙 **5개** 서비스 | **거짓** — 실측 **7개** | `python3 -c "import yaml;print(list(yaml.safe_load(open('infra/docker-compose.central.yml'))['services']))"` |
-| `fcc-test-contracts/CODEOWNERS` | 모노레포 `packaging/…` 에서 리뷰되고 **배송된다** | **거짓** — 그 디렉터리도 배송 스크립트도 없다 | `ls FCC_mobile_test_automation/packaging/` |
+| `README.md` | `checks.yml` 은 오늘 **휴면** | 최근 런 전부 `success` | ✅ **고침** (정정 주석 포함) |
+| `README.md` | 이 레포들은 **private** | 둘 다 `public` | ✅ **고침** |
+| `docs/operations/` **3개 파일** | 중앙 **5개** 서비스 | **7개** | ✅ **고침** (세 파일 모두) |
+| `fcc-test-contracts/README.md` | 「여기서 고치지 마세요」 | 배송 기계 퇴역(2026-08-31) | 🔴 **남음 — 다른 레포** |
+| `fcc-test-contracts/CODEOWNERS` | 모노레포에서 **배송된다** | 그 디렉터리도 스크립트도 없다 | 🔴 **남음 — 다른 레포** |
 
-앞의 셋은 `CLAUDE.md` 가 이미 표로 잡아 두었고, **뒤의 둘은 이 온보딩 작업에서 새로
-찾은 것**입니다. 즉 이 목록은 **완전하지 않습니다** — 당신도 찾게 됩니다.
+**재는 명령:**
+
+```bash
+gh run list --repo junnv93/fcc-test-platform --limit 5
+gh api repos/junnv93/fcc-test-platform --jq .visibility
+python3 -c "import yaml;print(list(yaml.safe_load(open('infra/docker-compose.central.yml'))['services']))"
+ls ~/FCC_mobile_test_automation/packaging/          # → No such file or directory
+```
+
+앞의 셋은 `CLAUDE.md` 가 이미 표로 잡고 있었고, **뒤의 둘은 이 온보딩 작업이 새로
+찾았습니다.** 즉 이 목록은 **완전하지 않습니다** — 당신도 찾게 됩니다.
+
+⚠️ **고칠 때 옛 문장을 «지우지» 마십시오.** 세 파일 모두 정정 주석을 남겼습니다 —
+옛 판을 믿고 잘못 판단한 사례가 이 레포에 있고, 그것을 막는 것은 삭제가 아니라 기록입니다.
 
 > ### 🧭 스스로 묻는 질문
 > **「이 문장이 쓰인 날에는 참이었는데, 오늘도 참인가?」**

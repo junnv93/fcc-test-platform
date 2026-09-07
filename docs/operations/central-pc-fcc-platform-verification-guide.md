@@ -88,17 +88,22 @@ docker compose -f infra/docker-compose.central.yml ps
 | `docker compose -f infra/docker-compose.central.yml` | FCC 중앙 스택 정의 파일을 지정한다. |
 | `ps` | 그 스택의 컨테이너 목록과 상태(STATUS)를 보여준다. |
 
-**정상 기대값** — 아래 5개 서비스가 `Up`(또는 `healthy`) 상태여야 한다.
+**정상 기대값** — 아래 **7개** 서비스가 보여야 한다. 여섯은 `Up`(또는 `healthy`),
+`fcc-central-migrate` 는 일회성 러너이므로 `Exited (0)` 이 정상이다.
 
 ```text
-NAME                          STATUS
-fcc-central-postgres          Up (healthy)
-fcc-central-keycloak          Up (healthy)
-fcc-central-headless-api      Up (healthy)
-fcc-central-platform-api      Up (healthy)
-fcc-central-web               Up
-fcc-central-migrate           Exited (0)
+NAME                            STATUS
+fcc-central-postgres            Up (healthy)
+fcc-central-keycloak            Up (healthy)
+fcc-central-headless-api        Up (healthy)
+fcc-central-platform-api        Up (healthy)
+fcc-central-platform-api-node   Up
+fcc-central-web                 Up
+fcc-central-migrate             Exited (0)
 ```
+
+<!-- 정정 2026-09-07: 옛 판은 「5개 서비스」라 적고 목록에는 6줄을 실었으며
+     fcc-central-platform-api-node 가 빠져 있었다. 실측 7개. -->
 
 판단 기준:
 
@@ -294,7 +299,7 @@ python -m pytest tests/test_central_docker_compose.py -q
 | `fcc-central-migrate`가 `Exited (0)` | 정상. 1회성 스키마 작업이 성공적으로 끝난 상태다 |
 | 챔버 노드가 목록에 안 보인다 | 노드가 `http://<CENTRAL_IP>:8080`을 바라보는지, 챔버 `:9000`이 LISTENING인지, 머신 토큰이 일치하는지 확인(6단계) |
 | 특정 서비스가 `Exited`/`Restarting` (migrate 제외) | `logs <서비스>`로 원인 확인 → 배포 문서 절차로 재기동 |
-| 중앙 PC를 재부팅했다 | `ps`로 5개 서비스 자동 기동 확인(1단계). 안 떴으면 배포 문서 부팅 절차 |
+| 중앙 PC를 재부팅했다 | `ps`로 **7개** 서비스 자동 기동 확인(1단계). 안 떴으면 배포 문서 부팅 절차 |
 
 ---
 

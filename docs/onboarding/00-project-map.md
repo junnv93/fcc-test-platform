@@ -161,18 +161,16 @@ $ python3 -c "import yaml;print(list(yaml.safe_load(open('infra/docker-compose.c
 
 **7개 전부 `profiles` 가 없습니다** — 즉 조건부가 아니라 항상 기동합니다.
 
-> 🔴 **오늘 거짓인 서술.** `docs/operations/provider-integration-guide.md`,
-> `docs/operations/headless-migration-guide.md`,
-> `docs/operations/central-pc-fcc-platform-verification-guide.md` 세 곳이
-> **「중앙 5개 서비스」**라고 적습니다. 실측은 **7개**입니다.
-> `central-migrate`(일회성 러너)와 `platform-api-node`(평문 HTTP 중앙에서
-> 브라우저와 노드의 인증 모드가 반대라 갈라놓은 두 번째 인스턴스)가 나중에
-> 붙었고 문장이 따라오지 않았습니다.
+> ✅ **정정 완료 (2026-09-07).** `docs/operations/` 세 곳이 **「중앙 5개 서비스」**라고
+> 적고 있었고, 실측은 **7개**입니다. `central-migrate`(일회성 러너)와
+> `platform-api-node`(평문 HTTP 중앙에서 브라우저와 노드의 인증 모드가 반대라 갈라놓은
+> 두 번째 인스턴스)가 나중에 붙었는데 문장이 따라오지 않았습니다.
+> **세 파일 모두 이 웨이브에서 고쳤고, 각 자리에 정정 주석을 남겼습니다.**
 >
-> ⚠️ **다만 그 문서들의 «결론»은 여전히 참입니다** — provider 저장소를 실제로
-> 필요로 하는 서비스는 `headless-api` **하나**뿐입니다. 틀린 것은 분모입니다.
-> 결론이 맞다고 분모를 그냥 두면, 다음 사람이 `docker compose ps` 에서
-> 7줄을 보고 **「뭔가 잘못됐다」고 판단합니다.**
+> ⚠️ **그 문서들의 «결론»은 처음부터 참이었습니다** — provider 저장소를 실제로
+> 필요로 하는 서비스는 `headless-api` **하나**뿐입니다. **틀렸던 것은 분모**이고,
+> 결론이 맞다고 분모를 두면 다음 사람이 `docker compose ps` 에서 7줄을 보고
+> **「뭔가 잘못됐다」고 판단합니다.**
 
 ### 어느 서비스가 이미지를 «빌드» 하나
 
