@@ -2,9 +2,9 @@
 
 Intent: ./intent.md
 Spec: ./spec.md
-Engineer: (담당 배정 대기)
+Engineer: 세션 3d (리드 위임)
 Date: 2026-09-07
-Status: draft
+Status: accepted
 Slug: intent-driven-workflow
 Branch: feature/intent-driven-workflow
 
@@ -28,15 +28,37 @@ Branch: feature/intent-driven-workflow
 | 6 | `CLAUDE.md` (레인 루트) | 200줄 이하. 모든 세션에 참인 것만 | 규칙이 도달해야 나머지가 의미를 갖는다 | R1 |
 | 7 | `/home/kmjkds/fcc-delivery-final/CLAUDE.md` | 컨테이너 루트 | 세션이 여기서 시작한다 | R1 |
 | 8 | `.claude/rules/intent-workflow.md` | **`paths:` 없음** — 무조건 로드 | 이 레인 최초의 무조건 규칙 | R1 R3 |
-| **9** | **`CODEOWNERS`** | **T1 = 경로 축 방아쇠의 SSOT.** 리드 소유 경로 5종 | **#10 이 이 파일을 «파싱»한다 — 먼저 있어야 한다** | **R7 R9** |
-| **10** | **`scripts/human_judgment_triggers.py`** | **T2~T5 판정 SSOT.** T1 경로는 `CODEOWNERS` 에서 **파생**한다 | 검사(#11)가 이것을 import 한다 | **R9 R10** |
-| **11** | **`tests/test_human_judgment_is_recorded.py`** | 위 판정기의 봉인 + **주입 케이스 8종** | 판정기가 있어야 대상을 가진다 | **R9 R10** |
-| 12 | `tests/test_intent_triplet_wellformed.py` | 세 파일의 형식·짝·상태 + 주입 케이스 | | R6 |
-| 13 | `.claude/settings.json` + `.claude/hooks/guard_contributor_role.sh` | L1 `PreToolUse` 훅 | 검사가 초록이 된 뒤에 붙인다 | R4 |
-| 14 | `githooks/pre-commit` (수정) | intent/code 혼합 커밋 거부 축 **추가** | 기존 두 축 **뒤에** 붙인다 — 덮어쓰지 않는다 | R5 R8 |
-| 15 | `docs/education/2026-09-07-의도로-시작하는-개발-협업자-교육자료.html` | 동료 교육 문서 | 흐름이 확정된 뒤 | R2 |
-| 16 | `fcc-test-contracts/CLAUDE.md` | 커널 레인용 (별도 PR) | | R1 |
+| **9** | **`CODEOWNERS`** | T1 경로 목록의 SSOT. ⚠️ 게이트는 아니다 | #10 이 이 파일을 «파싱»한다 — 먼저 있어야 한다 | R7 R9 |
+| **10** | **`scripts/human_judgment_triggers.py`** | T2~T5 판정 SSOT. T1 은 `CODEOWNERS` 에서 **파생** | 검사(#11)가 import 한다 | R9 R10 |
+| **11** | **`tests/test_human_judgment_is_recorded.py`** | 위의 봉인 + 주입 양방향 | 판정기가 있어야 대상을 가진다 | R9 R10 |
+| 12 | `scripts/check_intent_triplet.py` | 삼종세트 형식·짝·상태 판정 SSOT | 서식(#2~4)이 확정된 뒤 | R6 |
+| 13 | `tests/test_intent_triplet_wellformed.py` | 위의 봉인 + 주입 | | R6 |
+| 14 | `scripts/check_intent_commit_separation.py` | 승인 아티팩트와 코드의 혼합 거절 | 훅(#16)이 부른다 | R5 |
+| 15 | `tests/test_intent_commit_separation.py` | 위의 봉인. **과발화도 단언한다** | | R5 |
+| 16 | `githooks/pre-commit` (수정) | 축 3 **추가** — 기존 두 축 **뒤에** | 검사(#14)가 있어야 부를 것이 있다 | R5 R8 |
+| **17** | **`githooks/pre-push`** (수정) | **축 0 — ref 삭제를 알아본다.** 형제 세션 -97 이 보고한 결함 | 축 1·2 «앞»에 — stdin 을 먼저 읽어야 한다 | R8 |
+| **18** | **`tests/test_pre_push_distinguishes_a_deletion.py`** | 주입 5종. **다섯째가 파이프-서브셸**이고 그것이 유일한 조용한 실패 경로다 | | R8 |
+| 19 | `.claude/rules/intent-workflow.md` | **`paths:` 없음** — 이 레인 최초의 무조건 규칙 | | R1 R3 |
+| 20 | `.claude/hooks/guard_contributor_role.py` | L1 `PreToolUse` 훅. **기본값 무해** | | R4 |
+| 21 | `.claude/settings.json` | 위 훅의 배선 | 훅이 있어야 배선할 것이 있다 | R4 |
+| 22 | `tests/test_contributor_role_hook.py` | 위의 봉인. **「켜지 않았을 때 안 막는가」가 첫 축** | | R4 |
+| 23 | `.gitignore` | `.claude/role` 은 기계마다 다르므로 커밋하지 않는다 | | R4 |
+| **24** | **`.claude/contracts/branch-protection-declaration.json`** | **게이트 «값»의 SSOT.** 산문에서 사본을 걷어낸다 | #25 가 이것을 읽는다 | **R10** |
+| **25** | **`scripts/check_gate_declaration.py`** | 선언 == GitHub 실제. 닿지 못하면 «판정 불가»라 말한다 | | **R10** |
+| **26** | **`tests/test_documented_gate_values_match_the_live_config.py`** | 위의 봉인. **몇 개를 대조했는지 센다** | | **R10** |
+| 27 | `intent/README.md` (수정) | T1 이 게이트가 아님을 명시 · 선언 인용 | | R9 |
+| 28 | `.claude/evaluations/2026-09-07-intent-driven-workflow-and-branch-protection.md` (수정) | 정정 ④ · 선언 인용 | | — |
+| 29 | `docs/education/2026-09-07-의도로-시작하는-개발-협업자-교육자료.html` | 동료 교육 문서 | 흐름이 확정된 뒤 | R2 |
+| 30 | `fcc-test-contracts/CLAUDE.md` | 커널 레인용 (별도 PR) | | R1 |
 | — | **branch protection 켜기** | GitHub 설정 | **§4 A1** — 코드 변경 아님 | R7 |
+
+> ⚠️ **경로는 «말줄임표 없이» 적어라.** `…` 를 쓰면 판정기가 실제 경로와 맞추지
+> 못하고 T4 가 계속 발화한다. 이 표의 첫 개정판이 그것으로 두 번 더 빨갰다.
+
+> 🔄 **2026-09-07 개정 — T4 가 이 표를 향해 발화했다.** 초판은 16행이었고 실제로
+> 만든 것은 30행이었다. 판정기가 「표에 없는 파일 11건」이라고 이름으로 말했고,
+> 그것이 이 개정을 낳았다. **자기가 만든 게이트에 자기가 걸린 두 번째 사례**다
+> (첫째는 혼합 커밋 거절이 이 작업을 두 커밋으로 나누게 한 것).
 
 > ⚠️ **#9 → #10 의 순서가 D4 를 실현합니다.** 판정기는 리드 소유 경로를
 > 하드코딩하지 않고 `CODEOWNERS` 를 파싱합니다. 같은 집합이 두 곳에 있으면
@@ -102,15 +124,16 @@ A2~A3 은 **각각 따로** 묻습니다. 하나의 「진행해라」로 묶지
 
 ### A1 — 적용된 값과 그 근거 (2026-09-07 완료)
 
-| 값 | 설정 | 왜 |
-|---|---|---|
-| PR 필수 | **켬** | main 직접 push 차단. 실측: 최근 50개 착지가 **전부 PR 머지**, 직접 push **0건** — 아무것도 깨지지 않는다 |
-| 필수 승인 수 | **0** | ⚠️ 협업자가 **1명뿐**이고 GitHub 은 **자기 PR 자기 승인을 금지**한다. 1로 두면 모든 머지가 `gh pr merge --admin` 을 요구하고, 그것을 형제 세션 6개에 통보 없이 강제하게 된다 |
-| 필수 검사 | **`lane-check`** | 실측한 정확한 check run 이름. 워크플로 이름(`checks`)이 아니다 |
-| `strict` (up-to-date 강제) | **끔** | ⚠️ **근거 2회 정정 (2026-09-07).** 초판 *"guard 가 이미 한다"* 는 **거짓**이었다(아래 §신선도). 참 근거는 **`lane-check` 이 PR 헤드가 아니라 «합친 트리»를 검사한다**는 것 — `checks.yml` 이 `pull_request` 로 걸리고 `checkout@v4` 에 `ref:` 가 없어 `refs/pull/N/merge` 가 체크아웃된다. 실증(run 34067524062): `HEAD is now at 378ea31 Merge f88193fe… into 6e1fcb26…`. 즉 필수 검사가 이미 「합치면 초록인가」를 묻는다. 반면 `strict=true` 는 main 이 움직일 때마다 **워크트리 6개를 재기저로 직렬화**한다 |
-| `required_linear_history` | **끔** | **no-squash 규칙이 머지 커밋을 쓴다.** 켜면 머지 커밋이 금지되어 **전부 막힌다** |
-| `enforce_admins` | **켬** | ⚠️ **근거 정정 + 설정 변경 (2026-09-07).** 초판은 「승인 수 0 과 같은 이유」로 껐는데 **그 사유는 성립하지 않습니다** — 승인 수가 0이면 자기 승인 문제가 애초에 안 생깁니다. 끈 실제 효과는 **「관리자는 `lane-check` 도 우회할 수 있다」** 였고, 협업자 1명이 곧 관리자이므로 「red 면 서버가 막는다」가 **거짓**이 됩니다. 켰습니다. 탈출구는 관리자가 protection 자체를 고치는 것 — **일부러 시끄럽고 의도적인** 경로입니다 |
-| force push · 브랜치 삭제 | **금지 — 단 `main` 에만** | ⚠️ **범위 정정.** `allow_deletions: false` 는 **보호 패턴(`main`)에만** 적용된다. **기능 브랜치 삭제는 그대로 됩니다** — 실측: 보호가 켜진 뒤 형제 세션이 머지된 기능 브랜치 둘을 삭제해 성공했고, 기능 브랜치에는 규칙이 **0개**다. 이것을 「삭제가 막혔다」로 전달하면 머지 뒤 정리를 안 하게 되어 원격에 브랜치가 쌓인다. main 오착지의 유일한 복구가 revert 라는 것은 여전히 참이다 |
+> 🔑 **값의 SSOT 는 산문이 아니다.**
+> `.claude/contracts/branch-protection-declaration.json` 이 값을 들고,
+> `tests/test_documented_gate_values_match_the_live_config.py` 가 그것을
+> **GitHub 실제 설정과 대조**한다.
+>
+> ⚠️ 값을 여기 «다시» 적지 마라. 이 세션은 하루에 네 번 틀렸고 네 번 다
+> 「이 게이트가 무엇을 강제하는가」에 대한 산문이었다. 사본을 만들면 갈라지고,
+> 갈라진 쪽을 읽은 사람이 틀린 것을 믿는다.
+>
+> 각 값의 **근거**는 그 JSON 의 `why_each_value` 에 있다 — 값 옆에.
 
 > ⚠️ **「필수 승인 수 0」은 임시값입니다.** 뒤집는 조건이 명확합니다 —
 > **두 번째 협업자가 추가되는 날 1 로 올립니다.** 그때까지는 「PR 은 필수인데

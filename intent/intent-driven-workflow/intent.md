@@ -2,7 +2,7 @@
 
 Author: 팀 리드 (kmjkds) / Claude 초안
 Date: 2026-09-07
-Status: draft
+Status: accepted
 Slug: intent-driven-workflow
 
 ## Problem

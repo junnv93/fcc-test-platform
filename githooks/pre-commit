@@ -6,6 +6,11 @@
 #   2. Refuse a commit whose staged paths this worktree's claim owns but had not
 #      declared before this change (M-2 declare-before-edit).
 #      Rationale and decision rules: scripts/supervisor_preflight.py
+#   3. Refuse a commit that mixes an approval artifact (intent.md / spec.md)
+#      with code. Rationale: scripts/check_intent_commit_separation.py
+#      ⚠️ Added 2026-09-07 **behind** the two above — not replacing them.
+#         This hook's own header records why: a transfer that overwrote instead
+#         of merging would have silently removed the only blocking gate.
 #
 # ⚠️ The second check exists here because it existed nowhere else. It was added
 # in round 4b so the ordering question could be asked of the INDEX rather than
@@ -49,6 +54,16 @@ fi
 # guard above already refuses that case on its own terms.
 if [ -f "$preflight" ]; then
   "$python_bin" "$preflight" --check-staged-ordering || exit $?
+fi
+
+# ── 축 3: 승인 아티팩트와 코드의 혼합 (2026-09-07) ────────────────────────────
+# 앞의 두 축과 **독립**이다 — 하나를 면제해도 나머지가 막는다.
+# ⚠️ 우회를 «일부러 시끄럽게» 만든다. 조용한 우회는 게이트가 없는 것과 같다.
+separation="$repo_root/scripts/check_intent_commit_separation.py"
+if [ "${FCC_ALLOW_MIXED_INTENT_COMMIT:-0}" = "1" ]; then
+  echo "intent 분리 게이트: FCC_ALLOW_MIXED_INTENT_COMMIT=1 — 건너뛴다." >&2
+elif [ -f "$separation" ]; then
+  "$python_bin" "$separation" --root "$repo_root" </dev/null || exit $?
 fi
 
 exit 0

@@ -76,3 +76,7 @@ Thumbs.db
 # provider UI descriptor — provider 소유 내용이므로 이 저장소가 담지 않는다.
 # 담으면 두 벌이 되고 사본은 갈라진다(2026-09-01 실측). README 만 추적한다.
 config/provider-ui/*.json
+
+# 이 체크아웃의 «역할» 선언. 기계마다 다르므로 커밋하지 않는다.
+# 규칙: .claude/hooks/guard_contributor_role.py
+.claude/role

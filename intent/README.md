@@ -136,6 +136,10 @@ intent/
 | L4 branch protection | GitHub 서버 | 승인 없는 `main` 착지 · `lane-check` red | **불가능** |
 | — `CODEOWNERS` | (같은 자리) | 🔴 **오늘 아무것도 막지 않음** — 위 T1 주석 | 해당 없음 |
 
+> 🔑 **L4 의 실제 값은 `.claude/contracts/branch-protection-declaration.json` 에 있고,
+> `tests/test_documented_gate_values_match_the_live_config.py` 가 GitHub 실제
+> 설정과 대조합니다.** 이 문서에 값을 다시 적지 마세요 — 사본은 갈라집니다.
+
 > ⚠️ **L1~L3 은 실수 방지층이지 방어층이 아닙니다.** 셋 다 우회할 수 있습니다.
 > **실제로 강제되는 것은 L4 하나뿐**입니다 — 서버에서 돌고 로컬 설정으로 못 끕니다.
 > 이 문장이 사라지면 다음 사람이 L1~L3 을 강제라고 믿습니다.
