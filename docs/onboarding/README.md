@@ -55,12 +55,17 @@
 ### 🟢 첫날 — 전원 (개발 경험 무관)
 
 ```
+ ⓪ 07-first-day-scripts.md          ★ «그대로 따라 치는» 대본 — 폴더 생성부터
+                                      Claude 에게 칠 첫 멘트까지                  40분
  ① 05-github-access.md              계정·권한. 이게 없으면 아무것도 못 한다        5분
  ② 06-workspace-and-claude-md.md    폴더 배치 · CLAUDE.md 를 어디에 두나          10분
  ③ 01-concepts-for-non-developers.md  CI · 이미지 · 빌드 · 배포가 «무엇인가»       30분
  ④ 00-project-map.md                무엇이 어디서 도는가                          20분
  ⑤ 02-how-we-collaborate.md         누가 · 무엇을 · 어떤 순서로 · 무엇이 막나      20분
 ```
+
+⚠️ **⓪ 은 「이해」가 아니라 「실행」입니다.** 개념을 몰라도 그대로 따라 칠 수 있게
+쓰여 있고, 각 단계에 **확인 명령**이 붙어 있습니다. 이해는 ③ 이 담당합니다.
 
 ⚠️ **③ 앞에 읽을 것이 하나 더 있습니다** —
 `docs/education/2026-09-06-시스템-연결-구조-시험원-교육자료.html` 이
@@ -91,6 +96,7 @@
 
 | 파일 | 무엇 | 대상 |
 |---|---|---|
+| `07-first-day-scripts.md` | ★ **첫날 대본** — 트랙별 폴더 생성 · clone · 환경 · 📋 첫 멘트 | 신규 (전원) |
 | `05-github-access.md` | 레포 초대 · 권한 · **오늘 무엇이 강제되나** | 운영자 + 신규 |
 | `06-workspace-and-claude-md.md` | 두 레포 배치 · `CLAUDE.md`/rules/skills 를 어디에 | 전원 |
 | `01-concepts-for-non-developers.md` | **CI · 컨테이너 이미지 · 빌드 · 배포** (비유 없이) | 비개발자 |

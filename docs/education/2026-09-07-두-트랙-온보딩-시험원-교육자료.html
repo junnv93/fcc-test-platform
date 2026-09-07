@@ -1363,25 +1363,25 @@ git push origin HEAD:refs/heads/&lt;이름&gt;  <span style="color:var(--bad)">#
     <table>
       <thead><tr><th class="num">#</th><th>무엇</th><th>누가</th><th>왜 이 순서</th></tr></thead>
       <tbody>
-        <tr><td class="num">1</td><td class="warn">⚠️ <span class="mono">fcc-test-contracts</span> 에 branch protection 켜기</td><td>운영자</td><td class="bad">오늘 <strong>보호가 전혀 없습니다.</strong> 초대하는 순간 누구나 main 에 직접 push 할 수 있습니다</td></tr>
-        <tr><td class="num">2</td><td class="warn">⚠️ <span class="mono">fcc-test-contracts</span> 에 <span class="mono">CLAUDE.md</span> 만들기</td><td>운영자</td><td class="bad">그 레인을 여는 세션에는 오늘 <strong>규칙이 하나도 도달하지 않습니다</strong></td></tr>
-        <tr><td class="num">3</td><td>두 레포에 <strong>각각</strong> 초대 (<span class="mono">permission=push</span>)</td><td>운영자</td><td>개인 계정이라 Team 이 없어 <strong>일괄 부여 경로가 없습니다</strong></td></tr>
-        <tr><td class="num">4</td><td class="mono">gh auth login &amp;&amp; gh auth setup-git</td><td>합류자</td><td>HTTPS 를 고르십시오. SSH 키는 등록돼 있지 않습니다</td></tr>
-        <tr><td class="num">5</td><td class="mono">git config core.hooksPath githooks</td><td>합류자</td><td><strong>clone 마다 opt-in 입니다.</strong> 안 하면 게이트 셋이 꺼진 채로 일하게 됩니다</td></tr>
-        <tr><td class="num">6</td><td><span class="mono">/context</span> 로 <span class="mono">CLAUDE.md</span> 로드 확인</td><td>합류자</td><td>「파일이 있다」가 아니라 <strong>「로드됐다」</strong>를 보십시오</td></tr>
-        <tr><td class="num">7</td><td><span class="mono">docs/onboarding/</span> 를 순서대로 읽기 (아래 §순서)</td><td>합류자</td><td>이 교육자료는 <strong>지도</strong>이고, 그쪽이 <strong>작업 지시</strong>입니다</td></tr>
+        <tr><td class="num">1</td><td class="warn">⚠️ <span class="mono">fcc-test-contracts</span> 의 <span class="mono">main</span> 에 branch protection 켜기</td><td>운영자</td><td class="bad">오늘 <strong>보호가 전혀 없습니다.</strong> 초대하는 순간 누구나 계약 커널의 <span class="mono">main</span> 에 직접 push 할 수 있고, platform 이 그것을 소비합니다</td></tr>
+        <tr><td class="num">2</td><td class="warn">⚠️ <span class="mono">fcc-test-contracts</span> 에 <span class="mono">.claude/rules/</span> 세우기</td><td>운영자</td><td><span class="mono">CLAUDE.md</span> 는 <strong>09:43 에 생겼습니다</strong>(<span class="mono">f8992ee</span>). 경로별 규칙은 아직 <strong>0개</strong>입니다</td></tr>
+        <tr><td class="num">3</td><td>두 레포에 <strong>각각</strong> 초대 (<span class="mono">permission=push</span>)</td><td>운영자</td><td>개인 계정이라 Team 이 없어 <strong>일괄 부여 경로가 없습니다.</strong> <span class="mono">admin</span> 을 주지 마십시오 — 게이트를 끌 수 있습니다</td></tr>
+        <tr><td class="num">4</td><td>⭐ <span class="mono">07-first-day-scripts.md</span> 를 열고 <strong>그대로 따라 치기</strong></td><td>합류자</td><td><strong>폴더 생성 · clone · 훅 · 파이썬 환경 · Claude 에게 칠 첫 멘트</strong>까지 명령 단위로 있습니다. 각 단계에 확인 명령이 붙어 있습니다</td></tr>
+        <tr><td class="num">5</td><td><span class="mono">/context</span> 로 <span class="mono">CLAUDE.md</span> 로드 확인</td><td>합류자</td><td>「파일이 있다」가 아니라 <strong>「로드됐다」</strong>를 보십시오</td></tr>
+        <tr><td class="num">6</td><td><span class="mono">docs/onboarding/</span> 를 순서대로 읽기 (아래 §순서)</td><td>합류자</td><td>이 교육자료는 <strong>지도</strong>이고, 그쪽이 <strong>작업 지시</strong>입니다</td></tr>
       </tbody>
     </table>
   </div>
 
-  <h3>읽는 순서 — <span class="mono">docs/onboarding/</span> 문서 11개</h3>
+  <h3>읽는 순서 — <span class="mono">docs/onboarding/</span> 문서 12개</h3>
 
   <div class="scroll">
     <table>
       <thead><tr><th>단계</th><th>파일</th><th>무엇</th><th class="num">분</th></tr></thead>
       <tbody>
-        <tr><td rowspan="5" style="vertical-align:middle"><strong>🟢 첫날</strong><br><span class="mono" style="font-size:.85em">전원</span></td>
-            <td class="mono">05-github-access.md</td><td>계정·권한. 이게 없으면 아무것도 못 한다</td><td class="num">5</td></tr>
+        <tr><td rowspan="6" style="vertical-align:middle"><strong>🟢 첫날</strong><br><span class="mono" style="font-size:.85em">전원</span></td>
+            <td class="mono">07-first-day-scripts.md</td><td>⭐ <strong>그대로 따라 치는 대본</strong> — 폴더 생성부터 첫 멘트까지</td><td class="num">40</td></tr>
+        <tr><td class="mono">05-github-access.md</td><td>계정·권한. 이게 없으면 아무것도 못 한다</td><td class="num">5</td></tr>
         <tr><td class="mono">06-workspace-and-claude-md.md</td><td>폴더 배치 · <span class="mono">CLAUDE.md</span> 를 어디에 두나</td><td class="num">10</td></tr>
         <tr><td class="mono">01-concepts-for-non-developers.md</td><td><strong>CI · 이미지 · 빌드 · 배포가 무엇인가</strong> (비유 없이)</td><td class="num">30</td></tr>
         <tr><td class="mono">00-project-map.md</td><td>무엇이 어디서 도는가</td><td class="num">20</td></tr>
@@ -1409,7 +1409,7 @@ git push origin HEAD:refs/heads/&lt;이름&gt;  <span style="color:var(--bad)">#
 
   <div class="done">
     <p>
-      <strong>6번을 건너뛰지 마십시오.</strong> 이 프로젝트가 겪은 사고가 정확히 그
+      <strong>5번을 건너뛰지 마십시오.</strong> 이 프로젝트가 겪은 사고가 정확히 그
       형태입니다 — 규칙 파일 셋이 있었는데 <strong>전부 조건부라 아무 세션에도
       도달하지 않았습니다.</strong> 그 자리를 개인 메모 98개가 메우고 있었고,
       <strong>그것은 동료 PC 로 하나도 가지 않습니다.</strong>

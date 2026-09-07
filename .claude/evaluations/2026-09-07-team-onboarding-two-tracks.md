@@ -124,6 +124,49 @@ T4/T5: 무발화 — plan_texts 가 비면 check_t4_t5 가 return []
 **CI 의 실제 내용 · 컨테이너 이미지 · 빌드 · 배포 · provider 화 · 협업**을 채웠다.
 `01-concepts-for-non-developers.md` §2 에 그 경계표를 명시했다.
 
+## ⚠️ push 게이트가 잡은 것 — 그리고 그것은 «내가 훅을 켠 방식»이었다
+
+정상 방식으로 push 하기 전에 `git -c core.hooksPath=githooks push` 를 썼고,
+**실패 1건**으로 막혔다. 내 변경(문서)과 무접촉인 테스트였다:
+
+```
+FAILED tests/test_git_hooks_are_wired_here.py::
+       TestTheCheckWouldSeeAnUnwiredCheckout::test_an_unset_checkout_reads_as_empty
+```
+
+**한 줄로 재현했다:**
+
+```bash
+GIT_CONFIG_PARAMETERS="'core.hooksPath=githooks'" python -m pytest tests/test_git_hooks_are_wired_here.py -q
+#   → 1 failed, 7 passed      (그 env 없이 → 8 passed)
+#   AssertionError: PosixPath('.') != PosixPath('githooks')
+```
+
+**기전:** `git -c <k>=<v>` 는 자식 프로세스에 `GIT_CONFIG_PARAMETERS` 를 넘긴다.
+훅이 부른 pytest 가 그것을 상속하고, 그 테스트가 `git init` 으로 만드는
+**격리된 임시 저장소에까지 설정이 침투**한다. 그래서 「미설정 트리는 빈 값을 읽는다」가
+깨진다.
+
+**두 가지가 나온다:**
+
+1. **내 실수** — `core.hooksPath` 는 이 저장소에 **이미 설정돼 있었다**
+   (`git config --get core.hooksPath` → `githooks`). `git -c` 가 불필요했다.
+   빼고 push 하니 통과했다 (`선언 0 / 관측 0 ✅`).
+
+2. **실제 결함 (내 브랜치 범위 밖 — 형제 세션에 인계했다)** —
+   `tests/test_git_hooks_are_wired_here.py:46` 의 `_git_env_without_repo_location()` 이
+   `GIT_DIR` 류 **위치** 변수만 `pop` 하고 **`GIT_CONFIG_PARAMETERS`(설정)는 지우지
+   않는다.** 위치는 격리했는데 설정은 안 했다.
+
+⚠️ **그리고 그 테스트는 «본 검사의 비-공허성»을 확인하는 것이다**
+(「미설정 트리를 실제로 볼 수 있는가」). 깨진 상태에서는
+**본 검사에 이빨이 있는지가 확인되지 않는다.**
+
+이것은 auto memory [[worktrees-share-git-config-so-hooks-can-vanish]]
+(「훅 안에서는 cwd 가 GIT_DIR 을 이기지 못한다」)의 **자매 축**이다 —
+그쪽은 *위치* 격리 실패, 이쪽은 *설정* 격리 실패. **같은 파일이 두 번 같은 계급의
+결함을 냈다.**
+
 ## 남은 것
 
 - **영상 셋의 내용은 반영하지 못했다.** 사용자가 준 유튜브 링크 3개에서 **제목만**
