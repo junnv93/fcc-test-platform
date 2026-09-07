@@ -1219,8 +1219,17 @@ docs/PROVIDER-KICKOFF.md 를 읽고 §1 의 「0단계」부터 시작해줘.
       로컬 PC 에서 도는 것은 <strong>그 PC 의 주인이 끌 수 있기 때문</strong>입니다.
     </p>
     <p>
-      실제로 강제되는 것은 <strong>L4 하나뿐</strong>입니다. 실측:
+      실제로 강제되는 것은 <strong>L4 하나뿐</strong>입니다. 실측(<span class="mono">fcc-test-platform</span>):
       <span class="mono">enforce_admins: true</span> — <strong>관리자도 우회 못 합니다.</strong>
+    </p>
+    <p>
+      ⚠️ <strong>그런데 이것은 «이 레인만» 참입니다.</strong> 계약 커널
+      <span class="mono">fcc-test-contracts</span> 는 <span class="mono">enforce_admins: false</span>
+      이고, <strong>거기서는 L4 도 관리자가 우회할 수 있습니다.</strong> 그 레포의 협업자는
+      1명이고 그 1명이 <span class="mono">admin</span> 이므로 실질적으로 「언제든」입니다.
+      ✅ 그것은 <strong>의도</strong>입니다 — 태그 레인이 멈추면 공급 사슬 전체가 멈추므로
+      비상구를 남겼습니다(근거: <span class="mono">contracts/CLAUDE.md</span>).
+      <strong>대가는 그 레인에서 「red 면 서버가 막는다」가 거짓이라는 것</strong>입니다.
     </p>
     <p>
       🔴 <strong>그런데 <span class="mono">required_approving_review_count: 0</span> 입니다.</strong>
@@ -1482,7 +1491,8 @@ git push origin HEAD:refs/heads/&lt;이름&gt;  <span style="color:var(--bad)">#
     <p>
       <strong>낡은 문장은 틀렸다고 말해 주지 않고, 맞는 문장과 똑같이 생겼습니다.</strong>
       이 교육자료를 만들면서 기존 문서를 재검증했고 <strong>거짓인 서술 다섯</strong>을
-      찾았습니다. <strong>이 레포의 셋은 고쳤고</strong>, 나머지 둘은 다른 레포라 별도로 나갑니다.
+      찾았습니다. 그리고 <strong>같은 날 오후에 여섯이 더 나왔습니다</strong> — 그중 하나는
+      <strong>이 자료 자신</strong>이었습니다.
     </p>
   </div>
 
@@ -1493,10 +1503,35 @@ git push origin HEAD:refs/heads/&lt;이름&gt;  <span style="color:var(--bad)">#
         <tr><td class="mono">README.md</td><td><span class="mono">checks.yml</span> 은 오늘 <strong>휴면</strong></td><td>최근 런 전부 success</td><td class="good">✅ 고침</td></tr>
         <tr><td class="mono">README.md</td><td>이 레포들은 <strong>private</strong></td><td>둘 다 public</td><td class="good">✅ 고침</td></tr>
         <tr><td class="mono">docs/operations/ 3개</td><td>중앙 <strong>5개</strong> 서비스</td><td>실측 <strong>7개</strong></td><td class="good">✅ 고침</td></tr>
-        <tr><td class="mono">contracts/README.md</td><td>「여기서 고치지 마세요」</td><td>배송 기계는 퇴역했다</td><td class="bad">🔴 남음<br><span class="mono" style="font-size:.85em">다른 레포</span></td></tr>
-        <tr><td class="mono">contracts/CODEOWNERS</td><td>모노레포에서 <strong>배송된다</strong></td><td>그 디렉터리가 없다</td><td class="bad">🔴 남음<br><span class="mono" style="font-size:.85em">다른 레포</span></td></tr>
+        <tr><td class="mono">contracts/README.md</td><td>「여기서 고치지 마세요」</td><td>배송 기계는 퇴역했다</td><td class="good">✅ 고침<br><span class="mono" style="font-size:.85em">contracts PR #56</span></td></tr>
+        <tr><td class="mono">contracts/CODEOWNERS</td><td>모노레포에서 <strong>배송된다</strong></td><td>그 디렉터리가 없다</td><td class="good">✅ 고침<br><span class="mono" style="font-size:.85em">contracts PR #56</span></td></tr>
+        <tr><td class="mono">05 · 06 · 02 · 20</td><td>contracts <span class="mono">main</span> 은 <strong>무방비</strong></td><td><span class="mono">lane-check</span> required</td><td class="good">✅ 고침 <span class="mono" style="font-size:.85em">12:08</span></td></tr>
+        <tr><td class="mono">20-platform-codev</td><td>contracts 에 <strong>CLAUDE.md 도 없음</strong></td><td><span class="mono">f8992ee</span>, 138줄 — 있다</td><td class="good">✅ 고침</td></tr>
+        <tr><td class="mono">README.md §훅 한계</td><td>protection 이 거는 <strong>「날에」</strong> 생긴다</td><td>이미 걸려 있다</td><td class="good">✅ 고침</td></tr>
+        <tr><td class="mono">CLAUDE.md §참조</td><td>규칙이 <strong>셋</strong></td><td><strong>넷</strong> — 하나가 지도 밖</td><td class="good">✅ 고침</td></tr>
+        <tr><td class="mono">05 · 20 · <strong>이 자료</strong></td><td><span class="mono">enforce_admins</span> 근거가 <strong>어디에도 없다</strong></td><td>contracts <span class="mono">CLAUDE.md</span> 에 한 절</td><td class="good">✅ 고침</td></tr>
       </tbody>
     </table>
+  </div>
+
+  <div class="alert">
+    <p>
+      🔴 <strong>그중 하나는 «이 표 자신»이었습니다.</strong> 위 4·5행은 몇 시간 전까지
+      <strong>「🔴 남음 — 다른 레포」</strong> 였고, 그 사이 <span class="mono">contracts</span>
+      PR #56 이 둘을 고쳤습니다. <strong>그런데 이 표는 따라오지 않았습니다.</strong>
+    </p>
+    <p>
+      ⚠️ <strong>같은 사실을 말하는 자리가 «여럿»입니다.</strong>
+      <span class="mono">90-known-traps.md</span> §0 의 같은 표는 고쳐졌는데
+      이 표는 놓쳤습니다 — <strong>정정은 파일 단위가 아니라 문단 단위로 일어나고,
+      한 자리를 고치는 것은 «갈라짐»을 만드는 일이 될 수 있습니다.</strong>
+    </p>
+    <p>
+      🧭 <strong>고칠 때 물어야 하는 것</strong> — 「이 사실을 말하는 자리가 여기 말고
+      또 어디인가?」 <strong>파일 이름이 아니라 «문장»을 <span class="mono">git grep</span>
+      하고, 형제 레포에서도 돌리십시오.</strong> 실제로 같은 문단이 두 레인의
+      <span class="mono">README.md</span> 에 글자 그대로 있었습니다.
+    </p>
   </div>
 
   <div class="note">
