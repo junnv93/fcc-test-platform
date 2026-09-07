@@ -99,7 +99,7 @@ EOF
 PUBLIC_HOST 기본값이 `localhost`라 env 의 운영값을 덮어쓰지 않으면 그대로 localhost:
 
 ```bash
-cd /mnt/c/FCC_mobile_test_automation
+cd /path/to/fcc-test-platform   # ⚠️ provider 저장소가 아니다 — 이 compose 는 여기 것이다
 cp infra/central/central.env.example infra/central/central.env   # 기본값 = localhost
 docker compose -f infra/docker-compose.central.yml \
     --env-file infra/central/central.env up -d --build

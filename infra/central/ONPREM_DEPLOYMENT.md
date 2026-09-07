@@ -45,14 +45,29 @@ Ubuntu**에서 **상시 가동**으로 올리는 절차입니다.
 wsl.exe -d Ubuntu bash -lc 'docker compose version && docker version'
 ```
 
-repo가 Windows `C:\FCC_mobile_test_automation`에 있으면 WSL에서는 `/mnt/c/...`.
+⚠️ **중앙 PC 에 두는 저장소는 `fcc-test-platform` 하나다 — provider 저장소
+(`FCC_mobile_test_automation`)를 두지 않는다** (2026-09-03 배치 변경). 배치표의 SSOT 는
+`docs/operations/central-pc-operational-validation-runbook.md` §저장소 배치 이고, 그 표는
+`tests/test_central_pc_placement_doc.py` 가 문서 밖 소스에서 파생해 검사한다.
+
+⚠️ **이 문서는 그 변경 전에 배달됐고 네 자리가 provider 저장소로 `cd` 하고 있었다**
+(2026-09-07 정정). 그대로 따르면 **다른 compose 가 뜬다** — 두 저장소가 각각
+`infra/docker-compose.central.yml` 을 갖고 있고 내용이 다르다:
+
+    provider 저장소   서비스 6개 · `web` 에 `build:` **없음**
+    이 저장소         서비스 7개(`platform-api-node` 포함) · `web` 에 `build:` 있음
+
+즉 옛 경로로 치면 브라우저·노드 인증 모드를 가르는 인스턴스가 안 뜨고, `--build` 가
+`web` 이미지를 만들지 못한다.
+
+repo 가 Windows `C:\fcc-test-platform` 에 있으면 WSL 에서는 `/mnt/c/...` 다.
 손상된 `~/.docker/config.json`(BOM) 우회를 위해 `DOCKER_CONFIG=/tmp/...`를 선두에
 지정합니다(중앙 PC도 처음엔 같은 함정을 겪을 수 있음).
 
 ## 2. env 작성 — 운영값
 
 ```bash
-cd /mnt/c/FCC_mobile_test_automation
+cd /path/to/fcc-test-platform
 cp infra/central/central.env.example infra/central/central.env
 ```
 
@@ -249,7 +264,7 @@ source cap을 추가하지 않는다. 다음 측정에서도 두 표면을 모�
 ## 4. 부팅 (상시 가동)
 
 ```bash
-wsl.exe -d Ubuntu bash -lc 'cd /mnt/c/FCC_mobile_test_automation && \
+wsl.exe -d Ubuntu bash -lc 'cd /path/to/fcc-test-platform && \
   DOCKER_CONFIG=/tmp/fcc-docker-config \
   docker compose -f infra/docker-compose.central.yml \
     --env-file infra/central/central.env up -d --build'
@@ -336,10 +351,13 @@ ls -l backup_$(date +%Y%m%d).sql
 
 ```bash
 # 정적: compose YAML 유효성 + 봉인 테스트
-wsl.exe -d Ubuntu bash -lc 'cd /mnt/c/FCC_mobile_test_automation && \
+wsl.exe -d Ubuntu bash -lc 'cd /path/to/fcc-test-platform && \
   DOCKER_CONFIG=/tmp/fcc-docker-config docker compose \
   -f infra/docker-compose.central.yml --env-file infra/central/central.env config >/dev/null && echo CONFIG-OK'
-python -m pytest tests/test_central_docker_compose.py -q
+python3 -m pytest tests/test_central_docker_compose.py -q
+# ⚠️ `python` 이 아니라 `python3` 이다 — 이 배포가 도는 Ubuntu 계열은 `python`
+#    이름을 제공하지 않는다. 위 §5 가 같은 정정을 이미 적어 두었는데 이 절이
+#    그 실수를 그대로 담고 있었다 (2026-09-07 정정).
 ```
 
 ## 추가 하드닝 후보 (tech-debt — 런타임 부팅 검증 후 적용)
