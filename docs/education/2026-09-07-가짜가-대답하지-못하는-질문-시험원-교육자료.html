@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>가짜가 대답하지 못하는 질문 — 시험원 교육자료</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+  :root {
+    --ground:#F5F7F6; --surface:#FFFFFF; --sunk:#ECF0EE;
+    --ink:#16201D; --ink-soft:#3B4A45; --muted:#66756F;
+    --rule:#D6DEDA; --rule-firm:#B4C0BB;
+    --accent:#1F6F5C;
+    --pass:#2E7D52; --hollow:#A9B8B1; --alarm:#A8412F; --alarm-soft:#F7E7E3;
+    --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+    --f-body:"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#101715; --surface:#18211E; --sunk:#1F2A26;
+      --ink:#E6EDEA; --ink-soft:#BCC8C3; --muted:#8B9A94;
+      --rule:#2A3733; --rule-firm:#3D4B46;
+      --accent:#4FAE93; --pass:#5FB47F; --hollow:#61706A;
+      --alarm:#DE8271; --alarm-soft:#301B16;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#101715; --surface:#18211E; --sunk:#1F2A26;
+    --ink:#E6EDEA; --ink-soft:#BCC8C3; --muted:#8B9A94;
+    --rule:#2A3733; --rule-firm:#3D4B46;
+    --accent:#4FAE93; --pass:#5FB47F; --hollow:#61706A;
+    --alarm:#DE8271; --alarm-soft:#301B16;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--f-body); font-size:15.5px; line-height:1.78;
+    -webkit-font-smoothing:antialiased; }
+  img { max-width:100%; }
+  .wrap { max-width:920px; margin:0 auto; padding:56px 24px 88px; }
+
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:500;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin:0 0 14px; }
+  h1 { font-size:clamp(28px,4.4vw,40px); font-weight:700; line-height:1.25;
+    letter-spacing:-.02em; text-wrap:balance; margin:0 0 18px; }
+  .lede { font-size:17px; color:var(--ink-soft); max-width:60ch; margin:0 0 10px; }
+  .lede strong { color:var(--ink); font-weight:700; }
+
+  .thesis { background:var(--surface); border:1px solid var(--rule-firm);
+    border-left:4px solid var(--accent); padding:20px 24px; margin:32px 0 44px;
+    font-size:17px; line-height:1.7; }
+  .thesis b { color:var(--accent); }
+
+  section { margin-bottom:56px; }
+  h2 { font-size:22px; font-weight:700; letter-spacing:-.01em; margin:0 0 6px;
+    padding-bottom:10px; border-bottom:2px solid var(--ink); }
+  h2 .n { font-family:var(--f-mono); font-size:12px; color:var(--accent);
+    letter-spacing:.1em; margin-right:10px; }
+  h3 { font-family:var(--f-mono); font-size:14px; font-weight:600; margin:32px 0 8px; }
+  p { max-width:66ch; }
+  .note { color:var(--ink-soft); font-size:14.5px; }
+
+  .forms { display:flex; flex-direction:column; gap:2px; margin:26px 0;
+    background:var(--rule); border:1px solid var(--rule); }
+  .form { background:var(--surface); padding:20px 22px; display:grid;
+    grid-template-columns:1fr auto; gap:18px 26px; align-items:start; }
+  .form-name { font-family:var(--f-mono); font-size:13px; font-weight:600;
+    color:var(--accent); margin-bottom:4px; }
+  .form-what { font-size:15px; line-height:1.65; }
+  .form-what code { font-size:.88em; }
+  .compare { display:grid; grid-template-columns:auto auto; gap:3px 0;
+    font-family:var(--f-mono); font-size:12px; font-variant-numeric:tabular-nums;
+    border:1px solid var(--rule); align-self:start; min-width:224px; }
+  .compare div { padding:7px 11px; background:var(--surface); }
+  .compare .hd { background:var(--sunk); color:var(--muted); font-size:10px;
+    letter-spacing:.1em; text-transform:uppercase; }
+  .compare .val { text-align:right; font-weight:600; }
+  .compare .val.hollow { color:var(--hollow); }
+  .compare .val.real { color:var(--pass); }
+  .compare .val.alarm { color:var(--alarm); }
+
+  .swatches { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:2px; background:var(--rule); border:1px solid var(--rule); margin:26px 0; }
+  .sw { background:var(--surface); padding:18px 20px; }
+  .sw .dot { width:13px; height:13px; display:inline-block; margin-right:9px; vertical-align:-1px; }
+  .sw .dot.real { background:var(--pass); }
+  .sw .dot.hollow { background:var(--hollow); }
+  .sw b { font-family:var(--f-mono); font-size:13px; }
+  .sw p { margin:8px 0 0; font-size:14px; color:var(--ink-soft); max-width:none; }
+
+  .tw { overflow-x:auto; margin:22px 0; }
+  table { border-collapse:collapse; width:100%; font-size:14.5px; }
+  th { font-family:var(--f-mono); font-size:10px; font-weight:500; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--muted); text-align:left;
+    padding:0 14px 9px; border-bottom:1px solid var(--rule-firm); white-space:nowrap; }
+  td { padding:12px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.mono, td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  td.num { text-align:right; font-weight:600; }
+
+  code { font-family:var(--f-mono); font-size:.9em; background:var(--sunk);
+    padding:1.5px 5px; border:1px solid var(--rule); }
+  pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.62;
+    background:var(--sunk); border:1px solid var(--rule); padding:14px 16px;
+    overflow-x:auto; margin:16px 0; }
+  pre b { color:var(--alarm); font-weight:600; }
+  pre i { color:var(--muted); font-style:normal; }
+
+  .checks { display:flex; flex-direction:column; gap:2px; background:var(--rule);
+    border:1px solid var(--rule); margin:26px 0; }
+  .check { background:var(--surface); padding:18px 22px; display:grid;
+    grid-template-columns:34px 1fr; gap:16px; }
+  .check .q { font-family:var(--f-mono); font-size:17px; font-weight:600; color:var(--accent); }
+  .check .body b { display:block; font-size:15.5px; margin-bottom:5px; }
+  .check .body span { font-size:14px; color:var(--ink-soft); }
+  .check .body .how { display:block; margin-top:9px; font-family:var(--f-mono);
+    font-size:12px; color:var(--muted); }
+
+  .alarm-box { background:var(--alarm-soft); border:1px solid var(--alarm);
+    padding:18px 22px; margin:24px 0; }
+  .alarm-box b { color:var(--alarm); }
+  .alarm-box p { margin:0; max-width:none; }
+  .alarm-box p + p { margin-top:10px; }
+
+  .seealso { background:var(--surface); border:1px solid var(--rule-firm);
+    padding:16px 20px; margin:24px 0; font-size:14.5px; }
+  .seealso b { font-family:var(--f-mono); font-size:12px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--muted); display:block; margin-bottom:8px; }
+  .seealso p { margin:0; }
+
+  .foot { border-top:1px solid var(--rule-firm); padding-top:20px; margin-top:52px;
+    font-size:13px; color:var(--muted); }
+  .foot p { max-width:70ch; margin:0 0 8px; }
+
+  @media (max-width:700px) { .form { grid-template-columns:1fr; } .compare { min-width:0; } }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+</head><body>
+<div class="wrap">
+
+  <p class="eyebrow">fcc-test-platform · 시험원 교육자료 · 2026-09-07</p>
+  <h1>가짜가 대답하지 못하는 질문</h1>
+  <p class="lede">
+    시험이 <strong>통과</strong>했습니다. 그런데 그 시험이 쓴 «가짜 부품»은,
+    실물이라면 <strong>다르게 답했을</strong> 질문에 다르게 답하지 못했습니다.
+    더 나쁜 것은 — 시험이 그 질문을 <strong>한 번도 던지지 않았다는</strong> 것입니다.
+  </p>
+
+  <div class="thesis">
+    시험은 대개 실물 대신 <b>가짜 부품</b>을 씁니다. 가짜가 실물과 갈라지면
+    시험은 <b>실물이 아닌 것</b>을 검사하고도 초록을 냅니다.
+    그리고 그 갈라짐은 <b>화면에 아무 흔적도 남기지 않습니다.</b>
+  </div>
+
+  <section>
+    <h2><span class="n">01</span>무엇이 갈라졌나</h2>
+    <p>
+      중앙 서버는 시험실 PC 들이 보내는 «로컬 세션 번호»를 받습니다. 그런데 시험실
+      PC 는 <b>측정 대상마다 별도의 측정 DB</b> 를 두고, 각 DB 는 세션 번호를 1부터
+      매깁니다. 그래서 「1번 세션」이 여러 개 존재합니다.
+    </p>
+    <p>
+      부품(해소기)의 일은 그 로컬 번호를 중앙의 고유 식별자로 바꾸는 것입니다.
+      계약은 이렇게 적혀 있습니다 —
+      <b>같은 시험실에서 두 대상을 재면 세션 식별자가 갈려야 한다.</b>
+      그러지 않으면 두 시료의 측정이 중앙에서 한 세션으로 접힙니다.
+    </p>
+
+    <div class="tw">
+    <table>
+      <thead><tr><th>물음</th><th>실물 부품</th><th>가짜 부품</th></tr></thead>
+      <tbody>
+        <tr><td>한 시험실 · 두 대상 → 식별자가 갈리나</td>
+            <td class="mono">갈린다</td>
+            <td class="mono"><b>안 갈린다 — 같은 값</b></td></tr>
+        <tr><td>같은 대상을 두 번 물으면 같은 값인가</td>
+            <td class="mono">같다</td><td class="mono">같다</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="alarm-box">
+      <p><b>그런데 시험은 전부 초록이었습니다.</b> 시험이 그 질문을 던진 적이
+      없었기 때문입니다.</p>
+      <p>대상 식별자는 «모델 번호»와 «시료 코드»가 <b>둘 다</b> 있어야 만들어집니다.
+      시험이 쓰던 자료에는 둘 다 없었습니다. 그래서 대상 식별자는 언제나 빈 값이었고,
+      그 값을 쓰는 코드 가지는 <b>한 번도 실행되지 않았습니다.</b></p>
+    </div>
+
+    <p class="note">
+      즉 초록의 뜻이 「fallback 경로를 검증했다」도 아니었습니다.
+      <b>「대상이라는 축이 아예 없는 세계를 검증했다」</b> 였습니다.
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="n">02</span>고치기 전에 갈라야 했던 것</h2>
+    <p>
+      「가짜를 실물처럼 만들자」로 바로 갈 수 없었습니다. 실물의 그 자료구조는
+      <b>캐시</b>였기 때문입니다 — 지워도 답이 같은, 속도만을 위한 것.
+      가짜의 자료구조는 <b>등록부</b>였습니다 — 답의 유일한 출처.
+      이름과 모양이 같아도 <b>역할의 종이 다릅니다.</b>
+    </p>
+
+    <div class="swatches">
+      <div class="sw">
+        <b><i class="dot hollow"></i>실물 전용 — 베끼면 안 되는 것</b>
+        <p>캐시의 «키 모양». 실측으로 확인했습니다: 캐시에 맞은 경로와 안 맞은
+        경로가 <b>같은 값</b>을 냅니다. 관측할 수 없는 최적화입니다.</p>
+      </div>
+      <div class="sw">
+        <b><i class="dot real"></i>계약 — 가짜도 지켜야 하는 것</b>
+        <p>그 키가 담고 있던 «대상별 구분». 이것은 부품 설명서가 문장으로 선언한
+        약속이고, 구현마다 달라도 되는 세부가 아닙니다.</p>
+      </div>
+    </div>
+
+    <p>
+      결론은 <b>「가짜를 고친다. 단 실물을 베껴서가 아니라, 계약을 가짜의 언어로
+      옮겨서」</b> 였습니다. 이 구분을 안 하면 캐시를 등록부에 이식하게 되고,
+      다음 사람은 「왜 시험용 부품이 캐시를 갖고 있지」라고 묻게 됩니다.
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="n">03</span>새 검사에 일부러 고장을 넣어 봤습니다</h2>
+    <p class="note">
+      새로 만든 검사가 «정말로» 무언가를 보는지는, 고장을 넣어 빨개지는지로만
+      확인할 수 있습니다. 여덟 번 넣었고, <b>그중 둘이 예상과 달랐습니다.</b>
+    </p>
+
+    <div class="checks">
+      <div class="check">
+        <div class="q">1</div>
+        <div class="body">
+          <b>「빨개졌다」가 「내가 말한 이유로 빨개졌다」가 아니었습니다</b>
+          <span>수정 전체를 되돌리고 새 검사를 돌렸더니 5건이 빨개졌습니다. 그런데
+          5건 <b>전부</b> 「그런 이름의 기능이 없다」는 오류로 죽었습니다 — 동작을
+          보는 부분은 <b>실행되지도 않았습니다.</b></span>
+          <span class="how">고침 → 되돌리는 것을 «하나씩» 나눴다. 그러자 각 검사가
+          자기 축에서만 빨개졌다.</span>
+        </div>
+      </div>
+      <div class="check">
+        <div class="q">2</div>
+        <div class="body">
+          <b>새로 쓴 검사 하나가 «공허»했습니다</b>
+          <span>「등록하지 않은 대상을 물으면 큰 소리로 실패한다」를 검사하려 했는데,
+          시험실 이름을 같이 넣는 바람에 <b>보호 장치를 떼어내도 어차피 같은 오류로
+          터졌습니다.</b> 즉 그 검사는 보호 장치의 유무와 상관없이 통과했습니다.</span>
+          <span class="how">고침 → 시험실 이름을 «일부러» 뺐다. 그러면 보호 장치가
+          없을 때 «조용히 잘못된 값이 나오는» 상황이 되고, 그때만 그 검사가 의미를 갖는다.</span>
+        </div>
+      </div>
+      <div class="check">
+        <div class="q">3</div>
+        <div class="body">
+          <b>같은 이름의 두 검사가 다른 것을 재고 있었습니다</b>
+          <span>다른 파일에 같은 이름으로 쓴 검사는 처음부터 시험실 이름 없이
+          구성돼 있어서 정확히 빨개졌습니다. <b>이름이 같다고 같은 것을 재지 않습니다</b> —
+          «구성»이 갈랐습니다.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">04</span>조용히 지나갈 뻔한 것</h2>
+    <p>
+      보호 장치가 「큰 소리로 실패」하도록 만들었는데, 그 실패를 <b>바로 아래
+      코드가 삼키고 있었습니다.</b> 이 저장소의 오류 종류가 파이썬 기본 오류를
+      상속하고 있어서, 「기본 오류를 잡아라」는 문장이 <b>제가 일부러 던진 것까지</b>
+      잡았습니다.
+    </p>
+    <div class="alarm-box">
+      <p><b>이것이 위험한 이유:</b> 검사는 <b>통과합니다.</b> 오류 «종류»는 맞으니까요.
+      사라지는 것은 <b>진단 문장</b>뿐입니다 — 「무엇이 잘못됐는지」를 말하던 부분.</p>
+      <p>고침은 오류 종류를 바꾸는 것이 아니라, <b>「잡아라」의 범위를 실제로 던질 수
+      있는 줄까지 좁히는</b> 것이었습니다.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">05</span>가져갈 것</h2>
+    <div class="forms">
+      <div class="form">
+        <div>
+          <div class="form-name">가짜와 실물에 «같은 질문»을 던져 보라</div>
+          <div class="form-what">기대값을 적어 두고 비교하지 마세요 — 실물이 바뀐 날
+          그 검사는 «과거를 검사한 초록»이 됩니다. 둘 다에게 묻고 <b>성질</b>을 견주세요.</div>
+        </div>
+      </div>
+      <div class="form">
+        <div>
+          <div class="form-name">새 검사에는 반드시 고장을 넣어 보라</div>
+          <div class="form-what">그리고 <b>빨개진 이유가 내가 말한 이유인지</b>까지
+          보세요. 한 번에 하나씩 되돌려야 그 답이 나옵니다.</div>
+        </div>
+      </div>
+      <div class="form">
+        <div>
+          <div class="form-name">두 가지를 함께 고치지 말라</div>
+          <div class="form-what">이 부품에는 갈라짐이 <b>둘</b> 있었습니다. 하나만
+          고치고 다른 하나는 이름을 적어 남겼습니다 — 둘을 같이 움직이면
+          결과가 어느 쪽 때문인지 말할 수 없습니다.</div>
+        </div>
+      </div>
+      <div class="form">
+        <div>
+          <div class="form-name">「무엇을 검사할지」를 목록으로 «적지» 말고 «뽑아내라»</div>
+          <div class="form-what">검사가 볼 항목을 손으로 적어 두면, 항목이 하나 늘어난
+          날 그 검사는 <b>조용해집니다.</b> 코드에서 뽑아내면 그런 날이 오지 않습니다.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <p>측정 조건: 새 가상환경에 선언대로 설치(contracts 0.1.26 · kernel 0.5.4 ·
+    mypy 2.3.1), <code>origin/main@51b8cdf</code>. 같은 코드도 환경이 다르면 다른 수를
+    냅니다 — 그래서 값과 조건은 언제나 한 쌍으로 적습니다.</p>
+    <p>변하지 않아야 했던 것(그리고 변하지 않은 것): 타입 검사 0건 / 215파일 ·
+    구조 게이트 18건 · 레인 전량 선언된 실패 0 / 관측된 실패 0.
+    <b>「좋아졌다」가 아니라 「안 움직였다」가 판정인 축들입니다.</b></p>
+    <p>관련 문서: <code>intent/fake-resolver-honours-target-scope/</code>
+    (의도 · 스펙 · 계획 세 파일에 판정과 근거가 적혀 있습니다).</p>
+  </div>
+
+</div>
+</body>
+</html>
