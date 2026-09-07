@@ -31,21 +31,35 @@ __all__ = [
 ]
 
 
-#: 이 가짜의 세션 캐시 키. **한 dict 에 세 모양이 산다** — 실물이 스코프를 좁혀 온
-#: 이력이 여기 남아 있다:
+#: 이 대역의 세션 **등록부** 키. 한 dict 에 세 모양이 산다:
 #:
-#:     int                            chamber 도 target 도 없는 조회
-#:     (chamber, local_id)            chamber 스코프  — remember_session 이 쓴다
+#:     int                            chamber 도 target 도 없는 등록
+#:     (chamber, local_id)            chamber 스코프
 #:     (chamber, target, local_id)    chamber+target 스코프
 #:
-#: ⚠️ **셋째 모양은 이 클래스에서 읽기만 하고 «쓰는 곳이 없다»**(실측: 그 모양의
-#:    대입 0건). 그래서 target 스코프 조회는 생성자로 그 키를 직접 주입받지 않는 한
-#:    항상 miss 하고 아래 fallback 으로 간다. 실물(PostgresCentralIdResolver)은 그
-#:    키로 읽고 **쓴다** — 가짜와 실물이 그 자리에서 갈린다.
+#: ── 판정 (2026-09-07, intent/fake-resolver-honours-target-scope) ─────────────
 #:
-#: ⚠️ 이 커밋은 **타입을 쓰임에 맞추기만** 한다. 그 갈라짐을 메우는 것은 동작 변경이라
-#:    별도 판정이 필요하다(가짜를 실물의 키 규약에 맞출 것인가, 아니면 그 조회가
-#:    가짜에서 의미 없음을 명시할 것인가).
+#: 앞선 커밋이 「셋째 모양은 읽기만 하고 쓰는 곳이 없다」를 남기며 **동작 변경은 별도
+#: 판정**이라고 적었다. 그 판정이 여기 있다.
+#:
+#: ⚠️ **실물의 3-튜플을 «키 모양»으로 베끼는 것이 아니다.** 실물
+#:    (``PostgresCentralIdResolver._session_cache``)의 그 dict 는 순수 함수
+#:    ``uuid5(ns, session_uuid_name(...))`` 의 **메모이제이션**이고, 실측상 miss 경로와
+#:    hit 경로가 같은 값을 낸다 — 통째로 지워도 관측 가능한 동작이 같은 «캐시»다.
+#:    이 클래스의 dict 는 캐시가 아니라 **등록부**다. 값을 계산하지 않고 돌려준다.
+#:    같은 모양의 dict 지만 역할의 종이 다르고, 캐시 키 규약을 등록부에 이식할 이유는
+#:    없다.
+#:
+#: ⚠️ **그러나 그 키가 인코딩하는 «target 스코프»는 최적화가 아니라 포트가 선언한
+#:    계약이다** — ``CentralIdResolverPort.resolve_session_uuid`` 의 docstring:
+#:    "``target_identity`` scopes the uuid to one measurement target. It is required
+#:    for the same reason ``chamber_id`` is." 그러므로 이 대역도 그것을 지켜야 한다.
+#:    지키게 하는 방법이 「실물을 복사」가 아니라 「등록부의 이디엄으로 표현」인 것뿐이다.
+#:
+#: 그래서 ``register_session`` 이 셋째 모양도 **쓴다**(아래). reader 가 읽는 모양을
+#: writer 가 못 만드는 비대칭 자체가 다음 사람이 밟을 자리였다 — 그 등호를
+#: ``tests/test_central_id_resolver_target_scope.py`` 가 **AST 로 파생해** 봉인한다.
+#: 상수로 적지 않은 이유: 네 번째 모양이 생긴 날 조용해지기 때문이다.
 _SessionKey = int | tuple[str, int] | tuple[str, str, int]
 
 
@@ -75,14 +89,39 @@ class InMemoryCentralIdResolver:
         self._ambiguous_models = frozenset(ambiguous_model_numbers or ())
 
     def register_session(
-        self, local_session_id: int, central_session_uuid: str, *, chamber_id: str = '',
+        self,
+        local_session_id: int,
+        central_session_uuid: str,
+        *,
+        chamber_id: str = '',
+        target_identity: str = '',
     ) -> None:
+        """Record one pre-assigned mapping, at the narrowest scope given.
+
+        ``target_identity`` writes the same three-part key
+        ``resolve_session_uuid`` reads. Without it this writer could only make
+        two of the reader's three shapes, and the third was reachable **only**
+        through constructor injection — an asymmetry that silently drops the
+        target scope the port declares.
+
+        ⚠️ The chamber is spelled ``str(chamber_id or '')`` here to match the
+        reader **exactly**. This class does not apply
+        ``normalize_chamber_id`` (the production resolver does, mapping an
+        absent chamber to ``LEGACY_CHAMBER_ID``). That is a second, separate
+        divergence: measured, named, and deliberately left alone by this
+        change — moving two axes at once would make the result unattributable.
+        """
         if not central_session_uuid:
             raise CentralIdResolutionError(
                 f'central_session_uuid is required (local={local_session_id})'
             )
         key = int(local_session_id)
-        if chamber_id:
+        target = str(target_identity or '').strip()
+        if target:
+            self._session_uuid[(str(chamber_id or ''), target, key)] = str(
+                central_session_uuid
+            )
+        elif chamber_id:
             self._session_uuid[(str(chamber_id), key)] = str(central_session_uuid)
         else:
             self._session_uuid[key] = str(central_session_uuid)
@@ -105,22 +144,90 @@ class InMemoryCentralIdResolver:
         # This resolver serves pre-registered mappings (tests and the local
         # in-memory path); the target scope is part of the lookup key only when
         # a caller registered one, so existing registrations keep resolving.
+        #
+        # ⚠️ The ``try`` blocks below are deliberately narrow, wrapping only the
+        # operations that can actually raise. ``CentralIdResolutionError``
+        # subclasses ``ValueError``, so a wide ``except (KeyError, TypeError,
+        # ValueError)`` around the whole body would swallow this method's *own*
+        # deliberate raise and re-raise it with the generic message — the guard
+        # would still fire and the test would still pass, but the diagnosis
+        # would be gone. Green, with nothing behind it.
         target = str(target_identity or '').strip()
         try:
             key = int(local_session_id)
-            if target:
-                scoped = self._session_uuid.get((str(chamber_id or ''), target, key))
-                if scoped is not None:
-                    return scoped
+        except (TypeError, ValueError) as exc:
+            raise CentralIdResolutionError(
+                self._unresolved_session_message(
+                    chamber_id, target_identity, local_session_id
+                )
+            ) from exc
+
+        if target:
+            scoped = self._session_uuid.get((str(chamber_id or ''), target, key))
+            if scoped is not None:
+                return scoped
+            # 「선언하지 않은 무관심」과 「선언한 스코프를 무시함」은 다른 명제다.
+            # 등록부가 이 (chamber, local_id) 에 대해 target 을 **말한 적이 있으면**,
+            # 물은 target 이 그중에 없을 때 target-무관 항목으로 미끄러지는 것은
+            # 포트가 금지하는 충돌을 조용히 되살리는 일이다. 말한 적이 없으면
+            # ``{11: 'AAA'}`` 는 「스코프 무관하게 11은 AAA」라는 caller 의 **선언**
+            # 이고, 그것을 깨뜨리는 것은 결함 수리가 아니라 오탐이다. 오탐을 내는
+            # 게이트는 우회를 가르친다.
+            if self._has_target_scoped_registration(chamber_id, key):
+                raise CentralIdResolutionError(
+                    f'target_identity={target_identity!r} is not registered for '
+                    f'chamber_id={chamber_id!r} local session_id={local_session_id!r}, '
+                    f'and this registry declares target scope for that session — '
+                    f'refusing to fall back to a target-agnostic mapping'
+                )
+
+        try:
             if chamber_id:
                 return self._session_uuid[(str(chamber_id), key)]
             return self._session_uuid[key]
-        except (KeyError, TypeError, ValueError) as exc:
+        except KeyError as exc:
             raise CentralIdResolutionError(
-                f'no central session uuid registered for chamber_id={chamber_id!r} '
-                f'target_identity={target_identity!r} '
-                f'local session_id={local_session_id!r}'
+                self._unresolved_session_message(
+                    chamber_id, target_identity, local_session_id
+                )
             ) from exc
+
+    @staticmethod
+    def _unresolved_session_message(
+        chamber_id: Optional[str],
+        target_identity: Optional[str],
+        local_session_id: object,
+    ) -> str:
+        """The one wording for "nothing is registered here".
+
+        Two call sites raise it — a non-integer local id and a genuine miss.
+        A second copy of the f-string would drift the day one of them grows a
+        field, and the drift would be invisible: both still raise, both still
+        say something plausible.
+        """
+        return (
+            f'no central session uuid registered for chamber_id={chamber_id!r} '
+            f'target_identity={target_identity!r} '
+            f'local session_id={local_session_id!r}'
+        )
+
+    def _has_target_scoped_registration(
+        self, chamber_id: Optional[str], local_session_id: int
+    ) -> bool:
+        """Does the registry name a target for this ``(chamber, local_id)``?
+
+        Scans the registry rather than keeping an index beside it. A second
+        structure would be a second thing to keep in step, and this registry is
+        a test double holding a handful of rows — the scan *is* the derivation.
+        """
+        chamber = str(chamber_id or '')
+        return any(
+            isinstance(registered, tuple)
+            and len(registered) == 3
+            and registered[0] == chamber
+            and registered[2] == local_session_id
+            for registered in self._session_uuid
+        )
 
     def resolve_project_uuid(self, local_project_id: Optional[str]) -> Optional[str]:
         if local_project_id is None or local_project_id == '':
