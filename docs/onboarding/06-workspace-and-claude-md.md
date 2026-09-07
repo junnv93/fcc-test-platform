@@ -155,7 +155,7 @@ Team members via source control***.
 | 레인 | `CLAUDE.md` | `.claude/rules/` | `main` 보호 | `enforce_admins` |
 |---|---|---|---|---|
 | `fcc-test-platform` | ✅ 있음 (PR #143) | ✅ **4개** | ✅ `lane-check` required | ✅ `true` |
-| `fcc-test-contracts` | ✅ 138줄 (`f8992ee`, **09:43:43**) | 🔴 **0개** | ✅ `lane-check` required | 🔴 **`false`** |
+| `fcc-test-contracts` | ✅ 138줄 (`f8992ee`, **09:43:43**) | ✅ **3개** (PR #57) | ✅ `lane-check` required | ✅ **`true`** (13:4x) |
 
 ```bash
 git -C fcc-test-contracts fetch origin
@@ -181,18 +181,26 @@ gh api repos/junnv93/fcc-test-contracts/branches/main/protection
 > **초대보다 먼저 하라던 그 일은 실제로 초대보다 먼저 이뤄졌습니다.**
 > 보호가 켜졌고(01:5x 경), 그 뒤 초대 2건이 나갔습니다.
 >
-> ⚠️ **다만 `.claude/rules/` 0개는 여전히 참입니다** — 「절반 메워졌다」는 이 절의
-> 제목은 오늘도 유효합니다. 그리고 `enforce_admins: false` 라는 **새 비대칭**이
-> 드러났습니다(`05-github-access.md` §3).
+> ⚠️ **12:08 판은 `.claude/rules/` 0개와 `enforce_admins: false` 를 「남은 것」으로
+> 적었습니다. 둘 다 같은 날 오후에 닫혔습니다** — 규칙 3개는 contracts PR #57 이,
+> `enforce_admins: true` 는 운영자 승인이. **이 절의 제목 「절반 메워졌다」는
+> 이제 낡았습니다.**
 
-⚠️ **커널 레인에는 오늘도 «경로 규칙»이 도달하지 않습니다** — `CLAUDE.md` 는 항상
-로드되지만 `.claude/rules/` 가 비어 있으므로, 「이 파일을 여는 순간에만 발화하는」
-규칙이 그 레인에는 하나도 없습니다.
+✅ **커널 레인에도 이제 «경로 규칙»이 도달합니다** — contracts PR #57 이 3개를
+세웠습니다(배포판 버전 · 경로 해소기 · 선언과 소비 레인). `CLAUDE.md` 는 항상
+로드되고, 그 셋은 해당 경로를 만질 때 로드됩니다.
 
-⚠️ **관리자는 커널 `main` 을 여전히 우회할 수 있습니다** — `enforce_admins: false`.
-협업자(`push` 권한)는 못 하지만 `admin` 권한을 받은 사람은 할 수 있으므로,
-`05-github-access.md` §2 의 **「`admin` 을 주지 마십시오」가 이 레인에서 더 강한
-요구**가 됩니다.
+✅ **관리자도 커널 `main` 을 우회하지 못합니다** — `enforce_admins: true` (13:4x).
+
+<!-- 정정 이력 — 지우지 마세요. -->
+> 🔄 **정정 (13:4x).** 위 두 문단의 12:08 판은 *「⚠️ **커널 레인에는 오늘도 «경로
+> 규칙»이 도달하지 않습니다** … ⚠️ **관리자는 커널 `main` 을 여전히 우회할 수
+> 있습니다** — `enforce_admins: false`」* 였습니다. **둘 다 같은 날 오후에 거짓이
+> 됐습니다.**
+>
+> ⚠️ 그래도 `05-github-access.md` §2 의 **「`admin` 을 주지 마십시오」는 여전히
+> 유효합니다** — `admin` 은 보호 «설정 자체»를 끌 수 있고, 그것은 `enforce_admins`
+> 와 다른 축입니다.
 
 ---
 

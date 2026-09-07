@@ -136,7 +136,9 @@ python3 scripts/merge_readiness_guard.py merge <PR번호> --update
 | `README.md`, `.github/workflows/checks.yml` | GitHub Actions 가 러너를 못 받아 **휴면** | **거짓.** 러너 정상(`runner_name` 채워짐, 최근 런 `success`) |
 | `README.md` | 이 레포는 **private** 이라 Actions 가 분당 과금 | **거짓.** 레포는 **PUBLIC** — 표준 러너 무과금 |
 | `fcc-test-contracts/README.md` · `CODEOWNERS` | 이 레인은 **읽기 전용 납품물**, PR 병합 불가 | **거짓.** 배송 기계는 2026-08-31 퇴역, 거기서 고치고 PR 로 머지한다 |
-| 온보딩 문서 다수 | `fcc-test-contracts` 의 `main` 은 **무방비** | **거짓.** `lane-check` **required**. 단 `enforce_admins: false` — **관리자는 우회 가능**(platform 은 `true`) |
+| 온보딩 문서 다수 | `fcc-test-contracts` 의 `main` 은 **무방비** | **거짓.** `lane-check` **required** · `enforce_admins: true`(13:4x 부터) — **두 레인 대칭** |
+| 온보딩 문서 다수 | contracts 의 `enforce_admins` 는 **`false`** | **오후에 거짓이 됐다.** 근거의 «전제»가 해소돼 `true` 로 올렸다 |
+| `06-workspace-and-claude-md.md` | contracts `.claude/rules/` **0개** | **거짓.** contracts PR #57 이 **3개**를 넣었다 |
 
 ⚠️ **「없다」를 적은 문장이 가장 빨리 낡는다.** 없던 것이 생기는 데는 커밋 하나면
 충분하고, 그 커밋은 그 문장에 알림을 보내지 않는다. 고칠 때는 **파일이 아니라 그

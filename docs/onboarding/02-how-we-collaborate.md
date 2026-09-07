@@ -121,7 +121,7 @@
 | 규칙 | `fcc-test-platform` | `fcc-test-contracts` | 실측 키 |
 |---|---|---|---|
 | `lane-check` 초록이어야 머지 | ✅ **강제** | ✅ **강제** | `required_status_checks: ["lane-check"]` |
-| 관리자도 우회 못 함 | ✅ **강제** | 🔴 **강제 안 됨** | `enforce_admins` — `true` / **`false`** |
+| 관리자도 우회 못 함 | ✅ **강제** | ✅ **강제** | `enforce_admins` — `true` / **`true`**(13:4x 부터) |
 | **동료 1인 승인** | 🔴 강제 안 됨 | 🔴 강제 안 됨 | `required_approving_review_count: 0` |
 | **CODEOWNERS 리뷰** | 🔴 강제 안 됨 | 🔴 강제 안 됨 | `require_code_owner_reviews: false` |
 | force push · 브랜치 삭제 | ✅ 금지 | ✅ 금지 | `allow_force_pushes` · `allow_deletions` = `false` |
@@ -139,6 +139,13 @@
 > 그리고 옛 표는 **platform 값만 적고 열 이름을 안 달았습니다** — 그래서 읽는 사람이
 > `enforce_admins: true` 를 «두 레인 다» 로 읽을 수 있었습니다. 이번 판은 레인별로
 > 열을 나눴습니다.
+>
+> 🔄 **재정정 (같은 날 13:4x).** 위 문단이 *「contracts 의 `enforce_admins` 는 `false`
+> 이므로 관리자는 우회할 수 있습니다」* 라고 적은 것도 **몇 시간 만에 낡았습니다** —
+> 운영자 승인으로 `true` 가 됐습니다. 근거의 «전제»(러너 할당량 미해소)가 해소됐기
+> 때문입니다. **이제 두 레인이 대칭이고, 「누구나」도 「관리자만」도 아닙니다.**
+> ⚠️ 하루에 같은 칸이 **두 번** 낡았습니다 — 「없다」·「막힌다」류 서술의 유통기한을
+> 보여 주는 사례로 남깁니다.
 
 **즉 「동료 1인 승인」은 오늘 사람이 지키는 규율이고, 기계가 막는 게이트가 아닙니다.**
 

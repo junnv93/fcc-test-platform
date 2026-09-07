@@ -1223,13 +1223,19 @@ docs/PROVIDER-KICKOFF.md 를 읽고 §1 의 「0단계」부터 시작해줘.
       <span class="mono">enforce_admins: true</span> — <strong>관리자도 우회 못 합니다.</strong>
     </p>
     <p>
-      ⚠️ <strong>그런데 이것은 «이 레인만» 참입니다.</strong> 계약 커널
-      <span class="mono">fcc-test-contracts</span> 는 <span class="mono">enforce_admins: false</span>
-      이고, <strong>거기서는 L4 도 관리자가 우회할 수 있습니다.</strong> 그 레포의 협업자는
-      1명이고 그 1명이 <span class="mono">admin</span> 이므로 실질적으로 「언제든」입니다.
-      ✅ 그것은 <strong>의도</strong>입니다 — 태그 레인이 멈추면 공급 사슬 전체가 멈추므로
-      비상구를 남겼습니다(근거: <span class="mono">contracts/CLAUDE.md</span>).
-      <strong>대가는 그 레인에서 「red 면 서버가 막는다」가 거짓이라는 것</strong>입니다.
+      ✅ <strong>그리고 이것은 «두 레인 다» 참입니다.</strong> 계약 커널
+      <span class="mono">fcc-test-contracts</span> 도 <span class="mono">enforce_admins: true</span>
+      입니다(2026-09-07 13:4x 부터). <strong>두 레인 모두 관리자가 L4 를 우회하지 못합니다.</strong>
+    </p>
+    <p>
+      🔄 <strong>정정 — 이 문단은 같은 날 «두 번» 바뀌었습니다.</strong> 12:08 판은
+      <em>"이것은 «이 레인만» 참입니다. contracts 는 <span class="mono">enforce_admins: false</span>
+      이고 거기서는 L4 도 관리자가 우회할 수 있습니다 … <strong>대가는 그 레인에서
+      「red 면 서버가 막는다」가 거짓이라는 것</strong>"</em> 이었습니다.
+      13:4x 에 <span class="mono">true</span> 가 되어 <strong>그 대가가 사라졌습니다.</strong>
+      뒤집힌 이유는 근거가 틀려서가 아니라 <strong>근거의 «전제»(러너 할당량 미해소)가
+      해소돼서</strong>입니다 — 되돌리는 조건은 <span class="mono">contracts/CLAUDE.md</span>
+      §<span class="mono">enforce_admins</span> 절에 적혀 있습니다.
     </p>
     <p>
       🔴 <strong>그런데 <span class="mono">required_approving_review_count: 0</span> 입니다.</strong>
@@ -1569,8 +1575,8 @@ git push origin HEAD:refs/heads/&lt;이름&gt;  <span style="color:var(--bad)">#
     <table>
       <thead><tr><th class="num">#</th><th>무엇</th><th>누가</th><th>왜 이 순서</th></tr></thead>
       <tbody>
-        <tr><td class="num">1</td><td class="good">✅ <span class="mono">fcc-test-contracts</span> 의 <span class="mono">main</span> 에 branch protection 켜기</td><td>운영자</td><td class="good"><strong>완료</strong> — <span class="mono">lane-check</span> 가 required 입니다. ⚠️ 다만 <span class="mono">enforce_admins: false</span> 라 <strong>관리자는 우회할 수 있습니다</strong>(platform 은 <span class="mono">true</span>). ✅ 그것은 <strong>의도</strong>이고 근거는 <span class="mono">contracts/CLAUDE.md</span> 에 있습니다 — 태그 레인이 멈추면 공급 사슬이 멈춥니다. 대가: 그 레인에서 <strong>「red 면 서버가 막는다」는 거짓</strong>입니다</td></tr>
-        <tr><td class="num">2</td><td class="warn">⚠️ <span class="mono">fcc-test-contracts</span> 에 <span class="mono">.claude/rules/</span> 세우기</td><td>운영자</td><td><strong>오늘도 0개입니다.</strong> <span class="mono">CLAUDE.md</span> 는 <strong>09:43 에 생겼고</strong>(<span class="mono">f8992ee</span>) 항상 로드되지만, <strong>경로 조건부 규칙은 하나도 없습니다</strong></td></tr>
+        <tr><td class="num">1</td><td class="good">✅ <span class="mono">fcc-test-contracts</span> 의 <span class="mono">main</span> 에 branch protection 켜기</td><td>운영자</td><td class="good"><strong>완료</strong> — <span class="mono">lane-check</span> 가 required 이고 <span class="mono">enforce_admins: true</span>(13:4x) 라 <strong>관리자도 우회 못 합니다.</strong> 두 레인 대칭입니다. 🔄 12:08 판은 여기에 <span class="mono">false</span> 라 적고 「그 대가로 그 레인에서는 red 가 서버를 못 막는다」고 했습니다 — 근거의 <strong>전제</strong>가 해소돼 뒤집혔습니다</td></tr>
+        <tr><td class="num">2</td><td class="good">✅ <span class="mono">fcc-test-contracts</span> 에 <span class="mono">.claude/rules/</span> 세우기</td><td>운영자</td><td><strong>완료 — 3개</strong>(contracts PR #57): 배포판 버전 · 경로 해소기 · 선언과 소비 레인. 🔄 12:08 판은 「오늘도 0개」였습니다. <span class="mono">CLAUDE.md</span>(<span class="mono">f8992ee</span>)는 항상 로드되고, 이 셋은 해당 경로를 만질 때 로드됩니다</td></tr>
         <tr><td class="num">3</td><td class="good">✅ 두 레포에 <strong>각각</strong> 초대 (<span class="mono">permission=push</span>)</td><td>운영자</td><td><strong>발송 완료</strong> — <span class="mono">JJDHJJ</span> · <span class="mono">kkulhong</span>, 두 레포 각각. ⏳ <strong>아직 수락 전</strong>입니다(<span class="mono">collaborators</span> 는 1명). 개인 계정이라 Team 이 없어 <strong>일괄 부여 경로가 없습니다.</strong> <span class="mono">admin</span> 을 주지 마십시오 — 게이트를 끌 수 있습니다</td></tr>
         <tr><td class="num">3-b</td><td class="warn">⏳ 초대 <strong>수락</strong>을 확인하고 <span class="mono">required_approving_review_count</span> 를 <span class="mono">1</span> 로</td><td>운영자</td><td><strong>순서를 뒤집지 마십시오.</strong> 수락 전에 올리면 GitHub 이 자기 PR 자기 승인을 금지하므로 <strong>아무것도 머지할 수 없게 됩니다.</strong> <span class="mono">invitations</span> 에 이름이 있는 동안은 아직 협업자가 아닙니다</td></tr>
         <tr><td class="num">4</td><td>⭐ <span class="mono">07-first-day-scripts.md</span> 를 열고 <strong>그대로 따라 치기</strong></td><td>합류자</td><td><strong>폴더 생성 · clone · 훅 · 파이썬 환경 · Claude 에게 칠 첫 멘트</strong>까지 명령 단위로 있습니다. 각 단계에 확인 명령이 붙어 있습니다</td></tr>
@@ -1589,8 +1595,10 @@ git push origin HEAD:refs/heads/&lt;이름&gt;  <span style="color:var(--bad)">#
       1행 — <em>"⚠️ <span class="mono">fcc-test-contracts</span> 의 <span class="mono">main</span> 에
       branch protection 켜기 … 오늘 <strong>보호가 전혀 없습니다.</strong> 초대하는 순간 누구나
       계약 커널의 <span class="mono">main</span> 에 직접 push 할 수 있고"</em>
-      → <strong>보호가 켜졌습니다.</strong> 「누구나」는 이제 「<strong>관리자만</strong>」입니다
-      (<span class="mono">enforce_admins: false</span>).
+      → <strong>보호가 켜졌습니다.</strong> 12:08 시점에는 「누구나」가
+      「<strong>관리자만</strong>」으로 좁아진 상태였고(<span class="mono">enforce_admins: false</span>),
+      <strong>13:4x 에 그 구멍도 닫혔습니다</strong>(<span class="mono">true</span>) —
+      이제 <strong>아무도</strong> 우회하지 못합니다.
     </p>
     <p>
       3행 — 초대가 <strong>실제로 발송됐습니다</strong>(01:32 · 01:58). 다만
