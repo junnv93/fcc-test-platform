@@ -1,0 +1,19 @@
+{
+  "task": "education-the-day-the-checker-was-turned-on-20260907",
+  "branch": "docs/checker-turned-on-education-20260907",
+  "owner": "fcc-delivery-final-0e",
+  "status": "merged",
+  "base": "origin/main@b3c619e",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/cbbcc64d-931a-4c42-a390-de9a2d47d797/scratchpad/wt-edu",
+  "scope": [
+    "docs/education/2026-09-07-검사기를-켠-날-시험원-교육자료.html",
+    ".claude/work-claims/education-the-day-the-checker-was-turned-on-20260907.json"
+  ],
+  "non_scope": [
+    "소스 전부 — 문서만 추가한다.",
+    "최상위 모듈을 게이트 안으로 들이는 작업 — 형제 세션 fcc-delivery-final-31 이 소유한다(claim education-the-gate-never-called-20260907). ⚠️ 이 문서는 그 자리를 «다시 배정하지 않고» 그쪽 자료를 가리킨다."
+  ],
+  "conflicts_with": [],
+  "sequencing": "핀 판올림 사슬(#133 · #50 · #136 · #137 · #140 · #142 · contracts #52)이 전부 착지한 «뒤»의 기록이다. ⚠️ 착지 직전에 형제 교육자료 둘(#151 「초록의 뜻」 · #153 「검사가 부르지 않은 자리」)이 같은 날 나왔다는 것을 확인하고 겹치는 과제 배정(§11·§12 초안)을 걷어냈다 — 그쪽이 이미 24건을 닫았고 「수리와 범위 확대는 한 묶음」이라는 논거까지 담고 있었다.",
+  "result": "docs/education/2026-09-07-검사기를-켠-날-시험원-교육자료.html 신규(43KB · SVG 도해 4점). 다루는 것: py.typed 축이 게이트를 0→79 로 켠 것 · 79건의 네 갈래와 처방 · 시험 증거 생성 도구에서 나온 «진짜 결함 넷» · 설계서 §8 의 거짓 이분법(주입으로 갈랐다) · 우회에 「지울 조건」을 적으면 그 조건이 스스로 충족된다(#137→#50→#140) · 게이트가 세 번 막았고 세 번 다 옳았다 · 내가 틀린 것 둘(형제의 줄 번호는 그쪽 커밋의 것 · 「지금 없다」가 몇 시간 뒤 거짓이 됐다). §11·§12 는 «임자 없는 셋»만 넘긴다."
+}
