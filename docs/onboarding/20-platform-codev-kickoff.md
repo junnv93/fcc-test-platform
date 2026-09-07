@@ -54,22 +54,23 @@ pip install -e .
 ## 3. 기능 작업은 `intent/` 에서 시작합니다 (2026-09-07~)
 
 새 기능 · 동작 변경 · 외부에 보이는 변화는 **코드보다 먼저**
-`intent/<slug>/intent.md` 를 만들고 **사람의 승인(PR 머지)** 을 받습니다.
+`intent/<slug>/intent.md` 를 만들고 **사람이 확정(`Status: accepted` + PR 머지)** 합니다.
 
 ```
 intent/<슬러그>/
-   ├── intent.md      왜        →  브랜치 intent/<슬러그>   동료 1인 승인
-   ├── spec.md        무엇을     →  브랜치 spec/<슬러그>     동료 1인 승인
-   └── plan.md        어떻게     →  브랜치 feature/<슬러그>  개발 담당자
+   ├── intent.md      왜        →  브랜치 intent/<슬러그>   본인 확정
+   ├── spec.md        무엇을     →  브랜치 spec/<슬러그>     본인 확정
+   └── plan.md        어떻게     →  브랜치 feature/<슬러그>  본인 확정
 ```
 
 **규칙 본문 SSOT → `intent/README.md`.** 서식 → `intent/_templates/`.
 이 문서와 어긋나면 **그 파일이 맞습니다.**
 
-### 승인은 «예외 승인» 입니다
+### 승인자는 없습니다 — 개발 담당자가 각자 확정합니다
 
-기본은 **동료 1인**(작성자 제외)이고, **리드는 상시 승인자가 아니라 예외 판단자**입니다.
-기계가 판정하는 **방아쇠 다섯**이 걸릴 때만 사람의 결정이 요구됩니다:
+**2026-09-07 2차 개정.** 「동료 1인(작성자 제외)」을 폐기했습니다 — 협업자가 1명이라
+그 사람이 존재하지 않았습니다. 남의 결재를 기다리지 않습니다.
+사람의 결정이 «기록»으로 요구되는 것은 기계가 판정하는 **방아쇠 다섯**뿐입니다:
 
 | # | 걸리는 조건 | 초록이 되는 조건 |
 |---|---|---|
@@ -130,12 +131,12 @@ git diff origin/main --stat        # intent/<슬러그>/intent.md 한 줄이어�
 python3 scripts/human_judgment_triggers.py 2>/dev/null || true   # 방아쇠 확인
 ```
 
-🔴 **여기서 멈추십시오.** 동료 1인(작성자 제외)이 머지하면 승인된 것입니다.
+🔴 **여기서 멈추십시오.** `Status:` 를 `accepted` 로 바꾸고 **직접 머지**하면 확정입니다 — 승인자를 기다리지 않습니다.
 
 ### 단계 2 — `spec.md` (브랜치 `spec/<슬러그>`)
 
 ```
-intent/<슬러그>/intent.md 가 승인됐다. spec.md 초안을 써줘.
+intent/<슬러그>/intent.md 가 확정됐다(Status: accepted). spec.md 초안을 써줘.
 
 ⚠️ §2 「범위 밖」을 «비우지» 마라 — 무엇을 안 하는지가 범위를 정한다.
 ⚠️ §4 「영향받는 경계」에 계약 커널이 닿는지 «반드시» 판정해라.
@@ -203,12 +204,13 @@ gh pr merge <N> --merge        # ⚠️ --squash 금지 (자가점검이 사라�
 ```
 required_status_checks.contexts   = ["lane-check"]
 enforce_admins                    = true      ← 관리자도 우회 못 한다
-required_approving_review_count   = 0         ← ⚠️ 승인 없이 머지된다
+required_approving_review_count   = 0         ← 승인 없이 머지된다 (의도된 값)
 require_code_owner_reviews        = false     ← CODEOWNERS 는 «막지 않는다»
 ```
 
-⚠️ **그래서 「동료 1인 승인」은 오늘 사람이 지키는 규율이지 기계가 막는 게이트가
-아닙니다.** 그 사실을 알고 지키십시오. 「검사가 통과했으니 승인된 것」이 아닙니다.
+⚠️ **승인 층은 비어 있고, 그것이 규칙 그 자체입니다.** 그 자리를 메우는 것은 위 방아쇠
+다섯이고, 그것들은 버튼이 아니라 **문장**을 요구합니다. 「검사가 통과했으니 이 변경이
+옳다」가 아닙니다 — `Status: accepted` 를 적는 순간이 여전히 사람의 판단입니다.
 
 ### 그러면 L0~L3 은 왜 만드나
 
@@ -383,7 +385,7 @@ platform 에서 깨질 수 있고, 그 갈라짐은 **양방향**입니다.
 
 그리고 오늘 **강제되지 않는** 것들 — 협업자가 늘면 결정해야 합니다:
 
-* `required_approving_review_count: 0` → 「동료 1인 승인」이 기계로 안 막힘 (두 레인 다)
+* `required_approving_review_count: 0` → 승인 층이 «없음». 협업자가 늘면 둘지 다시 판단 (두 레인 다)
 * `fcc-test-contracts` 의 **`enforce_admins: false`** → **관리자는 보호를 우회**할 수
   있습니다 (platform 은 `true`). ✅ **이것은 의도이고 근거가 적혀 있습니다** —
   `fcc-test-contracts/CLAUDE.md` §`enforce_admins` 절: 태그 레인이 멈추면 공급 사슬

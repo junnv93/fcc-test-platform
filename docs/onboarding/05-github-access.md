@@ -185,15 +185,18 @@ $ gh api repos/junnv93/fcc-test-platform/branches/main/protection
 | `required_status_checks.contexts` | `["lane-check"]` | 이 검사가 초록이어야 머지된다 |
 | `required_status_checks.strict` | `false` | base 가 움직여도 재검사를 요구하지 않는다 |
 | `enforce_admins` | **`true`** | **관리자도 우회 못 한다** ← 이것이 강제의 근거 |
-| `required_approving_review_count` | **`0`** | ⚠️ **승인 없이 머지된다** |
+| `required_approving_review_count` | **`0`** | **승인 없이 머지된다 — 의도된 값** |
 | `require_code_owner_reviews` | `false` | `CODEOWNERS` 는 리뷰어를 요청만 하고 막지 않는다 |
 | `required_linear_history` | `false` | merge 커밋 허용 (no-squash 규율과 정합) |
 
 ⚠️ **`required_approving_review_count: 0` 이 뜻하는 것.**
-`intent/README.md` 는 「동료 1인 승인」을 규칙으로 둡니다. 그런데 **오늘 그것을
-강제하는 것은 아무것도 없습니다** — 사람이 지키는 규율이지 기계가 막는 게이트가
-아닙니다. 협업자가 둘 이상이 되면 이 값을 `1` 로 올릴 수 있고, 그때 비로소
-그 규칙에 이빨이 생깁니다.
+**이 레포에는 승인자가 없습니다**(2026-09-07 2차 개정). 개발 담당자가 `Status: accepted`
+를 적고 직접 머지합니다. 즉 이 `0` 은 「규칙이 강제 안 되는 상태」가 아니라 **규칙 그
+자체**입니다 — `intent/README.md` §승인 모델이 그렇게 선언합니다.
+
+협업자가 둘 이상이 되면 이 값을 `1` 로 올릴지 **다시 판단**합니다. 그 판단 재료는
+선언 파일 `.claude/contracts/branch-protection-declaration.json` 의 `why_each_value`
+에 있습니다.
 
 ⚠️ **오늘 `1` 로 올리면 안 됩니다.** 협업자가 1명일 때 올리면 GitHub 이 자기 PR
 자기 승인을 금지하므로 **아무것도 머지할 수 없게 됩니다.** 순서는 **초대 먼저,
