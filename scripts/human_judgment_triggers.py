@@ -151,9 +151,18 @@ def _matches_codeowner_pattern(path: str, pattern: str) -> bool:
         return path == pat.rstrip('/') or path.startswith(pat)
     segments = pat.split('/')
     parts = path.split('/')
-    if len(segments) > len(parts):
+    # ⚠️ 길이 일치를 «먼저» 묻는다. 초판은 `>` 만 막고 마지막에
+    #    `len(segments) == len(parts)` 로 답했는데, 그러면 zip 이 «조용히 잘라»
+    #    짧은 쪽에 맞춘다. 이 레인의 `test_no_file_relies_on_a_silent_default` 가
+    #    그것을 거부했고, 그 거부가 옳다.
+    #
+    #    ⚠️ 그때 `strict=False` 를 넣어 초록으로 만들면 «결함을 보존»한다 —
+    #    규칙이 요구하는 것은 값이 아니라 **선택**이다. 여기서 옳은 선택은
+    #    「자를 일이 없게 만들고 strict=True」다. 동치임은 아래로 증명된다:
+    #    segments < parts 이면 옛 코드도 루프 뒤에 False 를 돌려줬다.
+    if len(segments) != len(parts):
         return False
-    for seg, part in zip(segments, parts):
+    for seg, part in zip(segments, parts, strict=True):
         if seg == '*':
             continue
         if '*' in seg:
@@ -162,8 +171,7 @@ def _matches_codeowner_pattern(path: str, pattern: str) -> bool:
                 return False
         elif seg != part:
             return False
-    # 디렉터리 패턴이 아니면 정확히 그 길이여야 한다.
-    return len(segments) == len(parts)
+    return True
 
 
 def check_t1(changed: list[str], owned: list[str]) -> list[Trigger]:

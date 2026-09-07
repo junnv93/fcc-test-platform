@@ -274,6 +274,16 @@ class TestCodeownersPatternsDoNotLeakAcrossSlashes(unittest.TestCase):
                                                           '/intent/*/spec.md'),
                          '`*` 가 `/` 를 넘었다 — T1 이 선언보다 넓어진다')
 
+    def test_a_pattern_shorter_than_the_path_does_not_match(self) -> None:
+        """옛 코드는 zip 이 «조용히 잘라» 이 축을 마지막 줄에서만 답했다.
+
+        `strict=True` 로 바꾸면서 길이 검사를 앞으로 올렸다. 동치인지를 여기서
+        단언한다 — 아니면 「린터를 달래려고 동작을 바꿨다」가 된다.
+        """
+        self.assertFalse(judge._matches_codeowner_pattern('a/b/c.md', 'a/b'))
+        self.assertFalse(judge._matches_codeowner_pattern('a/b', 'a/b/c.md'))
+        self.assertTrue(judge._matches_codeowner_pattern('a/b', 'a/b'))
+
     def test_a_directory_pattern_covers_its_subtree(self) -> None:
         self.assertTrue(judge._matches_codeowner_pattern('migrations/001.sql',
                                                          '/migrations/'))
