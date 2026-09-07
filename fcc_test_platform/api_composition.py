@@ -27,7 +27,7 @@ inject a fake/SQLite connection factory and never touch psycopg.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 from fcc_test_platform.domain.ports.output.chamber_progress_broadcast_port import (
     ChamberProgressBroadcastPort,
@@ -73,6 +73,9 @@ UNLICENSED_PROVIDER_ID: str = str(DEFAULT_PROVIDER_METADATA['provider_id'])
 #: 거기서 파생한다(아래) — 이 값은 그 파생이 답을 못 낼 때만 쓰인다.
 _FALLBACK_WORKBENCH_AREA = 'unlicensed_conducted'
 from fcc_test_platform.provider_registry import ProviderReferenceResolverRegistry
+
+if TYPE_CHECKING:  # pragma: no cover - 검사 전용. 런타임 import 는 :819 의 lazy import 다.
+    from fcc_test_platform.api.platform_routes import PlatformApiAdapter
 from fcc_test_kernel.application.central_contract.api_contracts import PLATFORM_API_OPERATIONS
 from fcc_test_platform.application.provider_ui_descriptor_registry import (
     ProviderUiDescriptorRegistry,
@@ -223,7 +226,18 @@ class PlatformApiRuntime:
     """
 
     config: PlatformApiConfig
-    api_adapter: object
+    # ⚠️ 이 필드는 한때 ``object`` 였다. 이유는 「타입을 모른다」가 아니라 **런타임
+    #    import 를 피하려는 것**이었다 — ``PlatformApiAdapter`` 는
+    #    ``fcc_test_platform.api.platform_routes`` 에 있고 그것을 모듈 최상위에서
+    #    끌어오면 fastapi 가 딸려 온다(그래서 :819 가 함수 안 lazy import 다).
+    #    그런데 ``object`` 는 그 대가로 **아래 세 호출을 어떤 선언에도 대조되지 않게**
+    #    만들었다: :meth:`create_router` 의 ``create_platform_router(self.api_adapter)``,
+    #    ``create_platform_app(runtime.api_adapter)``, 그리고 :meth:`dispose`.
+    #    ``TYPE_CHECKING`` import 는 그 둘을 함께 준다 — 런타임에는 아무것도 import
+    #    하지 않고(이 모듈은 ``from __future__ import annotations`` 를 켠다), 검사
+    #    시점에는 진짜 타입을 준다. 바로 아래 ``progress_broadcaster`` 가 같은 이유로
+    #    ``object`` 를 벗은 필드다.
+    api_adapter: PlatformApiAdapter
     metrics_registry: ApiMetricsRegistry
     # 멀티챔버 P7/B4 — central progress relay fan-out engine. None on a runtime
     # composed without the relay (back-compat); production wires one.

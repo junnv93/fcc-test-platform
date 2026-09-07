@@ -92,6 +92,28 @@ class _QuarantineResult:
     status: str
     path: Path | None = None
 
+    def moved_path(self) -> Path:
+        """``status == _QUARANTINE_MOVED`` 일 때의 격리본 경로.
+
+        ⚠️ 이 클래스의 **불변식**은 「``path`` 는 MOVED 일 때에«만» 채워진다」이고,
+        그것을 아는 자리는 ``_quarantine_output`` 하나다 — 그 함수의 반환 넷 중
+        ``path`` 를 넘기는 것은 ``_QuarantineResult(_QUARANTINE_MOVED, temporary_path)``
+        한 줄뿐이고 ABSENT·FAILED 둘은 기본값 ``None`` 이다. 그 사실이 어디에도
+        «적혀» 있지 않아서, 호출부가 ``status`` 를 확인한 **뒤에도** 타입은 여전히
+        ``Path | None`` 이었다.
+
+        ⚠️ 호출부마다 ``if result.path is not None:`` 을 흩뿌리지 않는 이유가 있다.
+        그 가드는 「MOVED 인데 경로가 없을 수 있다」는 **거짓** 명제를 코드에 심고,
+        그러면 불변식이 실제로 깨진 날 그 가드가 조용히 건너뛴다 — 즉 앎을 적으려던
+        수리가 앎을 지운다. 여기 한 번 이름 붙여 두면 깨짐이 소리를 낸다.
+        """
+        if self.path is None:
+            raise AssertionError(
+                f'quarantine outcome {self.status!r} carries no path — '
+                '「MOVED 는 언제나 경로를 갖는다」가 깨졌다'
+            )
+        return self.path
+
 
 _QUARANTINE_ABSENT = 'absent'
 _QUARANTINE_MOVED = 'moved'
@@ -669,7 +691,15 @@ def _run_step(
     command = [str(part) for part in raw_step['command']]
     env_overrides = _step_env(raw_step)
     cwd = Path(str(raw_step.get('cwd') or PROJECT_ROOT))
-    timeout = float(raw_step.get('timeout_seconds'))
+    # ⚠️ 윗줄의 `or PROJECT_ROOT` 와 이 줄은 «다른 종류»다 — 안전장치의 유무가 아니라
+    #    키의 필수/선택이다. `cwd` 는 `validate_config` 가 아예 보지 않는 선택 키이고,
+    #    `timeout_seconds` 는 :427-429 가 지키는 필수 키다(부재도 `_float(None, 0.0)`
+    #    → `0.0` → `<= 0` 으로 `invalid_timeout` 에 걸린다). 그리고 `run_workflow` 는
+    #    :206 에서 검증하고 :215 `if errors: return` 으로 끊으므로, 이 함수에 도달했다는
+    #    것 자체가 「그 키가 있고 양수였다」는 뜻이다.
+    #    그래서 아래 `raw_step['command']`·`raw_step['output']` 과 «같은» 첨자 접근이
+    #    맞다. `.get()` 은 그 앎을 지우고 「없을 수도 있다」는 거짓을 심는다.
+    timeout = float(raw_step['timeout_seconds'])
     max_attempts = int(raw_step.get('retries', 0)) + 1
     retry_backoff_seconds = float(raw_step.get('retry_backoff_seconds', 0.0) or 0.0)
     output_path = evidence_root / str(raw_step['output'])
@@ -775,7 +805,7 @@ def _run_step(
             break
         failed_attempt_output = _quarantine_output(output_path)
         if failed_attempt_output.status == _QUARANTINE_MOVED:
-            discarded_attempt_outputs.append(failed_attempt_output.path)
+            discarded_attempt_outputs.append(failed_attempt_output.moved_path())
         elif failed_attempt_output.status == _QUARANTINE_FAILED:
             retry_quarantine_failure = failed_attempt_output
             break
@@ -828,7 +858,7 @@ def _run_step(
     if not receipt_written:
         generated_output = _quarantine_output(output_path)
         if generated_output.status == _QUARANTINE_MOVED:
-            discarded_attempt_outputs.append(generated_output.path)
+            discarded_attempt_outputs.append(generated_output.moved_path())
         _restore_quarantined_output(quarantined_output, output_path)
     else:
         _discard_quarantined_output(quarantined_output)

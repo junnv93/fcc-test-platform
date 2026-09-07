@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import ast
 import configparser
+import json
 import importlib.util
 import os
 import re
@@ -96,6 +97,62 @@ STRICT_TARGETS = tuple(
 
 #: 사람이 읽는 이름(보고·subTest 라벨용).
 STRICT_PACKAGES = tuple(name for _flag, name in STRICT_TARGETS)
+
+#: 게이트가 **부르는** 대상 전체.
+#:
+#: ⚠️ `STRICT_SECTIONS` 와 «다른 질문»이다. 저것은 「어디가 strict 인가」를 말하고
+#:    이것은 「어디를 «검사»하는가」를 말한다. 그 둘이 갈라져 있던 것이
+#:    2026-09-07 웨이브가 연 결함의 원인이다 — 게이트가 절 이름에서 호출 인자를
+#:    파생해 절마다 «따로» 부르므로, 목록에 없는 `fcc_test_platform/` 최상위 75
+#:    모듈은 **호출조차 되지 않았다.** 빨강도 초록도 아닌 침묵이었고, 그 침묵
+#:    아래 실제 타입 오류 45건이 16파일에 쌓여 있었다(실측 main@9565be6, CI 와
+#:    같은 리그).
+#:
+#: ⚠️ **이 축을 `mypy.ini` 의 절로 표현하지 않는다.** `[mypy-fcc_test_platform.*]`
+#:    를 넣으면 그것은 「전량 검사」가 아니라 「전량 strict」이고, 성질이 다른
+#:    `no-untyped-def` 183건이 딸려 온다. 45건은 strict 옵션이 아니라 «기본»
+#:    설정에서도 잡히는 실제 타입 오류였다 — 부족했던 것은 설정이 아니라 호출이다.
+#:    그러니 답도 설정이 아니라 호출이어야 한다.
+#:
+#: ⚠️ 그리고 `[mypy-fcc_test_platform]`(점-별 없이)은 **no-op** 이다(PR #139 실측).
+#:    그 절을 넣으면 게이트가 `-m fcc_test_platform` 을 부르긴 하면서
+#:    `checked 1 source file` 을 성실히 보고한다 — 본 것은 `__init__.py` 하나다.
+WHOLE_PACKAGE = 'fcc_test_platform'
+
+
+def _expected_module_count(package: str) -> int:
+    """mypy 가 ``-p <package>`` 에서 「N source files」로 «보고해야 할» 수.
+
+    ⚠️ **디스크의 `.py` 수와 같지 않다.** mypy 는 ``__init__.py`` 가 없는 디렉터리를
+    namespace 패키지로 잡아 모듈 하나로 «더» 센다. 실측 2026-09-07 — 이 트리에는
+    그런 디렉터리가 셋이다(`fcc_test_platform` 자신 · `api` · `infrastructure/excel/
+    templates`)::
+
+        fcc_test_platform                 .py 212 + namespace 3 = 215   ✓ mypy 215
+        fcc_test_platform.domain          .py  51 + namespace 0 =  51   ✓ mypy  51
+        fcc_test_platform.infrastructure  .py  10 + namespace 1 =  11   ✓ mypy  11
+        fcc_test_platform.application     .py  75 + namespace 0 =  75   ✓ mypy  75
+        fcc_test_platform.api             .py   1 + namespace 1 =   2   ✓ mypy   2
+
+    ⚠️ 이 함수가 **장부가 아니라 파생**인 것이 요점이다. 「215」를 상수로 박으면
+    모듈이 하나 늘어난 날 초록이 빨개지고, 다음 사람은 «검사를 고치는» 쪽으로
+    유도된다. 파생이면 양쪽이 같이 움직이고, 움직이지 «않는» 것 — 즉 게이트가
+    조용히 좁아지는 것 — 만 red 가 된다. `.importlinter` 가 못박은 「등재를 다시
+    늘리지 마라, 답은 등재가 아니라 코드다」와 같은 규율이다.
+    """
+    root = REPO_ROOT / Path(*package.split('.'))
+    modules = 0
+    for path in root.rglob('*'):
+        if '__pycache__' in path.parts:
+            continue
+        if path.is_file():
+            if path.suffix == '.py':
+                modules += 1
+        elif path.is_dir() and not (path / '__init__.py').is_file():
+            modules += 1
+    if not (root / '__init__.py').is_file():
+        modules += 1
+    return modules
 
 #: 예외를 가져서는 안 되는 계약 — 즉 **전부**다. 2026-09-05 S3 착지로 마지막
 #: 등재 2건(`app-no-db`)이 해소되면서 세 계약이 나란히 예외 0건이 됐다.
@@ -457,13 +514,72 @@ class TestTheGatesActuallyRun(unittest.TestCase):
                 self.assertIsNotNone(
                     checked,
                     f'{package}: mypy 가 검사한 파일 수를 보고하지 않았다 — 돌지 않았다:\n{report}')
-                self.assertGreater(
-                    int(checked.group(1)), 0,
-                    f'{package}: mypy 가 0개를 검사했다 — 게이트가 공허하다:\n{report}')
+                # ⚠️ 한때 이 단언은 `> 0` 이었다. 그것이 통과시키는 것 둘을 이 레포가
+                #    이미 실측했다: (1) `[mypy-fcc_test_platform]` 같은 점-별 없는 절은
+                #    `checked 1 source file` 을 «성실히» 보고한다 — 본 것은
+                #    `__init__.py` 하나다(PR #139). (2) `py.typed` 유무로 오류가
+                #    57 대 0 으로 갈릴 때도 **검사한 파일 수는 양쪽 75 로 같다**.
+                #    즉 `> 0` 은 「돌았다」를 말할 뿐 「무엇을 봤다」를 말하지 못한다.
+                #    옆의 import-linter 팔은 이미 `Analyzed N files, M dependencies` 로
+                #    규모까지 본다 — 새 규율이 아니라 «이미 있는 규율의 구멍»이다.
+                self.assertEqual(
+                    _expected_module_count(package), int(checked.group(1)),
+                    f'{package}: mypy 가 «다른 수»를 검사했다 — 트리에서 파생한 수와 '
+                    f'맞지 않는다. 모듈이 늘/줄었으면 두 수가 «같이» 움직이므로 이 '
+                    f'red 는 그것이 아니다: 게이트가 조용히 좁아졌거나, '
+                    f'`__init__.py` 없는 디렉터리가 생겼거나 사라진 것이다.\n{report}')
                 self.assertEqual(
                     0, done.returncode,
                     f'{package} strict 가 깨졌다 (설계서 S1):\n{report}')
                 _publish_evidence(f'mypy 게이트가 돌았다 — {package}: {checked.group(0)}')
+
+    @unittest.skipIf(importlib.util.find_spec('mypy') is None,
+                     'mypy 미설치 — 게이트를 돌리려면: pip install mypy')
+    def test_the_whole_package_is_type_checked(self):
+        """**패키지 «전체»를 한 번 부른다** — 위 팔이 못 보는 자리가 여기다.
+
+        위 `test_the_strict_layers_have_no_untyped_defs` 는 `mypy.ini` 의 절마다
+        «따로» 부른다. 그 형태의 사각지대는 「절 목록에 없는 모듈」이고, 그것은
+        빨강도 초록도 아닌 **침묵**이다 — 실측 2026-09-07(main@9565be6, CI 와 같은
+        리그: contracts 0.1.26 / kernel-v0.5.4 / py.typed 있음 / fastapi 있음)::
+
+            절마다 부르면    domain 0 · infrastructure 0 · application 0 · api 0
+            패키지 전체면    45건 / 16파일   ← 전부 최상위
+
+        ⚠️ **이 팔은 strict 를 요구하지 않는다.** 45건은 `disallow_untyped_defs` 와
+        무관한 실제 타입 오류였고(`arg-type` 16 · `dict-item` 7 · `operator` 6 ·
+        `index` 6 · `assignment` 5 · `attr-defined` 3 · 나머지 2), 부족했던 것은
+        설정이 아니라 **호출**이었다. 그래서 답도 설정(`[mypy-…*]` 절 추가 =
+        `no-untyped-def` 183건)이 아니라 호출이다. 층별 strict 확대는 별개의 질문이고
+        `mypy.ini` 가 그 순서를 이미 적어 두었다.
+
+        ⚠️ **장부를 두지 않는다.** 「지적 45건」 같은 스칼라를 적으면 검사를 «넓히는»
+        개선이 회귀처럼 빨개진다. 대신 여집합을 박는다 — 「위반 == ∅」(returncode 0)
+        과 「대상이 있는가」 등호(`_expected_module_count`). 참고 형태:
+        `tests/test_operation_table_read_form_axis.py`.
+        """
+        done = self._run([sys.executable, '-m', 'mypy', '-p', WHOLE_PACKAGE])
+        report = f'{done.stdout}\n{done.stderr}'
+        checked = re.search(r'(\d+) source files?', done.stdout)
+        self.assertIsNotNone(
+            checked,
+            f'{WHOLE_PACKAGE}: mypy 가 검사한 파일 수를 보고하지 않았다 — 돌지 '
+            f'않았다:\n{report}')
+        # 「대상이 있는가」 — 수가 아니라 «파생과의 등호»다. 아래 위반 단언이
+        # 초록일 때 이 등호가 「그 초록이 무엇을 보고 난 초록인가」를 답한다.
+        self.assertEqual(
+            _expected_module_count(WHOLE_PACKAGE), int(checked.group(1)),
+            f'{WHOLE_PACKAGE}: mypy 가 «다른 수»를 검사했다 — 트리에서 파생한 수와 '
+            f'맞지 않는다. 이 팔이 좁아지면 최상위 모듈이 다시 침묵으로 돌아간다.'
+            f'\n{report}')
+        # 「위반 == ∅」
+        self.assertEqual(
+            0, done.returncode,
+            f'{WHOLE_PACKAGE} 전량 타입 검사가 깨졌다 — 이 팔이 도입되기 «전»에는 '
+            f'이 자리가 빨강도 초록도 아니었다(호출되지 않았다). baseline 을 늘리지 '
+            f'말고 코드를 고쳐라:\n{report}')
+        _publish_evidence(
+            f'mypy 게이트가 돌았다 — {WHOLE_PACKAGE} 전량: {checked.group(0)}')
 
     @unittest.skipIf(importlib.util.find_spec('importlinter') is None,
                      'import-linter 미설치 — 게이트를 돌리려면: pip install import-linter')
@@ -488,6 +604,101 @@ class TestTheGatesActuallyRun(unittest.TestCase):
         _publish_evidence(
             f'import-linter 게이트가 돌았다 — {analyzed.group(0)} · '
             f'KEPT {done.stdout.count(" KEPT")}회')
+
+
+#: 「이 이름이 게이트가 도는 환경에서 무엇으로 해소되는가」를 묻는 탐침.
+#: ⚠️ 이 테스트 프로세스가 아니라 **하위 프로세스**에서, `_tool_env()` 와 같은
+#:    `PYTHONPATH` 로 묻는다 — mypy 가 보는 것을 재야 하는데 그 둘이 다를 수 있기
+#:    때문이다(`_tool_env()` 는 형제 «트리»를 설치본 앞에 세운다. 개발 체크아웃에는
+#:    그 트리가 있고 CI 에는 없다).
+_MODULE_PROBE = (
+    'import importlib.util, json, pathlib, sys\n'
+    'spec = importlib.util.find_spec(sys.argv[1])\n'
+    'roots = [str(p) for p in (spec.submodule_search_locations or [])] if spec else []\n'
+    'print(json.dumps({\n'
+    '    "found": spec is not None,\n'
+    '    "origin": (spec.origin if spec else None),\n'
+    '    "roots": roots,\n'
+    '    "markers": [str(pathlib.Path(r) / "py.typed") for r in roots\n'
+    '                if (pathlib.Path(r) / "py.typed").is_file()],\n'
+    '}))\n'
+)
+
+
+class TestTheRigCanMeasureWhatTheGateClaims(unittest.TestCase):
+    """게이트가 «무엇으로» 재는가 — 도구의 **존재**가 아니라 **능력**이다.
+
+    ⚠️ 위 `TestTheGatesCanActuallyRunHere` 와 층위가 다르다. 저 클래스는
+    「도구가 «선언»돼 있는가」를 묻고(존재를 물으면 도구가 깔린 기계에서만 초록이
+    되니까), 이 클래스는 「그 도구가 이 리그에서 «볼 수 있는가»」를 묻는다.
+    핀 패리티가 「신원」을 묻는 것과도 다르다 — 같은 태그가 마커를 실을 수도 안
+    실을 수도 있고, 그것은 태그 이름이 아니라 «배포판»의 성질이다.
+
+    ⚠️ **못 보면 skip 이 아니라 red 다.** 도구/의존 부재를 초록으로 만들면 「안
+    봤다」와 「위반 없다」가 같은 값이 된다 — 이 파일이 본문 곳곳에서 경고하는
+    바로 그 형태다. 여기서 red 를 내는 것의 값은 「이 기계의 측정을 믿지 마라」를
+    측정 «전»에 말해 준다는 것이다.
+
+    실측 2026-09-07 — 이 축이 없으면 무엇이 조용해지는가:
+
+      · **py.typed**: 같은 트리(main@9565be6)에서 커널·contracts 배포판의 마커
+        파일만 지웠다 넣었다 하니 `mypy -p fcc_test_platform` 이 44 대 45 였다.
+        그 +1 은 `api_composition.py` 의 실제 결함(사본 Protocol 이 SSOT 와
+        갈라져 `fetchall() -> list` 대 `-> Sequence`)이었고, 마커가 없는 동안
+        커널 타입이 `Any` 라서 **존재하는데 보이지 않았다.** 형제 세션 실측은
+        더 크다 — `application` 층이 57 대 0, 그런데 **검사한 파일 수는 양쪽 75 로
+        같다.** 즉 파일 수 등호로도 이 축은 못 잡는다.
+
+      · **fastapi**: `mypy.ini` 의 `api` 절이 적어 둔 실측 — fastapi 없는 리그에서
+        21건이던 것이 CI 와 같은 설치에서 60건이었다(`Request` 가 `Any` 를 벗으면서
+        `_normalize_request_body_args` 의 파급이 비로소 보였다).
+
+    두 경우 모두 게이트는 **돌았고, 초록이었고, 파일 수도 맞았다.**
+    """
+
+    def _probe(self, module_name: str) -> dict:
+        done = subprocess.run(
+            [sys.executable, '-c', _MODULE_PROBE, module_name],
+            cwd=str(REPO_ROOT), env=_tool_env(),
+            capture_output=True, text=True, timeout=120,
+        )
+        self.assertEqual(
+            0, done.returncode,
+            f'{module_name} 탐침이 실행되지 못했다:\n{done.stdout}\n{done.stderr}')
+        return json.loads(done.stdout)
+
+    def test_fastapi_is_importable_where_the_gate_runs(self):
+        """`api` 층 측정은 fastapi 가 «보이는» 리그에서만 참이다."""
+        probe = self._probe('fastapi')
+        self.assertTrue(
+            probe['found'],
+            'fastapi 를 이 리그에서 해소하지 못했다 — 그러면 `api` 층 측정이 '
+            'CI 와 다른 답을 낸다(실측: 21건 대 60건). `[project].dependencies` 가 '
+            '이미 fastapi 를 선언하므로 이것은 「선언 누락」이 아니라 「설치 누락」이다: '
+            "`pip install -e '.[test]'` 로 리그를 다시 세워라. "
+            '⚠️ 이 자리를 skip 으로 바꾸지 마라 — 그러면 「안 봤다」가 초록이 된다.')
+
+    def test_the_kernel_the_gate_reads_ships_py_typed(self):
+        """마커가 없으면 커널 타입이 `Any` 가 되고, 갈라짐이 조용해진다."""
+        for name in ('fcc_test_kernel', 'fcc_test_contracts'):
+            with self.subTest(distribution=name):
+                probe = self._probe(name)
+                self.assertTrue(
+                    probe['found'],
+                    f'{name} 을 이 리그에서 해소하지 못했다 — 형제 레인이 정식 '
+                    f'의존인데 설치되지 않았다.')
+                self.assertTrue(
+                    probe['markers'],
+                    # ⚠️ 「어디까지 봤나」를 함께 적는다. 부재 주장은 그것 없이는
+                    #    다음 사람이 검증할 수 없다.
+                    f'{name} 배포판에 `py.typed` 가 없다 — 그러면 이 레인이 그 '
+                    f'패키지의 타입을 «전부 Any 로» 본다. 게이트는 돌고, 초록이고, '
+                    f'파일 수까지 맞는 채로 갈라짐을 못 본다.\n'
+                    f'  찾아본 자리: {probe["roots"]}\n'
+                    f'  이 축이 red 라면 물을 것은 「검사가 틀렸나」가 아니라 '
+                    f'「핀이 가리키는 태그가 마커를 싣는가」다 '
+                    f'(kernel-v0.5.0 은 0개, v0.5.1 부터 1개).')
+        _publish_evidence('리그 축: 커널·contracts 배포판이 py.typed 를 싣는다')
 
 
 if __name__ == '__main__':

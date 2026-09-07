@@ -591,7 +591,14 @@ def _seed_live_rows(connection, *, lane: str, run_id: str) -> dict[str, str]:
     return ids
 
 
-def _cleanup_live_rows(connection, ids: Mapping[str, str]) -> dict[str, int | str]:
+def _cleanup_live_rows(connection, ids: Mapping[str, str]) -> dict[str, object]:
+    """정리 결과 — `status` 는 문자열이고 `deleted_rows`·`remaining_rows` 는 «표 → 건수» 사전이다.
+
+    ⚠️ 반환 선언이 한때 `dict[str, int | str]` 이었다. 그것은 값이 **스칼라**라는
+    말인데 실제 값 둘은 `dict[str, int]` 다 — 즉 선언이 거짓이었다. 그리고 이 함수의
+    소비자는 `cleanup.get('status')` 하나만 보므로(:1050) 그 거짓이 하류에서
+    드러나지 않았다. 「거짓말하는 선언」은 소비자가 그것을 안 볼 때 가장 오래 산다.
+    """
     deleted: dict[str, int] = {}
     with connection.cursor() as cursor:
         for table, statement in (
@@ -798,7 +805,15 @@ def _snapshot_ingestion_assertions(
 def _run_live_proof(dsn: str, *, lane: str, run_id: str) -> dict[str, Any]:
     """Exercise selection, trusted publication, retirement, and snapshot ingest."""
     started = _now()
-    ids: dict[str, str] | None = None
+    # ⚠️ 이 자리에 있던 `ids: dict[str, str] | None = None` 은 **두 질문을 겸했다**:
+    #    「ids 가 무엇인가」와 「시딩이 일어났는가(= finally 가 정리해야 하는가)」.
+    #    `| None` 이 필요한 것은 뒤엣것뿐인데 한 이름이 겸하니, 중첩 스코프에서
+    #    mypy 가 좁힘을 버리고 「None 일 수 있다」로 읽었다 — `ids[...]` 를 쓰는
+    #    스무 곳 중 **둘만** 지적됐고(:893 `class EvidenceProvider` 본문, :909 그
+    #    안의 staticmethod) 그 비대칭이 곧 「값이 아니라 자리의 문제」라는 신호였다.
+    #    두 질문을 두 이름으로 가른다. 아래 `seeded_ids` 가 정리 센티널이고,
+    #    `ids` 는 시딩이 성공한 뒤에만 존재하는 `dict[str, str]` 이다.
+    seeded_ids: dict[str, str] | None = None
     cleanup: dict[str, Any] = {'status': 'NOT_RUN'}
     result: dict[str, Any] = {
         'lane': lane,
@@ -810,6 +825,7 @@ def _run_live_proof(dsn: str, *, lane: str, run_id: str) -> dict[str, Any]:
     try:
         seed_connection = _connect(dsn)
         ids = _seed_live_rows(seed_connection, lane=lane, run_id=run_id)
+        seeded_ids = ids
         result['fixture'] = {
             'run_id': run_id,
             'project_id': ids['project_id'],
@@ -1035,11 +1051,11 @@ def _run_live_proof(dsn: str, *, lane: str, run_id: str) -> dict[str, Any]:
     finally:
         if seed_connection is not None:
             seed_connection.close()
-        if ids is not None:
+        if seeded_ids is not None:
             cleanup_connection = None
             try:
                 cleanup_connection = _connect(dsn)
-                cleanup = _cleanup_live_rows(cleanup_connection, ids)
+                cleanup = _cleanup_live_rows(cleanup_connection, seeded_ids)
             except Exception as exc:
                 cleanup = {'status': 'FAIL', 'error': type(exc).__name__}
             finally:
