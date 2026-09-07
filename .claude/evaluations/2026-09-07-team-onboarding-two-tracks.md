@@ -124,7 +124,7 @@ T4/T5: 무발화 — plan_texts 가 비면 check_t4_t5 가 return []
 **CI 의 실제 내용 · 컨테이너 이미지 · 빌드 · 배포 · provider 화 · 협업**을 채웠다.
 `01-concepts-for-non-developers.md` §2 에 그 경계표를 명시했다.
 
-## ⚠️ push 게이트가 잡은 것 — 그리고 그것은 «내가 훅을 켠 방식»이었다
+## ⚠️ push 게이트가 잡은 것 — 그리고 «내 판정이 틀렸다»
 
 정상 방식으로 push 하기 전에 `git -c core.hooksPath=githooks push` 를 썼고,
 **실패 1건**으로 막혔다. 내 변경(문서)과 무접촉인 테스트였다:
@@ -134,38 +134,60 @@ FAILED tests/test_git_hooks_are_wired_here.py::
        TestTheCheckWouldSeeAnUnwiredCheckout::test_an_unset_checkout_reads_as_empty
 ```
 
-**한 줄로 재현했다:**
+**기전은 맞게 짚었다.** `git -c <k>=<v>` 는 자식에게 `GIT_CONFIG_PARAMETERS` 를 넘기고,
+훅→pytest→그 테스트가 `git init` 으로 만드는 격리 저장소까지 설정이 침투한다:
 
 ```bash
-GIT_CONFIG_PARAMETERS="'core.hooksPath=githooks'" python -m pytest tests/test_git_hooks_are_wired_here.py -q
+GIT_CONFIG_PARAMETERS="'core.hooksPath=githooks'" pytest tests/test_git_hooks_are_wired_here.py -q
 #   → 1 failed, 7 passed      (그 env 없이 → 8 passed)
-#   AssertionError: PosixPath('.') != PosixPath('githooks')
 ```
 
-**기전:** `git -c <k>=<v>` 는 자식 프로세스에 `GIT_CONFIG_PARAMETERS` 를 넘긴다.
-훅이 부른 pytest 가 그것을 상속하고, 그 테스트가 `git init` 으로 만드는
-**격리된 임시 저장소에까지 설정이 침투**한다. 그래서 「미설정 트리는 빈 값을 읽는다」가
-깨진다.
+### 🔴 그런데 「테스트가 격리를 빠뜨린 결함」이라는 내 판정은 «틀렸다»
 
-**두 가지가 나온다:**
+형제 세션(`fcc-delivery-final-4a`)이 도입 커밋 `e47152f` 를 찾아 근거를 짚어 줬고,
+그것을 받아 **실측으로 확정했다:**
 
-1. **내 실수** — `core.hooksPath` 는 이 저장소에 **이미 설정돼 있었다**
-   (`git config --get core.hooksPath` → `githooks`). `git -c` 가 불필요했다.
-   빼고 push 하니 통과했다 (`선언 0 / 관측 0 ✅`).
+```bash
+T=$(mktemp -d); git init -q "$T"                  # 훅 «미설정» 저장소
+git -C "$T" config core.hooksPath                  # → ''         본 검사가 미설정을 «본다» ✅
+GIT_CONFIG_PARAMETERS="'core.hooksPath=githooks'" \
+  git -C "$T" config core.hooksPath                # → 'githooks'  🔴 미설정인데 설정된 것처럼
+```
 
-2. **실제 결함 (내 브랜치 범위 밖 — 형제 세션에 인계했다)** —
-   `tests/test_git_hooks_are_wired_here.py:46` 의 `_git_env_without_repo_location()` 이
-   `GIT_DIR` 류 **위치** 변수만 `pop` 하고 **`GIT_CONFIG_PARAMETERS`(설정)는 지우지
-   않는다.** 위치는 격리했는데 설정은 안 했다.
+**본 검사(:125)는 `git config core.hooksPath` 전체 해소를 읽는다.** 그러므로 오염
+상태에서는 **훅이 하나도 안 걸린 체크아웃도 통과한다** — 그 환경에서 본 검사는
+**이빨이 없다.**
 
-⚠️ **그리고 그 테스트는 «본 검사의 비-공허성»을 확인하는 것이다**
-(「미설정 트리를 실제로 볼 수 있는가」). 깨진 상태에서는
-**본 검사에 이빨이 있는지가 확인되지 않는다.**
+**그 시험은 정확히 그 비-공허성을 지키는 자리다. 빨개진 것은 결함이 아니라
+「이 환경에서 본 검사가 미설정을 못 본다」는 «참인 보고»였다.**
 
-이것은 auto memory [[worktrees-share-git-config-so-hooks-can-vanish]]
-(「훅 안에서는 cwd 가 GIT_DIR 을 이기지 못한다」)의 **자매 축**이다 —
-그쪽은 *위치* 격리 실패, 이쪽은 *설정* 격리 실패. **같은 파일이 두 번 같은 계급의
-결함을 냈다.**
+⚠️ `GIT_CONFIG_*` 를 지웠다면 시험이 조용해지고 **그 사실이 가려졌을 것이다.**
+
+### 그리고 근거는 «처음부터 코드에 있었다» — 내가 안 봤다
+
+원저자가 상수 주석(`tests/test_git_hooks_are_wired_here.py:31–35`)에 적어 두었다:
+
+> `⚠️ 전부 지우지 않는다 — GIT_AUTHOR_* 나 GIT_CONFIG_* 는 위치와 무관하고,`
+> `넓게 지우면 이 헬퍼가 「위치를 격리한다」가 아니라 「git 을 다르게 만든다」가 된다.`
+
+**나는 함수 «본문»만 보고 「빠뜨렸다」고 단정했고, 다섯 줄 위를 안 봤다.**
+[[dont-judge-absence-by-library-name]] 의 「내 도구가 어디까지 봤나」를 또 밟았다 —
+이번엔 도구가 아니라 **내 시선의 범위**였다.
+
+⚠️ **그리고 형제 세션의 보고에도 정정할 곳이 있었다** — 「그 문단이 오늘 main 에는
+없다」는 *docstring 에 대해서만* 참이고, 상수 주석에는 살아 있다. 도입 커밋의
+docstring 도 오늘과 동일한 한 줄이다(확인함). **유실된 것은 없었다.**
+두 세션이 같은 파일에서 각자 다른 절반만 보고 각자 틀렸다.
+
+### 결론 — 고칠 것은 코드가 아니라 «관행»이다
+
+`core.hooksPath` 는 이 저장소에 **이미 설정돼 있다**(`githooks`). `git -c` 가
+불필요했고, 빼니 통과했다(`선언 0 / 관측 0 ✅`, 3,359 passed).
+**`07-first-day-scripts.md` §B-4 와 「첫날에 하지 말아야 하는 것」 표에 그것을 넣었다.**
+
+형제가 제안한 대안 둘(`-c core.hooksPath=` 로 덮어쓰기 · `--local` 만 읽기)도 재 봤다.
+**둘 다 red 는 없애지만 축을 바꾼다** — 본 검사는 전체 해소를 읽는데 시험이 다른 것을
+읽으면, 위에서 실증한 그 위험을 **시험이 더는 못 본다.** 그래서 권하지 않는다고 회신했다.
 
 ## 남은 것
 
