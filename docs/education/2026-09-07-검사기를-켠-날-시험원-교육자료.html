@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>검사기를 켠 날</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap">
+    <style>
+      :root {
+        --ground:#F5F7FA; --surface:#FFFFFF; --surface-2:#EDF1F6;
+        --ink:#12171F; --ink-2:#4A5566; --ink-3:#77839A;
+        --rule:#D3DAE4; --rule-2:#B9C3D1;
+        --accent:#1B4F8C; --accent-soft:#E4EDF8;
+        --bad:#A93318; --bad-soft:#FBE9E4;
+        --good:#17654A; --good-soft:#E1F0E9;
+        --warn:#8A5B00; --warn-soft:#FAF0DC;
+        --f-sans:"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+        --f-mono:"IBM Plex Mono","Cascadia Mono",Consolas,"D2Coding",ui-monospace,monospace;
+        --measure:66ch; --wide:108ch; --pad:clamp(1.1rem,4vw,2.5rem);
+      }
+      @media (prefers-color-scheme:dark){
+        :root:not([data-theme="light"]){
+          --ground:#0F131A; --surface:#161C25; --surface-2:#1D242F;
+          --ink:#E7ECF3; --ink-2:#A7B2C2; --ink-3:#7C879A;
+          --rule:#2A323E; --rule-2:#3B4553;
+          --accent:#74AAE8; --accent-soft:#182636;
+          --bad:#EC8368; --bad-soft:#2C1D18;
+          --good:#55C295; --good-soft:#14261F;
+          --warn:#D8A54A; --warn-soft:#2A2314;
+        }
+      }
+      :root[data-theme="dark"]{
+        --ground:#0F131A; --surface:#161C25; --surface-2:#1D242F;
+        --ink:#E7ECF3; --ink-2:#A7B2C2; --ink-3:#7C879A;
+        --rule:#2A323E; --rule-2:#3B4553;
+        --accent:#74AAE8; --accent-soft:#182636;
+        --bad:#EC8368; --bad-soft:#2C1D18;
+        --good:#55C295; --good-soft:#14261F;
+        --warn:#D8A54A; --warn-soft:#2A2314;
+      }
+      *{box-sizing:border-box}
+      body{margin:0;background:var(--ground);color:var(--ink);
+        font-family:var(--f-sans);font-size:16px;line-height:1.75;-webkit-text-size-adjust:100%}
+      .page{padding:var(--pad) var(--pad) 5rem}
+      .col{max-width:var(--measure);margin-inline:auto}
+      .col-wide{max-width:var(--wide);margin-inline:auto}
+      h1,h2,h3{text-wrap:balance;line-height:1.3;margin:0}
+      h1{font-size:clamp(1.7rem,5vw,2.5rem);font-weight:800;letter-spacing:-.02em}
+      h2{font-size:clamp(1.25rem,3vw,1.6rem);font-weight:700;
+        margin-top:3.5rem;padding-bottom:.5rem;border-bottom:2px solid var(--rule-2)}
+      h3{font-size:1.06rem;font-weight:700;margin-top:2.1rem;color:var(--ink)}
+      p{margin:1rem 0;color:var(--ink-2)}
+      li{color:var(--ink-2)}
+      .eyebrow{font-family:var(--f-mono);font-size:.72rem;font-weight:600;letter-spacing:.16em;
+        text-transform:uppercase;color:var(--accent);margin-bottom:.7rem}
+      .lede{font-size:1.08rem;color:var(--ink-2)}
+      .meta{font-family:var(--f-mono);font-size:.78rem;color:var(--ink-3);
+        border-top:1px solid var(--rule);padding-top:.8rem;margin-top:1.6rem}
+      code,.m{font-family:var(--f-mono);font-size:.875em;background:var(--surface-2);
+        padding:.1em .34em;border-radius:3px;overflow-wrap:anywhere}
+      pre{font-family:var(--f-mono);font-size:.82rem;line-height:1.65;
+        background:var(--surface);color:var(--ink);border:1px solid var(--rule);
+        border-left:3px solid var(--rule-2);padding:1rem 1.1rem;overflow-x:auto;margin:1.2rem 0;
+        font-variant-numeric:tabular-nums}
+      pre code{background:none;padding:0;font-size:inherit}
+      strong{font-weight:700;color:var(--ink)}
+      .bad{color:var(--bad);font-weight:700}
+      .good{color:var(--good);font-weight:700}
+      .warn{color:var(--warn);font-weight:700}
+      .note,.alert,.key{padding:1rem 1.15rem;margin:1.4rem 0;border-radius:2px;
+        border-left:3px solid var(--rule-2);background:var(--surface)}
+      .note{border-left-color:var(--accent);background:var(--accent-soft)}
+      .alert{border-left-color:var(--bad);background:var(--bad-soft)}
+      .key{border-left-color:var(--good);background:var(--good-soft)}
+      .note>:first-child,.alert>:first-child,.key>:first-child{margin-top:0}
+      .note>:last-child,.alert>:last-child,.key>:last-child{margin-bottom:0}
+      .tag{display:inline-block;font-family:var(--f-mono);font-size:.7rem;font-weight:600;
+        letter-spacing:.06em;padding:.12em .5em;border-radius:2px;vertical-align:.1em;margin-right:.45em}
+      .tag-bad{background:var(--bad);color:var(--surface)}
+      .tag-good{background:var(--good);color:var(--surface)}
+      .tag-warn{background:var(--warn);color:var(--surface)}
+      .scroll{overflow-x:auto;margin:1.4rem 0}
+      table{border-collapse:collapse;width:100%;font-size:.87rem;
+        font-variant-numeric:tabular-nums;background:var(--surface)}
+      caption{caption-side:top;text-align:left;font-size:.78rem;color:var(--ink-3);
+        padding-bottom:.5rem;font-family:var(--f-mono)}
+      th,td{padding:.55rem .7rem;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}
+      thead th{font-size:.72rem;letter-spacing:.07em;text-transform:uppercase;
+        color:var(--ink-3);border-bottom:2px solid var(--rule-2);font-weight:700}
+      tbody tr:last-child td{border-bottom:none}
+      td.n,th.n{text-align:right;font-family:var(--f-mono);white-space:nowrap}
+      td.mono{font-family:var(--f-mono);font-size:.8rem}
+      .steps{list-style:none;padding:0;margin:1.5rem 0;display:grid;gap:.55rem}
+      .steps li{display:grid;grid-template-columns:2.4rem 1fr;gap:.8rem;align-items:baseline;
+        background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:.75rem .9rem}
+      .steps .st{font-family:var(--f-mono);font-weight:600;font-size:.85rem;
+        color:var(--accent);text-align:right}
+      .steps li.done{border-left:3px solid var(--good)}
+      .steps li.todo{border-left:3px solid var(--warn)}
+      figure{margin:1.8rem 0}
+      figcaption{font-size:.78rem;color:var(--ink-3);font-family:var(--f-mono);
+        margin-top:.6rem;text-align:left}
+      svg{display:block;width:100%;height:auto}
+      .s-lbl{font-family:var(--f-mono);font-size:11px;fill:var(--ink-2)}
+      .s-hd{font-family:var(--f-sans);font-size:12.5px;font-weight:700;fill:var(--ink)}
+      .s-sub{font-family:var(--f-mono);font-size:10px;fill:var(--ink-3)}
+      .s-num{font-family:var(--f-mono);font-size:15px;font-weight:600;fill:var(--ink)}
+      .s-bad{font-family:var(--f-mono);font-size:11px;font-weight:600;fill:var(--bad)}
+      .s-good{font-family:var(--f-mono);font-size:11px;font-weight:600;fill:var(--good)}
+      hr{border:none;border-top:1px solid var(--rule);margin:3rem 0}
+      a{color:var(--accent)}
+      :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+      @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+    </style>
+  </head>
+  <body>
+<div class="page">
+
+<header class="col">
+  <p class="eyebrow">시험원 교육자료 · 2026-09-07</p>
+  <h1>검사기를 켠 날</h1>
+  <p class="lede">계약 핀 한 줄을 올렸더니 타입 검사기가 <strong>0건에서 79건</strong>이 됐습니다.
+  그 79건은 그날 생긴 결함이 아니라 <strong>줄곧 있었는데 아무도 안 본 것</strong>입니다.
+  이 문서는 왜 그것이 안 보였는지, 무엇이 실제로 고장 나 있었는지,
+  그리고 그중 무엇이 <strong>시험 증거에 직접 걸리는지</strong>를 적습니다.</p>
+  <p class="meta">
+    platform <code>b3c619e</code> · contracts <code>50d7edb</code><br>
+    착지 PR 7개 · 발행 태그 2개 · 최종 strict 4층 0/0/0/0
+  </p>
+</header>
+
+<section class="col">
+<h2>0. 이 문서를 읽는 이유</h2>
+
+<p>시험원이 매일 돌리는 도구 중 넷이 이번에 수정됐습니다.</p>
+
+<div class="scroll col-wide">
+<table>
+  <caption>이번에 고친 파일 중 시험원이 «직접 실행»하는 것</caption>
+  <thead><tr><th>도구</th><th>무엇을 하나</th><th class="n">고친 자리</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">central_db_live_proof_cli</td><td>중앙 DB 에 실제로 붙어 제약·적재·재생 멱등성을 증명</td><td class="n">28</td></tr>
+    <tr><td class="mono">check_auth_mode_pairing_cli</td><td>배포된 인증 모드가 짝이 맞는지 판정</td><td class="n">4</td></tr>
+    <tr><td class="mono">provider_identity_live_proof_cli</td><td>provider 신원 해석을 실 DB 로 증명</td><td class="n">3</td></tr>
+    <tr><td class="mono">bench_project_result_selection_cli</td><td>결과 선택 질의의 지연 시간을 측정</td><td class="n">3</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>이 넷은 <strong>증거를 만드는 도구</strong>입니다. 여기서 값이 틀리면 시험 결과가 틀리는 게 아니라
+<strong>「시험 결과가 맞다」는 증거가 틀립니다.</strong> 그리고 그 자리를 오늘까지
+<strong>어떤 자동 검사도 보지 않았습니다.</strong> 왜 그랬는지가 이 문서의 본론입니다.</p>
+</section>
+
+<section class="col">
+<h2>1. 무엇이 착지했나</h2>
+
+<div class="scroll col-wide">
+<table>
+  <caption>2026-09-06 ~ 09-07 · 두 저장소</caption>
+  <thead><tr><th class="n">PR</th><th>저장소</th><th>무엇</th></tr></thead>
+  <tbody>
+    <tr><td class="n">#133</td><td>platform</td><td>핀이 켜지면 빨개질 자리 53건을 미리 닫음 (8파일)</td></tr>
+    <tr><td class="n">#50</td><td>contracts</td><td>계약·커널의 «거짓말하는 선언» 넷 수리 → 태그 둘 발행</td></tr>
+    <tr><td class="n">#136</td><td>platform</td><td>끝난 작업의 장부 항목이 「없는 점유」를 말하던 것을 닫음</td></tr>
+    <tr><td class="n">#137</td><td>platform</td><td><strong>핀 판올림 본체</strong> — 형제 세션 작성, 소유자 부재로 인계받아 머지</td></tr>
+    <tr><td class="n">#140</td><td>platform</td><td>핀을 한 번 더 올리고 <strong>임시 우회 둘을 제거</strong></td></tr>
+    <tr><td class="n">#142</td><td>platform</td><td>내가 주석에 적은 문장이 거짓이 되어 정정</td></tr>
+    <tr><td class="n">#52</td><td>contracts</td><td>같은 문장의 계약 레인 사본 정정</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>발행한 태그 둘: <code>v0.1.26</code> · <code>kernel-v0.5.4</code>.
+소비 레인(platform)의 핀이 그 둘을 가리키고, 그 상태에서 게이트가 초록입니다.</p>
+</section>
+
+<section class="col-wide">
+<h2 class="col">2. 핀 한 줄이 켠 것</h2>
+
+<figure>
+<svg viewBox="0 0 720 300" role="img" aria-label="게이트 오류 수가 0에서 79로, 63으로, 다시 0으로 변한 네 상태">
+  <line x1="150" y1="34" x2="150" y2="266" stroke="var(--rule)" stroke-width="1"/>
+  <line x1="150" y1="266" x2="700" y2="266" stroke="var(--rule-2)" stroke-width="1"/>
+  <text x="150" y="284" class="s-sub" text-anchor="middle">0</text>
+  <text x="288" y="284" class="s-sub" text-anchor="middle">20</text>
+  <text x="426" y="284" class="s-sub" text-anchor="middle">40</text>
+  <text x="564" y="284" class="s-sub" text-anchor="middle">60</text>
+  <text x="702" y="284" class="s-sub" text-anchor="end">80</text>
+
+  <text x="140" y="52" class="s-lbl" text-anchor="end">① 판올림 «전»</text>
+  <rect x="150" y="40" width="2" height="18" fill="var(--good)"/>
+  <text x="162" y="54" class="s-good">0 — 완전 초록</text>
+
+  <text x="140" y="106" class="s-lbl" text-anchor="end">② 핀만 올린 직후</text>
+  <rect x="150" y="94" width="545" height="18" fill="var(--bad)"/>
+  <text x="686" y="108" class="s-num" text-anchor="end" fill="var(--surface)">79</text>
+
+  <text x="140" y="160" class="s-lbl" text-anchor="end">③ 소비 쪽 53건 수리</text>
+  <rect x="150" y="148" width="435" height="18" fill="var(--warn)"/>
+  <text x="576" y="162" class="s-num" text-anchor="end" fill="var(--surface)">63</text>
+
+  <text x="140" y="214" class="s-lbl" text-anchor="end">④ 상류 수리 + 우회 제거</text>
+  <rect x="150" y="202" width="2" height="18" fill="var(--good)"/>
+  <text x="162" y="216" class="s-good">0 — 이번엔 «본 뒤»의 0</text>
+
+  <text x="150" y="242" class="s-sub">① 과 ④ 는 같은 숫자이고 뜻이 정반대입니다 — 앞은 안 봐서 0, 뒤는 보고 고쳐서 0.</text>
+</svg>
+<figcaption>트리를 고정하고 커널만 옮겨 측정. 선언대로 설치(CI 와 같은 <code>pip install -e '.[test]'</code>).</figcaption>
+</figure>
+
+<div class="col">
+<div class="alert">
+<p><strong>①의 0 과 ④의 0 은 화면에서 구별되지 않습니다.</strong>
+게이트는 두 경우 모두 <span class="good">초록</span>을 냅니다.
+「검사를 돌렸는데 통과했다」와 「검사가 아무것도 안 봤다」가 <strong>같은 출력</strong>입니다.</p>
+</div>
+</div>
+</section>
+
+<section class="col">
+<h2>3. 왜 안 보였나 — 파일 하나가 켜고 끄는 스위치</h2>
+
+<p>파이썬 배포판에는 <code>py.typed</code> 라는 <strong>빈 파일</strong>을 넣는 규약이 있습니다(PEP 561).
+내용이 없습니다. 이름만 있습니다. 그 파일이 하는 말은 하나입니다 —
+<em>「이 패키지의 타입 선언을 믿어도 된다」</em>.</p>
+
+<p>그 파일이 <strong>없으면</strong> 검사기는 그 패키지에서 들어오는 모든 것을
+<code>Any</code>(= 무엇이든 될 수 있음)로 처리합니다. <code>Any</code> 는 어떤 검사에도 걸리지 않습니다.</p>
+</section>
+
+<section class="col-wide">
+<figure>
+<svg viewBox="0 0 720 250" role="img" aria-label="같은 코드가 py.typed 유무에 따라 다른 검사 결과를 내는 비교">
+  <rect x="8" y="30" width="340" height="200" fill="var(--surface)" stroke="var(--rule)"/>
+  <rect x="372" y="30" width="340" height="200" fill="var(--surface)" stroke="var(--rule)"/>
+
+  <text x="20" y="22" class="s-hd">py.typed 없음 — 판올림 전</text>
+  <text x="384" y="22" class="s-hd">py.typed 있음 — 판올림 후</text>
+
+  <text x="24" y="58" class="s-sub">커널이 내보내는 표</text>
+  <rect x="24" y="66" width="308" height="30" fill="var(--surface-2)" stroke="var(--rule)"/>
+  <text x="36" y="86" class="s-lbl">PLATFORM_API_OPERATIONS</text>
+  <text x="320" y="86" class="s-bad" text-anchor="end">Any</text>
+
+  <text x="388" y="58" class="s-sub">커널이 내보내는 표</text>
+  <rect x="388" y="66" width="308" height="30" fill="var(--surface-2)" stroke="var(--rule)"/>
+  <text x="400" y="86" class="s-lbl">PLATFORM_API_OPERATIONS</text>
+  <text x="684" y="86" class="s-good" text-anchor="end">OperationSpec</text>
+
+  <text x="24" y="122" class="s-sub">소비 쪽이 오타를 냈을 때</text>
+  <rect x="24" y="130" width="308" height="28" fill="var(--surface-2)" stroke="var(--rule)"/>
+  <text x="36" y="148" class="s-lbl">spec['permisson']</text>
+  <text x="24" y="180" class="s-bad">검사기: 아무 말 없음</text>
+  <text x="24" y="200" class="s-lbl">런타임: 그 자리에서 죽음</text>
+  <text x="24" y="218" class="s-sub">— 배포 뒤에야 발견됩니다</text>
+
+  <text x="388" y="122" class="s-sub">소비 쪽이 오타를 냈을 때</text>
+  <rect x="388" y="130" width="308" height="28" fill="var(--surface-2)" stroke="var(--rule)"/>
+  <text x="400" y="148" class="s-lbl">spec['permisson']</text>
+  <text x="388" y="180" class="s-good">검사기: has no key "permisson"</text>
+  <text x="388" y="200" class="s-lbl">note: Did you mean "permission"?</text>
+  <text x="388" y="218" class="s-sub">— 커밋 전에 막힙니다</text>
+</svg>
+<figcaption>실측. 왼쪽·오른쪽은 <strong>같은 소비 코드</strong>이고 설치된 커널만 다릅니다.</figcaption>
+</figure>
+
+<div class="col">
+<div class="note">
+<p><strong>여기에 두 번째 함정이 겹쳐 있었습니다.</strong>
+이 저장소의 검사 설정에는 <code>ignore_missing_imports = True</code> 가 켜져 있습니다.
+그래서 <em>「이 패키지는 타입이 없습니다」</em>라는 경고조차 뜨지 않았습니다.
+<strong>아무 신호 없이 0건이 검사됐습니다.</strong></p>
+</div>
+</div>
+</section>
+<section class="col">
+<h2>4. 드러난 79건은 어떤 종류였나</h2>
+
+<p>전부 「선언이 사실과 다르다」였고, 어긋난 방향이 넷이었습니다. 처방이 각각 다릅니다.</p>
+
+<h3>갈래 ① — 이미 적혀 있는 사실을 손으로 지워 놓았다 <span class="tag tag-bad">15건</span></h3>
+<pre><code>def _ingest() -&gt; object:                    # ← 「무엇이든 돌려준다」고 선언
+    return execute_platform_ingestion_plan(...)
+
+# 그런데 «바로 그 파일»에:
+def execute_platform_ingestion_plan(...) -&gt; IngestionExecutionResult:</code></pre>
+<p>부르는 함수가 자기 반환형을 정확히 선언하고 있는데, 감싼 쪽이 그것을
+<code>object</code> 로 버렸습니다. 그래서 그 결과의 <code>.committed</code>·<code>.errors</code> 를
+읽는 자리가 전부 검사 밖이었습니다. <strong>처방: 거짓말을 지우고 사실을 적는다.</strong></p>
+
+<h3>갈래 ② — 값 종류가 섞인 표를 만들면 안이 안 보인다 <span class="tag tag-bad">12건</span></h3>
+<pre><code>state = {
+    'postgresql_setting': str(...),      # 문자열
+    'fk_sample_id': { ... },             # 표
+}
+state['fk_sample_id']['on_delete_set_null']   # ← 여기서 막힌다</code></pre>
+<p>문자열과 표를 한 사전에 담으면 검사기는 값의 종류를 「둘의 공통 상위」로 합칩니다.
+그러면 바깥 첨자가 내놓는 값에 <strong>안쪽 첨자를 걸 수 없습니다.</strong>
+<strong>처방: 중첩된 표를 이름 있는 변수로 꺼내고 그 변수를 읽는다</strong>
+— 같은 객체이므로 동작은 그대로입니다.</p>
+
+<h3>갈래 ③ — 선언이 모든 실제 호출자보다 넓다 <span class="tag tag-warn">8건</span></h3>
+<div class="scroll">
+<table>
+  <thead><tr><th>선언</th><th>호출자 전수 조사</th><th>고친 값</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">clock: Callable[[], object]</td><td>생산 1 + 시험 2 = <strong>셋 다 datetime</strong></td><td class="mono">Callable[[], datetime]</td></tr>
+    <tr><td class="mono">rate_limit_policy: object</td><td>생산은 정책, 시험은 None 또는 정책. 소비자 셋 다 정책만 요구</td><td class="mono">Optional[RateLimitPolicy]</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="alert">
+<p><strong>이 갈래에서 실제 고장 하나가 나왔습니다 — 로그인 전체가 멈출 수 있는 자리입니다.</strong></p>
+<p>잠금 판정 함수 <code>is_lock_active</code> 는 <em>총함수</em>라 이상한 값이 들어오면 예외를 잡아
+<strong><code>True</code>(=잠김)</strong> 로 접습니다. 즉 시각을 넘기는 배선이 잘못되면
+타입 오류가 아니라 <strong>「전원 로그인 실패」</strong>로 나타납니다.
+증상이 원인에서 멀리 떨어져 있어 현장에서 진단이 오래 걸리는 형태입니다.</p>
+<p>선언이 <code>object</code> 로 넓게 열려 있는 동안, 그 오배선은 검사기에 안 걸렸습니다.</p>
+</div>
+
+<h3>갈래 ④ — 사실이 두 문장에 흩어져 있어 검사기가 못 잇는다 <span class="tag tag-warn">7건</span></h3>
+<pre><code>for name in names:
+    match = PATTERN.match(name)
+    if match and int(match.group('number')) &lt;= 11:
+        selected.append(name)          # ← 여기서 매치를 «버린다»
+
+numbers = [int(PATTERN.match(n).group('number')) for n in selected]
+#                              ↑ 다시 돌린다. 여기서는 None 이 아닌데
+#                                그 사실이 위 루프에 있어서 검사기가 못 본다</code></pre>
+<p><strong>처방: 매치를 버리지 않고 한 루프에서 이름과 번호를 함께 들고 나온다.</strong>
+정규식 재실행도 같이 사라집니다.</p>
+</section>
+
+<section class="col">
+<h2>5. 시험 증거에 직접 걸리는 자리 넷</h2>
+
+<p>위 네 갈래 중 <strong>동작이 실제로 바뀔 수 있던</strong> 것만 따로 모았습니다.</p>
+
+<ol class="steps">
+  <li><span class="st">1</span><div>
+    <strong>진행률 조인 키에 <code>None</code> 이 실릴 수 있었습니다.</strong>
+    커널은 <code>condition_hash</code> 를 <em>「materialize 전에는 None」</em> 으로 정의합니다.
+    그런데 그것을 받는 모듈은 「materialized 된 행만 온다」는 전제를
+    <strong>산문으로만</strong> 갖고 있었습니다. 미materialize 행이 하나 섞이면
+    <code>None</code> 이 진행률 집계의 <strong>조인 키</strong>로 조용히 들어갑니다.
+    전제를 실행 가능한 검사로 바꿨습니다.
+  </div></li>
+  <li><span class="st">2</span><div>
+    <strong><code>fetchone()</code> 결과를 검사 없이 첨자로 읽었습니다.</strong>
+    <code>provider_identity_live_proof_cli</code>. 행이 없으면 무엇이 없었는지 못 말하고 죽습니다.
+  </div></li>
+  <li><span class="st">3</span><div>
+    <strong>폴백 값의 «종»이 달랐습니다.</strong>
+    <code>check_auth_mode_pairing_cli</code> 가 계약 실패 시 쓰는 대체값이 빈 <em>사전</em>인데
+    진짜 선언은 <em>집합</em>입니다. 둘 다 비어 있어 오늘은 같아 보이지만,
+    그 이름을 집합으로 읽는 사람이 폴백 경로에서만 다른 것을 받습니다.
+  </div></li>
+  <li><span class="st">4</span><div>
+    <strong>라이브 증명 도구가 자기 연결을 따로 열고 있었습니다.</strong>
+    생산 배선에 이미 연결 팩토리가 있는데 익명 람다로 따로 열었습니다.
+    <span class="warn">라이브 증명이 증명해야 하는 것은 생산 배선입니다</span> —
+    따로 열면 증명 대상이 갈립니다. 생산 팩토리를 쓰도록 바꿨습니다(동작 동일).
+  </div></li>
+</ol>
+</section>
+
+<section class="col">
+<h2>6. 「둘 중 하나를 포기하라」가 거짓이었다</h2>
+
+<p>설계서에 이런 판정이 적혀 있었습니다 —
+<em>「권한 표를 읽는 이 자리는 <strong>부재를 차단으로 읽는</strong> 성질을 지켜야 하므로,
+타입 검사를 포기하는 것이 옳다」</em>. 그리고 그 자리는 <strong>무접촉 대상</strong>이었습니다.</p>
+
+<p>갈래를 <strong>둘만</strong> 봤습니다.</p>
+
+<div class="scroll col-wide">
+<table>
+  <thead><tr><th>형태</th><th style="text-align:center">부재 → 차단</th><th style="text-align:center">오타를 잡나</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">OPS.get(op) or {} → .get('permission')</td><td style="text-align:center" class="good">✔</td><td style="text-align:center" class="bad">✘</td></tr>
+    <tr><td class="mono">OPS[op]</td><td style="text-align:center" class="bad">✘</td><td style="text-align:center" class="good">✔</td></tr>
+    <tr style="background:var(--good-soft)"><td class="mono"><strong>OPS.get(op) → is None 분기 → 첨자</strong></td><td style="text-align:center" class="good">✔</td><td style="text-align:center" class="good">✔</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>셋째를 아무도 보지 않았습니다. <strong>주입으로 갈랐습니다</strong> —
+일부러 <code>permisson</code> 이라고 오타를 넣어 두 형태를 돌렸습니다.
+첫째는 <span class="bad">아무 말도 안 했고</span>, 셋째는
+<span class="good">키 이름을 짚어 잡았습니다.</span> 부재 동작은 둘이 동일했습니다.</p>
+
+<div class="key">
+<p><strong><code>.get()</code> 은 키 «이름»을 전혀 보지 않습니다.</strong>
+그래서 「부재를 빈 표로 접는」 형태는 차단 성질을 사는 대신 <strong>검사 전부</strong>를 팝니다.
+필수 키라면 <code>is None</code> 분기 하나로 둘 다 얻습니다.</p>
+</div>
+
+<div class="note">
+<p>⚠️ 다만 <strong>모든 자리가 그렇지는 않습니다.</strong> 계약 레인의 대칭 자리는
+바로 아래에 <code>missing_permission_contract</code> 라는 <strong>선언된 결과</strong>가 있고
+그것을 봉인하는 시험이 있습니다. 거기서 첨자로 바꾸면 그 분기가 예외로 바뀌어 <strong>사라집니다.</strong>
+그래서 그 자리는 유지했습니다 — <strong>결론은 살아남고 근거가 바뀐 경우</strong>입니다.</p>
+</div>
+</section>
+<section class="col-wide">
+<h2 class="col">7. 임시 우회에 «지울 조건»을 적어 두면</h2>
+
+<div class="col">
+<p>상류(다른 저장소)가 틀려서 이쪽에 임시 우회를 둘 때가 있습니다.
+이번에 형제 세션이 우회마다 같은 문장을 붙였습니다:</p>
+<blockquote style="margin:1.4rem 0;padding:.2rem 0 .2rem 1.1rem;border-left:3px solid var(--accent);color:var(--ink)">
+<strong>「이것은 수리가 아니다. 창이 열리면 지워라 — 지워도 초록이면 상류가 고쳐진 것이다.」</strong>
+</blockquote>
+<p>이번 세션에 그 사슬이 <strong>끝까지 돌았습니다.</strong></p>
+</div>
+
+<figure>
+<svg viewBox="0 0 720 210" role="img" aria-label="우회를 두고, 상류를 고치고, 우회를 지우는 세 단계 사슬">
+  <line x1="72" y1="96" x2="648" y2="96" stroke="var(--rule-2)" stroke-width="1"/>
+
+  <circle cx="120" cy="96" r="9" fill="var(--warn)"/>
+  <circle cx="360" cy="96" r="9" fill="var(--accent)"/>
+  <circle cx="600" cy="96" r="9" fill="var(--good)"/>
+
+  <text x="120" y="46" class="s-hd" text-anchor="middle">PR #137</text>
+  <text x="120" y="64" class="s-sub" text-anchor="middle">우회 둘을 두고 핀을 올린다</text>
+  <text x="120" y="126" class="s-lbl" text-anchor="middle">각 우회에</text>
+  <text x="120" y="142" class="s-lbl" text-anchor="middle">「지울 조건」을 적는다</text>
+
+  <text x="360" y="46" class="s-hd" text-anchor="middle">PR #50</text>
+  <text x="360" y="64" class="s-sub" text-anchor="middle">상류(계약·커널) 넷을 고친다</text>
+  <text x="360" y="126" class="s-lbl" text-anchor="middle">태그 v0.1.26 ·</text>
+  <text x="360" y="142" class="s-lbl" text-anchor="middle">kernel-v0.5.4 발행</text>
+
+  <text x="600" y="46" class="s-hd" text-anchor="middle">PR #140</text>
+  <text x="600" y="64" class="s-sub" text-anchor="middle">우회 둘을 지운다</text>
+  <text x="600" y="126" class="s-good" text-anchor="middle">지웠더니 초록</text>
+  <text x="600" y="142" class="s-lbl" text-anchor="middle">strict 4층 0/0/0/0</text>
+
+  <text x="360" y="186" class="s-sub" text-anchor="middle">그 문장이 «자기 조건»을 스스로 충족했습니다.</text>
+</svg>
+<figcaption>「나중에 고칠 것」과 다른 점: 이 문장은 <strong>실행 가능한 판정 절차</strong>입니다 — 지우고 게이트를 돌리면 예/아니오가 나옵니다.</figcaption>
+</figure>
+
+<div class="col">
+<div class="key">
+<p>시험 설계에 그대로 옮길 수 있는 형태입니다. 임시 조치를 남길 때 <strong>셋</strong>을 적으세요 —
+ⓐ 무엇이 틀렸는지(실측값) ⓑ 왜 여기서 못 고치는지 ⓒ <strong>지우는 방법과, 지운 뒤 무엇이 참이어야 하는지.</strong>
+ⓒ 가 없으면 임시 조치는 영구화됩니다.</p>
+</div>
+</div>
+</section>
+
+<section class="col">
+<h2>8. 게이트가 나를 세 번 막았고, 세 번 다 옳았습니다</h2>
+
+<ol class="steps">
+  <li><span class="st">1</span><div>
+    <strong>버전 봉인.</strong> 배포판을 고쳐 놓고 번호를 안 올렸습니다.
+    ⚠️ 그 검사는 <strong>커밋한 «뒤»에만</strong> 답합니다(발행된 태그와 현재를 비교하므로).
+    커밋 전에 게이트를 세 번 돌려 세 번 다 초록을 봤습니다.
+  </div></li>
+  <li><span class="st">2</span><div>
+    <strong>핀 정합 봉인.</strong> 「선언된 핀 == 설치된 버전」을 요구하는데
+    제 검사 환경이 낡아 있었습니다. <span class="warn">장부 JSON 한 줄만 고치는 변경이었는데도</span>
+    그 축을 지나야 했습니다.
+  </div></li>
+  <li><span class="st">3</span><div>
+    <strong>태그 push 게이트.</strong> 태그를 올릴 때도 검사가 돕니다.
+    그래서 <strong>태그가 가리키는 바로 그 트리</strong>를 펼쳐 거기서 통과시켰습니다 —
+    태그가 담을 내용으로 재는 것이 맞습니다.
+  </div></li>
+</ol>
+
+<div class="alert">
+<p><strong>이 기계에는 타입 검사기(mypy)가 어디에도 설치돼 있지 않습니다.</strong>
+게이트의 mypy 팔은 「설치돼 있지 않으면 <code>skip</code>」인데, <strong><code>skipping</code> 은 초록과 같은 모양입니다.</strong>
+CI 는 검사기를 함께 설치하므로 <strong>이빨이 있습니다.</strong></p>
+<p>즉 <strong>「내 손에서는 초록인데 올리면 빨갛다」</strong>가 되고, 그 원인이 아무 데도 안 적혀 있습니다.
+저는 push 마다 <code>FCC_LANE_CHECK_PYTHON</code> 을 검사기가 «있는» 인터프리터로 가리켜 넘겼습니다.</p>
+</div>
+</section>
+
+<section class="col">
+<h2>9. 내가 틀린 것 둘 — 같은 종류입니다</h2>
+
+<h3>① 무접촉 지시의 줄 번호를 «내» 트리에서 확인했습니다</h3>
+<p>형제 세션이 <code>548-549</code> 를 손대지 말라고 했습니다. 저는 제 트리의 546~551 을 열어 보고
+「안 건드렸다」고 답했습니다. 그런데:</p>
+<pre><code>6b667d4(그쪽 기저) : 548-549
+0da711d(내  기저) : 633-634     ← 같은 두 줄
+</code></pre>
+<p>그사이 다른 PR 셋이 착지해 번호만 밀려 있었습니다. <strong>이미 고친 뒤였습니다.</strong>
+결과적으로 그 변경이 옳아서(6장) 그쪽이 유지를 요청했지만, <strong>판정 방법은 틀렸습니다.</strong></p>
+
+<h3>② 「그 태그는 존재하지 않는다」가 몇 시간 뒤 거짓이 됐습니다</h3>
+<p>커널 버전 번호를 고르면서 <code>kernel-v0.5.3</code> 이 없는 것을 확인하고
+주석에 그렇게 적었습니다. 그날 <strong>08:18</strong> 에 형제가 그 태그를 냈습니다.</p>
+
+<div class="alert">
+<p>두 오류의 공통점: <strong>동작을 하나도 바꾸지 않는 문장</strong>이라
+<strong>어떤 게이트도 검사하지 않습니다.</strong> 스스로 빨개지지 않고, 사실이 움직여도 조용합니다.</p>
+<p>⚠️ 그리고 ②의 문장은 <strong>태그 메시지</strong>에도 들어갔습니다. 태그는 옮기지 않는 것이 규칙이라
+<code>kernel-v0.5.4</code> 안에 <strong>영구히 거짓인 채로 남습니다.</strong> 주석 두 곳만 정정했습니다(#142·#52).</p>
+</div>
+
+<div class="key">
+<p><strong>처방 — 시점이 아니라 포함 관계로 적으세요.</strong><br>
+「0.5.3 은 태그가 없어서」 → 사실이 움직이면 죽습니다.<br>
+「0.5.3 은 <strong>이 수정을 안 담아서</strong>」 → 태그가 생겨도 참입니다.</p>
+<p>그리고 <strong>쓰는 순간 불변이 되는 자리</strong>(태그 메시지·머지 커밋 메시지)에는
+시점형 문장을 아예 쓰지 않는 것이 유일한 방어입니다.</p>
+</div>
+</section>
+<section class="col-wide">
+<h2 class="col">10. 지금 어디까지 왔나 — 그리고 어디를 아직 안 보나</h2>
+
+<figure>
+<svg viewBox="0 0 720 320" role="img" aria-label="패키지 215개 파일 중 139개는 게이트가 보고 76개는 보지 않는다">
+  <rect x="8" y="34" width="440" height="250" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.5"/>
+  <text x="24" y="26" class="s-hd" fill="var(--good)">게이트가 «보는» 곳 — 파일 139</text>
+
+  <rect x="28" y="56" width="400" height="46" fill="var(--surface)" stroke="var(--rule)"/>
+  <text x="42" y="76" class="s-lbl">domain/</text><text x="42" y="93" class="s-sub">51 파일</text>
+  <text x="414" y="85" class="s-good" text-anchor="end">0건</text>
+
+  <rect x="28" y="110" width="400" height="46" fill="var(--surface)" stroke="var(--rule)"/>
+  <text x="42" y="130" class="s-lbl">infrastructure/</text><text x="42" y="147" class="s-sub">11 파일</text>
+  <text x="414" y="139" class="s-good" text-anchor="end">0건</text>
+
+  <rect x="28" y="164" width="400" height="46" fill="var(--surface)" stroke="var(--rule)"/>
+  <text x="42" y="184" class="s-lbl">application/</text><text x="42" y="201" class="s-sub">75 파일</text>
+  <text x="414" y="193" class="s-good" text-anchor="end">0건</text>
+
+  <rect x="28" y="218" width="400" height="46" fill="var(--surface)" stroke="var(--rule)"/>
+  <text x="42" y="238" class="s-lbl">api/</text><text x="42" y="255" class="s-sub">2 파일</text>
+  <text x="414" y="247" class="s-good" text-anchor="end">0건</text>
+
+  <rect x="472" y="34" width="240" height="250" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.5" stroke-dasharray="5 3"/>
+  <text x="488" y="26" class="s-hd" fill="var(--bad)">아무도 «안 보는» 곳</text>
+
+  <text x="592" y="96" class="s-num" text-anchor="middle" fill="var(--bad)" style="font-size:34px">76</text>
+  <text x="592" y="118" class="s-lbl" text-anchor="middle">최상위 모듈 파일</text>
+
+  <line x1="504" y1="140" x2="680" y2="140" stroke="var(--rule-2)"/>
+
+  <text x="592" y="176" class="s-num" text-anchor="middle" fill="var(--bad)" style="font-size:34px">45</text>
+  <text x="592" y="198" class="s-lbl" text-anchor="middle">지금 이미 빨간 오류</text>
+  <text x="592" y="215" class="s-sub" text-anchor="middle">16개 파일에 흩어져 있음</text>
+
+  <text x="592" y="246" class="s-sub" text-anchor="middle">시험 증거를 만드는 CLI 대부분이</text>
+  <text x="592" y="262" class="s-sub" text-anchor="middle">이 상자 안에 있습니다</text>
+
+  <text x="8" y="306" class="s-sub">strict 절은 «패키지 넷»만 순회합니다. 최상위 모듈은 어느 절에도 안 들어갑니다.</text>
+</svg>
+<figcaption>현재 <code>main</code>(<code>9565be6</code>) 실측 · 선언대로 설치한 환경.</figcaption>
+</figure>
+
+<div class="col">
+<div class="scroll">
+<table>
+  <caption>게이트 밖 45건이 있는 파일 상위</caption>
+  <thead><tr><th>파일</th><th class="n">건</th><th>시험원이 쓰나</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">cutover_bundle_cli</td><td class="n">6</td><td>전환 번들 생성</td></tr>
+    <tr><td class="mono">keyset_cursor_live_proof_cli</td><td class="n">5</td><td>커서 페이지네이션 실증</td></tr>
+    <tr><td class="mono">cross_session_result_selection_evidence_cli</td><td class="n">4</td><td>세션 간 결과 선택 증거</td></tr>
+    <tr><td class="mono">central_migration_readiness_cli</td><td class="n">3</td><td>마이그레이션 준비 판정</td></tr>
+    <tr><td class="mono">api_composition</td><td class="n">3</td><td>앱 조립 지점(간접)</td></tr>
+    <tr><td class="mono" colspan="3">… 그 외 11개 파일</td></tr>
+  </tbody>
+</table>
+</div>
+</div>
+
+<div class="col">
+<div class="note">
+<p><strong>이 자리는 이미 임자가 있습니다.</strong> 같은 날 형제 세션이
+<code>docs/education/2026-09-07-검사가-부르지-않은-자리-시험원-교육자료.html</code> 를 냈고,
+위 16파일 표와 <strong>같은 목록</strong>을 다루고 있습니다. 그쪽이 24건을 이미 닫았고
+<em>「그중 23건은 결함이 아니었다」</em>고 적었습니다.</p>
+<p>그래서 이 문서는 그 자리를 <strong>다시 배정하지 않습니다.</strong> 위 도해는
+「이번 판올림이 끝난 시점의 사진」으로만 두고, 그 주제의 권위는 그 문서입니다.</p>
+</div>
+</div>
+</section>
+
+<section class="col">
+<h2>11. 다음 세션이 이어받을 것 — 임자 없는 셋</h2>
+
+<p>이번 세션이 <strong>측정해 놓고 고치지 못한</strong> 자리만 넘깁니다.
+「고칠 수 없었다」에는 이유가 각각 있습니다.</p>
+
+<ol class="steps">
+  <li><span class="st">1</span><div>
+    <strong><code>api/platform_routes.py:853-855</code> — 검증기가 증명한 것을 선언이 버린다.</strong><br>
+    커널의 요청 검증기는 <em>「있고, 문자열이고, 비어 있지 않다」</em>를 실제로 증명한 뒤
+    <code>dict[str, object]</code> 를 돌려줍니다. 증명한 것을 반환형이 안 담습니다.
+    정공은 그 검증기가 <code>TypedDict</code> 를 돌려주는 것이고, <strong>이번에 고친
+    <code>OperationSpec</code> 과 같은 계급</strong>입니다. 계약 레인이라 새 태그가 걸립니다.
+    <span class="warn">현재 우회가 자리에 있고 「지울 조건」이 달려 있습니다.</span>
+  </div></li>
+  <li><span class="st">2</span><div>
+    <strong><code>api/platform_routes.py:1714</code> — 챔버 진행률 포트의 «폭».</strong><br>
+    이것은 제가 판정할 수 없습니다. PR #132 의 장부가
+    <em>「미해결로 남긴다 — 포트 주인의 판정이다」</em>로 이미 등재해 뒀습니다.
+    다음 세션도 <strong>임의로 좁히지 마세요</strong>; 주인을 찾는 것이 먼저입니다.
+  </div></li>
+  <li><span class="st">3</span><div>
+    <strong>로컬과 CI 가 다른 답을 내는데 아무 데도 안 적혀 있습니다.</strong><br>
+    이 기계에는 타입 검사기가 없어 <code>pre-push</code> 가 <span class="good">조용히 통과</span>하고,
+    CI 는 검사기를 함께 설치하므로 <span class="bad">뒤에서 빨개집니다.</span>
+    <code>CLAUDE.md</code> 의 <em>「오늘 거짓인 서술」</em> 표 옆이 그 사실의 자리입니다.
+    ⚠️ 이건 문서 한 줄이지만, 모르면 세션마다 같은 자리에서 놀랍니다.
+  </div></li>
+</ol>
+
+<div class="key">
+<p><strong>셋 다 공통점이 있습니다 — 「여기서 못 고치는 이유」가 각각 다릅니다.</strong>
+①은 다른 저장소라서, ②는 판정 권한이 없어서, ③은 코드가 아니라 문서라서입니다.
+<span class="warn">막힌 이유를 적지 않고 「나중에」로 두면 다음 사람이 같은 조사를 다시 합니다.</span></p>
+</div>
+</section>
+<section class="col">
+<h2>12. 다음 세션 착수 지시문</h2>
+
+<p>아래를 그대로 새 세션에 붙여 넣으면 됩니다.</p>
+
+<pre><code>목표 — 이번 핀 판올림이 «측정해 놓고 못 고친» 셋을 닫는다.
+
+■ 먼저 읽을 것
+    docs/education/2026-09-07-검사기를-켠-날-시험원-교육자료.html   (이 작업의 배경)
+    docs/education/2026-09-07-검사가-부르지-않은-자리-시험원-교육자료.html
+    docs/education/2026-09-07-초록의-뜻-시험원-교육자료.html
+    ⚠️ 뒤의 둘은 «최상위 모듈이 게이트 밖»이라는 주제를 이미 다루고 그 자리에
+       임자가 있다(claim: education-the-gate-never-called-20260907).
+       그 범위는 건드리지 말고 소유 세션과 먼저 조율할 것.
+
+■ 임자 없는 셋 — 이것만 한다
+    ① api/platform_routes.py:853-855
+       커널 validate_project_result_reference_request 가 -> dict[str, object] 인데
+       본문은 「있고·문자열이고·비어 있지 않다」를 실제로 증명한다.
+       정공: 그 검증기가 TypedDict 를 돌려주게 한다(이번 OperationSpec 과 같은 계급).
+       ⚠️ 계약 레인(fcc-test-contracts)이라 새 태그가 걸린다 — 태그 발행은 승인 지점.
+       ⚠️ 소비 쪽에 우회가 있고 「지울 조건」이 달려 있다. 상류를 고친 뒤 지워 보고
+          초록이면 상류가 고쳐진 것이다.
+
+    ② api/platform_routes.py:1714 — ChamberProgressBroadcastPort 의 «폭»
+       🔴 임의로 좁히지 마라. PR #132 의 장부가 「미해결 — 포트 주인의 판정」으로
+          이미 등재해 뒀다. 주인을 찾는 것이 먼저다.
+
+    ③ 로컬에 mypy 가 없어 pre-push 가 조용히 통과하고 CI 가 뒤에서 빨개진다.
+       그 갈라짐이 어디에도 안 적혀 있다 → CLAUDE.md 「오늘 거짓인 서술」 표 옆.
+
+■ 착수 전에 반드시
+    1. .claude/work-claims/ 에 claim 을 걸고 브랜치를 바인딩한다.
+       ⚠️ 최상위 게이트 확대 claim 과 scope 교집합이 0 인지 확인할 것.
+    2. 검사기가 «있는» 인터프리터를 만든다:
+           python3 -m venv <dir> && <dir>/bin/pip install -e '.[test]'
+       push 할 때:  FCC_LANE_CHECK_PYTHON=<dir>/bin/python git push ...
+    3. ①은 동작 변경이 아니라 «선언» 변경이지만 계약 레인 태그가 걸리므로
+       intent/ 가 필요한지 intent/README.md §120 줄로 판정할 것.
+
+■ 함정 — 이번 세션이 실제로 밟은 것
+    · 형제가 「이 줄은 손대지 마라」고 하면 그 줄 번호는 «그쪽 기저»의 것이다.
+      내 트리의 같은 번호를 열어 보고 「무접촉」이라 답했는데 이미 고친 뒤였다.
+      좌표는 «원문»으로 되찾아라: git show <그쪽기저>:<파일> | sed -n 'N,Mp'
+    · 「지금 없다/있다」를 주석·태그 메시지에 적지 마라. 사실이 움직여도 조용하다.
+      포함 관계로 적어라 — 「그 태그가 없어서」가 아니라 「그것이 이 판을 안 담아서」.
+    · 버전 봉인은 «커밋 뒤»에만 답한다. 커밋 전 초록을 세 번 봐도 소용없다.
+    · 열린 PR 의 브랜치 파일을 읽어 버전 번호 선점을 확인하라. 태그 목록만으로는
+      「선언만 하고 태그가 없는」 번호를 못 본다. 같은 값을 쓰면 git 이 «조용히» 병합한다.
+    · cast / # type: ignore 로 막지 마라 — 결함이 보존된 채 초록이 된다.
+
+■ 완료 판정
+    · lane_check 선언된 실패 0 / 관측된 실패 0  (검사기 있는 인터프리터로)
+    · 대조군: merge-base 에서 «같은 rig 로» 재서 신규 red 0
+    · ①을 닫았다면: 소비 쪽 우회를 지우고 초록인지 확인 — 그것이 그 우회의 «지울 조건»이다
+</code></pre>
+</section>
+
+<section class="col">
+<h2>13. 한 줄로</h2>
+
+<div class="key">
+<p style="font-size:1.1rem"><strong>초록에는 두 종류가 있고 화면에서 구별되지 않습니다</strong> —
+「검사해서 통과했다」와 「검사기가 그 자리를 못 봤다」.
+이번 세션은 후자를 전자로 바꿨습니다. 파일 <strong>139</strong>개에서요.</p>
+</div>
+
+<p>그리고 이 문서 자체가 그 규율을 한 번 더 받았습니다 —
+착지 직전에 형제 세션 둘이 같은 주제의 자료를 냈다는 것을 확인하고,
+<strong>겹치는 과제 배정을 걷어냈습니다.</strong>
+문서도 「내가 안 봤다」와 「없다」를 구별해야 합니다.</p>
+
+<p class="meta">
+작성 세션: fcc-delivery-final-0e · 2026-09-07<br>
+근거 커밋: platform <code>b3c619e</code> · contracts <code>50d7edb</code> ·
+태그 <code>v0.1.26</code> · <code>kernel-v0.5.4</code><br>
+이 문서의 모든 수는 «선언대로 설치한 환경»에서 직접 잰 것이고, 원본 저장소 수치를 인용하지 않았습니다.
+</p>
+</section>
+
+</div>
+  </body>
+</html>
