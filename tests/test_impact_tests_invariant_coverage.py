@@ -1,6 +1,24 @@
-# ⚠️ 2026-08-31: 이 파일은 모노레포 `tests/test_impact_tests_invariant_coverage.py` 에서 갈라져 왔다. 남은 것은
-#    소비 대상이 이 레포에 있는 단위(TestFrontendConformanceSyntheticRouting)뿐이고,
-#    나머지 형제 검사와 그것들만 쓰던 import 는 저쪽에 남았다.
+# ⚠️ 2026-08-31: 이 파일은 모노레포 `tests/test_impact_tests_invariant_coverage.py` 에서
+#    갈라져 왔다.
+#
+# ⚠️ 2026-09-07 정정 — **위 문장의 뒷부분이 거짓이었다.** 그 자리에는 「남은 것은 소비
+#    대상이 이 레포에 있는 단위(TestFrontendConformanceSyntheticRouting)뿐」이라고
+#    적혀 있었다. 실측하면 이 파일에 **시험 함수가 0개**다(클래스 0 · `test*` 0 ·
+#    헬퍼 4, 그중 둘은 호출부 0건). 358행의 꼬리 주석이 맞고 이 머리말이 틀렸다 —
+#    한 파일 안에서 두 주석이 반대말을 하고 있었다.
+#
+#    그리고 그 클래스는 «이관»된 것도 아니다. 양 레포를 AST 로 전수했다:
+#
+#        platform  이 파일의 ClassDef                      0개
+#        모노레포  같은 이름 파일의 ClassDef               5개 — 그 이름 없음
+#        모노레포 전량 `class TestFrontend…SyntheticRouting`  0건
+#
+#    정의 0 / 언급 7(모노레포 5 + 이 파일 머리·꼬리 2). **이사가 아니라 소멸이었다.**
+#    ⚠️ 그중 모노레포 `.claude/skills/verify-frontend-conformance/SKILL.md` 는 그것을
+#       "Routing is sealed by …" 로 **보장**한다 — 없는 봉인을 이름까지 대며.
+#
+#    이 커밋은 **거짓 진술만 고친다.** 「363줄·시험 0건인 이 파일을 어떻게 할 것인가」는
+#    동작 판정이라 별도로 간다 → `intent/a-test-file-that-collects-nothing/`.
 """Impact-tests.sh × SKILL.md frontmatter coverage invariant.
 
 Sprint invariant-mapping-detector-architecture-upgrade (2026-05-25).
