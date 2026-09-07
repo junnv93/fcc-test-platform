@@ -96,13 +96,18 @@ fcc-central-postgres          Up (healthy)
 fcc-central-keycloak          Up (healthy)
 fcc-central-headless-api      Up (healthy)
 fcc-central-platform-api      Up (healthy)
+fcc-central-platform-api-node Up (healthy)
 fcc-central-web               Up
 fcc-central-migrate           Exited (0)
 ```
 
 판단 기준:
 
-- 위 **5개(postgres/keycloak/headless-api/platform-api/web)가 `Up`이면 정상**이다.
+- 위 **6개(postgres/keycloak/headless-api/platform-api/platform-api-node/web)가
+  `Up`이면 정상**이다.
+  ⚠️ `platform-api-node` 는 2026-09-04 에 생긴 **두 번째 인스턴스**다(평문 HTTP 에서
+  브라우저와 챔버 노드가 서로 반대의 인증 모드를 요구해 하나로는 둘 다 못 받는다).
+  이 목록이 그 전에 쓰여 다섯이었고, 세어 본 운영자가 «하나 더 떠 있다»로 읽었다.
 - **`fcc-central-migrate`는 `Exited (0)`이 정상**이다. 이 컨테이너는 DB 스키마를 한 번
   적용하고 스스로 끝나는 **1회성 작업**(`restart: "no"`)이라, 계속 떠 있지 않고 종료된 게
   맞다. `Exited (0)`의 `0`은 "오류 없이 끝남"을 뜻한다.

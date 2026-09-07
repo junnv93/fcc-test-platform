@@ -168,6 +168,25 @@ def discover_migrations(migrations_dir: Path = DEFAULT_MIGRATIONS_DIR) -> list[t
     return [(stem, path) for _num, stem, path in found]
 
 
+#: 생성물임을 **파일이 스스로 선언하는** 표지. 이름을 못박지 않는 이유 — 부트스트랩이
+#: 이름을 바꾸거나 두 번째 생성물이 생기는 날, 손 목록은 조용히 낡는다.
+_GENERATED_HEADER = 'Generated from'
+_GENERATED_HEADER_LINES = 3
+
+
+def is_generated_artifact(path: Path) -> bool:
+    """이 마이그레이션 파일이 **생성물**인가 — 파일 머리에서 파생한다.
+
+    ``001_initial_central_db.sql`` 의 첫 줄이
+    ``-- Generated from docs/platform/central_db_schema.v1.json.`` 이다.
+    """
+    try:
+        head = path.read_text(encoding='utf-8').splitlines()[:_GENERATED_HEADER_LINES]
+    except (OSError, UnicodeDecodeError):
+        return False
+    return any(_GENERATED_HEADER in line for line in head)
+
+
 def plan_migrations(
     migrations: Sequence[tuple[str, Path]],
     applied: Mapping[str, str],
@@ -179,6 +198,26 @@ def plan_migrations(
       * already applied with DIFFERENT checksum → drift error (do NOT re-apply).
       * not applied → queue (version, path, fresh checksum).
     Returns the apply queue (in order) and a list of human-readable drift errors.
+
+    ⚠️ **생성물은 체크섬 비교에서 빠진다** (2026-09-07). 왜 그것이 «완화»가 아니라
+    수리인지 — 그 비교에 **참 양성이 하나도 없었기** 때문이다:
+
+    * ``001`` 은 스키마 SSOT(``central_db_schema.v1.json``)에서 exporter 가 **재생성**
+      한다. 스키마가 정당하게 바뀔 때마다 파일 체크섬이 바뀐다.
+    * 기존 DB 에서 ``001`` 은 **다시 실행되지 않는다.** 체크섬만 비교된다.
+    * 그리고 그 체크섬은 「재생성됐다」와 「사람이 고쳤다」를 **원리적으로 구별하지
+      못한다** — 둘 다 「달라졌다」로만 보인다.
+
+    즉 이 비교가 낼 수 있는 것은 거짓 양성뿐이었고, 그 대가는 **스키마가 바뀔 때마다
+    배포가 멈추는 것**이었다(실측 2026-09-07, 중앙 PC: ``central-migrate`` exit 3 으로
+    ``platform-api``·``platform-api-node``·``web`` 셋이 안 떴다). 그리고 오류 메시지는
+    아무도 안 한 일을 *"already-applied migration was edited"* 라고 말했다.
+
+    ⚠️ **「사람이 고쳤나」는 버려지지 않는다 — 구별할 수 있는 자리로 옮겨 간다.**
+    ``tests/test_chamber_node_central_schema.py::TestChamberSchemaDdlDrift`` 가 스키마
+    JSON 으로 DDL 을 다시 렌더해 커밋된 파일과 **바이트 동등**을 요구한다. 체크섬보다
+    강하다 — 무엇이 달라졌는지까지 말한다. 그 게이트가 사라지면 이 완화가 구멍이 되므로,
+    ``tests/test_platform_db_migration_runner.py`` 가 **그 게이트의 실재를 단언**한다.
     """
     to_apply: list[tuple[str, Path, str]] = []
     drift: list[str] = []
@@ -188,6 +227,9 @@ def plan_migrations(
         if recorded is None:
             to_apply.append((version, path, digest))
         elif recorded != digest:
+            if is_generated_artifact(path):
+                # 재생성된 부트스트랩. 위 §를 보라 — 이 자리에는 구별력이 없다.
+                continue
             drift.append(
                 f'{version}: file checksum {digest[:12]}… != ledger {recorded[:12]}… '
                 '(already-applied migration was edited — refusing to re-apply)'

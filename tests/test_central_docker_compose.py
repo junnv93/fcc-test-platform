@@ -1968,6 +1968,212 @@ class TestProviderIdentityValue(unittest.TestCase):
 
 
 
+# ── 운영 문서가 «이 저장소의» compose 를 말하는가 ───────────────────────────────
+#
+# ⚠️ **파생 소스를 여기 못박아 둔다.** 이 저장소와 provider 저장소가 **각각**
+# `infra/docker-compose.central.yml` 을 갖고 있고 내용이 다르다(실측 2026-09-07:
+# provider 6서비스·`web` 에 `build:` 없음 / 여기 7서비스·`build:` 있음). 그 사실을
+# 적어 두지 않으면 다음 사람이 provider 판을 보고 「서비스가 6개인데 왜 7개를 기대하지」
+# 로 읽는다 — 사본이 진짜 의존을 가리는 형태이고 이 레포가 반복해 치른 값이다.
+#
+# 이 절이 사는 결함(실측 2026-09-07, 운영자 질문에서 나옴):
+#
+#   ① `infra/central/ONPREM_DEPLOYMENT.md` 가 네 자리에서 provider 저장소로 `cd` 했다.
+#      그 파일은 추출 배송 커밋이 마지막으로 만졌고 2026-09-03 배치 변경을 못 받았다.
+#      그대로 따르면 `platform-api-node` 없는 스택이 뜨고 `web` 을 못 만든다.
+#   ② 운영 문서 **셋**의 기대 컨테이너 목록이 `platform-api-node` 이전 판이었다.
+#      세어 본 운영자는 건강한 스택을 「하나 더 떠 있다」로 읽는다.
+_FENCE = re.compile(r'```[^\n]*\n(.*?)```', re.S)
+_PROVIDER_CD = re.compile(r'cd\s+(?:/mnt/c/|C:\\?)FCC_mobile_test_automation', re.I)
+_CENTRAL_NAME = re.compile(r'fcc-central-[a-z-]+')
+
+#: 기대 목록으로 «인정»하는 최소 이름 수. 산문 한 줄이 컨테이너 하나를 언급하는 것과
+#: `ps` 출력을 옮겨 적은 블록을 가른다.
+_EXPECTATION_MIN_NAMES = 3
+
+
+def _fenced_blocks(text: str) -> 'list[str]':
+    return _FENCE.findall(text)
+
+
+#: 이 저장소가 소유하는 중앙 자산. 블록이 이것들 중 하나를 만지면 그 블록의 `cd` 는
+#: **이 저장소**를 가리켜야 한다.
+#:
+#: ⚠️ 처음에는 `docker-compose.central.yml` 하나만 봤고, 주입 실험에서 **안 물었다** —
+#: `cd … && cp infra/central/central.env.example …` 블록은 compose 를 언급하지 않기
+#: 때문이다. 그런데 그 자리도 똑같이 틀렸다: 잘못된 저장소의 env 예시를 복사하게 된다.
+#: 판정 단위를 「compose 를 부르는가」에서 **「이 저장소의 중앙 자산을 만지는가」**로
+#: 넓혔다. 챔버 PC 블록은 여전히 걸리지 않는다 — 그 블록들은 셋 중 무엇도 안 만진다.
+_THIS_REPOS_CENTRAL_ASSETS = (
+    'docker-compose.central.yml',
+    'infra/central/central.env',
+    'scripts/platform_db_migrate.py',
+)
+
+
+def _touches_this_repos_central_assets(block: str) -> bool:
+    return any(asset in block for asset in _THIS_REPOS_CENTRAL_ASSETS)
+
+
+def _operational_markdown() -> 'list[Path]':
+    """중앙 compose 를 «부르는» 마크다운. 손 목록을 두지 않는다."""
+    found = []
+    for md in sorted(PROJECT_ROOT.rglob('*.md')):
+        if 'node_modules' in md.parts:
+            continue
+        try:
+            text = md.read_text(encoding='utf-8')
+        except (OSError, UnicodeDecodeError):
+            continue
+        if 'docker-compose.central.yml' in text:
+            found.append(md)
+    return found
+
+
+class TestCentralDocsNameThisRepositorysStack(unittest.TestCase):
+    """운영 문서가 «어느 저장소에서 무엇이 뜨는지»를 compose 에서 파생해 말하는가."""
+
+    def setUp(self) -> None:
+        self.compose = yaml.safe_load(COMPOSE_PATH.read_text(encoding='utf-8'))
+        self.services = self.compose['services']
+
+    def _container_names(self) -> 'set[str]':
+        return {
+            spec['container_name']
+            for spec in self.services.values()
+            if isinstance(spec, dict) and 'container_name' in spec
+        }
+
+    def _one_shot_names(self) -> 'set[str]':
+        """`restart: "no"` 인 것 — 끝나면 «종료되는 것이 정상**이다."""
+        return {
+            spec['container_name']
+            for spec in self.services.values()
+            if isinstance(spec, dict) and 'container_name' in spec
+            and str(spec.get('restart', '')).strip('"\'') == 'no'
+        }
+
+    def test_the_derivation_is_not_empty(self):
+        """파생이 비면 아래 검사들이 아무것도 요구하지 않으면서 초록이 된다."""
+        self.assertGreaterEqual(len(self._container_names()), 5)
+        self.assertTrue(_operational_markdown(), '중앙 compose 를 부르는 문서가 0건이다')
+
+    def test_the_one_shot_split_is_derived_and_populated(self):
+        """⚠️ **일회성을 «상시 가동»과 갈라 둔다.**
+
+        `fcc-central-migrate` 는 `restart: "no"` 라 끝나면 종료한다 — 정상 스택에서도
+        실행 중 목록에 없다. 이 갈라짐을 파생으로 두지 않고 이름을 손으로 적으면,
+        일회성이 하나 더 생기는 날 조용히 안 깨지거나(빠뜨림) **건강한 스택을 위반으로
+        읽는다**(과발화). 과발화하는 게이트는 꺼지고, 꺼진 게이트는 0층이다.
+        """
+        one_shot = self._one_shot_names()
+        self.assertTrue(
+            one_shot,
+            '`restart: "no"` 인 서비스가 하나도 없다 — 일회성 축이 공허하다. '
+            'compose 가 바뀌었다면 이 검사가 먼저 그것을 말해야 한다.',
+        )
+        self.assertTrue(
+            one_shot < self._container_names(),
+            '전부가 일회성이다 — 상시 가동이 하나도 없는 스택은 이 문서들이 말하는 것이 '
+            '아니다.',
+        )
+
+    def test_no_document_runs_this_compose_from_the_provider_repository(self):
+        """⚠️ 두 저장소가 같은 이름의 compose 를 갖고 **내용이 다르다.**
+
+        판정 단위는 «파일»이 아니라 **펜스 블록**이다. 챔버 PC 절이 provider 저장소로
+        `cd` 하는 것은 **정상**이고(그 PC 가 그것을 둔다), 그 블록은 중앙 compose 를
+        부르지 않는다. 파일 단위로 물으면 그 정상 넷을 지목한다.
+        """
+        offenders = []
+        for md in _operational_markdown():
+            text = md.read_text(encoding='utf-8')
+            for block in _fenced_blocks(text):
+                if _touches_this_repos_central_assets(block) and _PROVIDER_CD.search(block):
+                    offenders.append(md.relative_to(PROJECT_ROOT).as_posix())
+        self.assertEqual(
+            sorted(set(offenders)), [],
+            '중앙 compose 를 부르는 블록이 provider 저장소로 cd 한다:\n  '
+            + '\n  '.join(sorted(set(offenders)))
+            + '\n\n두 저장소가 각각 infra/docker-compose.central.yml 을 갖고 있고 '
+              '내용이 다르다 — provider 판에는 platform-api-node 가 없고 web 에 '
+              'build: 가 없다. 배치표 SSOT 는 '
+              'docs/operations/central-pc-operational-validation-runbook.md '
+              '§저장소 배치 이고, 중앙 PC 는 이 저장소 하나만 둔다.',
+        )
+
+    def test_the_asset_predicate_covers_more_than_the_compose(self):
+        """⚠️ 탐지기 자신에 합성 입력을 먹인다 — 오늘 위반이 0이면 좁혀도 초록이다.
+
+        실측 2026-09-07: 처음에는 `docker-compose.central.yml` 하나만 봤고, `cd … && cp
+        infra/central/central.env.example …` 블록의 잘못된 `cd` 를 **못 잡았다.** 그
+        블록도 똑같이 틀렸다 — 잘못된 저장소의 env 예시를 복사하게 된다.
+
+        그런데 술어를 좁히는 주입은 «결함과 함께» 들어오므로 아무것도 빨개지지 않는다.
+        그래서 폭 자체를 여기서 산다.
+        """
+        env_block = ('cd /path/to/somewhere\n'
+                     'cp infra/central/central.env.example infra/central/central.env\n')
+        compose_block = 'docker compose -f infra/docker-compose.central.yml up -d\n'
+        chamber_block = 'cd C:\\FCC_mobile_test_automation\ngit pull --ff-only origin main\n'
+
+        self.assertTrue(
+            _touches_this_repos_central_assets(env_block),
+            'env 예시를 복사하는 블록을 «이 저장소의 자산을 만진다»로 안 읽는다 — '
+            '그 자리의 잘못된 cd 가 통과한다.',
+        )
+        self.assertTrue(_touches_this_repos_central_assets(compose_block))
+        self.assertFalse(
+            _touches_this_repos_central_assets(chamber_block),
+            '⚠️ 챔버 PC 블록을 지목한다 — 그 PC 는 provider 저장소를 «두는 것이 맞다». '
+            '과발화하는 게이트는 꺼진다.',
+        )
+
+    def test_expected_container_lists_match_the_compose(self):
+        """⚠️ 기대 목록을 손으로 적으면 서비스가 늘 때마다 같은 일이 반복된다.
+
+        실측 2026-09-07: 문서 **셋**이 `platform-api-node` 이전 판이었다. 세어 본
+        운영자는 건강한 스택을 「하나 더 떠 있다」로 읽는다.
+        """
+        expected = self._container_names()
+        offenders = []
+        for md in _operational_markdown():
+            text = md.read_text(encoding='utf-8')
+            for block in _fenced_blocks(text):
+                found = set(_CENTRAL_NAME.findall(block))
+                if len(found) < _EXPECTATION_MIN_NAMES:
+                    continue
+                missing = expected - found
+                if missing:
+                    offenders.append(
+                        f'{md.relative_to(PROJECT_ROOT).as_posix()} — 누락 {sorted(missing)}')
+        self.assertEqual(
+            sorted(set(offenders)), [],
+            '기대 컨테이너 목록이 compose 와 다르다:\n  '
+            + '\n  '.join(sorted(set(offenders)))
+            + '\n\n목록은 infra/docker-compose.central.yml 의 container_name 에서 '
+              '파생된다. 일회성(restart: "no")도 `ps` 에 Exited 로 나타나므로 목록에 든다.',
+        )
+
+    def test_the_expectation_blocks_say_the_one_shot_exited(self):
+        """일회성이 목록에 있는데 «왜 Up 이 아닌지»가 없으면 그 줄이 사고를 부른다."""
+        one_shot = self._one_shot_names()
+        offenders = []
+        for md in _operational_markdown():
+            text = md.read_text(encoding='utf-8')
+            for block in _fenced_blocks(text):
+                found = set(_CENTRAL_NAME.findall(block))
+                if len(found) < _EXPECTATION_MIN_NAMES or not (one_shot & found):
+                    continue
+                if 'Exited' not in block:
+                    offenders.append(md.relative_to(PROJECT_ROOT).as_posix())
+        self.assertEqual(
+            sorted(set(offenders)), [],
+            '일회성 컨테이너를 기대 목록에 넣고 Exited 를 안 적은 문서:\n  '
+            + '\n  '.join(sorted(set(offenders))),
+        )
+
+
 if __name__ == '__main__':
     unittest.main()
 
