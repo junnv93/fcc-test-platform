@@ -60,8 +60,9 @@
  ① 05-github-access.md              계정·권한. 이게 없으면 아무것도 못 한다        5분
  ② 06-workspace-and-claude-md.md    폴더 배치 · CLAUDE.md 를 어디에 두나          10분
  ③ 01-concepts-for-non-developers.md  CI · 이미지 · 빌드 · 배포가 «무엇인가»       30분
- ④ 00-project-map.md                무엇이 어디서 도는가                          20분
- ⑤ 02-how-we-collaborate.md         누가 · 무엇을 · 어떤 순서로 · 무엇이 막나      20분
+ ④ 04-why-two-repos.md              ★ 왜 저장소가 나뉘었나 · 각각의 성격과 역할     25분
+ ⑤ 00-project-map.md                무엇이 어디서 도는가                          20분
+ ⑥ 02-how-we-collaborate.md         누가 · 무엇을 · 어떤 순서로 · 무엇이 막나      20분
 ```
 
 ⚠️ **⓪ 은 「이해」가 아니라 「실행」입니다.** 개념을 몰라도 그대로 따라 칠 수 있게
@@ -100,6 +101,7 @@
 | `05-github-access.md` | 레포 초대 · 권한 · **오늘 무엇이 강제되나** | 운영자 + 신규 |
 | `06-workspace-and-claude-md.md` | 두 레포 배치 · `CLAUDE.md`/rules/skills 를 어디에 | 전원 |
 | `01-concepts-for-non-developers.md` | **CI · 컨테이너 이미지 · 빌드 · 배포** (비유 없이) | 비개발자 |
+| `04-why-two-repos.md` | ★ **왜 나뉘었나** · `contracts` 와 `platform` 의 성격과 역할 | 전원 |
 | `00-project-map.md` | 세 레포 · 중앙 스택 · 계측 통신 · 완료 상태 | 전원 |
 | `02-how-we-collaborate.md` | **협업 흐름 · 승인 모델 · 방아쇠 · 공유 트리 규율** | 전원 |
 | `10-provider-lane-kickoff.md` | ★ **당신 레포에 복사.** Claude Code 지시문 포함 | 트랙 A |
