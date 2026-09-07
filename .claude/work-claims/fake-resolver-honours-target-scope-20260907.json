@@ -1,0 +1,26 @@
+{
+  "task": "fake-resolver-honours-target-scope-20260907",
+  "branch": "intent/fake-resolver-honours-target-scope",
+  "owner": "fcc-delivery-final-c1",
+  "status": "in-progress",
+  "base": "origin/main@51b8cdf",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/c174cef4-5a1e-4738-b38f-61bb08970531/scratchpad/wt",
+  "scope": [
+    "intent/fake-resolver-honours-target-scope/intent.md",
+    "intent/fake-resolver-honours-target-scope/spec.md",
+    "intent/fake-resolver-honours-target-scope/plan.md",
+    "fcc_test_platform/central_id_resolver.py",
+    "tests/test_central_id_resolver_target_scope.py",
+    "tests/test_outbox_envelope_builder.py",
+    ".claude/work-claims/fake-resolver-honours-target-scope-20260907.json"
+  ],
+  "non_scope": [
+    "fcc_test_platform/postgres_central_id_resolver.py — 실물은 옳다. 실증: 한 chamber 두 target 에서 uuid 가 항상 갈리고(True), miss 경로와 hit 경로가 같은 값을 낸다(캐시는 관측 불가한 최적화다). 손댈 것이 없다.",
+    "fcc_test_platform/session_identity.py · 커널의 measurement_target_key — 키 «파생»은 SSOT 가 이미 갖고 있다. 이 판은 그 SSOT 를 쓰지 않는 자리를 고칠 뿐 SSOT 를 고치지 않는다.",
+    "대역의 chamber 정규화 갈라짐 — 실물은 normalize_chamber_id(None) → '__fcc_legacy__', 대역은 str(None or '') → ''. 실측된 «둘째» 갈라짐이고 이 판은 «target 축 하나만» 움직인다(두 축이 함께 움직이면 원인을 말할 수 없다). 별도 intent 로 올린다.",
+    "fcc-test-contracts 레인 — 닿지 않는다. 커널 태그 발행 불필요."
+  ],
+  "conflicts_with": [],
+  "sequencing": "origin/main@51b8cdf 위에 곧바로 온다. 이 자리를 claim 한 세션이 없고(실측 2026-09-07, .claude/work-claims/ 전량), 열린 PR 0건이다. 선행 PR #158·#162 가 두 파일의 «타입 선언»을 쓰임에 맞췄고 그 커밋 주석이 「그 갈라짐을 메우는 것은 동작 변경이라 별도 판정이 필요하다」고 이 판을 이름으로 남겼다.",
+  "result": "(진행 중)"
+}
