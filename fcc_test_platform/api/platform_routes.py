@@ -301,23 +301,29 @@ class _PrincipalResolver(Protocol):
     이름으로 import 하지 않고 구조로 적는 이유는 그 팩토리가 인증 모드마다
     **다른 클래스**를 돌려주기 때문이다(trusted-header / oidc_jwt / local_jwt).
 
-    ⚠️ **이 Protocol 의 적합성은 지금 아무 데서도 검사되지 않는다** (2026-09-07
-    실측 정정 — 옛 문장은 *"조립 루트가 strict 이므로 이 Protocol 은 그 호출
-    지점에서 검사된다"* 였고 그것은 틀렸다). 유일한 생산 호출부는
-    ``api_composition.PlatformApiRuntime.create_router`` 인데:
+    ✅ **이 Protocol 의 적합성은 유일한 생산 호출부에서 검사된다** —
+    ``api_composition.PlatformApiRuntime.create_router``. 주입으로 확인(2026-09-07,
+    CI 와 같은 리그): 그 자리에 ``resolve`` 가 없는 ``object()`` 를 넣으면
+    ``Argument "principal_resolver" to "create_platform_router" has incompatible
+    type "object"; expected "_PrincipalResolver | None"  [arg-type]``.
 
-      ① ``fcc_test_platform.api_composition`` 은 ``mypy.ini`` 의 네 strict 절
-         (domain · infrastructure · application · api) **어디에도 매치되지 않는다**
-         — 게이트는 그 모듈에 mypy 를 부르지 않는다.
-      ② 그 모듈에 직접 부르더라도 ``create_router`` 는 **선언 없는 def** 라
-         mypy 가 본문을 건너뛴다.
+    🕘 **그리고 그것이 하루 종일 참이 아니었다.** 2026-09-07 오전까지 이 자리는
+    *"조립 루트가 strict 이므로 이 Protocol 은 그 호출 지점에서 검사된다"* 라고
+    적었고 **그것이 거짓**이어서 「검사되지 않는다」로 한 번 정정됐다. 지금 다시
+    「검사된다」로 돌아온 것은 문장을 되돌린 것이 아니라 **두 축이 실제로 움직였기
+    때문**이고, 그 둘을 여기 남긴다 — 이 축이 조용히 꺼질 수 있는 자리가 정확히
+    그 둘이다:
 
-    주입으로 확인했다: 그 자리에 ``resolve`` 가 없는 ``object()`` 를 넣어도 네 팩
-    전량이 ``Success`` 였고, 그 모듈을 직접 불러도 오류 수가 그대로였다.
-    ``--check-untyped-defs`` 를 켜야 비로소 ``[arg-type]`` 이 나온다. 이 Protocol
-    이 검사되게 하려면 ``create_router`` 에 반환 선언을 붙이는 것이 첫 걸음이다
-    (이 웨이브의 범위 밖 — 그러면 같은 본문의 ``api_adapter: object`` 도 함께
-    드러난다).
+      ① **호출 축** — ``fcc_test_platform.api_composition`` 은 게이트의 네 층 절
+         어디에도 매치되지 않아 **호출조차 되지 않았다**. 지금은
+         ``test_the_whole_package_is_type_checked`` 가 ``-p fcc_test_platform`` 을
+         통째로 부른다(`#158`).
+      ② **선언 축** — 그때는 ``create_router`` 가 **선언 없는 def** 라, 설령 불러도
+         mypy 가 본문을 통째로 건너뛰었다. ⚠️ 이쪽이 더 조용한 실패였다: ①만
+         고쳤다면 게이트는 그 모듈을 성실히 «검사하고» 이 자리를 못 본 채 초록을
+         냈을 것이다. 지금은 ``[mypy-fcc_test_platform.*] disallow_untyped_defs``
+         가 켜져 있어 **선언 없는 def 자체가 red** 다(`#159`) — 즉 그 기제는
+         부활할 수 없고, 부활하려면 누군가 게이트 설정을 좁혀야 한다.
     """
 
     def resolve(self, request: object) -> ApiPrincipal: ...
