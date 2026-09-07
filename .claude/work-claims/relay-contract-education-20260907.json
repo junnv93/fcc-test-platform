@@ -1,0 +1,20 @@
+{
+  "task": "relay-contract-education-20260907",
+  "branch": "docs/relay-contract-education-20260907",
+  "owner": "fcc-delivery-final-97",
+  "status": "merged",
+  "base": "origin/main@4006c0d",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/1f581e35-7bd3-40a9-852a-32878f4b1f22/scratchpad/wt-edu",
+  "scope": [
+    "docs/education/2026-09-07-선언보다-넓은-계약-시험원-교육자료.html",
+    "CLAUDE.md",
+    ".claude/work-claims/relay-contract-education-20260907.json"
+  ],
+  "shared_outputs": [
+    "CLAUDE.md"
+  ],
+  "conflicts_with": [],
+  "sequencing": "문서 전용. PR #138(진행 릴레이 포트 확장)의 시험원 교육자료를 저장소에 남기고, «교육자료를 저장소에 남긴다»는 관례를 CLAUDE.md P0 에 적는다. ⚠️ 그 관례가 적혀 있지 않아 이번에 실제로 누락됐다 — 아티팩트로 게시하고 끝낼 뻔했고 사용자가 지적했다. 실측: docs/education 에 14건이 이미 커밋돼 있는데(시험원 13 · 협업자 1) CLAUDE.md 에 그 이름이 한 번도 안 나온다. 코드 무변경.",
+  "pr": "https://github.com/junnv93/fcc-test-platform/pull/155",
+  "result": "교육자료를 docs/education/ 에 커밋하고 그 관례를 CLAUDE.md P0 §6 으로 등재했다. ⚠️ 실측: 그 디렉터리에 14건이 이미 커밋돼 있었는데(시험원 13 · 협업자 1) CLAUDE.md 에 education 이라는 이름이 한 번도 안 나왔다 — 관례는 저장소에 있었고 규칙으로는 없었다. 파일 형태가 기존 14건과 같은지 확인(자족 HTML · <title> 시작 · <!doctype> 없음 · 외부 의존 Google Fonts 하나). 코드 무변경 · CI lane-check pass."
+}
