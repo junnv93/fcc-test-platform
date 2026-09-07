@@ -1,8 +1,8 @@
 {
   "task": "fake-resolver-honours-target-scope-20260907",
-  "branch": "intent/fake-resolver-honours-target-scope",
+  "branch": "intent/… → spec/… → feature/fake-resolver-honours-target-scope (PR #169 · #173 · #174, 셋 다 머지)",
   "owner": "fcc-delivery-final-c1",
-  "status": "in-progress",
+  "status": "merged",
   "base": "origin/main@51b8cdf",
   "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/c174cef4-5a1e-4738-b38f-61bb08970531/scratchpad/wt",
   "scope": [
@@ -12,7 +12,8 @@
     "fcc_test_platform/central_id_resolver.py",
     "tests/test_central_id_resolver_target_scope.py",
     "tests/test_outbox_envelope_builder.py",
-    ".claude/work-claims/fake-resolver-honours-target-scope-20260907.json"
+    ".claude/work-claims/fake-resolver-honours-target-scope-20260907.json",
+    "docs/education/2026-09-07-가짜가-대답하지-못하는-질문-시험원-교육자료.html"
   ],
   "non_scope": [
     "fcc_test_platform/postgres_central_id_resolver.py — 실물은 옳다. 실증: 한 chamber 두 target 에서 uuid 가 항상 갈리고(True), miss 경로와 hit 경로가 같은 값을 낸다(캐시는 관측 불가한 최적화다). 손댈 것이 없다.",
@@ -22,5 +23,5 @@
   ],
   "conflicts_with": [],
   "sequencing": "origin/main@51b8cdf 위에 곧바로 온다. 이 자리를 claim 한 세션이 없고(실측 2026-09-07, .claude/work-claims/ 전량), 열린 PR 0건이다. 선행 PR #158·#162 가 두 파일의 «타입 선언»을 쓰임에 맞췄고 그 커밋 주석이 「그 갈라짐을 메우는 것은 동작 변경이라 별도 판정이 필요하다」고 이 판을 이름으로 남겼다.",
-  "result": "(진행 중)"
+  "result": "판정: 인계문의 이분법(①/②)이 «3-튜플 캐시 키»를 축으로 잡았는데 그 축이 둘로 갈린다. 키 «모양»은 실물 전용(실증: miss 경로 == hit 경로 — 관측 불가한 메모이제이션)이고, 그 키가 담는 «target 스코프»는 포트 docstring 이 선언한 계약이다. 그러므로 ①이 옳되 「실물의 캐시 키를 복사」가 아니라 「계약을 등록부 이디엄으로 표현」이다. 근거는 central_id_resolver.py 의 _SessionKey 주석과 spec.md §0 에 적었다. ⚠️ 인계문의 「대역에서는 언제나 miss 한다」를 재서 정정했다 — 그 조회는 «한 번도 실행되지 않았다»(measurement_target_key 는 model·sample 이 둘 다 있어야 비어있지 않고, 픽스처에 둘 다 없다). 레포 전량에서 target_identity·session_uuid_name·measurement_target_key 를 쓰는 시험 파일이 0개였다. 수리: register_session 이 3-튜플을 쓰고, resolve_session_uuid 가 «선언된» 스코프를 조용히 넘어가지 않는다(선언 안 한 무관심은 그대로 존중 — 오늘 초록인 8건 무변경). 봉인 둘을 세우고 주입 여덟을 놓았다. ⚠️ 주입 ①이 엉뚱한 축에 착지했고(5건 전부 TypeError, 동작 축 미실행) 축별로 나눈 뒤에야 갈렸다. ⚠️ 그 축별 주입이 «내 시험 하나가 공허함»을 잡았다(chamber 를 넣어 fallback 이 어차피 miss 하는 구성이라 가드를 떼도 초록이었다). 실측(새 venv · contracts 0.1.26 · kernel 0.5.4 · mypy 2.3.1 · offscreen · base origin/main@51b8cdf): lane_check 3394 passed / 27 skipped / 863 subtests / 140.74s, 선언된 실패 0 / 관측된 실패 0. 기준선 3383·859 대비 +11·+4 이고 그 증분은 «전부» 이 판이 더한 시험이다. mypy 0건 / 215 source files — 안 움직임. 게이트 18 passed + 9 subtests — 안 움직임. postgres_central_id_resolver 16 passed — 실물 무접촉. 범위 밖으로 남긴 것: chamber 정규화 갈라짐(별도 intent). 보고만 한 관측: InMemoryCentralIdResolver 는 레포 전량에서 tests/ 에서만 생성된다(AST 12곳) — 그 클래스 docstring 의 「ingestion worker composition root」 언급은 오늘 기준 낡았다."
 }
