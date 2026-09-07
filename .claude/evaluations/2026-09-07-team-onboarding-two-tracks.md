@@ -1,0 +1,198 @@
+# 팀 온보딩 — 두 트랙 문서를 세우며 실측한 것
+
+**날짜**: 2026-09-07 · **base**: `00935e9` · **브랜치**: `docs/team-onboarding-two-tracks-20260907`
+
+## 무엇을 했나
+
+합류하는 팀원이 **두 트랙을 동시에** 밟는다(자기 계측 프로그램의 provider 화 +
+플랫폼 공동개발)는 전제로 `docs/onboarding/` 11개 문서와 교육자료 1개를 세웠다.
+기존 문서를 대체하지 않고 **가리키는** 층으로 두었다.
+
+## 이 작업이 «실측으로» 찾은 것 — 오늘 거짓인 서술 다섯
+
+문서를 쓰기 전에 인용할 주장을 전부 재검증했고, 다음이 오늘 거짓이었다.
+
+| 어디 | 서술 | 실측 | 재는 법 |
+|---|---|---|---|
+| `README.md:228` | `checks.yml` 은 오늘 **휴면** | 최근 런 3건 전부 `success` | `gh run list` |
+| `README.md:67` | 이 레포들은 **private** | 둘 다 `public` | `gh api repos/… --jq .visibility` |
+| `fcc-test-contracts/README.md:74` | 「여기서 고치지 마세요」 | 배송 기계 퇴역(2026-08-31) | `ls …/packaging/` → 없음 |
+| **`docs/operations/` 3개 파일** | 중앙 **5개** 서비스 | **7개** (전부 `profiles` 없음) | compose 파싱 |
+| **`fcc-test-contracts/CODEOWNERS`** | 모노레포에서 **배송된다** | 그 디렉터리도 스크립트도 없다 | `ls …/packaging/` |
+
+앞의 셋은 `CLAUDE.md` 가 이미 표로 잡고 있었다. **뒤의 둘은 이 작업이 새로 찾았다.**
+
+⚠️ **「중앙 5개 서비스」의 결론은 여전히 참이다** — provider 저장소를 필요로 하는
+서비스는 `headless-api` 하나뿐이다. **틀린 것은 분모다.** 그런데 분모를 그냥 두면
+다음 사람이 `docker compose ps` 에서 7줄을 보고 「뭔가 잘못됐다」고 판단한다.
+
+## ⭐ 이 세션이 «자기 문서로» 잡힌 사례 — 15분 만에 낡았다
+
+`06-workspace-and-claude-md.md` 초판이 이렇게 적혀 있었다:
+
+> 🔴 `fcc-test-contracts` 에는 `CLAUDE.md` 도 `.claude/rules/` 도 없습니다.
+
+```
+09:33 경   실측했다 — CLAUDE.md 없음
+09:43:43   형제 세션이 f8992ee 로 그것을 만들었다
+09:43 경   그 실측을 «문장으로 옮겨 적었다»       ← 적는 순간 이미 거짓이었다
+09:58      착지 직전 재확인하다 발견했다
+```
+
+**교훈 둘 (문서 §4-a 에 남겼다):**
+
+1. **실측과 「그것을 문장으로 적는 일」 사이에도 시간이 흐른다.** 착지 직전에
+   다시 재라 — **특히 「없다」는 주장은.**
+2. **「없다」는 「있다」보다 빨리 낡는다.** 없는 것은 누군가 만들면 되지만,
+   있는 것이 사라지려면 누군가 지워야 한다. **부재 주장의 유통기한이 더 짧다.**
+
+이것은 auto memory 의 [`write-the-reason-not-the-timestamped-fact`] 를 **한 단계
+좁힌 것**이다 — 시점형 서술은 「쓴 날」이 아니라 **「쓰는 동안」에도** 낡을 수 있다.
+
+## 로컬 red 61건 — 대조군으로 판정하고, 원인을 «끝까지» 갈랐다
+
+이 워크트리에서 `lane_check` 이 **61건 실패**했다. 문서만 12개 추가한 변경이므로
+무관할 것이나, 이 레인의 규율대로 **차분으로 판정**했다.
+
+```
+A (내 문서 있음)  61건
+B (대조군 — 내 문서를 치움)  61건
+A−B = 0건 · B−A = 0건    →  내 변경은 실패 집합을 «전혀» 움직이지 않았다
+```
+
+**그리고 원인을 확정했다 — 「설치를 안 해서」가 아니라 「설치가 «다른 트리»를 가리켜서」다.**
+
+```
+공유 venv 의  __editable__.fcc_test_platform-0.1.8.pth
+   → 원본 체크아웃(fcc-delivery-final/fcc-test-platform, HEAD 12e33fb)을 가리킨다
+내 워크트리    HEAD f2708a9
+
+즉 pytest 는 «내 워크트리의 tests/» 를 수집하고,
+   fcc_test_platform import 는 «원본 트리» 에서 온다.  두 트리가 다르면 red 가 난다.
+```
+
+⚠️ **그 워크트리를 editable 로 설치한 전용 venv 에서 다시 재니 전량 초록이다:**
+
+```
+3359 passed, 27 skipped, 863 subtests passed in 109.34s
+lane-check: 선언된 실패 0개 / 관측된 실패 0개  ✅ 일치
+```
+
+auto memory [[local-red-is-tree-times-environment]] 의 「트리 × 설치본」이 이보다
+정확히 실증될 수 없다 — **같은 커밋이 61건과 0건을 냈고, 가른 것은 `.pth` 한 줄이
+어느 트리를 가리키느냐였다.**
+
+⚠️ **CI 는 이 문제를 겪지 않는다.** 깨끗한 기계에서 `pip install -e '.[test]'` 를
+하므로 **검사하는 트리와 설치된 트리가 항상 같다.** 워크트리를 쓰는 로컬만 갈라진다.
+
+## 방아쇠 다섯 — 무발화를 «판정기로» 확인했다
+
+작업 중에 PR #144 가 방아쇠를 **도는 검사**로 만들었다. 내 변경에 대해 판정기를
+직접 돌렸다:
+
+```
+변경 12건 (docs/onboarding/ 11 + docs/education/ 1)
+T1: 무발화  — CODEOWNERS 에 docs/ 없음
+T4/T5: 무발화 — plan_texts 가 비면 check_t4_t5 가 return []
+```
+
+⚠️ **T1 은 `advisory=True` 다.** 판정기 자신이 코드에 그 이유를 적는다 —
+`require_code_owner_reviews=false` 이고 협업자 1명이라 켤 수도 없다.
+**내 문서의 「T1 은 오늘 기록이지 게이트가 아니다」 서술이 판정기 코드와 일치한다.**
+
+## 초대 전에 메워야 하는 구멍 둘 (운영자에게)
+
+| 무엇 | 실측 | 왜 초대보다 먼저인가 |
+|---|---|---|
+| `fcc-test-contracts` 의 `main` 보호 | `404 Branch not protected` | 초대하는 순간 누구나 커널 `main` 에 직접 push 할 수 있다. platform 이 그것을 소비한다 |
+| `fcc-test-contracts` 의 `.claude/rules/` | **0개** | `CLAUDE.md` 는 09:43 에 생겼으나 경로별 규칙은 없다 |
+
+그리고 `required_approving_review_count: 0` 이므로 **「동료 1인 승인」은 오늘
+기계가 강제하지 않는다.** 협업자가 둘 이상이 된 «뒤에» 1로 올려야 한다 —
+순서를 뒤집으면 자기 PR 자기 승인 금지 때문에 아무것도 머지할 수 없다.
+
+## 문서 경계 — 중복을 피한 방법
+
+기존 `docs/education/2026-09-06-시스템-연결-구조-…html`(1172줄)이 이미 비개발자용
+으로 **저장소·커밋·PR·패키지·API 낱말을 소유**한다. 실측으로 겹침을 확인했다:
+
+```
+그 자료의 언급 횟수 —  docker 0 · GitHub Actions 0 · provider 화 0 · 협업 0
+```
+
+그래서 이 폴더는 그 낱말들을 **다시 정의하지 않고 가리키며**, 그 자료에 없는
+**CI 의 실제 내용 · 컨테이너 이미지 · 빌드 · 배포 · provider 화 · 협업**을 채웠다.
+`01-concepts-for-non-developers.md` §2 에 그 경계표를 명시했다.
+
+## ⚠️ push 게이트가 잡은 것 — 그리고 «내 판정이 틀렸다»
+
+정상 방식으로 push 하기 전에 `git -c core.hooksPath=githooks push` 를 썼고,
+**실패 1건**으로 막혔다. 내 변경(문서)과 무접촉인 테스트였다:
+
+```
+FAILED tests/test_git_hooks_are_wired_here.py::
+       TestTheCheckWouldSeeAnUnwiredCheckout::test_an_unset_checkout_reads_as_empty
+```
+
+**기전은 맞게 짚었다.** `git -c <k>=<v>` 는 자식에게 `GIT_CONFIG_PARAMETERS` 를 넘기고,
+훅→pytest→그 테스트가 `git init` 으로 만드는 격리 저장소까지 설정이 침투한다:
+
+```bash
+GIT_CONFIG_PARAMETERS="'core.hooksPath=githooks'" pytest tests/test_git_hooks_are_wired_here.py -q
+#   → 1 failed, 7 passed      (그 env 없이 → 8 passed)
+```
+
+### 🔴 그런데 「테스트가 격리를 빠뜨린 결함」이라는 내 판정은 «틀렸다»
+
+형제 세션(`fcc-delivery-final-4a`)이 도입 커밋 `e47152f` 를 찾아 근거를 짚어 줬고,
+그것을 받아 **실측으로 확정했다:**
+
+```bash
+T=$(mktemp -d); git init -q "$T"                  # 훅 «미설정» 저장소
+git -C "$T" config core.hooksPath                  # → ''         본 검사가 미설정을 «본다» ✅
+GIT_CONFIG_PARAMETERS="'core.hooksPath=githooks'" \
+  git -C "$T" config core.hooksPath                # → 'githooks'  🔴 미설정인데 설정된 것처럼
+```
+
+**본 검사(:125)는 `git config core.hooksPath` 전체 해소를 읽는다.** 그러므로 오염
+상태에서는 **훅이 하나도 안 걸린 체크아웃도 통과한다** — 그 환경에서 본 검사는
+**이빨이 없다.**
+
+**그 시험은 정확히 그 비-공허성을 지키는 자리다. 빨개진 것은 결함이 아니라
+「이 환경에서 본 검사가 미설정을 못 본다」는 «참인 보고»였다.**
+
+⚠️ `GIT_CONFIG_*` 를 지웠다면 시험이 조용해지고 **그 사실이 가려졌을 것이다.**
+
+### 그리고 근거는 «처음부터 코드에 있었다» — 내가 안 봤다
+
+원저자가 상수 주석(`tests/test_git_hooks_are_wired_here.py:31–35`)에 적어 두었다:
+
+> `⚠️ 전부 지우지 않는다 — GIT_AUTHOR_* 나 GIT_CONFIG_* 는 위치와 무관하고,`
+> `넓게 지우면 이 헬퍼가 「위치를 격리한다」가 아니라 「git 을 다르게 만든다」가 된다.`
+
+**나는 함수 «본문»만 보고 「빠뜨렸다」고 단정했고, 다섯 줄 위를 안 봤다.**
+[[dont-judge-absence-by-library-name]] 의 「내 도구가 어디까지 봤나」를 또 밟았다 —
+이번엔 도구가 아니라 **내 시선의 범위**였다.
+
+⚠️ **그리고 형제 세션의 보고에도 정정할 곳이 있었다** — 「그 문단이 오늘 main 에는
+없다」는 *docstring 에 대해서만* 참이고, 상수 주석에는 살아 있다. 도입 커밋의
+docstring 도 오늘과 동일한 한 줄이다(확인함). **유실된 것은 없었다.**
+두 세션이 같은 파일에서 각자 다른 절반만 보고 각자 틀렸다.
+
+### 결론 — 고칠 것은 코드가 아니라 «관행»이다
+
+`core.hooksPath` 는 이 저장소에 **이미 설정돼 있다**(`githooks`). `git -c` 가
+불필요했고, 빼니 통과했다(`선언 0 / 관측 0 ✅`, 3,359 passed).
+**`07-first-day-scripts.md` §B-4 와 「첫날에 하지 말아야 하는 것」 표에 그것을 넣었다.**
+
+형제가 제안한 대안 둘(`-c core.hooksPath=` 로 덮어쓰기 · `--local` 만 읽기)도 재 봤다.
+**둘 다 red 는 없애지만 축을 바꾼다** — 본 검사는 전체 해소를 읽는데 시험이 다른 것을
+읽으면, 위에서 실증한 그 위험을 **시험이 더는 못 본다.** 그래서 권하지 않는다고 회신했다.
+
+## 남은 것
+
+- **영상 셋의 내용은 반영하지 못했다.** 사용자가 준 유튜브 링크 3개에서 **제목만**
+  가져왔고(유튜브가 트랜스크립트를 제공하지 않음), **내용을 인용하지 않았다.**
+  제목이 가리키는 두 축(「비개발자 뿌리 지식」·「기술 의사결정」)만 구조에 반영했다.
+- **모노레포 ADR 25개를 「이미 내려진 결정」 문서로 정리하는 것**은 하지 않았다.
+  다음 의도의 후보다.
