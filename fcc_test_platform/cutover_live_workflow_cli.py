@@ -17,7 +17,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import time
-from typing import Callable, Mapping
+from typing import Callable, Iterator, Mapping, SupportsFloat, SupportsIndex, SupportsInt
 
 
 # ⚠️ **모듈 위치에서 파생하면 안 된다** — 이 저장소가 선례에서 두 번 값을 치렀다
@@ -479,7 +479,7 @@ def validate_config(config: Mapping, *, require_receipt_contexts: bool = False) 
 
 
 def render_workflow_config(config: Mapping, *, values: Mapping) -> tuple[dict, list[dict]]:
-    rendered = _render_object(config, values=values)
+    rendered = _render_mapping(config, values=values)
     steps = []
     for raw in rendered.get('steps') or []:
         step = dict(raw) if isinstance(raw, Mapping) else {}
@@ -1106,7 +1106,7 @@ def _load_and_validate_output(
     ]
 
 
-def _process_output(value) -> str:
+def _process_output(value: object) -> str:
     if value is None:
         return ''
     if isinstance(value, bytes):
@@ -1276,7 +1276,20 @@ def _observation_metadata(observation: FileObservation) -> dict:
     }
 
 
-def _render_object(value, *, values: Mapping):
+def _render_mapping(config: Mapping, *, values: Mapping) -> dict:
+    """«Mapping 을 주면 dict 가 나온다»는 사실에 이름을 붙인다.
+
+    ⚠️ 아래 `_render_object` 의 반환이 `object` 인 것은 맞는 선언이다 — 그 함수는
+    문자열도 리스트도 «건드리지 않은 값»도 되돌린다. 그 사실 때문에 최상위
+    호출자(`render_workflow_config`)가 결과에 `.get('steps')` 를 부를 수 없게 되는데,
+    거기서 `cast` 를 쓰면 「무엇이든이지만 사실은 dict」라는 앎이 아무 데도 안 적힌다.
+
+    이 한 줄짜리 함수가 그 앎이다: **Mapping 가지만 따로 부르면 dict 가 보장된다.**
+    """
+    return {str(key): _render_object(item, values=values) for key, item in config.items()}
+
+
+def _render_object(value: object, *, values: Mapping) -> object:
     if isinstance(value, Mapping):
         return {str(key): _render_object(item, values=values) for key, item in value.items()}
     if isinstance(value, list):
@@ -1294,7 +1307,7 @@ def _render_string(value: str, *, values: Mapping) -> str:
     return rendered
 
 
-def _walk_strings(value, *, path: str = ''):
+def _walk_strings(value: object, *, path: str = '') -> Iterator[tuple[str, str]]:
     if isinstance(value, Mapping):
         for key, item in value.items():
             child = f'{path}.{key}' if path else str(key)
@@ -1307,7 +1320,7 @@ def _walk_strings(value, *, path: str = ''):
         yield path, value
 
 
-def _optional_path(value) -> Path | None:
+def _optional_path(value: object) -> Path | None:
     text = _text(value)
     return Path(text) if text else None
 
@@ -1329,20 +1342,24 @@ def _context_path_for_audit(
     return _optional_path(config.get(context_name))
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()
 
 
-def _int(value, default: int) -> int:
+def _int(value: object, default: int) -> int:
+    if not isinstance(value, (str, bytes, bytearray, SupportsInt, SupportsIndex)):
+        return default
     try:
         return int(value)
     except (TypeError, ValueError):
         return default
 
 
-def _float(value, default: float) -> float:
+def _float(value: object, default: float) -> float:
+    if not isinstance(value, (str, bytes, bytearray, SupportsFloat, SupportsIndex)):
+        return default
     try:
         return float(value)
     except (TypeError, ValueError):

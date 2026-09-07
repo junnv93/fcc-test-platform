@@ -12,7 +12,7 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
-from typing import Callable, Mapping
+from typing import Callable, Iterable, Mapping
 
 
 from fcc_test_platform.frontend_deployment_evidence import frontend_deployment_errors
@@ -182,7 +182,7 @@ def _promote_sources(evidence_root: Path, source_paths: Mapping[str, Path], slot
     return issues
 
 
-def _remove_temps(paths) -> None:
+def _remove_temps(paths: Iterable[str | Path]) -> None:
     for path in paths:
         try:
             Path(path).unlink(missing_ok=True)

@@ -47,7 +47,7 @@ def rbac_assignment_evidence_errors(manifest: Mapping) -> list[RbacAssignmentIss
     return issues
 
 
-def _validate_permissions(value, expected: set[str], issues: list[RbacAssignmentIssue]) -> None:
+def _validate_permissions(value: object, expected: set[str], issues: list[RbacAssignmentIssue]) -> None:
     if not isinstance(value, list):
         issues.append(_issue('missing_permissions', 'permissions', 'permissions must be a list'))
         return
@@ -60,7 +60,7 @@ def _validate_permissions(value, expected: set[str], issues: list[RbacAssignment
         issues.append(_issue('unknown_permission', 'permissions', f'{permission} is not in RBAC seed'))
 
 
-def _validate_roles(value, expected: dict[str, set[str]], issues: list[RbacAssignmentIssue]) -> None:
+def _validate_roles(value: object, expected: dict[str, set[str]], issues: list[RbacAssignmentIssue]) -> None:
     if not isinstance(value, list):
         issues.append(_issue('missing_roles', 'roles', 'roles must be a list'))
         return
@@ -77,7 +77,7 @@ def _validate_roles(value, expected: dict[str, set[str]], issues: list[RbacAssig
         issues.append(_issue('unknown_role', f'roles.{role_key}', 'role is not in RBAC seed'))
 
 
-def _validate_users_and_assignments(users_value, assignments_value, issues: list[RbacAssignmentIssue]) -> None:
+def _validate_users_and_assignments(users_value: object, assignments_value: object, issues: list[RbacAssignmentIssue]) -> None:
     if not isinstance(users_value, list) or not users_value:
         issues.append(_issue('missing_users', 'users', 'at least one enabled user is required'))
         return
@@ -121,11 +121,11 @@ def _require_text(mapping: Mapping, key: str, path: str, issues: list[RbacAssign
         issues.append(_issue('missing_required_field', path, f'{key} is required'))
 
 
-def _mapping(value) -> Mapping:
+def _mapping(value: object) -> Mapping:
     return value if isinstance(value, Mapping) else {}
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()

@@ -259,7 +259,7 @@ def build_extraction_evidence(
 
 
 def _import_boundary_evidence(
-    *, repo_name: str, staged_root: Path, extraction_manifest: dict, policy,
+    *, repo_name: str, staged_root: Path, extraction_manifest: dict, policy: ExtractionLanePolicy,
 ) -> tuple[dict, list[dict]]:
     """Run the lane's import gate over the tree that was just staged.
 
@@ -313,7 +313,7 @@ def _import_boundary_evidence(
 
 
 def _sibling_delivery_roots(
-    *, repo_name: str, extraction_manifest: dict, policy, target_root: Path,
+    *, repo_name: str, extraction_manifest: dict, policy: ExtractionLanePolicy, target_root: Path,
 ) -> dict[str, Path]:
     """Lanes delivered alongside ``repo_name`` in this same run.
 
@@ -337,7 +337,7 @@ def _sibling_delivery_roots(
 
 
 def _dependency_resolution_evidence(
-    *, repo_name: str, staged_root: Path, extraction_manifest: dict, policy,
+    *, repo_name: str, staged_root: Path, extraction_manifest: dict, policy: ExtractionLanePolicy,
     target_root: Path,
 ) -> tuple[dict, list[dict]]:
     """Record what the staged tree may import but will not find.

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import json
-from typing import Mapping
+from typing import Mapping, SupportsIndex, SupportsInt
 
 from fcc_test_platform.evidence_primitives import is_sha256_hex
 from fcc_test_platform.provider_ingestion_plan import INGESTION_TABLE_ORDER, PlatformIngestionPlan
@@ -140,7 +140,7 @@ def _validate_step_counts(manifest: Mapping, issues: list[IngestionExecutionIssu
         issues.append(_issue('applied_steps_mismatch', 'applied_steps', 'applied_steps must match executed steps length'))
 
 
-def _validate_steps(value, issues: list[IngestionExecutionIssue]) -> None:
+def _validate_steps(value: object, issues: list[IngestionExecutionIssue]) -> None:
     if not isinstance(value, list) or not value:
         issues.append(_issue('missing_steps', 'steps', 'at least one executed step is required'))
         return
@@ -175,24 +175,26 @@ def _require_text(mapping: Mapping, key: str, path: str, issues: list[IngestionE
         issues.append(_issue('missing_required_field', path, f'{key} is required'))
 
 
-def _mapping(value) -> Mapping:
+def _mapping(value: object) -> Mapping:
     return value if isinstance(value, Mapping) else {}
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()
 
 
-def _required_value(value, key: str) -> str:
+def _required_value(value: object, key: str) -> str:
     text = _text(value)
     if not text:
         raise ValueError(f'{key} is required')
     return text
 
 
-def _int(value) -> int | None:
+def _int(value: object) -> int | None:
+    if not isinstance(value, (str, bytes, bytearray, SupportsInt, SupportsIndex)):
+        return None
     try:
         return int(value)
     except (TypeError, ValueError):

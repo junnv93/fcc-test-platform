@@ -92,11 +92,11 @@ def hardware_smoke_errors(evidence: dict) -> list[HardwareSmokeIssue]:
     return issues
 
 
-def _list(value) -> list:
+def _list(value: object) -> list:
     return value if isinstance(value, list) else []
 
 
-def _generated_paths(value) -> list[str]:
+def _generated_paths(value: object) -> list[str]:
     if not value:
         return []
     if isinstance(value, list):

@@ -46,7 +46,7 @@ import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping, Sequence, TYPE_CHECKING
 
 # ⚠️ **2026-09-03 — 여기 있던 주석이 틀렸다.** *"The sibling benchmark harness
 # lives beside this file"* 라고 적혀 있었는데 **이 저장소에는 그런 적이 없다.**
@@ -61,6 +61,10 @@ from fcc_test_contracts.common.benchmark_harness import (  # noqa: E402
     LatencyBudget,
     measure_latency_us_robust,
 )
+from fcc_test_platform.application.central_db_surfaces import ScriptConnection, require_row
+
+if TYPE_CHECKING:
+    from psycopg.types.json import Jsonb
 
 try:  # noqa: E402 - the runner is importable both as a package and as a script
     from fcc_test_platform.cross_session_result_selection_evidence_cli import repository_metadata
@@ -252,7 +256,7 @@ def _resolve_dsn(explicit_dsn: str | None) -> tuple[str, str]:
     )
 
 
-def _connect(dsn: str):
+def _connect(dsn: str) -> ScriptConnection:
     try:
         import psycopg  # type: ignore
     except Exception as exc:  # pragma: no cover - environment dependent
@@ -267,7 +271,7 @@ def _connect(dsn: str):
         raise BenchmarkBlocked('benchmark PostgreSQL DSN is unreachable') from exc
 
 
-def _database_identity(connection) -> dict[str, Any]:
+def _database_identity(connection: ScriptConnection) -> dict[str, Any]:
     """Return redacted database/server metadata for the benchmark receipt."""
     with connection.cursor() as cursor:
         cursor.execute(
@@ -275,7 +279,7 @@ def _database_identity(connection) -> dict[str, Any]:
             "COALESCE(inet_server_addr()::text, '<local-socket>'), "
             'COALESCE(inet_server_port(), 0), version()'
         )
-        database, server, port, version = cursor.fetchone()
+        database, server, port, version = require_row(cursor)
     return {
         'database_name': str(database),
         'server': str(server),
@@ -284,7 +288,7 @@ def _database_identity(connection) -> dict[str, Any]:
     }
 
 
-def _json_value(value: Mapping[str, Any]):
+def _json_value(value: Mapping[str, Any]) -> 'Jsonb':
     from psycopg.types.json import Jsonb  # type: ignore
 
     return Jsonb(dict(value))
@@ -294,7 +298,7 @@ def _uuid(namespace: uuid.UUID, label: str) -> uuid.UUID:
     return uuid.uuid5(namespace, label)
 
 
-def _seed(connection, *, run_id: str) -> SeedManifest:
+def _seed(connection: ScriptConnection, *, run_id: str) -> SeedManifest:
     """Insert the complete disposable fixture in one transaction."""
     namespace = uuid.uuid5(uuid.NAMESPACE_URL, f'fcc-benchmark:{run_id}')
     project_uuid = _uuid(namespace, 'project')
@@ -523,7 +527,7 @@ def _seed(connection, *, run_id: str) -> SeedManifest:
     )
 
 
-def _cleanup(connection, manifest: SeedManifest) -> dict[str, Any]:
+def _cleanup(connection: ScriptConnection, manifest: SeedManifest) -> dict[str, Any]:
     """Remove only rows owned by the generated project and providers."""
     deleted: dict[str, int] = {}
     with connection.cursor() as cursor:
@@ -559,12 +563,12 @@ def _cleanup(connection, manifest: SeedManifest) -> dict[str, Any]:
             ('projects', 'id', manifest.project_id),
         ):
             cursor.execute(f'SELECT COUNT(*) FROM "{table}" WHERE "{column}" = %s', (value,))
-            remaining[table] = int(cursor.fetchone()[0])
+            remaining[table] = int(require_row(cursor)[0])
         cursor.execute(
             'SELECT COUNT(*) FROM providers WHERE id = ANY(%s)',
             (list(manifest.provider_uuids),),
         )
-        remaining['providers'] = int(cursor.fetchone()[0])
+        remaining['providers'] = int(require_row(cursor)[0])
     return {
         'status': 'PASS' if not any(remaining.values()) else 'FAIL',
         'deleted_rows': deleted,
@@ -594,7 +598,7 @@ def _measure(manifest: SeedManifest, *, iterations: int, warmup: int, trials: in
         PostgresCentralResultSelectionAdapter,
     )
 
-    def connection_factory():
+    def connection_factory() -> ScriptConnection:
         return _connect(_CURRENT_DSN)
 
     adapter = PostgresCentralResultSelectionAdapter(connection_factory)
@@ -637,7 +641,7 @@ def _measure(manifest: SeedManifest, *, iterations: int, warmup: int, trials: in
     return samples
 
 
-def _explain(connection, manifest: SeedManifest) -> dict[str, Any]:
+def _explain(connection: ScriptConnection, manifest: SeedManifest) -> dict[str, Any]:
     from fcc_test_platform.application.central_result_selection_adapter import (
         CANDIDATE_ATTEMPTS_QUERY_SQL,
         EFFECTIVE_RESULTS_QUERY_SQL,
@@ -656,7 +660,7 @@ def _explain(connection, manifest: SeedManifest) -> dict[str, Any]:
                     manifest.project_id, provider_uuid,
                 ),
             )
-            plans[f'baseline_effective_page:{provider_id}'] = cursor.fetchone()[0]
+            plans[f'baseline_effective_page:{provider_id}'] = require_row(cursor)[0]
             cursor.execute(
                 'EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) '
                 + EFFECTIVE_RESULTS_QUERY_SQL,
@@ -666,7 +670,7 @@ def _explain(connection, manifest: SeedManifest) -> dict[str, Any]:
                     manifest.project_id, provider_uuid,
                 ),
             )
-            plans[f'effective_page:{provider_id}'] = cursor.fetchone()[0]
+            plans[f'effective_page:{provider_id}'] = require_row(cursor)[0]
         cursor.execute(
             'EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) '
             + CANDIDATE_ATTEMPTS_QUERY_SQL,
@@ -675,7 +679,7 @@ def _explain(connection, manifest: SeedManifest) -> dict[str, Any]:
                 'benchmark-condition-00000', ATTEMPT_PAGE_LIMIT + 1,
             ),
         )
-        plans[f'attempt_page:{manifest.provider_ids[0]}'] = cursor.fetchone()[0]
+        plans[f'attempt_page:{manifest.provider_ids[0]}'] = require_row(cursor)[0]
     return plans
 
 

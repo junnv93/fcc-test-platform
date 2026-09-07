@@ -20,7 +20,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 import json
-from typing import Iterable, Mapping, Optional
+from typing import Iterable, Mapping, Optional, SupportsIndex, SupportsInt
 
 
 __all__ = [
@@ -487,13 +487,13 @@ def _batch_recency_key(record: Mapping, input_order: int) -> tuple:
     )
 
 
-def _json_payload(value) -> str:
+def _json_payload(value: object) -> str:
     if not isinstance(value, Mapping):
         raise ValueError('JSON payload must be an object')
     return json.dumps(dict(value), sort_keys=True, separators=(',', ':'))
 
 
-def _json_document(value, key: str) -> str:
+def _json_document(value: object, key: str) -> str:
     if not isinstance(value, (Mapping, list, tuple)):
         raise ValueError(f'{key} must be a JSON object or array')
     return json.dumps(value, sort_keys=True, separators=(',', ':'))
@@ -503,7 +503,7 @@ def _required_text(data: Mapping, key: str) -> str:
     return _required_value(data.get(key), key)
 
 
-def _required_value(value, key: str) -> str:
+def _required_value(value: object, key: str) -> str:
     text = _optional_text(value)
     if not text:
         raise ValueError(f'{key} is required')
@@ -520,7 +520,7 @@ def _required_int(data: Mapping, key: str) -> int:
         raise ValueError(f'{key} must be an integer') from exc
 
 
-def _coerce_bool(value) -> bool:
+def _coerce_bool(value: object) -> bool:
     if isinstance(value, bool):
         return value
     if value is None:
@@ -535,13 +535,23 @@ def _coerce_bool(value) -> bool:
     raise ValueError(f'is_latest must be boolean, got {value!r}')
 
 
-def _optional_text(value) -> str:
+def _optional_text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()
 
 
-def _optional_int(value) -> Optional[int]:
+def _optional_int(value: object) -> Optional[int]:
     if value is None or value == '':
         return None
+    if not isinstance(value, (str, bytes, bytearray, SupportsInt, SupportsIndex)):
+        # ⚠️ 이 raise 는 «새 동작이 아니다». 여기 없으면 바로 아래 `int(value)` 가
+        #    같은 `TypeError` 를 낸다 — 이 모듈은 공급자 봉투가 형식을 어기면
+        #    조용히 넘기지 않고 시끄럽게 죽는 것이 자세다(`_required_value` 계열과
+        #    같다). 바뀌는 것은 «어느 줄이 던지는가»와 메시지가 이 계약을 이름으로
+        #    말한다는 것뿐이다. 잡는 쪽은 저장소 전체에 없다(실측: 이 경로의
+        #    TypeError 를 단언하는 시험 0건).
+        raise TypeError(
+            f'byte_size must be a number or a numeric string, '
+            f'not {type(value).__name__!r}')
     return int(value)

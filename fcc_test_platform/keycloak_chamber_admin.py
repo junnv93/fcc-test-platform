@@ -32,7 +32,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import Any, Callable, Mapping, Protocol, Sequence
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -48,6 +48,32 @@ from fcc_test_platform.application.chamber_token_provisioning import (  # noqa: 
     build_chamber_client_representation,
     chamber_client_id,
 )
+
+
+class _AdminClient(Protocol):
+    """`build_live_evidence` 가 요구하는 관리 클라이언트 표면.
+
+    ⚠️ **이 다섯 줄은 새 계약이 아니다.** 바로 아래 `build_live_evidence` 의
+    docstring 이 이미 *"``client`` must satisfy the ``KeycloakAdminClient`` surface
+    (``find_client_uuid`` / ``create_client`` / ``update_client`` /
+    ``rotate_secret`` / ``disable_client``)"* 라고 **이름으로** 적고 있었다. 여기서
+    한 것은 그 산문을 타입으로 옮긴 것뿐이다.
+
+    옮기는 것이 값이 있는 이유: 산문은 가짜 클라이언트가 그 표면을 어겨도 아무 말도
+    하지 않는다. 이 파일이 *"fully unit-testable with a fake client"* 를 설계로
+    내세우므로, 그 가짜가 계약을 지키는지 묻는 자리가 있어야 한다.
+    """
+
+    def find_client_uuid(self, client_id: str) -> str | None: ...
+
+    def create_client(self, representation: dict) -> None: ...
+
+    def update_client(self, uuid: str, representation: dict) -> None: ...
+
+    def rotate_secret(self, uuid: str) -> None: ...
+
+    def disable_client(self, uuid: str) -> None: ...
+
 
 
 class KeycloakAdminClient:
@@ -136,7 +162,7 @@ def run_lifecycle_live(
 
 def build_live_evidence(
     *,
-    client,
+    client: _AdminClient,
     realm: str,
     chamber_ids: Sequence[str],
     actor: str,
@@ -172,7 +198,7 @@ def build_live_evidence(
     }
 
 
-def _run_action(client, realm, action, cid, client_id, stamp, actor) -> dict:
+def _run_action(client: _AdminClient, realm: str, action: str, cid: str, client_id: str, stamp: str, actor: str) -> dict:
     if action == 'binding_check':
         # No live node/platform probe env in the admin helper — record honestly.
         return _event(client_id, cid, 'binding_check', stamp, actor, 'planned', {
@@ -201,7 +227,7 @@ def _run_action(client, realm, action, cid, client_id, stamp, actor) -> dict:
     raise ValueError(f'unsupported action: {action}')
 
 
-def _safe(client_id, cid, action, stamp, actor, probe_base, op, *, ok_note: str) -> dict:
+def _safe(client_id: str, cid: str, action: str, stamp: str, actor: str, probe_base: Mapping[str, Any], op: Callable[[], None], *, ok_note: str) -> dict:
     probe = dict(probe_base)
     try:
         op()
@@ -220,7 +246,7 @@ class _ClientNotFound(Exception):
     pass
 
 
-def _upsert_client(client, chamber_id: str) -> None:
+def _upsert_client(client: _AdminClient, chamber_id: str) -> None:
     representation = build_chamber_client_representation(chamber_id)
     # The admin API auto-generates a secret for confidential clients, so strip
     # the placeholder and never set nor read a raw value here.
@@ -232,21 +258,21 @@ def _upsert_client(client, chamber_id: str) -> None:
         client.create_client(representation)
 
 
-def _rotate_client(client, client_id: str) -> None:
+def _rotate_client(client: _AdminClient, client_id: str) -> None:
     uuid = client.find_client_uuid(client_id)
     if not uuid:
         raise _ClientNotFound(f'cannot rotate: client {client_id} does not exist')
     client.rotate_secret(uuid)
 
 
-def _disable_client(client, client_id: str) -> None:
+def _disable_client(client: _AdminClient, client_id: str) -> None:
     uuid = client.find_client_uuid(client_id)
     if not uuid:
         raise _ClientNotFound(f'cannot revoke: client {client_id} does not exist')
     client.disable_client(uuid)
 
 
-def _event(client_id, chamber_id, action, stamp, actor, result, probe) -> dict:
+def _event(client_id: str, chamber_id: str, action: str, stamp: str, actor: str, result: str, probe: Mapping[str, Any]) -> dict:
     return {
         'client_id': client_id,
         'chamber_id': chamber_id,
@@ -276,7 +302,8 @@ def _json_body(payload: dict) -> bytes:
     return json.dumps(payload).encode('utf-8')
 
 
-def _request(method: str, url: str, *, data=None, headers=None):
+def _request(method: str, url: str, *, data: bytes | None = None,
+             headers: dict[str, str] | None = None) -> Any:
     request = urllib.request.Request(url, data=data, method=method, headers=headers or {})
     with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310 — admin REST
         body = response.read().decode('utf-8') or 'null'

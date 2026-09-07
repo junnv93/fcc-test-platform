@@ -18,7 +18,7 @@ import json
 from pathlib import Path
 import re
 import sys
-from typing import Mapping, Sequence
+from typing import Any, Mapping, Sequence, TYPE_CHECKING
 
 
 from fcc_test_contracts.common.tree_artifacts import discover_tree_artifact  # noqa: E402
@@ -29,6 +29,10 @@ from fcc_test_platform.db_migration_evidence import (  # noqa: E402
     central_db_migration_evidence_errors,
 )
 from fcc_test_platform.export_central_db_ddl_cli import render_ddl  # noqa: E402
+from fcc_test_platform.application.central_db_surfaces import ScriptConnection, require_row
+
+if TYPE_CHECKING:
+    from fcc_test_platform.application.central_db_surfaces import ScriptCursor
 
 DEFAULT_SCHEMA_PATH = discover_tree_artifact(__file__, 'docs', 'platform', 'central_db_schema.v1.json')
 
@@ -159,7 +163,7 @@ def build_manifest_from_introspection(
     }
 
 
-def _connect(dsn: str):
+def _connect(dsn: str) -> ScriptConnection:
     try:
         import psycopg
 
@@ -170,13 +174,13 @@ def _connect(dsn: str):
         return psycopg2.connect(dsn)
 
 
-def _current_database(connection) -> str:
+def _current_database(connection: ScriptConnection) -> str:
     with connection.cursor() as cursor:
         cursor.execute('SELECT current_database()')
-        return str(cursor.fetchone()[0])
+        return str(require_row(cursor)[0])
 
 
-def _fetch_columns(connection, db_schema_name: str) -> list[dict]:
+def _fetch_columns(connection: ScriptConnection, db_schema_name: str) -> list[dict]:
     # Restrict to BASE TABLE objects so the evidence 'tables' set matches the
     # schema SSOT 'tables' (which lists base tables only; views and
     # materialized views are separate top-level keys). Without this join,
@@ -199,7 +203,7 @@ def _fetch_columns(connection, db_schema_name: str) -> list[dict]:
         return [_row_dict(cursor, row) for row in cursor.fetchall()]
 
 
-def _fetch_indexes(connection, db_schema_name: str) -> list[dict]:
+def _fetch_indexes(connection: ScriptConnection, db_schema_name: str) -> list[dict]:
     # Same BASE TABLE restriction as _fetch_columns. Materialized views (e.g.
     # coverage_by_condition_hash) carry their own unique index for CONCURRENT
     # refresh; that index must not leak into per-table evidence. Materialized
@@ -221,10 +225,19 @@ def _fetch_indexes(connection, db_schema_name: str) -> list[dict]:
         return [_row_dict(cursor, row) for row in cursor.fetchall()]
 
 
-def _row_dict(cursor, row) -> dict:
+def _row_dict(cursor: ScriptCursor, row: Sequence[Any] | Mapping[str, Any]) -> dict:
     if isinstance(row, Mapping):
         return dict(row)
-    names = [description[0] for description in cursor.description]
+    columns = cursor.description
+    if columns is None:
+        # PEP 249: `description` 은 **행을 내는 질의 뒤에만** 채워진다. 이 함수는
+        # SELECT 결과를 받는 자리에서만 불리므로 여기 오면 호출자가 규약을 어긴
+        # 것이다 — `or []` 로 접으면 「컬럼이 없다」와 「질의가 SELECT 가 아니었다」가
+        # 빈 dict 하나로 같아진다.
+        raise RuntimeError(
+            '_row_dict was called after a statement that returns no rows '
+            '(cursor.description is None)')
+    names = [description[0] for description in columns]
     return dict(zip(names, row, strict=True))
 
 

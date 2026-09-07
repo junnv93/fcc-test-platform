@@ -252,7 +252,7 @@ def _validate_report_parent_invariant(
             )
 
 
-def _record_and_hints(value, table: str) -> tuple[dict, dict]:
+def _record_and_hints(value: object, table: str) -> tuple[dict, dict]:
     """Split a raw record into (schema_record, fk_resolution_hint).
 
     Side-band keys starting with ``SIDE_BAND_KEY_PREFIX`` are popped into the
@@ -315,7 +315,7 @@ def provider_scoped_idempotency_key(
     return tuple(_text(record.get(field)) for field in fields)
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()

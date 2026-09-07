@@ -27,6 +27,46 @@ from fcc_test_platform.frontend_qa_evidence import (  # noqa: E402
     FRONTEND_REQUIRED_VIEWS,
     frontend_qa_errors,
 )
+from typing import Protocol
+
+
+class _WebElement(Protocol):
+    """`find_element` 가 돌려주는 것 중 이 파일이 실제로 쓰는 부분."""
+
+    text: str
+
+    def click(self) -> None: ...
+
+
+class _WebDriver(Protocol):
+    """이 스크립트가 브라우저 드라이버에게 요구하는 표면 — **usage 에서 파생**했다.
+
+    실측 2026-09-07 (이 파일 전수)::
+
+        driver.find_element 3 · get 2 · execute_script 2
+               · set_window_size 1 · save_screenshot 1 · quit 1 · get_log 1
+
+    ⚠️ **selenium 이 이 상자에 설치돼 있지 않다**(실측). 그래서 `_create_driver` 의
+    `Chrome()` / `Edge()` 는 mypy 에게 `Any` 이고, 이 Protocol 은 그 반환을 **검사하지
+    못한다.** 그렇다면 왜 적는가 — 검사받는 쪽이 «드라이버»가 아니라 **이 파일의
+    여덟 함수**이기 때문이다. 여기 없는 메서드를 새로 부르면 그날 red 가 난다.
+    그리고 selenium 이 언젠가 이 상자에 들어오면 그 순간부터 반대 방향도 검사된다.
+    """
+
+    def get(self, url: str) -> None: ...
+
+    def find_element(self, by: str, value: str) -> _WebElement: ...
+
+    def execute_script(self, script: str, *args: object) -> object: ...
+
+    def set_window_size(self, width: int, height: int) -> None: ...
+
+    def save_screenshot(self, filename: str) -> bool: ...
+
+    def get_log(self, log_type: str) -> list[dict]: ...
+
+    def quit(self) -> None: ...
+
 
 
 DEFAULT_VIEWPORTS = (
@@ -99,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def collect_manifest(
     *,
-    driver,
+    driver: _WebDriver,
     app_url: str,
     provider_api_url: str,
     evidence_id: str,
@@ -145,7 +185,7 @@ def collect_manifest(
 
 def _collect_viewport(
     *,
-    driver,
+    driver: _WebDriver,
     app_url: str,
     viewport: Viewport,
     artifact_root: Path,
@@ -184,7 +224,7 @@ def _collect_viewport(
     return result, screenshot
 
 
-def _verify_required_views(driver) -> list[str]:
+def _verify_required_views(driver: _WebDriver) -> list[str]:
     verified = []
     for view in FRONTEND_REQUIRED_VIEWS:
         try:
@@ -197,7 +237,7 @@ def _verify_required_views(driver) -> list[str]:
     return verified
 
 
-def _body_rendered(driver) -> bool:
+def _body_rendered(driver: _WebDriver) -> bool:
     try:
         body = driver.find_element('css selector', 'body')
     except Exception:
@@ -205,14 +245,14 @@ def _body_rendered(driver) -> bool:
     return getattr(body, 'is_displayed', lambda: True)()
 
 
-def _responsive_pass(driver) -> bool:
+def _responsive_pass(driver: _WebDriver) -> bool:
     try:
         return bool(driver.execute_script('return document.documentElement.scrollWidth <= window.innerWidth + 2'))
     except Exception:
         return False
 
 
-def _browser_console_errors(driver) -> list[str]:
+def _browser_console_errors(driver: _WebDriver) -> list[str]:
     try:
         logs = driver.get_log('browser')
     except Exception:
@@ -226,7 +266,7 @@ def _browser_console_errors(driver) -> list[str]:
     return errors
 
 
-def _seed_bearer_token(driver, bearer_token: str) -> None:
+def _seed_bearer_token(driver: _WebDriver, bearer_token: str) -> None:
     driver.execute_script(
         "sessionStorage.setItem('fcc-platform-shell-bearer-token', arguments[0]);",
         bearer_token,
@@ -252,7 +292,7 @@ def _probe_provider_routes(provider_api_url: str, timeout_seconds: float, *, bea
     return failures
 
 
-def _browser_label(driver) -> str:
+def _browser_label(driver: _WebDriver) -> str:
     capabilities = getattr(driver, 'capabilities', {}) or {}
     name = capabilities.get('browserName') or 'browser'
     version = capabilities.get('browserVersion') or capabilities.get('version') or 'unknown'
@@ -286,7 +326,7 @@ def _parse_viewport(value: str) -> Viewport:
     return Viewport(name=name, width=width, height=height)
 
 
-def _create_driver(browser: str):
+def _create_driver(browser: str) -> _WebDriver:
     if browser == 'edge':
         from selenium.webdriver import Edge
 

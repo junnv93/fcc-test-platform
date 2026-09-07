@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import sys
-from typing import Mapping
+from typing import Mapping, SupportsIndex, SupportsInt
 
 _SRC_ROOT = Path(__file__).resolve().parents[1] / 'src'
 if str(_SRC_ROOT) not in sys.path:
@@ -549,7 +549,9 @@ def placeholder_tokens(command: object) -> list[str]:
     return sorted(tokens)
 
 
-def _int(value, default: int) -> int:
+def _int(value: object, default: int) -> int:
+    if not isinstance(value, (str, bytes, bytearray, SupportsInt, SupportsIndex)):
+        return default
     try:
         return int(value)
     except (TypeError, ValueError):

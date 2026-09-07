@@ -133,6 +133,8 @@ from fcc_test_platform.application.central_report_write_adapter import (  # noqa
 from fcc_test_kernel.domain.models.sample_inventory import SNAPSHOT_SCHEMA_VERSION  # noqa: E402
 from fcc_test_kernel.domain.models.session_provenance import SessionOrigin  # noqa: E402
 from fcc_test_platform.db_migration_collect_cli import collect_from_database  # noqa: E402
+from fcc_test_platform.application.central_db_surfaces import ScriptConnection, require_row
+from typing import Callable
 
 DEFAULT_SCHEMA_PATH = discover_tree_artifact(__file__, 'docs', 'platform', 'central_db_schema.v1.json')
 DEFAULT_MIGRATION_PATH = discover_tree_artifact(
@@ -181,14 +183,14 @@ class LiveProofError(RuntimeError):
     """Raised when a live-proof assertion fails (the proof did not hold)."""
 
 
-def _connect(dsn: str):
+def _connect(dsn: str) -> ScriptConnection:
     import psycopg
 
     return psycopg.connect(dsn)
 
 
-def _connection_factory(dsn: str):
-    def factory():
+def _connection_factory(dsn: str) -> Callable[[], ScriptConnection]:
+    def factory() -> ScriptConnection:
         return _connect(dsn)
 
     return factory
@@ -232,7 +234,7 @@ def _provision_identity_graph(dsn: str, ids: dict, provider_code: str, proof_see
                 (ids['provider'], provider_code, ts, ts),
             )
             cursor.execute('SELECT id FROM providers WHERE provider_id = %s', (provider_code,))
-            ids['provider'] = str(cursor.fetchone()[0])
+            ids['provider'] = str(require_row(cursor)[0])
             # Proof-owned natural keys are seed-scoped so distinct proof seeds
             # (e.g. the CLI 'harness' run and the pytest 'pytest-e2e' run)
             # coexist without colliding on UNIQUE(project_code/sample_code/
@@ -294,7 +296,7 @@ def _representative_batch(ids: dict, proof_seed: str) -> dict:
 def _database_name(dsn: str) -> str:
     with _connect(dsn) as connection, connection.cursor() as cursor:
         cursor.execute('SELECT current_database()')
-        return str(cursor.fetchone()[0])
+        return str(require_row(cursor)[0])
 
 
 def _database_identity(dsn: str) -> dict:
@@ -304,7 +306,7 @@ def _database_identity(dsn: str) -> dict:
             "COALESCE(inet_server_addr()::text, '<local-socket>'), "
             'COALESCE(inet_server_port(), 0)'
         )
-        database_name, server, port = cursor.fetchone()
+        database_name, server, port = require_row(cursor)
     return {
         'database_name': str(database_name),
         'server': str(server),
@@ -320,11 +322,11 @@ def _empty_database_preflight(dsn: str) -> dict:
             "JOIN pg_namespace AS n ON n.oid = c.relnamespace "
             "WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')"
         )
-        table_count = int(cursor.fetchone()[0])
+        table_count = int(require_row(cursor)[0])
         cursor.execute("SELECT to_regclass('public.schema_migrations')")
-        ledger_table = cursor.fetchone()[0]
+        ledger_table = require_row(cursor)[0]
         cursor.execute("SELECT to_regclass('public.report_runs')")
-        report_runs_table = cursor.fetchone()[0]
+        report_runs_table = require_row(cursor)[0]
     result = {
         'public_table_count': table_count,
         'schema_migrations_present': ledger_table is not None,
@@ -725,7 +727,7 @@ def _029_constraint_state(dsn: str) -> dict:
         cursor.execute(
             'SELECT current_setting(%s), version()', ('server_version',),
         )
-        server_setting, server_version = cursor.fetchone()
+        server_setting, server_version = require_row(cursor)
         cursor.execute(
             'SELECT c.convalidated, c.confdeltype, pg_get_constraintdef(c.oid) '
             'FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid '
@@ -841,16 +843,16 @@ def _hard_delete_fk_proof(
             cursor.execute(
                 'SELECT count(*) FROM samples WHERE id=%s', (ids['sample'],),
             )
-            samples_before = int(cursor.fetchone()[0])
+            samples_before = int(require_row(cursor)[0])
             cursor.execute(
                 'SELECT count(*) FROM sample_intakes WHERE sample_id=%s', (ids['sample'],),
             )
-            intakes_before = int(cursor.fetchone()[0])
+            intakes_before = int(require_row(cursor)[0])
             cursor.execute(
                 'SELECT count(*) FROM sample_inventory_revisions WHERE sample_id=%s',
                 (ids['sample'],),
             )
-            revisions_before = int(cursor.fetchone()[0])
+            revisions_before = int(require_row(cursor)[0])
         connection.commit()
 
     write = PostgresCentralSampleInventoryWriteAdapter(_connection_factory(dsn))
@@ -859,14 +861,14 @@ def _hard_delete_fk_proof(
     )
     with _connect(dsn) as connection, connection.cursor() as cursor:
         cursor.execute('SELECT count(*) FROM samples WHERE id=%s', (ids['sample'],))
-        samples_after = int(cursor.fetchone()[0])
+        samples_after = int(require_row(cursor)[0])
         cursor.execute('SELECT count(*) FROM sample_intakes WHERE sample_id=%s', (ids['sample'],))
-        intakes_after = int(cursor.fetchone()[0])
+        intakes_after = int(require_row(cursor)[0])
         cursor.execute(
             'SELECT count(*) FROM sample_inventory_revisions WHERE sample_id=%s',
             (ids['sample'],),
         )
-        revisions_after = int(cursor.fetchone()[0])
+        revisions_after = int(require_row(cursor)[0])
         cursor.execute(
             'SELECT sample_id, project_id, sample_snapshot_json, '
             'sample_snapshot_schema_version FROM test_sessions WHERE id=%s',
@@ -990,9 +992,9 @@ def _029_state_snapshot(
         counts = {}
         for table in ('samples', 'sample_intakes', 'sample_inventory_revisions'):
             cursor.execute(f'SELECT count(*) FROM "{table}"')
-            counts[table] = int(cursor.fetchone()[0])
+            counts[table] = int(require_row(cursor)[0])
         cursor.execute('SELECT count(*) FROM test_sessions')
-        counts['test_sessions'] = int(cursor.fetchone()[0])
+        counts['test_sessions'] = int(require_row(cursor)[0])
     state = {
         'counts': counts,
         'dispositions': _read_029_dispositions(dsn, witness) if witness else {},
@@ -1045,7 +1047,7 @@ def _run_029_migration_proof(
                 'SELECT count(*) FROM sample_inventory_revisions WHERE sample_id=%s',
                 (witness['sample_id'],),
             )
-            dispositions['baseline_revision_count'] = int(cursor.fetchone()[0])
+            dispositions['baseline_revision_count'] = int(require_row(cursor)[0])
         if dispositions['baseline_revision_count'] != 1:
             raise LiveProofError(
                 f'029 sample baseline revision count is not one: {dispositions}'
@@ -1275,14 +1277,14 @@ def _run_migration_lane(
 def _measurement_state(dsn: str, session_id: str) -> dict:
     with _connect(dsn) as connection, connection.cursor() as cursor:
         cursor.execute('SELECT count(*) FROM measurement_results WHERE session_id = %s', (session_id,))
-        results = int(cursor.fetchone()[0])
+        results = int(require_row(cursor)[0])
         cursor.execute('SELECT count(*) FROM measurement_attempts WHERE session_id = %s', (session_id,))
-        attempts = int(cursor.fetchone()[0])
+        attempts = int(require_row(cursor)[0])
         cursor.execute(
             'SELECT count(*) FROM measurement_attempts WHERE session_id = %s AND is_latest = true',
             (session_id,),
         )
-        latest = int(cursor.fetchone()[0])
+        latest = int(require_row(cursor)[0])
         # coverage_by_condition_hash aggregates by (project_id, technology,
         # condition_hash); the latest attempt's session is exposed as
         # latest_session_id (there is no plain session_id column).
@@ -1290,7 +1292,7 @@ def _measurement_state(dsn: str, session_id: str) -> dict:
             'SELECT count(*) FROM coverage_by_condition_hash WHERE latest_session_id = %s',
             (session_id,),
         )
-        coverage = int(cursor.fetchone()[0])
+        coverage = int(require_row(cursor)[0])
     return {'results': results, 'attempts': attempts, 'is_latest_true': latest, 'coverage': coverage}
 
 
@@ -1926,7 +1928,7 @@ def run_out_of_order_replay_proof(dsn: str, *, proof_seed: str, provider_code: s
     final_latest = _latest_attempt_numbers(dsn, ids, proof_seed)
     with _connect(dsn) as connection, connection.cursor() as cursor:
         cursor.execute('SELECT count(*) FROM measurement_attempts WHERE session_id = %s', (ids['session'],))
-        attempt_count = int(cursor.fetchone()[0])
+        attempt_count = int(require_row(cursor)[0])
     if final_latest != [2]:
         raise LiveProofError(
             f'out-of-order regression: latest {final_latest} != [2] '

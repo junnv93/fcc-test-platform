@@ -165,7 +165,7 @@ def fetch_json(url: str, timeout_seconds: float) -> dict:
     return payload
 
 
-def _string_list(value) -> list[str]:
+def _string_list(value: object) -> list[str]:
     if not isinstance(value, list):
         return []
     return [str(item) for item in value if str(item or '').strip()]

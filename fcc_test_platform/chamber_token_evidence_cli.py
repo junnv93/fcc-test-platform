@@ -172,7 +172,7 @@ def _write_and_validate(output: Path, manifest: dict, *, require_valid: bool) ->
     return 0
 
 
-def _run_live(args, chamber_ids: list[str]) -> int:
+def _run_live(args: argparse.Namespace, chamber_ids: list[str]) -> int:
     base_url = os.environ.get(ENV_KEYCLOAK_BASE_URL, '').strip()
     admin = os.environ.get(ENV_KEYCLOAK_ADMIN, '').strip()
     password = os.environ.get(ENV_KEYCLOAK_ADMIN_PASSWORD, '').strip()

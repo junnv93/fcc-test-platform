@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Iterable, Mapping
+from typing import Iterable, Mapping, SupportsIndex, SupportsInt
 
 from fcc_test_contracts.common.access_policy import API_PERMISSION_ADMIN
 from fcc_test_platform.artifact_storage import RetentionCandidate, normalize_relative_path
@@ -174,7 +174,7 @@ def _candidate_record(candidate: RetentionCandidate | Mapping) -> dict:
     }
 
 
-def _record_type(value) -> str:
+def _record_type(value: object) -> str:
     text = str(value or '').strip()
     if text not in DOWNLOAD_PERMISSION_BY_RECORD_TYPE:
         allowed = ', '.join(sorted(DOWNLOAD_PERMISSION_BY_RECORD_TYPE))
@@ -203,14 +203,16 @@ def _required_text(mapping: Mapping, key: str) -> str:
     return text
 
 
-def _optional_text(value) -> str:
+def _optional_text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()
 
 
-def _optional_int(value) -> int | None:
+def _optional_int(value: object) -> int | None:
     if value in (None, ''):
+        return None
+    if not isinstance(value, (str, bytes, bytearray, SupportsInt, SupportsIndex)):
         return None
     try:
         return int(value)
