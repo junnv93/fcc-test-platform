@@ -41,7 +41,7 @@ from pathlib import Path
 import shlex
 import subprocess
 import sys
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping, Sequence, TYPE_CHECKING
 from urllib.parse import urlsplit, urlunsplit
 import uuid
 
@@ -72,6 +72,11 @@ def _repository_root() -> Path:
 ROOT = _repository_root()
 from fcc_test_platform.repository_anchor import repository_anchor
 from fcc_test_contracts.common.tree_artifacts import resolve_repo_artifact  # noqa: E402
+from fcc_test_platform.application.central_db_surfaces import ScriptConnection, require_row
+
+if TYPE_CHECKING:
+    from psycopg.types.json import Jsonb
+    from fcc_test_platform.provider_ingestion_plan import PlatformIngestionPlan
 
 # Repository-relative artifacts are named the way the repository names them and
 # located by asking the packager's own layout record where they went.
@@ -153,7 +158,7 @@ def _safe_dsn(dsn: str) -> str:
     return '<redacted-dsn>'
 
 
-def _connect(dsn: str):
+def _connect(dsn: str) -> ScriptConnection:
     try:
         import psycopg  # type: ignore
     except Exception as exc:  # pragma: no cover - environment dependent
@@ -176,7 +181,7 @@ def _proof_uuid(namespace: uuid.UUID, label: str) -> str:
     return str(uuid.uuid5(namespace, label))
 
 
-def _ledger_snapshot(connection) -> dict[str, Any]:
+def _ledger_snapshot(connection: ScriptConnection) -> dict[str, Any]:
     try:
         with connection.cursor() as cursor:
             cursor.execute(
@@ -189,7 +194,7 @@ def _ledger_snapshot(connection) -> dict[str, Any]:
     return {str(version): str(checksum) for version, checksum in rows}
 
 
-def _protected_data_snapshot(connection) -> dict[str, Any]:
+def _protected_data_snapshot(connection: ScriptConnection) -> dict[str, Any]:
     """Hash stable pre-030 columns, excluding the paired columns being added."""
     tables: dict[str, Any] = {}
     with connection.cursor() as cursor:
@@ -201,7 +206,7 @@ def _protected_data_snapshot(connection) -> dict[str, Any]:
                     'to_jsonb(snapshot_row)::text, E\'\\n\' ORDER BY snapshot_row."id"::text), \'\')) '
                     f'FROM (SELECT {quoted} FROM "{table}" ORDER BY "id"::text) snapshot_row'
                 )
-                count, digest = cursor.fetchone()
+                count, digest = require_row(cursor)
                 tables[table] = {
                     'exists': True,
                     'count': int(count),
@@ -395,14 +400,14 @@ def _schema_metadata() -> dict[str, Any]:
     }
 
 
-def _database_identity(connection) -> dict[str, Any]:
+def _database_identity(connection: ScriptConnection) -> dict[str, Any]:
     with connection.cursor() as cursor:
         cursor.execute(
             'SELECT current_database(), '
             "COALESCE(inet_server_addr()::text, '<local-socket>'), "
             'COALESCE(inet_server_port(), 0), version()'
         )
-        database, server, port, version = cursor.fetchone()
+        database, server, port, version = require_row(cursor)
     return {
         'database_name': str(database),
         'server': str(server),
@@ -433,7 +438,7 @@ def _apply_migrations(*, dsn: str, lane: str, rerun: bool = False) -> dict[str, 
     return dict(result)
 
 
-def _ledger_row(connection) -> dict[str, Any] | None:
+def _ledger_row(connection: ScriptConnection) -> dict[str, Any] | None:
     with connection.cursor() as cursor:
         try:
             cursor.execute(
@@ -455,7 +460,7 @@ def _ledger_row(connection) -> dict[str, Any] | None:
     }
 
 
-def _catalog_snapshot(connection) -> dict[str, Any]:
+def _catalog_snapshot(connection: ScriptConnection) -> dict[str, Any]:
     with connection.cursor() as cursor:
         cursor.execute(
             'SELECT table_name, column_name, data_type, is_nullable '
@@ -487,13 +492,13 @@ def _catalog_snapshot(connection) -> dict[str, Any]:
     return {'columns': columns, 'indexes': indexes}
 
 
-def _jsonb(value: Mapping[str, Any]):
+def _jsonb(value: Mapping[str, Any]) -> 'Jsonb':
     from psycopg.types.json import Jsonb  # type: ignore
 
     return Jsonb(dict(value))
 
 
-def _seed_live_rows(connection, *, lane: str, run_id: str) -> dict[str, str]:
+def _seed_live_rows(connection: ScriptConnection, *, lane: str, run_id: str) -> dict[str, str]:
     """Seed two cross-session conditions and their provider-scoped attempts."""
     namespace = uuid.uuid5(uuid.NAMESPACE_URL, f'fcc-cross-session-evidence:{lane}:{run_id}')
     ids = {
@@ -591,7 +596,7 @@ def _seed_live_rows(connection, *, lane: str, run_id: str) -> dict[str, str]:
     return ids
 
 
-def _cleanup_live_rows(connection, ids: Mapping[str, str]) -> dict[str, object]:
+def _cleanup_live_rows(connection: ScriptConnection, ids: Mapping[str, str]) -> dict[str, object]:
     """정리 결과 — `status` 는 문자열이고 `deleted_rows`·`remaining_rows` 는 «표 → 건수» 사전이다.
 
     ⚠️ 반환 선언이 한때 `dict[str, int | str]` 이었다. 그것은 값이 **스칼라**라는
@@ -633,7 +638,7 @@ def _cleanup_live_rows(connection, ids: Mapping[str, str]) -> dict[str, object]:
             ('providers', 'id', ids['provider_uuid']),
         ):
             cursor.execute(f'SELECT COUNT(*) FROM "{table}" WHERE "{column}" = %s', (value,))
-            remaining[table] = int(cursor.fetchone()[0])
+            remaining[table] = int(require_row(cursor)[0])
     return {
         'status': 'PASS' if not any(remaining.values()) else 'FAIL',
         'deleted_rows': deleted,
@@ -641,7 +646,7 @@ def _cleanup_live_rows(connection, ids: Mapping[str, str]) -> dict[str, object]:
     }
 
 
-def _read_session_snapshot(connection, session_id: str) -> tuple[str | None, str | None]:
+def _read_session_snapshot(connection: ScriptConnection, session_id: str) -> tuple[str | None, str | None]:
     with connection.cursor() as cursor:
         cursor.execute(
             'SELECT project_result_reference_snapshot_json, '
@@ -698,14 +703,14 @@ def _ingest_reference_snapshot(dsn: str, ids: Mapping[str, str], snapshot_json: 
     provider_session_id, chamber_id = _read_session_ingestion_identity(dsn, ids)
     opened = []
 
-    def connection_factory():
+    def connection_factory() -> ScriptConnection:
         connection = _connect(dsn)
         opened.append(connection)
         return connection
 
     writer = PostgresIngestionWriter(connection_factory)
 
-    def plan_for(value: str):
+    def plan_for(value: str) -> PlatformIngestionPlan:
         batch = build_platform_ingestion_batch(
             provider_id=ids['provider_uuid'],
             session_id=ids['session_a'],
@@ -719,7 +724,7 @@ def _ingest_reference_snapshot(dsn: str, ids: Mapping[str, str], snapshot_json: 
         )
         return build_platform_ingestion_plan(batch)
 
-    def execute(plan):
+    def execute(plan: PlatformIngestionPlan) -> dict:
         result = execute_platform_ingestion_plan(plan, writer)
         return result.to_dict()
 
@@ -862,13 +867,13 @@ def _run_live_proof(dsn: str, *, lane: str, run_id: str) -> dict[str, Any]:
         from fcc_test_platform.domain.ports.output.central_project_reference_port import ReferenceRetiredError
         from fcc_test_platform.domain.ports.output.central_result_selection_port import SelectionRevisionConflictError
 
-        def connection_factory():
+        def connection_factory() -> ScriptConnection:
             return _connect(dsn)
 
         selection = PostgresCentralResultSelectionAdapter(connection_factory)
         reference_port = PostgresCentralProjectReferenceAdapter(connection_factory)
 
-        def append(event_id: str):
+        def append(event_id: str) -> tuple[str, Mapping | None]:
             try:
                 return ('won', selection.append_selection_event(
                     event_id=event_id,
@@ -891,6 +896,14 @@ def _run_live_proof(dsn: str, *, lane: str, run_id: str) -> dict[str, Any]:
         if len(winners) != 1 or len(conflicts) != 1:
             raise RuntimeError(f'live CAS did not produce one winner/one conflict: {outcomes}')
         winner = winners[0][1]
+        if winner is None:
+            # ⚠️ 「이긴 쪽은 행을 싣는다」는 위 `append` 의 구성상 참이지만, 그 앎은
+            #    태그(`'won'`)와 payload 를 «따로» 실은 튜플 안에 흩어져 있어서
+            #    타입이 말할 수 없다. 세는 축(위 두 줄)은 그대로 두고 — 그래야
+            #    「이긴 쪽이 정확히 하나」라는 판정이 약해지지 않는다 — 여기서
+            #    한 번만 이름을 붙인다.
+            raise RuntimeError(
+                f'live CAS reported a winner with no selection event row: {outcomes}')
 
         first_page = selection.list_effective_results(
             ids['project_id'], ids['provider_id'], limit=1,

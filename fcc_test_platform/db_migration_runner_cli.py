@@ -29,6 +29,7 @@ from fcc_test_platform.db_migration_collect_cli import (  # noqa: E402
     _fetch_indexes,
     build_manifest_from_introspection,
 )
+from fcc_test_platform.application.central_db_surfaces import ScriptConnection
 
 # Both through the record rather than a directory walk. Only the second is
 # relocated today (docs/platform/migrations/ -> migrations/ at the box root) but
@@ -131,7 +132,7 @@ def advisory_lock_id(lock_key: str) -> int:
     return int.from_bytes(digest[:8], byteorder='big', signed=False) & ((1 << 63) - 1)
 
 
-def _apply_sql(connection, migration_sql: str, lock_id: int) -> None:
+def _apply_sql(connection: ScriptConnection, migration_sql: str, lock_id: int) -> None:
     try:
         with connection.cursor() as cursor:
             cursor.execute('SELECT pg_advisory_xact_lock(%s)', (lock_id,))

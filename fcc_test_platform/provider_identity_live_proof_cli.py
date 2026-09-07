@@ -23,8 +23,9 @@ from fcc_test_platform.domain.ports.output.central_reference_port import (
     CentralReferenceError, ReferenceProviderNotFoundError,
     ReferenceProviderNotRegisteredError,
 )
+from typing import Callable, NoReturn
 
-def offered_provider_ids():
+def offered_provider_ids() -> tuple[str, ...]:
     """What this deployment's picker offers, asked of the composed registry.
 
     Through the composition root rather than by importing the provider builder:
@@ -37,7 +38,7 @@ def offered_provider_ids():
     from fcc_test_platform.application.runtime_config import PlatformApiConfig
     from fcc_test_platform.api_composition import create_platform_runtime
 
-    def _unused():  # pragma: no cover — the registry needs no database
+    def _unused() -> NoReturn:  # pragma: no cover — the registry needs no database
         raise AssertionError('the registry must not need a database')
 
     runtime = create_platform_runtime(
@@ -51,7 +52,15 @@ def offered_provider_ids():
         ),
         connection_factory=_unused,
     )
-    return runtime.api_adapter._provider_ui_descriptor_registry.provider_ids()  # noqa: SLF001
+    registry = runtime.api_adapter._provider_ui_descriptor_registry  # noqa: SLF001
+    if registry is None:
+        # ⚠️ 이 증명의 «대상»이 없다는 뜻이다. 빈 튜플로 접으면 「아무 provider 도
+        #    제공하지 않는다」와 구별되지 않고, 그것이 정확히 이 스크립트가
+        #    반증하려는 형태다.
+        raise AssertionError(
+            'the composed runtime has no provider UI descriptor registry — '
+            'there is nothing for this proof to ask')
+    return registry.provider_ids()
 
 
 _USAGE = (
@@ -113,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
     out['coherent_listing_rows'] = len(rows)
     out['coherent_families'] = len(svc.list_reference_families(UNLICENSED_PROVIDER_ID))
 
-    def probe(label, fn):
+    def probe(label: str, fn: Callable[[], object]) -> None:
         try:
             fn(); out[label] = 'NOT REFUSED (defect)'
         except ReferenceProviderNotRegisteredError:
@@ -128,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
     out['counterfactual_old_read_path'] = (
         f'{len(read.list_revisions("fcc-mmwave-conducted"))} rows == HTTP 200 [] '
         '(indistinguishable from "registered, nothing published")')
-    def boom(): raise OSError('connection refused')
+    def boom() -> NoReturn: raise OSError('connection refused')
     try:
         PostgresCentralReferenceReadAdapter(boom).provider_exists('x')
         out['outage_is_not_absence'] = 'answered False (defect)'

@@ -238,7 +238,7 @@ def _storage_backend(value: str) -> str:
     return backend.lower()
 
 
-def _parse_datetime(value) -> Optional[datetime]:
+def _parse_datetime(value: object) -> Optional[datetime]:
     if value in (None, ''):
         return None
     if isinstance(value, datetime):

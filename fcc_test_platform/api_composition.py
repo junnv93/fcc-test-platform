@@ -27,7 +27,7 @@ inject a fake/SQLite connection factory and never touch psycopg.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import Any, Callable, Mapping, Optional, TYPE_CHECKING
 
 from fcc_test_platform.domain.ports.output.chamber_progress_broadcast_port import (
     ChamberProgressBroadcastPort,
@@ -191,6 +191,10 @@ from fcc_test_platform.application.runtime_config import (
 from fcc_test_platform.application.central_db_surfaces import RowConnection
 from fcc_test_contracts.common.health_probe_policy import DEPENDENCY_CENTRAL_DB
 
+if TYPE_CHECKING:
+    from fastapi import APIRouter
+    from fastapi import FastAPI
+
 
 logger = get_logger('platform_api')
 
@@ -253,7 +257,7 @@ class PlatformApiRuntime:
     # principal resolver (reader) must be handed the SAME object.
     revocation_list: object = None
 
-    def create_router(self):
+    def create_router(self) -> 'APIRouter':
         from fcc_test_platform.api.platform_routes import create_platform_router
         return create_platform_router(
             self.api_adapter,
@@ -883,8 +887,8 @@ def create_platform_app_from_config(
     runtime: PlatformApiRuntime,
     config: PlatformApiConfig,
     *,
-    lifespan=None,
-):
+    lifespan: Callable[..., Any] | None=None,
+) -> 'FastAPI':
     """Create the FastAPI app for an assembled platform runtime.
 
     ``lifespan`` is forwarded to the FastAPI constructor so the ASGI entrypoint
@@ -922,7 +926,7 @@ def create_platform_app_from_config(
     )
 
 
-def _local_jwt_secret_or_none(config: PlatformApiConfig):
+def _local_jwt_secret_or_none(config: PlatformApiConfig) -> str | None:
     """The local JWT signing secret, or ``None`` outside ``local_jwt`` mode.
 
     Kept as a named function rather than an inline conditional so the mode gate is
@@ -940,7 +944,7 @@ ENV_BOOTSTRAP_ADMIN_EMAIL = 'FCC_PLATFORM_BOOTSTRAP_ADMIN_EMAIL'
 ENV_BOOTSTRAP_ADMIN_PASSWORD = 'FCC_PLATFORM_BOOTSTRAP_ADMIN_PASSWORD'
 
 
-def _bootstrap_local_admin_from_env(store, environ) -> None:
+def _bootstrap_local_admin_from_env(store: object, environ: Mapping[str, str]) -> None:
     """Create the first local administrator when the deployment asks for one.
 
     ⚠️ **Failures here are loud.** A refused password (policy violation) or an

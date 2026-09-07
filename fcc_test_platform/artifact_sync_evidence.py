@@ -6,7 +6,7 @@ copy files, calculate hashes, call networks, or write database records.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Mapping, SupportsIndex, SupportsInt
 
 from fcc_test_platform.artifact_storage import normalize_relative_path
 from fcc_test_platform.evidence_primitives import is_sha256_hex
@@ -109,7 +109,7 @@ def _validate_declared_count(
         issues.append(_issue('declared_count_mismatch', key, f'{key} must equal actual synced records'))
 
 
-def _validate_relative_path(value, path: str, issues: list[ArtifactSyncIssue]) -> str:
+def _validate_relative_path(value: object, path: str, issues: list[ArtifactSyncIssue]) -> str:
     try:
         return normalize_relative_path(str(value or ''))
     except ValueError as exc:
@@ -130,17 +130,19 @@ def _require_hash(mapping: Mapping, key: str, path: str, issues: list[ArtifactSy
         issues.append(_issue('invalid_sha256', path, f'{key} must be a SHA-256 hex digest'))
 
 
-def _mapping(value) -> Mapping:
+def _mapping(value: object) -> Mapping:
     return value if isinstance(value, Mapping) else {}
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()
 
 
-def _int(value) -> int | None:
+def _int(value: object) -> int | None:
+    if not isinstance(value, (str, bytes, bytearray, SupportsInt, SupportsIndex)):
+        return None
     try:
         return int(value)
     except (TypeError, ValueError):

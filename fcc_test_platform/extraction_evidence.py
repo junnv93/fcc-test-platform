@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Mapping, SupportsIndex, SupportsInt
 
 from fcc_test_platform.evidence_primitives import is_sha256_hex
 
@@ -295,17 +295,19 @@ def _require_text(mapping: Mapping, key: str, path: str, issues: list[Extraction
         issues.append(_issue('missing_required_field', path, f'{key} is required'))
 
 
-def _mapping(value) -> Mapping:
+def _mapping(value: object) -> Mapping:
     return value if isinstance(value, Mapping) else {}
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()
 
 
-def _int(value) -> int | None:
+def _int(value: object) -> int | None:
+    if not isinstance(value, (str, bytes, bytearray, SupportsInt, SupportsIndex)):
+        return None
     try:
         return int(value)
     except (TypeError, ValueError):

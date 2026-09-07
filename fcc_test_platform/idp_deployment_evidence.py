@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Mapping, SupportsIndex, SupportsInt
 from urllib.parse import urlparse
 
 
@@ -79,7 +79,7 @@ def _validate_jwks(jwks: Mapping, issues: list[IdpDeploymentIssue]) -> None:
         issues.append(_issue('missing_asymmetric_jwks_algorithm', 'jwks.algorithms', 'JWKS must expose at least one asymmetric signing algorithm'))
 
 
-def _validate_clients(value, issues: list[IdpDeploymentIssue]) -> None:
+def _validate_clients(value: object, issues: list[IdpDeploymentIssue]) -> None:
     if not isinstance(value, list) or not value:
         issues.append(_issue('missing_clients', 'clients', 'at least one frontend client registration is required'))
         return
@@ -137,7 +137,7 @@ def _validate_session_persistence(session: Mapping, issues: list[IdpDeploymentIs
         issues.append(_issue('logout_not_clearing_session', 'session_persistence.logout_clears_session', 'logout_clears_session must be true'))
 
 
-def _validate_url_list(value, path: str, issues: list[IdpDeploymentIssue]) -> None:
+def _validate_url_list(value: object, path: str, issues: list[IdpDeploymentIssue]) -> None:
     if not isinstance(value, list) or not value:
         issues.append(_issue('missing_url_list', path, 'at least one URL is required'))
         return
@@ -145,7 +145,7 @@ def _validate_url_list(value, path: str, issues: list[IdpDeploymentIssue]) -> No
         _require_https_url(url, f'{path}[{index}]', issues)
 
 
-def _require_https_url(value, path: str, issues: list[IdpDeploymentIssue]) -> None:
+def _require_https_url(value: object, path: str, issues: list[IdpDeploymentIssue]) -> None:
     text = _text(value)
     if not text:
         issues.append(_issue('missing_required_field', path, 'HTTPS URL is required'))
@@ -163,17 +163,19 @@ def _require_text(mapping: Mapping, key: str, path: str, issues: list[IdpDeploym
         issues.append(_issue('missing_required_field', path, f'{key} is required'))
 
 
-def _mapping(value) -> Mapping:
+def _mapping(value: object) -> Mapping:
     return value if isinstance(value, Mapping) else {}
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()
 
 
-def _int(value) -> int | None:
+def _int(value: object) -> int | None:
+    if not isinstance(value, (str, bytes, bytearray, SupportsInt, SupportsIndex)):
+        return None
     try:
         return int(value)
     except (TypeError, ValueError):

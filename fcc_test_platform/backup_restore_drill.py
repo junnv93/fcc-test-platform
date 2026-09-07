@@ -113,7 +113,7 @@ def _validate_backup_record(
 
 
 def _validate_restored_records(
-    value,
+    value: object,
     *,
     record_type: str,
     issues: list[RestoreDrillIssue],
@@ -151,18 +151,18 @@ def _validate_restored_records(
             )
 
 
-def _validate_relative_path(value, path: str, issues: list[RestoreDrillIssue]) -> None:
+def _validate_relative_path(value: object, path: str, issues: list[RestoreDrillIssue]) -> None:
     try:
         normalize_relative_path(str(value or ''))
     except ValueError as exc:
         issues.append(_issue('invalid_relative_path', path, str(exc)))
 
 
-def _mapping(value) -> Mapping:
+def _mapping(value: object) -> Mapping:
     return value if isinstance(value, Mapping) else {}
 
 
-def _text(value) -> str:
+def _text(value: object) -> str:
     if value is None:
         return ''
     return str(value).strip()

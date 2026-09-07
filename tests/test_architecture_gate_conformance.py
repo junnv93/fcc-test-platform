@@ -62,7 +62,19 @@ IMPORTLINTER_INI = REPO_ROOT / '.importlinter'
 #:    고치라」**는 신호다. 그런데 문자열 하나짜리 장부는 그 신호를 「고쳐야 할 검사」로
 #:    보이게 만들어, 다음 사람이 범위를 넓히는 대신 검사를 되돌리도록 유도한다.
 #:    집합으로 두면 층을 더하는 일이 **한 줄 추가**가 되고, 그 한 줄이 곧 선언이다.
+#: 🔄 **2026-09-07 — 네 줄이 한 줄로 접혔다.** 층 넷은 각각 0건이었는데 **넷의
+#:    합집합이 패키지가 아니었다**: 게이트가 절마다 «따로» 부르므로 최상위 모듈은
+#:    어느 호출에서도 source file 이 되지 못했다(실측 139 대 215). 열거는 «다음
+#:    파일이 조용히 빠지는 자리»이고, 이번이 그 구멍이 실현된 사례다.
+#:    아래 `TestTheStrictScopeCoversThePackage` 가 그 되돌림을 막는다.
 STRICT_SECTIONS = (
+    'mypy-fcc_test_platform.*',
+)
+
+#: 이 절이 «접기 전»의 네 층. 지우지 않는다 — 아래 이빨 검사가 이것을 주입해
+#: 「층 열거로는 패키지를 못 덮는다」를 매번 실증한다. 즉 이 상수는 기록이 아니라
+#: **검사의 입력**이다.
+LAYER_ONLY_SECTIONS_BEFORE_20260907 = (
     'mypy-fcc_test_platform.domain.*',
     'mypy-fcc_test_platform.infrastructure.*',
     'mypy-fcc_test_platform.application.*',
@@ -176,6 +188,55 @@ def _expected_module_count(package: str) -> int:
     if not (root / '__init__.py').is_file():
         modules += 1
     return modules
+
+def _module_names(package: str) -> set[str]:
+    """트리에서 **모듈 이름 전부**를 파생한다 — `_expected_module_count` 의 이름 판.
+
+    두 함수가 같은 트리를 다르게 걸으면 갈라지므로, 규칙을 여기 한 번만 적는다.
+    수와 이름이 같은 것에서 나온다는 것은 아래 첫 검사가 **등호로** 확인한다.
+    """
+    root = REPO_ROOT / Path(*package.split('.'))
+    names = {package}
+    for path in root.rglob('*'):
+        if '__pycache__' in path.parts:
+            continue
+        rel = path.relative_to(root)
+        if path.is_file() and path.suffix == '.py':
+            parts = list(rel.with_suffix('').parts)
+            if parts and parts[-1] == '__init__':
+                parts = parts[:-1]
+            names.add('.'.join([package, *parts]))
+        elif path.is_dir() and not (path / '__init__.py').is_file():
+            names.add('.'.join([package, *rel.parts]))
+    return names
+
+
+def _pattern_matches(pattern: str, module: str) -> bool:
+    """mypy 의 per-module 절 이름이 모듈을 잡는가.
+
+    ⚠️ **`*` 는 점으로 구분된 성분 «전체»만 대체한다.** 이 저장소가 여러 번 실측해
+    적어 둔 사실이고, 이 함수가 그것을 기계로 옮긴 것이다 — `central_*` 같은 부분
+    와일드카드는 **0건 매치**이며, 그 실패는 「위반 없음」과 출력이 같다.
+
+    ⚠️ 그리고 `foo.*` 는 `foo` **자신도** 잡는다(mypy 문서). 그 규칙이 없으면 이
+    검사가 네임스페이스 루트 하나를 「안 덮인다」고 잘못 말한다.
+    """
+    if pattern.endswith('.*'):
+        prefix = pattern[:-len('.*')]
+        return module == prefix or module.startswith(prefix + '.')
+    want = pattern.split('.')
+    got = module.split('.')
+    return len(want) == len(got) and all(w in ('*', g) for w, g in zip(want, got, strict=True))
+
+
+def _modules_not_covered(sections: tuple[str, ...], package: str) -> set[str]:
+    """`sections` 가 «못 덮는» 모듈 이름들. 빈 집합이면 완전히 덮는다."""
+    patterns = [s[len('mypy-'):] for s in sections]
+    return {
+        module for module in _module_names(package)
+        if not any(_pattern_matches(pattern, module) for pattern in patterns)
+    }
+
 
 #: 예외를 가져서는 안 되는 계약 — 즉 **전부**다. 2026-09-05 S3 착지로 마지막
 #: 등재 2건(`app-no-db`)이 해소되면서 세 계약이 나란히 예외 0건이 됐다.
@@ -363,6 +424,81 @@ class TestTheMypyGateIsDeclared(unittest.TestCase):
             cfg.getboolean('mypy', 'disallow_untyped_defs'),
             '저장소 전체 strict 는 아직 합의된 범위가 아니다 — 범위를 넓히려면 '
             '설계서를 먼저 고쳐라')
+
+
+class TestTheStrictScopeCoversThePackage(unittest.TestCase):
+    """🆕 2026-09-07 — **「네 층의 합집합이 패키지인가」를 묻는 자리.**
+
+    ■ 왜 이 검사가 필요했나
+
+    옆의 `TestTheGatesActuallyRun.test_the_strict_layers_have_no_untyped_defs` 는
+    `STRICT_PACKAGES` 를 순회하며 **「각 층이 0인가」**만 묻는다. 그 형태의 사각지대는
+    **목록에 없는 모듈**이고, 그것은 빨강도 초록도 아닌 **침묵**이다. 실측
+    2026-09-07(main@f143f2d)::
+
+        4회 호출이 넘긴 것   51 + 11 + 75 + 2 = 139 source files
+        패키지 전체          215 source files
+
+    76의 차이에 `no-untyped-def` 183건과 (앞선 웨이브가 처분한) 실제 타입 오류 45건이
+    있었다. **검사는 성실히 돌았고 139개를 정말로 검사했고 정직하게 초록을 냈다.**
+    말하지 않은 것은 76이 밖에 있다는 사실뿐이다 — 이 레포가 이름 붙인 *공허 통과의
+    둘째 종류: 집합이 비는 것이 아니라 집합이 «틀린» 것.*
+
+    ■ 왜 도구가 아니라 **트리**에 묻나
+
+    이 클래스는 stdlib 만 쓴다. mypy 가 없는 기계에서도 돈다 — 그리고 그것이
+    요점이다. 「도구가 안 돌았다」와 「범위가 좁아졌다」는 다른 사건인데, 도구에
+    물으면 둘이 같은 skip 이 된다.
+    """
+
+    def test_the_two_derivations_agree(self):
+        """⚠️ **안티-공허 팔이 먼저다.** 이름 집합이 비거나 수 파생과 어긋나면
+        아래 커버리지 판정이 «자동으로» 통과한다 — 아무것도 안 덮어도 「안 덮인 것이
+        없다」가 되기 때문이다. 그래서 이름 파생과 수 파생을 **등호로** 묶는다.
+        """
+        names = _module_names(WHOLE_PACKAGE)
+        self.assertTrue(names, '모듈 이름을 하나도 파생하지 못했다 — 트리가 사라졌나')
+        self.assertEqual(
+            _expected_module_count(WHOLE_PACKAGE), len(names),
+            '이 파일의 «수» 파생과 «이름» 파생이 다른 답을 냈다. 둘은 같은 트리를 '
+            '같은 규칙으로 걸어야 한다 — 갈라지면 한쪽이 다른 쪽을 못 지킨다.')
+
+    def test_the_declared_strict_scope_covers_every_module(self):
+        """선언된 strict 범위가 패키지의 **모든 모듈**을 덮는가."""
+        uncovered = _modules_not_covered(STRICT_SECTIONS, WHOLE_PACKAGE)
+        shown = ', '.join(sorted(uncovered)[:8])
+        self.assertEqual(
+            set(), uncovered,
+            f'strict 범위 밖에 모듈 {len(uncovered)}개가 있다 — {shown}\n'
+            f'게이트는 절 이름에서 호출 인자를 파생해 절마다 «따로» 부른다. 목록에 '
+            f'없는 모듈은 red 도 green 도 아닌 «침묵»이고, 그 침묵은 초록과 구별되지 '
+            f'않는다. 범위를 좁혔다면 되돌리고, 정말로 좁혀야 한다면 그 사유를 '
+            f'mypy.ini 와 이 검사에 «함께» 적어라.')
+
+    def test_this_check_has_teeth(self):
+        """**이빨 확인 — 주입이 여기 «상주»한다.**
+
+        ⚠️ 위 팔은 오늘 통과한다. 그런데 「덮는다」와 「이 함수가 아무것도 못 본다」는
+        출력이 같다. 그래서 **접기 전의 네 층 열거를 매번 주입**해, 그 형태가 실제로
+        빨개지는지를 검사 자신이 확인한다. 한 번 손으로 주입하고 마는 것과 다르다 —
+        매처가 나중에 망가지면 이 팔이 그날 말한다.
+
+        실측 2026-09-07: 그 열거로는 76개 모듈이 밖에 남는다(215 − 139).
+        """
+        uncovered = _modules_not_covered(
+            LAYER_ONLY_SECTIONS_BEFORE_20260907, WHOLE_PACKAGE)
+        self.assertTrue(
+            uncovered,
+            '접기 전의 네 층 열거가 «패키지를 전부 덮는다»고 나왔다. 그럴 리 없다 — '
+            '그 형태가 최상위 모듈을 놓치는 것이 2026-09-07 웨이브의 출발점이었다. '
+            '이 검사의 매처가 망가졌거나, 최상위 모듈이 전부 사라진 것이다.')
+        self.assertTrue(
+            all('.' not in m[len(WHOLE_PACKAGE) + 1:] for m in uncovered if m != WHOLE_PACKAGE),
+            f'놓친 것이 최상위 모듈만이 아니다: {sorted(uncovered)[:8]} — '
+            f'네 층 열거가 층 «안»의 무언가도 못 덮는다면 진단이 달라진다.')
+        _publish_evidence(
+            f'strict 범위 봉인이 이빨을 보였다 — 층 열거는 {len(uncovered)}개를 '
+            f'놓치고, 오늘의 범위는 0개를 놓친다')
 
 
 class TestTheImportLinterContractsAreDeclared(unittest.TestCase):

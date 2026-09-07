@@ -38,6 +38,7 @@ import argparse
 import re
 import sys
 from pathlib import Path
+from typing import Sequence
 
 
 # ⚠️ **여기서 죽으면 「검사가 죽었다」가 「설정이 어긋났다」로 보고된다** (2026-09-03).
@@ -67,10 +68,24 @@ except Exception as _exc:  # noqa: BLE001 — 원인을 실어 2 로 내린다
     # 폴백 경로에서만 다른 것을 받는다.
     WEB_AUTH_STRATEGIES = frozenset()
 
-    def deployment_auth_defects(*_a, **_k):  # type: ignore[misc]
+    # ⚠️ 폴백의 시그니처는 «실물과 같은 모양»이어야 한다. `*args/**kwargs` 로 두면
+    #    mypy 가 「조건부 함수 변형의 시그니처가 다르다」로 거절하고, 그것을
+    #    `# type: ignore[misc]` 로 누르면 «폴백 경로에서만» 인자 검사가 사라진다 —
+    #    import 가 실패한 배포에서 이 스크립트가 다르게 행동하게 되는 자리다.
+    #    반환은 `NoReturn` 이다: 이 둘은 언제나 던진다.
+    def deployment_auth_defects(
+        *,
+        platform_auth_mode: object,
+        web_auth_mode: object,
+        headless_auth_mode: object = None,
+        local_jwt_secrets: object = None,
+        local_jwt_configs: object = None,
+        insecure_transport_allowed: object = None,
+        public_host: object = None,
+    ) -> tuple:
         raise RuntimeError('contract package unavailable')
 
-    def web_auth_strategy_for(*_a, **_k):  # type: ignore[misc]
+    def web_auth_strategy_for(auth_mode: object) -> str | None:
         raise RuntimeError('contract package unavailable')
 
 #: 한 배포가 **함께** 정해야 하는 값들.
@@ -196,7 +211,7 @@ def fetch_runtime_auth_mode(url: str, *, timeout: float = 5.0) -> 'str | None':
     return match.group(1) if match else None
 
 
-def main(argv=None) -> int:
+def main(argv: Sequence[str] | None=None) -> int:
     if _CONTRACT_IMPORT_ERROR is not None:
         print(
             'auth pairing: 판정 불가 — 계약 패키지를 불러오지 못했다 '
