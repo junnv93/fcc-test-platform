@@ -1,0 +1,21 @@
+{
+  "task": "a-test-file-that-collects-nothing-20260907",
+  "branch": "fix/impact-tests-header-lies-20260907 → intent/a-test-file-that-collects-nothing",
+  "owner": "fcc-delivery-final-c1",
+  "status": "in-progress",
+  "base": "origin/main@6dd9b81",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/c174cef4-5a1e-4738-b38f-61bb08970531/scratchpad/wt2",
+  "scope": [
+    "tests/test_impact_tests_invariant_coverage.py",
+    "intent/a-test-file-that-collects-nothing/intent.md",
+    ".claude/work-claims/a-test-file-that-collects-nothing-20260907.json"
+  ],
+  "non_scope": [
+    "모노레포 FCC_mobile_test_automation 의 5곳 — 같은 죽은 이름이 거기에도 인용돼 있고(SKILL.md 의 «보장» 하나 포함) 형제 세션 fcc-delivery-final-8c 의 장부에 소유 미정으로 등재돼 있다. 그쪽은 지금 차분 측정이 도는 트리라 만지면 회차 사이에 트리가 바뀐다.",
+    ".claude/skills/verify-apps-web-scaffold/SKILL.md — 그 선언이 오늘 아무것에도 읽히지 않는다는 것이 intent 의 재료다. 선언을 지우는 것은 판정 뒤의 일이다.",
+    "파일 삭제·판정기 도입 — 그것이 intent 가 묻는 질문 자체다. 이 판은 «거짓 산문»만 고치고 판정은 열어 둔다."
+  ],
+  "conflicts_with": [],
+  "sequencing": "앞선 웨이브(PR #169·#173·#174·#175)의 자가감사 B-1 을 검증하다 나왔다. 나는 「verify-* skill 의 mapped_invariants 는 이 레인의 기제가 아니다」라고 확인 없이 적었고 틀렸다 — 기제는 있고 판정기가 없다.",
+  "result": "(진행 중)"
+}
