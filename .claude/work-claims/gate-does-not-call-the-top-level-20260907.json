@@ -1,0 +1,16 @@
+{
+  "task": "gate-does-not-call-the-top-level-20260907",
+  "branch": "fix/the-gate-does-not-call-the-top-level-20260907",
+  "owner": "fcc-delivery-final-31",
+  "status": "active",
+  "base": "origin/main@7bba811",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/b63bb2c9-57e1-4970-a8ee-1337511b3ecf/scratchpad/wt-A",
+  "scope": [
+    "mypy.ini",
+    "tests/test_architecture_gate_conformance.py",
+    "fcc_test_platform/*.py (최상위 16파일 — 44건 수리)"
+  ],
+  "shared_outputs": ["mypy.ini", "tests/test_architecture_gate_conformance.py"],
+  "conflicts_with": [],
+  "sequencing": "게이트가 절 이름에서 mypy 호출 인자를 파생하므로(:92-93) 목록에 없는 최상위 75 모듈은 «호출조차» 안 된다. 그 결과 실제 타입 오류 44건이 게이트 밖에 방치돼 있다(실측 main@7bba811, CI 와 같은 rig). 이 PR 은 게이트가 그것을 «보게» 만들고 44건을 닫는다. ⚠️ strict 확대(.* 절, +183건)는 이 웨이브가 아니다. ⚠️ 리그 축(py.typed·fastapi 단언)은 PR B 이고 #137 머지 후에만 초록이다 — 핀이 마커를 나르기 때문(kernel-v0.5.0 마커 0개 → v0.5.1 1개)."
+}

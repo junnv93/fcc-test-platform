@@ -31,6 +31,24 @@ __all__ = [
 ]
 
 
+#: 이 가짜의 세션 캐시 키. **한 dict 에 세 모양이 산다** — 실물이 스코프를 좁혀 온
+#: 이력이 여기 남아 있다:
+#:
+#:     int                            chamber 도 target 도 없는 조회
+#:     (chamber, local_id)            chamber 스코프  — remember_session 이 쓴다
+#:     (chamber, target, local_id)    chamber+target 스코프
+#:
+#: ⚠️ **셋째 모양은 이 클래스에서 읽기만 하고 «쓰는 곳이 없다»**(실측: 그 모양의
+#:    대입 0건). 그래서 target 스코프 조회는 생성자로 그 키를 직접 주입받지 않는 한
+#:    항상 miss 하고 아래 fallback 으로 간다. 실물(PostgresCentralIdResolver)은 그
+#:    키로 읽고 **쓴다** — 가짜와 실물이 그 자리에서 갈린다.
+#:
+#: ⚠️ 이 커밋은 **타입을 쓰임에 맞추기만** 한다. 그 갈라짐을 메우는 것은 동작 변경이라
+#:    별도 판정이 필요하다(가짜를 실물의 키 규약에 맞출 것인가, 아니면 그 조회가
+#:    가짜에서 의미 없음을 명시할 것인가).
+_SessionKey = int | tuple[str, int] | tuple[str, str, int]
+
+
 class InMemoryCentralIdResolver:
     """Concrete in-memory resolver — used by fakes/tests + ingestion worker
     composition root before a Postgres lookup adapter is introduced.
@@ -43,7 +61,7 @@ class InMemoryCentralIdResolver:
     def __init__(
         self,
         *,
-        session_uuid_by_local_id: Optional[dict[int, str]] = None,
+        session_uuid_by_local_id: Optional[dict['_SessionKey', str]] = None,
         project_uuid_by_code: Optional[dict[str, str]] = None,
         project_uuid_by_model_number: Optional[dict[str, str]] = None,
         ambiguous_model_numbers: Optional[frozenset] = None,

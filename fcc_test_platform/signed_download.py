@@ -76,7 +76,8 @@ def build_signed_download_url(
     _require_https_base_url(base_url)
     expires_at = _require_not_expired(str(grant.get('expires_at') or ''), now)
     disposition = _disposition(str(grant.get('disposition') or 'attachment'))
-    metadata = grant.get('metadata') if isinstance(grant.get('metadata'), Mapping) else {}
+    raw_metadata = grant.get('metadata')
+    metadata = raw_metadata if isinstance(raw_metadata, Mapping) else {}
     sha256 = str(metadata.get('sha256') or '').strip()
     if sha256 and not is_sha256_hex(sha256):
         raise ValueError('grant metadata sha256 must be a lowercase SHA-256 digest')
