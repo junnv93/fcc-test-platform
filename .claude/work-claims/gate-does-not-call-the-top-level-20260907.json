@@ -2,7 +2,7 @@
   "task": "gate-does-not-call-the-top-level-20260907",
   "branch": "fix/the-gate-does-not-call-the-top-level-20260907",
   "owner": "fcc-delivery-final-4f",
-  "status": "active",
+  "status": "merged",
   "base": "origin/main@8bf8778",
   "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/b63bb2c9-57e1-4970-a8ee-1337511b3ecf/scratchpad/wt-A",
   "scope": [
@@ -16,5 +16,7 @@
     "tests/test_architecture_gate_conformance.py"
   ],
   "conflicts_with": [],
-  "sequencing": "게이트가 절 이름에서 mypy 호출 인자를 파생하므로(:92-93) 목록에 없는 최상위 75 모듈은 «호출조차» 안 됐다. 새 리그(py.typed 있음)에서 다시 잰 기준선은 44 가 아니라 45/16파일이고, +1 은 전부 리그 축이다(api_composition.py:475 — 사본 Protocol 이 SSOT 와 갈라진 자리). 이 브랜치가 45 → 0 을 내고, 같은 묶음으로 게이트가 그 자리를 «부르게» 한다. ⚠️ 호출 축만 넓힌다 — [mypy-fcc_test_platform.*] 절 추가(= 선언 축)는 같은 215파일에서 228건(+no-untyped-def 183)이고 성격이 다른 다음 웨이브다. mypy.ini 가 그것을 이름으로 적었다. ⚠️ 리그 축(py.typed·fastapi)은 별도 PR 이 아니라 이 브랜치에 들어 있다."
+  "sequencing": "게이트가 절 이름에서 mypy 호출 인자를 파생하므로(:92-93) 목록에 없는 최상위 75 모듈은 «호출조차» 안 됐다. 새 리그(py.typed 있음)에서 다시 잰 기준선은 44 가 아니라 45/16파일이고, +1 은 전부 리그 축이다(api_composition.py:475 — 사본 Protocol 이 SSOT 와 갈라진 자리). 이 브랜치가 45 → 0 을 내고, 같은 묶음으로 게이트가 그 자리를 «부르게» 한다. ⚠️ 호출 축만 넓힌다 — [mypy-fcc_test_platform.*] 절 추가(= 선언 축)는 같은 215파일에서 228건(+no-untyped-def 183)이고 성격이 다른 다음 웨이브다. mypy.ini 가 그것을 이름으로 적었다. ⚠️ 리그 축(py.typed·fastapi)은 별도 PR 이 아니라 이 브랜치에 들어 있다.",
+  "merged_as": "PR #158 → main@d4834a3",
+  "outcome": "mypy -p fcc_test_platform 45 → 0 (215파일). 게이트가 최상위를 «부른다» — test_the_whole_package_is_type_checked. 층별 팔의 파일 수 단언은 «파생과의 등호»로 강화. 리그 축(fastapi · 커널/contracts py.typed) 신설, skip 아닌 red. mypy.ini 의 「전량 strict」 거짓 산문 정정(절 무변경). 주입 넷으로 실증: ① 최상위 결함 — 기존 팔 초록/새 팔 red ② 대상 좁힘 — 위반 축 초록/등호 red ③④ «별도» 결함 venv — 리그 축만 red(각각 15·14 passed). 남긴 것: InMemoryCentralIdResolver 의 키 규약 갈라짐(동작 변경이라 별도 판정, 소유 미정). 다음 웨이브: [mypy-fcc_test_platform.*] 선언 축 183건."
 }
