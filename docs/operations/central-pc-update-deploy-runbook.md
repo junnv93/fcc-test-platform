@@ -610,6 +610,7 @@ fcc-central-postgres       healthy
 fcc-central-keycloak       healthy
 fcc-central-headless-api   healthy
 fcc-central-platform-api   healthy
+fcc-central-platform-api-node   healthy
 fcc-central-web            running
 fcc-central-migrate        Exited (0)
 ```

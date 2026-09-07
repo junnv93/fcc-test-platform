@@ -1,0 +1,15 @@
+{
+  "task": "education-the-gate-never-called-20260907",
+  "branch": "docs/the-gate-never-called-the-top-level-20260907",
+  "owner": "fcc-delivery-final-31",
+  "status": "merged",
+  "base": "origin/main@9565be6",
+  "worktree": "/tmp/claude-1000/-home-kmjkds-fcc-delivery-final/b63bb2c9-57e1-4970-a8ee-1337511b3ecf/scratchpad/wt-edu",
+  "scope": [
+    "docs/education/2026-09-07-검사가-부르지-않은-자리-시험원-교육자료.html",
+    ".claude/work-claims/education-the-gate-never-called-20260907.json"
+  ],
+  "shared_outputs": [],
+  "conflicts_with": [],
+  "sequencing": "문서 1 + claim 1. 코드 변경 0. ⚠️ 착수 전 기존 교육자료를 대조해 겹치는 축(설치본 표식·리그)을 «뺐다» — 2026-09-06-검사기가-못-보던-것 이 이미 다룬다. 이 문서는 그 앞 단계(애초에 부르기는 했는가)만 다루고 그쪽을 이름으로 가리킨다."
+}

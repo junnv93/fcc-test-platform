@@ -76,7 +76,8 @@ def _validate_viewports(value, issues: list[FrontendQaIssue]) -> None:
             continue
         for key in ('name', 'width', 'height'):
             if key in {'width', 'height'}:
-                if _int(result.get(key)) is None or _int(result.get(key)) <= 0:
+                measured = _int(result.get(key))
+                if measured is None or measured <= 0:
                     issues.append(_issue(f'invalid_{key}', f'{path}.{key}', f'{key} must be positive'))
             else:
                 _require_text(result, key, f'{path}.{key}', issues)

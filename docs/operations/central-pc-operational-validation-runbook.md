@@ -272,8 +272,22 @@ cp infra/central/central.env.example infra/central/central.env
 
 ```bash
 grep -E '^PUBLIC_HOST=|^POSTGRES_PASSWORD=|^KEYCLOAK_ADMIN_PASSWORD=' infra/central/central.env
-hostname -I    # PUBLIC_HOST 와 같은 IP 가 목록에 있어야 한다
 ```
+
+`PUBLIC_HOST` 는 **Windows 호스트가 LAN 에서 가진 IP** 여야 한다:
+
+```bash
+powershell.exe -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 |
+  Where-Object { \$_.InterfaceAlias -notlike '*WSL*' -and \$_.IPAddress -ne '127.0.0.1' }).IPAddress"
+```
+
+> 🔴 **`hostname -I` 로 판정하지 마라.** 이 절의 옛 판이 그렇게 적었고 그것은
+> **틀린 답을 통과시킨다** — 실측 2026-09-07: `hostname -I` 9개 중 Windows 호스트가
+> 실제로 가진 것은 **1개**뿐이고, 나머지 여덟은 WSL·docker 브리지다.
+>
+> **근거와 뿌리는 `fcc-central-pc-reboot-ops-guide.md` §1.1 이 SSOT 다** —
+> 중앙 PC 의 WSL 은 NAT, 개발 PC 는 mirrored 라 **같은 명령이 두 기계에서 다른 것을
+> 답한다.** 여기 다시 적지 마라. 사본은 갈라진다.
 
 `PUBLIC_HOST` 가 브라우저 접속 주소와 다르면 **로그인 직후 튕기거나 403** 이 난다.
 `central.env` 는 gitignore 대상이므로 커밋되지 않는다.
@@ -444,6 +458,7 @@ fcc-central-postgres       Up (healthy)
 fcc-central-keycloak       Up (healthy)
 fcc-central-headless-api   Up (healthy)
 fcc-central-platform-api   Up (healthy)
+fcc-central-platform-api-node   Up (healthy)
 fcc-central-web            Up
 fcc-central-migrate        Exited (0)
 ```
@@ -455,7 +470,14 @@ docker compose -f infra/docker-compose.central.yml exec -T postgres \
   psql -U fcc -d fcc_central -tAc "select version from schema_migrations order by version;"
 ```
 
-`docs/platform/migrations/` 의 파일 목록과 **개수·이름이 일치**해야 한다 (현재 012 까지).
+`migrations/` 의 파일 목록과 **개수·이름이 일치**해야 한다.
+⚠️ **여기에 「현재 N 까지」를 적지 마라.** 옛 판이 *(현재 012 까지)* 라고 적었고 그
+숫자는 그날부터 낡기 시작했다(실측 2026-09-07: 저장소 35개 · 중앙 DB 30개). 세는
+쪽은 문서가 아니라 명령이다:
+
+```bash
+ls migrations/*.sql | wc -l    # 저장소가 가진 수
+```
 **011 이 빠지면 측정 동기화가 세션 타임스탬프 NOT NULL 로 실패**하고, **012 가 빠지면
 report parent 의 `created_at` DB default 가 없어져 첫 report ingestion 이 실패**한다 (S6 참고).
 불일치면 migrate 로그를 본다:
@@ -464,18 +486,35 @@ report parent 의 `created_at` DB default 가 없어져 첫 report ingestion 이
 docker compose -f infra/docker-compose.central.yml logs central-migrate
 ```
 
-> **S2(b) 로 볼륨을 지우지 않고 기존 DB 를 그대로 쓰는 경우** — `001` 은 스키마 SSOT 가
-> 바뀔 때마다 exporter 가 **재생성**하므로 파일 checksum 이 최초 적용 시점의 기록과
-> 달라진다. 러너는 이를 drift 로 보고 멈추는데, bootstrap(`001`)의 drift 는 양성이므로
-> 전용 서브커맨드로 원장을 정정한 뒤 증분을 적용한다:
+> ✅ **부트스트랩 drift 는 더 이상 배포를 멈추지 않는다** (2026-09-07 수리).
+>
+> ⚠️ **옛 문언은 이랬다**: *"`001` 의 drift 는 양성이므로 `reconcile` 로 원장을 정정한 뒤
+> 증분을 적용한다"*. 그것은 증상 처방이었고, 스키마가 바뀔 때마다 **배포가 이 자리에서
+> 멈췄다**(실측 2026-09-07 중앙 PC: `central-migrate` exit 3 → `platform-api` ·
+> `platform-api-node` · `web` 셋이 안 뜸).
+>
+> 근본은 범주 오류였다 — `001` 은 **생성물**인데(`-- Generated from
+> docs/platform/central_db_schema.v1.json.`) **append-only 원장**에 들어가 있었다.
+> 그리고 그 체크섬은 「재생성됐다」와 「사람이 고쳤다」를 **원리적으로 구별하지 못한다.**
+> 즉 그 비교에는 참 양성이 없었고, 낼 수 있는 것은 거짓 양성뿐이었다.
+>
+> 이제 러너는 **생성물을 drift 비교에서 뺀다**(파일 머리의 `Generated from` 으로 파생).
+> 「사람이 `001` 을 고쳤나」는 버려진 것이 아니라 **구별할 수 있는 자리로 옮겨 갔다** —
+> `tests/test_chamber_node_central_schema.py::TestChamberSchemaDdlDrift` 가 스키마 JSON
+> 으로 DDL 을 다시 렌더해 **바이트 동등**을 요구한다(체크섬보다 강하다). 그 게이트가
+> 사라지면 이 완화가 구멍이 되므로 `tests/test_platform_db_migration_runner.py` 가
+> **그 게이트의 실재를 단언**한다.
+>
+> **⚠️ 이제 drift 가 나면 그것은 언제나 «진짜» append-only 위반이다** — 증분
+> 마이그레이션이 편집된 것이고, `reconcile` 로 넘기려 하지 마라(그것도 거부한다).
+> 무엇이 달라졌는지 먼저 본다:
 >
 > ```bash
-> python scripts/platform_db_migrate.py reconcile   # 001 원장 checksum 정정
-> python scripts/platform_db_migrate.py migrate     # 011/012 등 미적용분 적용
+> docker compose -f infra/docker-compose.central.yml logs central-migrate | tail -30
 > ```
 >
-> `reconcile` 은 **bootstrap 행만** 손대고, 증분 마이그레이션이 변조된 경우에는 거부한다
-> (append-only 위반). 볼륨을 새로 만든 경우엔 해당 없음.
+> `reconcile` 서브커맨드는 남아 있다 — 이 수리 이전에 만들어진 DB 의 원장 행을 손으로
+> 정리하고 싶을 때 쓸 수 있고 멱등이다. **정상 배포 경로에는 더 이상 필요 없다.**
 
 이 시점에 **0단계의 포트 확인을 다시** 수행한다 (이제 실제로 열려 있어야 한다).
 

@@ -131,12 +131,17 @@ def build_manifest_from_introspection(
     for row in indexes:
         table_name = str(row['table_name'])
         definition = str(row.get('index_definition', ''))
-        columns = _index_columns(definition)
+        # ⚠️ 이 이름은 한때 `columns` 였다 — 즉 **파라미터 `columns: Sequence[Mapping]`
+        #    을 덮어썼다.** 지금 런타임이 맞는 것은 위 루프가 이미 끝났기 때문이지
+        #    설계 때문이 아니다. 그 자리는 「두 루프 사이에 파라미터를 한 번 더
+        #    읽는 줄」이 생기는 날 조용히 틀리는 자리이고, mypy 는 그것을
+        #    `list[str]` 을 `Sequence[Mapping]` 에 넣는다고 두 번 신고하고 있었다.
+        index_columns = _index_columns(definition)
         tables.setdefault(table_name, {'columns': [], 'indexes': []})['indexes'].append({
             'name': str(row['index_name']),
-            'columns': columns,
+            'columns': index_columns,
             'unique': _index_unique(definition),
-            'orders': _index_orders(definition, columns),
+            'orders': _index_orders(definition, index_columns),
             'where': _index_predicate(definition),
         })
     ddl = render_ddl(schema)

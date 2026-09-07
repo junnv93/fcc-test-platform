@@ -88,26 +88,26 @@ docker compose -f infra/docker-compose.central.yml ps
 | `docker compose -f infra/docker-compose.central.yml` | FCC 중앙 스택 정의 파일을 지정한다. |
 | `ps` | 그 스택의 컨테이너 목록과 상태(STATUS)를 보여준다. |
 
-**정상 기대값** — 아래 **7개** 서비스가 보여야 한다. 여섯은 `Up`(또는 `healthy`),
-`fcc-central-migrate` 는 일회성 러너이므로 `Exited (0)` 이 정상이다.
+**정상 기대값** — 아래 5개 서비스가 `Up`(또는 `healthy`) 상태여야 한다.
 
 ```text
-NAME                            STATUS
-fcc-central-postgres            Up (healthy)
-fcc-central-keycloak            Up (healthy)
-fcc-central-headless-api        Up (healthy)
-fcc-central-platform-api        Up (healthy)
-fcc-central-platform-api-node   Up
-fcc-central-web                 Up
-fcc-central-migrate             Exited (0)
+NAME                          STATUS
+fcc-central-postgres          Up (healthy)
+fcc-central-keycloak          Up (healthy)
+fcc-central-headless-api      Up (healthy)
+fcc-central-platform-api      Up (healthy)
+fcc-central-platform-api-node Up (healthy)
+fcc-central-web               Up
+fcc-central-migrate           Exited (0)
 ```
-
-<!-- 정정 2026-09-07: 옛 판은 「5개 서비스」라 적고 목록에는 6줄을 실었으며
-     fcc-central-platform-api-node 가 빠져 있었다. 실측 7개. -->
 
 판단 기준:
 
-- 위 **5개(postgres/keycloak/headless-api/platform-api/web)가 `Up`이면 정상**이다.
+- 위 **6개(postgres/keycloak/headless-api/platform-api/platform-api-node/web)가
+  `Up`이면 정상**이다.
+  ⚠️ `platform-api-node` 는 2026-09-04 에 생긴 **두 번째 인스턴스**다(평문 HTTP 에서
+  브라우저와 챔버 노드가 서로 반대의 인증 모드를 요구해 하나로는 둘 다 못 받는다).
+  이 목록이 그 전에 쓰여 다섯이었고, 세어 본 운영자가 «하나 더 떠 있다»로 읽었다.
 - **`fcc-central-migrate`는 `Exited (0)`이 정상**이다. 이 컨테이너는 DB 스키마를 한 번
   적용하고 스스로 끝나는 **1회성 작업**(`restart: "no"`)이라, 계속 떠 있지 않고 종료된 게
   맞다. `Exited (0)`의 `0`은 "오류 없이 끝남"을 뜻한다.
@@ -134,8 +134,13 @@ docker compose -f infra/docker-compose.central.yml \
 확인한다.
 
 ```bash
-hostname -I
+powershell.exe -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 |
+  Where-Object { \$_.InterfaceAlias -notlike '*WSL*' -and \$_.IPAddress -ne '127.0.0.1' }).IPAddress"
 ```
+
+> 🔴 **`hostname -I` 를 쓰지 마라.** 이 절의 옛 판이 그랬고, 중앙 PC 의 WSL 은 NAT 라
+> 그 목록에 LAN 주소가 **나오지 않는다.** 근거는
+> `fcc-central-pc-reboot-ops-guide.md` §1.1 (SSOT).
 
 여기서 나온 중앙 PC의 사내망 IP가 `<CENTRAL_IP>`다. 플랫폼에 설정된 값과 같은지 대조한다.
 
@@ -146,7 +151,8 @@ grep -E '^PUBLIC_HOST=|^WEB_PORT=' infra/central/central.env
 
 판단 기준:
 
-- `hostname -I`의 IP와 `PUBLIC_HOST`가 **같아야 한다.**
+- 위 PowerShell 이 낸 IP 중 하나와 `PUBLIC_HOST` 가 **같아야 한다.**
+  (⚠️ `hostname -I` 로 대조하지 마라 — `fcc-central-pc-reboot-ops-guide.md` §1.1)
 - 예: `PUBLIC_HOST=172.30.1.10`, `WEB_PORT=8080`이면 접속 주소는
   `http://172.30.1.10:8080`이다.
 
@@ -299,7 +305,7 @@ python -m pytest tests/test_central_docker_compose.py -q
 | `fcc-central-migrate`가 `Exited (0)` | 정상. 1회성 스키마 작업이 성공적으로 끝난 상태다 |
 | 챔버 노드가 목록에 안 보인다 | 노드가 `http://<CENTRAL_IP>:8080`을 바라보는지, 챔버 `:9000`이 LISTENING인지, 머신 토큰이 일치하는지 확인(6단계) |
 | 특정 서비스가 `Exited`/`Restarting` (migrate 제외) | `logs <서비스>`로 원인 확인 → 배포 문서 절차로 재기동 |
-| 중앙 PC를 재부팅했다 | `ps`로 **7개** 서비스 자동 기동 확인(1단계). 안 떴으면 배포 문서 부팅 절차 |
+| 중앙 PC를 재부팅했다 | `ps`로 5개 서비스 자동 기동 확인(1단계). 안 떴으면 배포 문서 부팅 절차 |
 
 ---
 
@@ -315,7 +321,9 @@ cd /path/to/fcc-test-platform
 docker compose -f infra/docker-compose.central.yml ps
 
 # 3) 중앙 PC IP와 PUBLIC_HOST 대조
-hostname -I
+#    ⚠️ hostname -I 로 하지 마라 — reboot-ops-guide §1.1 (SSOT)
+powershell.exe -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 |
+  Where-Object { \$_.InterfaceAlias -notlike '*WSL*' -and \$_.IPAddress -ne '127.0.0.1' }).IPAddress"
 grep -E '^PUBLIC_HOST=|^WEB_PORT=' infra/central/central.env
 ```
 

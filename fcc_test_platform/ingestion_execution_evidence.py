@@ -109,7 +109,8 @@ def ingestion_execution_errors(manifest: Mapping) -> list[IngestionExecutionIssu
         issues.append(_issue('transaction_not_committed', 'transaction_committed', 'transaction_committed must be true'))
     if manifest.get('transaction_rolled_back') is not False:
         issues.append(_issue('transaction_rolled_back', 'transaction_rolled_back', 'transaction_rolled_back must be false'))
-    if _int(manifest.get('attempts')) is None or _int(manifest.get('attempts')) <= 0:
+    attempts = _int(manifest.get('attempts'))
+    if attempts is None or attempts <= 0:
         issues.append(_issue('invalid_attempts', 'attempts', 'attempts must be positive'))
     _validate_step_counts(manifest, issues)
     if manifest.get('errors') not in ([], None):
@@ -164,7 +165,8 @@ def _validate_steps(value, issues: list[IngestionExecutionIssue]) -> None:
         key = step.get('idempotency_key')
         if not isinstance(key, list) or not [_text(value) for value in key if _text(value)]:
             issues.append(_issue('missing_idempotency_key', f'{path}.idempotency_key', 'idempotency_key must be a non-empty list'))
-        if _int(step.get('affected_rows')) is None or _int(step.get('affected_rows')) < 0:
+        affected_rows = _int(step.get('affected_rows'))
+        if affected_rows is None or affected_rows < 0:
             issues.append(_issue('invalid_affected_rows', f'{path}.affected_rows', 'affected_rows must be >= 0'))
 
 

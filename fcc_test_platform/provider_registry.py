@@ -25,6 +25,9 @@ from __future__ import annotations
 from collections.abc import Mapping as MappingABC
 from typing import Iterator
 
+from fcc_test_platform.domain.ports.output.project_result_reference_provider_port import (
+    ProjectResultReferenceProviderPort,
+)
 from fcc_test_contracts.headless.provider_registry import (
     FORBIDDEN_REGISTRY_KEYS,
     REQUIRED_PROVIDER_KEYS,
@@ -46,17 +49,33 @@ __all__ = [
 ]
 
 
-class ProviderReferenceResolverRegistry(MappingABC[str, object]):
+class ProviderReferenceResolverRegistry(MappingABC[str, ProjectResultReferenceProviderPort]):
     """Immutable natural-provider-id registry for reference export adapters.
 
     The platform service consumes a mapping-shaped resolver, while the
     composition root owns the provider implementations. Keeping this registry
     dependency-free lets the platform accept provider adapters without importing
     provider taxonomy into the service or route layer.
+
+    ⚠️ **값 타입은 한때 ``object`` 였다.** 그 이유는 위의 「의존 없음」이라고 읽혔지만,
+    실제로 그것이 막아 준 import 는 없다 — 여기 붙는
+    :class:`ProjectResultReferenceProviderPort` 는 provider 분류학이 아니라 **이 레인
+    자신의 domain 포트**이고, 어차피 이 레지스트리를 소비하는
+    ``CentralProjectReferenceService`` 가 그 포트로 선언돼 있다. 즉 ``object`` 는
+    아무것도 지키지 않으면서 「이 사전에 무엇이든 들어갈 수 있다」는 거짓만 말했고,
+    그 대가로 ``api_composition`` 이 이 레지스트리를 서비스에 넘기는 자리가 타입상
+    틀린 채였다(``Mapping[str, object]`` 는 ``Mapping[str, Port]`` 가 **아니다** —
+    Mapping 은 값에 대해 공변이므로 ``object`` 쪽이 오히려 «상위» 타입이다).
+
+    ⚠️ 런타임 검사는 이미 이 포트를 요구하고 있었다: 아래 ``__init__`` 이
+    ``getattr(adapter, 'provider_id', '')`` 로 신원을 대조한다. 즉 선언이 검사보다
+    느슨했던 자리다.
     """
 
-    def __init__(self, adapters: MappingABC[str, object]) -> None:
-        normalized: dict[str, object] = {}
+    def __init__(
+        self, adapters: MappingABC[str, ProjectResultReferenceProviderPort],
+    ) -> None:
+        normalized: dict[str, ProjectResultReferenceProviderPort] = {}
         for provider_id, adapter in adapters.items():
             key = str(provider_id).strip()
             if not key:
@@ -71,7 +90,7 @@ class ProviderReferenceResolverRegistry(MappingABC[str, object]):
             normalized[key] = adapter
         self._adapters = dict(sorted(normalized.items()))
 
-    def __getitem__(self, provider_id: str) -> object:
+    def __getitem__(self, provider_id: str) -> ProjectResultReferenceProviderPort:
         return self._adapters[provider_id]
 
     def __iter__(self) -> Iterator[str]:
