@@ -1239,8 +1239,15 @@ docs/PROVIDER-KICKOFF.md 를 읽고 §1 의 「0단계」부터 시작해줘.
     </p>
     <p>
       🔴 <strong>그런데 <span class="mono">required_approving_review_count: 0</span> 입니다.</strong>
-      즉 「동료 1인 승인」은 <strong>오늘 사람이 지키는 규율이지 기계가 막는 게이트가
-      아닙니다.</strong> 「검사가 통과했으니 승인된 것」이 아닙니다.
+      🔄 <strong>정정 — 「동료 1인 승인」은 2026-09-07 2차 개정으로 «폐기»됐습니다.</strong>
+      이 자료의 앞 판은 <em>"즉 「동료 1인 승인」은 오늘 사람이 지키는 규율이지 기계가
+      막는 게이트가 아닙니다"</em> 라고 적었습니다. 지금은 <strong>승인자가 아예
+      없습니다</strong> — 개발 담당자가 <span class="mono">Status: accepted</span> 를 적고
+      직접 머지합니다. 폐기 사유는 <strong>「그 규칙이 가리킨 사람이 존재하지 않았다」</strong>
+      입니다(협업자 1명 + 자기 PR 자기 승인 금지).
+      그 자리를 <strong>순서 게이트</strong>(spec 이 있으면 intent 는 accepted 여야 한다)와
+      <strong>방아쇠 T2~T5</strong> 가 메웁니다 — <strong>버튼이 아니라 «문장»을 요구</strong>하므로
+      혼자 일해도 공허해지지 않습니다. SSOT → <span class="mono">intent/README.md</span>
     </p>
   </div>
 
@@ -1275,8 +1282,8 @@ docs/PROVIDER-KICKOFF.md 를 읽고 §1 의 「0단계」부터 시작해줘.
     <table>
       <thead><tr><th>파일</th><th>답하는 질문</th><th>기본 승인</th><th>브랜치</th></tr></thead>
       <tbody>
-        <tr><td class="mono">intent.md</td><td><strong>왜</strong> 이걸 하나</td><td>동료 1인 (작성자 제외)</td><td class="mono">intent/&lt;슬러그&gt;</td></tr>
-        <tr><td class="mono">spec.md</td><td><strong>무엇을</strong> 어떤 설계로</td><td>동료 1인</td><td class="mono">spec/&lt;슬러그&gt;</td></tr>
+        <tr><td class="mono">intent.md</td><td><strong>왜</strong> 이걸 하나</td><td><strong>개발 담당자 본인</strong> <span class="mono" style="font-size:.85em">(2차 개정)</span></td><td class="mono">intent/&lt;슬러그&gt;</td></tr>
+        <tr><td class="mono">spec.md</td><td><strong>무엇을</strong> 어떤 설계로</td><td><strong>개발 담당자 본인</strong></td><td class="mono">spec/&lt;슬러그&gt;</td></tr>
         <tr><td class="mono">plan.md</td><td><strong>어떻게</strong> — 어느 파일을 어떤 순서로</td><td>개발 담당자</td><td class="mono">feature/&lt;슬러그&gt;</td></tr>
       </tbody>
     </table>

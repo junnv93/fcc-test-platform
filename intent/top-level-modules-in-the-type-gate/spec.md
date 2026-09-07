@@ -3,7 +3,7 @@
 Intent: ./intent.md
 Author: Claude (draft) / 세션 fcc-delivery-final-b1
 Date: 2026-09-07
-Status: draft
+Status: accepted
 Slug: top-level-modules-in-the-type-gate
 
 > 🔄 **2026-09-07 정정 — 이 스펙이 열려 있는 동안 형제 세션이 한 축을 닫았다.**

@@ -195,16 +195,17 @@ intent/_templates/intent.md 서식으로 새 intent 를 만들어줘.
    «역할» 로 써라 (「외부 의뢰자 한 곳」, 「시험원 A」 처럼).
 
 ⚠️ intent.md «하나만» 만들고 멈춰라. spec.md 와 plan.md 는 이것이
-   승인(PR 머지)된 뒤다.
+   확정(Status: accepted + PR 머지)된 뒤다.
 ```
 
-⚠️ **여기서 멈추십시오.** 동료 한 분이 PR 을 읽고 머지하면 승인된 것입니다.
-**자기 PR 은 자기가 승인하지 않습니다.**
+⚠️ **여기서 멈추십시오.** PR 을 «직접» 읽고, `Status:` 를 `draft` → `accepted` 로
+바꾼 뒤 머지하면 확정입니다. **승인자를 기다리지 않습니다** — 이 레포에는 승인자가
+없습니다(`intent/README.md` §승인 모델). 그 한 줄이 여러분의 서명입니다.
 
 ## B-9. 📋 코드를 만지기 시작할 때
 
 ```
-intent/<슬러그>/spec.md 가 승인됐다. plan.md 를 만들고 구현해줘.
+intent/<슬러그>/spec.md 가 확정됐다(Status: accepted). plan.md 를 만들고 구현해줘.
 
 ⚠️ 먼저 docs/onboarding/90-known-traps.md 를 읽어라. 이 저장소가 이미
    밟은 함정들이고, 여러 건은 「기록을 읽고도 같은 자리에 다시 선」 것이다.
