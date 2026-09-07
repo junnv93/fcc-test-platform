@@ -28,15 +28,34 @@ Branch: feature/intent-driven-workflow
 | 6 | `CLAUDE.md` (레인 루트) | 200줄 이하. 모든 세션에 참인 것만 | 규칙이 도달해야 나머지가 의미를 갖는다 | R1 |
 | 7 | `/home/kmjkds/fcc-delivery-final/CLAUDE.md` | 컨테이너 루트 | 세션이 여기서 시작한다 | R1 |
 | 8 | `.claude/rules/intent-workflow.md` | **`paths:` 없음** — 무조건 로드 | 이 레인 최초의 무조건 규칙 | R1 R3 |
-| **9** | **`CODEOWNERS`** | **T1 = 경로 축 방아쇠의 SSOT.** 리드 소유 경로 5종 | **#10 이 이 파일을 «파싱»한다 — 먼저 있어야 한다** | **R7 R9** |
-| **10** | **`scripts/human_judgment_triggers.py`** | **T2~T5 판정 SSOT.** T1 경로는 `CODEOWNERS` 에서 **파생**한다 | 검사(#11)가 이것을 import 한다 | **R9 R10** |
-| **11** | **`tests/test_human_judgment_is_recorded.py`** | 위 판정기의 봉인 + **주입 케이스 8종** | 판정기가 있어야 대상을 가진다 | **R9 R10** |
-| 12 | `tests/test_intent_triplet_wellformed.py` | 세 파일의 형식·짝·상태 + 주입 케이스 | | R6 |
-| 13 | `.claude/settings.json` + `.claude/hooks/guard_contributor_role.sh` | L1 `PreToolUse` 훅 | 검사가 초록이 된 뒤에 붙인다 | R4 |
-| 14 | `githooks/pre-commit` (수정) | intent/code 혼합 커밋 거부 축 **추가** | 기존 두 축 **뒤에** 붙인다 — 덮어쓰지 않는다 | R5 R8 |
-| 15 | `docs/education/2026-09-07-의도로-시작하는-개발-협업자-교육자료.html` | 동료 교육 문서 | 흐름이 확정된 뒤 | R2 |
-| 16 | `fcc-test-contracts/CLAUDE.md` | 커널 레인용 (별도 PR) | | R1 |
+| **9** | **`CODEOWNERS`** | T1 경로 목록의 SSOT. ⚠️ 게이트는 아니다 | #10 이 이 파일을 «파싱»한다 — 먼저 있어야 한다 | R7 R9 |
+| **10** | **`scripts/human_judgment_triggers.py`** | T2~T5 판정 SSOT. T1 은 `CODEOWNERS` 에서 **파생** | 검사(#11)가 import 한다 | R9 R10 |
+| **11** | **`tests/test_human_judgment_is_recorded.py`** | 위의 봉인 + 주입 양방향 | 판정기가 있어야 대상을 가진다 | R9 R10 |
+| 12 | `scripts/check_intent_triplet.py` | 삼종세트 형식·짝·상태 판정 SSOT | 서식(#2~4)이 확정된 뒤 | R6 |
+| 13 | `tests/test_intent_triplet_wellformed.py` | 위의 봉인 + 주입 | | R6 |
+| 14 | `scripts/check_intent_commit_separation.py` | 승인 아티팩트와 코드의 혼합 거절 | 훅(#16)이 부른다 | R5 |
+| 15 | `tests/test_intent_commit_separation.py` | 위의 봉인. **과발화도 단언한다** | | R5 |
+| 16 | `githooks/pre-commit` (수정) | 축 3 **추가** — 기존 두 축 **뒤에** | 검사(#14)가 있어야 부를 것이 있다 | R5 R8 |
+| **17** | **`githooks/pre-push`** (수정) | **축 0 — ref 삭제를 알아본다.** 형제 세션 -97 이 보고한 결함 | 축 1·2 «앞»에 — stdin 을 먼저 읽어야 한다 | R8 |
+| **18** | **`tests/test_pre_push_distinguishes_a_deletion.py`** | 주입 5종. **다섯째가 파이프-서브셸**이고 그것이 유일한 조용한 실패 경로다 | | R8 |
+| 19 | `.claude/rules/intent-workflow.md` | **`paths:` 없음** — 이 레인 최초의 무조건 규칙 | | R1 R3 |
+| 20 | `.claude/hooks/guard_contributor_role.py` | L1 `PreToolUse` 훅. **기본값 무해** | | R4 |
+| 21 | `.claude/settings.json` | 위 훅의 배선 | 훅이 있어야 배선할 것이 있다 | R4 |
+| 22 | `tests/test_contributor_role_hook.py` | 위의 봉인. **「켜지 않았을 때 안 막는가」가 첫 축** | | R4 |
+| 23 | `.gitignore` | `.claude/role` 은 기계마다 다르므로 커밋하지 않는다 | | R4 |
+| **24** | **`.claude/contracts/branch-protection-declaration.json`** | **게이트 «값»의 SSOT.** 산문에서 사본을 걷어낸다 | #25 가 이것을 읽는다 | **R10** |
+| **25** | **`scripts/check_gate_declaration.py`** | 선언 == GitHub 실제. 닿지 못하면 «판정 불가»라 말한다 | | **R10** |
+| **26** | **`tests/test_documented_gate_values_match_the_live_config.py`** | 위의 봉인. **몇 개를 대조했는지 센다** | | **R10** |
+| 27 | `intent/README.md` (수정) | T1 이 게이트가 아님을 명시 · 선언 인용 | | R9 |
+| 28 | `.claude/evaluations/2026-09-07-…md` (수정) | 정정 ④ · 선언 인용 | | — |
+| 29 | `docs/education/2026-09-07-…html` | 동료 교육 문서 | 흐름이 확정된 뒤 | R2 |
+| 30 | `fcc-test-contracts/CLAUDE.md` | 커널 레인용 (별도 PR) | | R1 |
 | — | **branch protection 켜기** | GitHub 설정 | **§4 A1** — 코드 변경 아님 | R7 |
+
+> 🔄 **2026-09-07 개정 — T4 가 이 표를 향해 발화했다.** 초판은 16행이었고 실제로
+> 만든 것은 30행이었다. 판정기가 「표에 없는 파일 11건」이라고 이름으로 말했고,
+> 그것이 이 개정을 낳았다. **자기가 만든 게이트에 자기가 걸린 두 번째 사례**다
+> (첫째는 혼합 커밋 거절이 이 작업을 두 커밋으로 나누게 한 것).
 
 > ⚠️ **#9 → #10 의 순서가 D4 를 실현합니다.** 판정기는 리드 소유 경로를
 > 하드코딩하지 않고 `CODEOWNERS` 를 파싱합니다. 같은 집합이 두 곳에 있으면
