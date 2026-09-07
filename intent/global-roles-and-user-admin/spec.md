@@ -3,7 +3,7 @@
 Intent: ./intent.md
 Author: Claude (draft) / kmjkds
 Date: 2026-09-07
-Status: draft
+Status: accepted
 Slug: global-roles-and-user-admin
 
 ## 1. 요구사항
