@@ -6,6 +6,44 @@ Date: 2026-09-07
 Status: draft
 Slug: top-level-modules-in-the-type-gate
 
+> 🔄 **2026-09-07 정정 — 이 스펙이 열려 있는 동안 형제 세션이 한 축을 닫았다.**
+>
+> PR **#158**(`fix/the-gate-does-not-call-the-top-level-20260907`)이 §3 의 **45건을
+> 전부 처분**하고 머지됐다(`d4834a3`, 내 intent PR 직전). 내 리그에서 독립으로
+> 재현했다 — `mypy -p fcc_test_platform` → **Success / 215 파일**.
+>
+> **그런데 겹치지 않는다.** #158 은 자기 코드 주석에 경계를 명시적으로 그었다:
+>
+> > 이 축을 `mypy.ini` 의 절로 표현하지 않는다. `[mypy-fcc_test_platform.*]` 를
+> > 넣으면 그것은 「전량 검사」가 아니라 「전량 strict」이고, 성질이 다른
+> > `no-untyped-def` 183건이 딸려 온다. … 층별 strict 확대는 별개의 질문이다.
+>
+> 즉 두 축이 있었다.
+>
+> | 축 | 무엇을 묻나 | 오늘 상태 |
+> |---|---|---|
+> | **호출 축** | 게이트가 그 자리를 «부르는가» | ✅ #158 이 닫았다 (45 → 0) |
+> | **strict 축** | 그 자리에 «선언을 요구하는가» | 🔴 **열림 — 183건 / 40파일. 이 스펙의 범위다** |
+>
+> **이 스펙의 범위는 strict 축 하나로 좁아진다.** §3 의 45건 분류표는 **지우지 않고
+> 「b3c619e 시점의 기록」으로 남긴다** — 두 세션이 같은 45건을 독립 리그에서 독립으로
+> 분류해 「오늘 터지는 것 0건」이라는 같은 결론에 닿았고, 그 일치 자체가 대조군이다.
+> 이 레포에서 대조군은 지우는 것이 아니라 적어 두는 것이다.
+>
+> 실측 (main `f143f2d`, 새 venv + `pip install -e '.[test]'`, contracts 0.1.26 /
+> kernel 0.5.4, 양쪽 `py.typed` 있음, fastapi 0.141.1, mypy 2.3.1):
+>
+> ```
+> mypy -p fcc_test_platform                            → Success / 215 files
+> mypy -p fcc_test_platform --disallow-untyped-defs    → 183 errors / 40 files
+> 오류 코드 분포                                        → no-untyped-def 183 (그 밖 0)
+> 4층 각각                                             → 0 · 0 · 0 · 0
+> ```
+>
+> ⚠️ 183 이 «순수 선언»이라는 것은 **오늘의 참이지 최종값이 아니다.** 선언을 붙이면
+> 상류가 `Any` 를 벗으며 없던 오류가 드러난다(§7 Q1). 그 사실은 정정 전과 똑같이
+> 유효하다 — 바뀐 것은 시작값이 228 이 아니라 **183** 이라는 것뿐이다.
+
 ## 1. 요구사항
 
 - **R1.** `mypy.ini` 의 strict 범위가 `fcc_test_platform` **패키지 하나**를 덮는다.
@@ -13,13 +51,19 @@ Slug: top-level-modules-in-the-type-gate
 - **R2.** 게이트가 mypy 에 넘기는 **source files 가 139 → 215** 로 움직인다.
   이것이 「절 이름이 실제로 매치했는가」의 유일한 관측 가능 판정이다 — 틀린 절
   이름은 **조용히 0건**이고 그 출력은 「위반 없음」과 같다.
-- **R3.** `mypy -p fcc_test_platform` 이 `Success` 다. 시작값 228
-  (`no-untyped-def` 183 + 나머지 45). **183 은 하한**이다(§7 Q1).
+- **R3.** `mypy -p fcc_test_platform --disallow-untyped-defs` 가 `Success` 다.
+  시작값 **183**(전부 `no-untyped-def`, 40파일). 나머지 45는 #158 이 닫았다.
+  **183 은 하한**이다(§7 Q1).
 - **R4.** `cast` · `# type: ignore` **순증가 0**. 이 브랜치 diff 에서 센다.
-- **R5.** 45건이 **아홉 계열로 전수 분류**되고(§3 표), 계열마다 처분 방식이 적힌다.
-- **R6.** **③ 계열은 회귀 시험을 갖는다.** ③ 은 「타입이 몰랐던 앎」이므로 타입
-  검사만으로 지키면 게이트를 끄는 날 같이 사라진다. ①②④⑤⑥⑦⑧⑨ 는 좁힘·선언의
-  문제라 타입 검사 자신이 회귀를 막는다.
+- ~~**R5.** 45건이 아홉 계열로 전수 분류된다(§3 표).~~ → **#158 이 처분했다.**
+  분류표는 §3 에 기록으로 남는다. ⚠️ 지우지 않는 이유는 §3 머리에 적었다.
+- ~~**R6.** ③ 계열은 회귀 시험을 갖는다.~~ → **#158 이 `moved_path()` 로 그
+  불변식에 이름을 붙였다.** 이 스펙은 그 자리를 다시 만지지 않는다.
+- **R5′ (대체).** **#158 이 세운 `test_the_whole_package_is_type_checked` 와
+  `_expected_module_count` 를 «지우지 않는다».** 내 변경이 `STRICT_TARGETS` 를
+  `('-p', 'fcc_test_platform')` 하나로 만들면 두 팔이 «같은 수»를 검사하게 되지만,
+  묻는 질문이 다르다 — 「무엇이 strict 인가」 대 「무엇을 검사하는가」. strict 범위가
+  나중에 다시 좁아져도 그쪽 팔은 실제 타입 오류를 계속 잡는 **바닥**이다.
 - **R7.** **「네 층의 합집합이 패키지인가」를 묻는 봉인**이 새로 생긴다. 오늘 없는
   것이 정확히 그것이고, 없었기 때문에 이 구멍이 초록 뒤에서 살았다.
 - **R8.** R7 의 봉인은 **주입으로 이빨이 확인**된다 — 범위를 네 층 열거로 되돌리면
@@ -45,7 +89,19 @@ Slug: top-level-modules-in-the-type-gate
 - **`.importlinter` 의 층 계약을 만지지 않는다.** 구조 축은 그쪽이 지킨다.
 - **커널(`fcc-test-contracts`)을 만지지 않는다.** 커널 태그가 필요 없다(§4).
 
-## 3. 45건 — 전수 분류
+## 3. 45건 — 전수 분류 ✅ **닫힘 (#158). 아래는 `b3c619e` 시점의 기록이다.**
+
+> 🔄 이 절이 서술하는 45건은 **더 이상 존재하지 않는다.** PR #158 이 전부 처분했고,
+> 내 리그에서 독립으로 확인했다(`mypy -p fcc_test_platform` → Success / 215).
+>
+> **그런데 지우지 않는다.** 두 세션이 같은 45건을 **독립 리그·독립 분류**로 읽고
+> 「오늘 런타임에서 터지는 것 0건」이라는 같은 결론에 닿았다. #158 은 그것을 다른
+> 어휘로 적었다 — *「실행 중 멈출 수 있는 후보」 둘은 둘 다 결함이 아니었다.*
+> 그 일치가 대조군이고, 대조군은 지우는 것이 아니라 적어 두는 것이다.
+>
+> ⚠️ 그리고 이 절은 **틀린 판정 하나를 붙잡아 둔다.** `intent.md` 초판이 이 45건을
+> 「런타임 크래시」로 읽었고 그것은 틀렸다. 표를 지우면 그 정정도 갈 곳을 잃는다.
+
 
 > ⚠️ **이 표가 `intent.md` 의 정정을 완성한다.** intent 초판은 셋을 「런타임
 > 크래시」로 적었고 그것은 틀렸다. 여기서는 **45/45 를 전부 읽고** 분류한다.
@@ -118,11 +174,12 @@ Slug: top-level-modules-in-the-type-gate
 | 요구 | 관측 도구 | 통과 조건 |
 |---|---|---|
 | R1 | `tests/test_architecture_gate_conformance.py::TestTheMypyGateIsDeclared` | `STRICT_SECTIONS` 의 절이 `mypy.ini` 에 있고 `disallow_untyped_defs = True` |
-| **R2** | `TestTheGatesActuallyRun::test_the_strict_layers_have_no_untyped_defs` 가 인쇄하는 `GateEvidence` | 「N source files」의 **합**이 켜기 전 139 → 켠 뒤 215. **켜기 전 값을 먼저 기록**하고 대조한다 |
+| **R2** | `TestTheGatesActuallyRun::test_the_strict_layers_have_no_untyped_defs` 가 인쇄하는 `GateEvidence` | **strict 팔**이 넘기는 「N source files」의 합이 켜기 전 `51+11+75+2=139`(4회 호출) → 켠 뒤 `215`(1회). **켜기 전 값을 먼저 기록**하고 대조한다. ⚠️ #158 의 `test_the_whole_package_is_type_checked` 는 이미 215를 검사하지만 **strict 가 아니다** — 두 수는 우연히 같아지는 것이지 같은 것이 아니다 |
 | R3 | `mypy -p fcc_test_platform` (venv 리그) | `Success: no issues found in 215 source files` |
 | R4 | `git diff origin/main...HEAD` 에 대한 계수 | `cast(` · `type: ignore` 순증가 0 |
-| R5 | 이 문서 §3 | 45 = 7+2+3+5+14+5+3+3+3 |
-| R6 | 새 시험 (이름은 `plan.md` §1) | ③ 세 자리의 보증을 타입 밖에서도 지키는 단언 |
+| ~~R5~~ | — | #158 이 닫았다. §3 은 기록 |
+| ~~R6~~ | — | #158 의 `moved_path()` 가 그 불변식에 이름을 붙였다 |
+| **R5′** | `git diff origin/main...HEAD -- tests/test_architecture_gate_conformance.py` | `test_the_whole_package_is_type_checked` 와 `_expected_module_count` 가 **삭제되지 않았다** |
 | R7·R8 | 새 봉인 + **주입 실험** | 범위를 네 층 열거로 되돌리면 red. 그리고 그 주입이 착지했음을 별도 확인 |
 | R9 | `TestTheMypyGateIsDeclared` + `grep` | `STRICT_SECTIONS` 정의가 저장소에 **1곳** |
 | R10 | `scripts/lane_check.py` · merge-base 대조군 | 선언 0 / 관측 0, 신규 red 0 |
@@ -169,3 +226,21 @@ R2 만 「**무엇을 봤는가**」를 묻는다. 이 레포가 반복해 값�
    `plan.md` 에 실측치와 함께 남긴다** — 호출자 0건은 다음 사람이 재측정하지 않고
    쓸 수 있는 값이고, 「없다」는 「있다」보다 유통기한이 짧으므로 **잰 날짜와 방법
    (AST 전수, 2026-09-07)** 을 함께 적는다.
+
+5. **Q5 (정정과 함께 생김) — 형제 세션이 같은 범위를 먼저 닫았다. 이 의도를 계속할
+   근거가 남아 있는가?**
+   → 답(세션 fcc-delivery-final-b1 — 개발 담당, 2026-09-07): **남아 있고, 그 근거는
+   내 판단이 아니라 #158 자신이 적었다.** 그 PR 의 `WHOLE_PACKAGE` 주석이
+   「층별 strict 확대는 별개의 질문이고 `mypy.ini` 가 그 순서를 이미 적어 두었다」고
+   명시한다. 즉 남겨진 축이 있다는 것은 **양쪽이 독립으로 도달한 판정**이다.
+   값으로도 확인된다 — `--disallow-untyped-defs` 를 빼면 0, 걸면 183. 두 축이
+   깨끗이 갈린다.
+   ⚠️ 그리고 이 사건 자체를 적어 둔다: **내 「45건」은 스펙을 쓰는 동안 낡았다.**
+   이 레포는 「부재 주장은 쓰는 동안에도 낡는다」를 이미 기록했는데, **수치 주장에도
+   같은 것이 적용된다**는 것을 여기서 배웠다 — 그리고 낡았다는 사실을 알아챈 것은
+   측정이 아니라 **편집이 「이미 적용돼 있음」으로 실패한 것**이었다. 형제가 나와
+   같은 변수명(`byte_size` · `attempts` · `affected_rows` · `raw_metadata`)을 고른
+   덕에 드러났다. 그것이 안 겹쳤으면 나는 이미 닫힌 45건을 다시 고치고 있었을 것이다.
+   → **착수 전에 `git log --oneline <base>..origin/main -- <내 범위의 파일들>` 을
+   보는 것이 이 레인에서 값이 있다.** 공유 체크아웃에서는 base 가 아니라 «범위»로
+   물어야 한다.
