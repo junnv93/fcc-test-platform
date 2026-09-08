@@ -110,7 +110,24 @@ export function AppLayout(): JSX.Element {
         {t('routes.layout.skipToContent')}
       </a>
       <header className="app-header" role="banner">
-        <span className="app-title">{t('routes.layout.appTitle')}</span>
+        {/* Brand mark. An inline SVG, not an icon package: this is the only
+            glyph the shell needs, and a dependency for one mark would put a
+            second source of visual truth beside `global.css`. Three radiating
+            arcs over a source point — the lane measures radiated emission, so
+            the mark says what the platform is rather than decorating it.
+            `aria-hidden` because the adjacent text already names the product;
+            announcing both would read the name twice. */}
+        <span className="app-brand">
+          <span className="app-brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+              <circle cx="12" cy="17.5" r="2" fill="currentColor" stroke="none" />
+              <path d="M8.2 13.8a5.4 5.4 0 0 1 7.6 0" strokeLinecap="round" />
+              <path d="M5.4 10.6a9.4 9.4 0 0 1 13.2 0" strokeLinecap="round" />
+              <path d="M2.6 7.4a13.4 13.4 0 0 1 18.8 0" strokeLinecap="round" />
+            </svg>
+          </span>
+          <span className="app-title">{t('routes.layout.appTitle')}</span>
+        </span>
         <PrimaryNav sessionApiEnabled={sessionApiEnabled} currentProjectId={currentProjectId} />
         <div className="app-header__controls">
           <LocaleToggle />

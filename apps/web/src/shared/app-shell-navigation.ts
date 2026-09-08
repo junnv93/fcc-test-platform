@@ -16,7 +16,11 @@ export interface AppShellNavGroup {
 export const APP_SHELL_NAV_GROUPS: readonly AppShellNavGroup[] = [
   {
     labelKey: 'routes.layout.navGroups.home',
-    items: [{ to: '/', labelKey: 'routes.layout.nav.overview', end: true }],
+    items: [
+      { to: '/', labelKey: 'routes.layout.nav.overview', end: true },
+      { to: ROUTE_PATHS.overviewProgramme, labelKey: 'routes.layout.nav.overviewProgramme', end: false },
+      { to: ROUTE_PATHS.overviewCombined, labelKey: 'routes.layout.nav.overviewCombined', end: false },
+    ],
   },
   {
     labelKey: 'routes.layout.navGroups.measure',

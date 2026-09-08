@@ -24,6 +24,12 @@ export const ROUTE_PATHS = {
   // 프로젝트(모델) 선택·생성 진입층. "먼저 프로젝트를 고르세요" 안내의 목적지라
   // 프로젝트 컨텍스트가 없는 화면이 프로그램적으로 링크한다. Consumed by
   // `routes/test-reports.tsx`.
+  // 세 개의 홈. 같은 콘솔을 다른 «범위»로 본다 — 시험 현장 / 사업 진행 /
+  // 전체 총괄. 경로가 셋인 이유는 사람마다 첫 화면이 달라야 하기 때문이고,
+  // 컴포넌트가 하나인 이유는 같은 막대가 사람마다 다른 뜻이 되면 안 되기
+  // 때문이다(`routes/console-home.tsx`).
+  overviewProgramme: '/programme',
+  overviewCombined: '/combined',
   myProjects: '/my-projects',
   fields: '/fields',
   projects: '/projects',

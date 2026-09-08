@@ -20,19 +20,23 @@
      alias those primitives, and component tokens later alias the semantics.
      The graph is intentionally one-way so a route cannot invent a third
      palette or quietly diverge from dark mode. */
-  --p-light-surface-bg: #ffffff;
-  --p-light-surface-bg-alt: #f5f6f7;
-  --p-light-surface-border: #d0d4d9;
+  /* ⚠️ base = «페이지», alt = «카드». 라이트에서 둘 다 흰색이라 카드가 배경에서
+     떠오르지 않았고, 1px 테두리만으로 버티다 보니 화면 전체가 평평하게 보였다.
+     다크는 처음부터 이 관계였다(#111420 페이지 / #181c2a 카드) — 라이트만
+     반대로 적혀 있었던 것이다. */
+  --p-light-surface-bg: #eef0f6;
+  --p-light-surface-bg-alt: #ffffff;
+  --p-light-surface-border: #cfd4e2;
   --p-light-transparent: transparent;
   --p-light-overlay-backdrop: rgba(0, 0, 0, 0.5);
-  --p-light-fg-primary: #1a1d20;
-  --p-light-fg-secondary: #4a4f55;
+  --p-light-fg-primary: #151827;
+  --p-light-fg-secondary: #4d5468;
   /* STATE token, not a hierarchy rung. WCAG 1.4.3 exempts inactive controls
      from the 4.5:1 minimum, which is why this value is allowed to sit at
      3.22:1 — so it may only dress things that are actually inactive. Readable
      text that just wants to be quieter uses `--fg-secondary`; borrowing this
      one imports the exemption where it does not apply (W4-A T6, 2026-07-31). */
-  --p-light-fg-disabled: #8a9098;
+  --p-light-fg-disabled: #8892a6;
   /* WCAG AA: darkened from #0b66ff, which met 4.5:1 against --surface-bg
      (4.82) but MISSED it against --surface-bg-alt (4.45) — and the global
      link rule colours every anchor with this token, on both surfaces.
@@ -40,7 +44,7 @@
      NOTE: comments inside this rule must contain no closing-brace character —
      the vitest token parser slices at the first one and does not strip
      comments, so prose alone can truncate the token block. */
-  --p-light-accent: #0a5fed;
+  --p-light-accent: #3f47c4;
   --p-light-accent-fg: #ffffff;
 
   /* Legacy 4-status palette — retained for backward compat (existing
@@ -59,7 +63,7 @@
      §5.2 "상태는 색상만으로 표현하지 않고 텍스트/아이콘/role을 함께 쓴다").
      Icon glyphs sit alongside as data tokens so primitive code is fully
      token-driven. */
-  --p-light-status-pass-fg: #1e7849; /* WCAG AA 4.51 vs composited badge tint (design-token-conformance) */
+  --p-light-status-pass-fg: #1b6d42; /* WCAG AA 4.51 vs composited badge tint (design-token-conformance) */
   --p-light-status-pass-bg: rgba(31, 122, 74, 0.14);
   --status-pass-icon: '\2713'; /* ✓ */
   --p-light-status-fail-fg: #b30000;
@@ -68,16 +72,16 @@
   --p-light-status-running-fg: #0956d8; /* WCAG AA 5.17 vs the composited running badge tint */
   --p-light-status-running-bg: rgba(11, 102, 255, 0.12);
   --status-running-icon: '\25D0'; /* ◐ */
-  --p-light-status-stale-fg: #8a6300; /* WCAG AA 4.53 vs composited badge tint (was #946a00, 4.05) */
+  --p-light-status-stale-fg: #7e5a00; /* WCAG AA 4.53 vs composited badge tint (was #946a00, 4.05) */
   --p-light-status-stale-bg: rgba(148, 106, 0, 0.14);
   --status-stale-icon: '\24D8'; /* ⓘ */
-  --p-light-status-missing-fg: #656a6f; /* WCAG AA 4.58 vs composited badge tint (was #6b7176, 4.14) */
+  --p-light-status-missing-fg: #5c6065; /* WCAG AA 4.58 vs composited badge tint (was #6b7176, 4.14) */
   --p-light-status-missing-bg: rgba(107, 113, 118, 0.14);
   --status-missing-icon: '\2298'; /* ⊘ */
   --p-light-status-claimed-fg: #6a3fb3;
   --p-light-status-claimed-bg: rgba(106, 63, 179, 0.14);
   --status-claimed-icon: '\1F512'; /* 🔒 */
-  --p-light-status-duplicate-fg: #a64d10;
+  --p-light-status-duplicate-fg: #99470f;
   --p-light-status-duplicate-bg: rgba(166, 77, 16, 0.14);
   --status-duplicate-icon: '\26A0'; /* ⚠ */
   /* test-plan lifecycle (c3-status-kind, 2026-06-17) — draft authoring +
@@ -86,7 +90,7 @@
   --p-light-status-draft-fg: #46586b;
   --p-light-status-draft-bg: rgba(70, 88, 107, 0.14);
   --status-draft-icon: '\25C7'; /* ◇ */
-  --p-light-status-published-fg: #187564; /* WCAG AA 4.60 vs composited badge tint (was #197a68, 4.30) */
+  --p-light-status-published-fg: #166c5c; /* WCAG AA 4.60 vs composited badge tint (was #197a68, 4.30) */
   --p-light-status-published-bg: rgba(25, 122, 104, 0.14);
 
   /* ── semantic color aliases ────────────────────────────────────────────── */
@@ -98,6 +102,96 @@
   --fg-primary: var(--p-light-fg-primary);
   --fg-secondary: var(--p-light-fg-secondary);
   --fg-disabled: var(--p-light-fg-disabled);
+  /* ═══ PALETTE KNOBS — 콘솔 배색을 여기 «숫자 몇 개»로 돌린다 ═══════════
+     색은 임의다. 그래서 값을 리터럴로 흩뿌리지 않고 OKLCH 의 세 축으로
+     분해해 둔다 — 색상(H) · 채도(C) · 명도(L).
+
+       · 「좀 더 차분하게」  → --band-chroma 를 내린다
+       · 「좀 더 선명하게」  → --band-chroma 를 올린다
+       · 「색을 바꾸고 싶다」→ --band-hue-* 만 돌린다 (0~360)
+       · 「밝기만 조정」     → --band-lightness (테마별로 아래에서 다시 준다)
+
+     ⚠️ 명도는 «테마마다» 다르고 채도·색상은 «공유»한다. 그래야 다크에서 고른
+     색이 라이트에서도 같은 색으로 남고, 밝기만 반대로 간다. 처음엔 다크 값을
+     `calc(1 - l)` 로 뒤집어 봤는데 탁해졌다 — OKLCH 에서 C 는 절대값이라 L 이
+     내려가면 같은 C 가 훨씬 덜 선명해 보이고, 주황(L 0.75)을 뒤집으면 그것은
+     어두운 주황이 아니라 갈색이 된다. 그래서 L 만 테마별로 «선언»한다.
+
+     ⚠️ 채도는 두 번 틀렸다. 0.16 은 원색으로 읽혀 소란스러웠고, 0.105 로 내리니
+     이번엔 두 테마 모두 «흐리멍덩»해졌다 — 조용한 것과 흐린 것은 다르다.
+     0.15 가 그 사이다: 색이 색으로 보이되 상태색(적/부)을 덮지는 않는다. */
+  --band-chroma: 0.15;
+  --band-hue-unlicensed: 258;   /* blue-indigo */
+  /* ⚠️ 주황을 «버렸다». 68 -> 52 로 옮겨도 근본이 안 풀렸다 — 주황은 높은
+     명도에서만 주황이고, 어두운 바탕의 넓은 면에 깔면 반드시 갈색이 된다.
+     그것은 튜닝으로 못 고치는 색 자체의 성질이다. 틸은 명도를 내려도 틸로
+     남으므로 같은 자리에서 싸울 일이 없다. */
+  --band-hue-licensed: 178;     /* teal */
+  --band-hue-mmwave: 322;       /* orchid */
+  --band-lightness: 0.53;       /* light theme */
+
+  --band-unlicensed: oklch(var(--band-lightness) var(--band-chroma) var(--band-hue-unlicensed));
+  --band-licensed: oklch(var(--band-lightness) var(--band-chroma) var(--band-hue-licensed));
+  --band-mmwave: oklch(var(--band-lightness) var(--band-chroma) var(--band-hue-mmwave));
+
+  /* ── 면(fill) 농도 ────────────────────────────────────────────────────
+     ⚠️ 세 번 틀리고 알아낸 것: «어두운 주황»은 존재하지 않는다. 주황은 밝을 때만
+     주황이고, 명도를 내리면 그것은 갈색이다. 그래서 넓은 면을 밴드색으로 «칠하는»
+     접근 자체가 틀렸다 — 파랑·보라는 어두워도 파랑·보라로 남지만 따뜻한 색은
+     아니고, 그 비대칭이 Licensed 열만 벽돌로 죽게 만들었다.
+
+     답: 색은 «작은 면적에 온전한 밝기로», 넓은 면은 «틴트»로.
+     행 하단의 3px 바가 색을 말하고, 행 배경은 길이만 말한다.
+
+     ⚠️ 틴트는 트랙(--gauge-track-mix)과 «충분히 벌어져야» 한다. 12% 였을 때
+     채움과 빈 칸의 밝기가 거의 같아 어디까지 찼는지 읽히지 않았다 — 두 값은
+     독립이 아니라 «대비 쌍»이므로 한쪽을 바꾸면 다른 쪽을 함께 본다. */
+  --gauge-tint: 32%;
+
+  /* ── 틴트 전용 밴드색 ─────────────────────────────────────────────────
+     ⚠️ 같은 틴트 비율이 세 색에 «같은 결과»를 주지 않는다. 파랑·보라는 어두운
+     바탕과 섞여도 파랑·보라로 남지만, 주황은 명도가 조금만 내려가도 갈색이
+     된다 — 주황이라는 색이 높은 명도에서만 존재하기 때문이다.
+
+     그래서 틴트에 들어갈 색은 «따로» 만든다. 명도를 크게 올리고 채도를 조금
+     낮춘 색을 넓은 면에 섞으면, 32% 로 섞여도 주황이 주황으로 남는다.
+     색상(H)은 그대로이므로 레일·하단 바와 같은 밴드로 읽힌다. */
+  /* ⚠️ 틴트 명도는 «테마마다 반대» 다. 다크에서는 어두운 트랙 위에 «밝은» 틴트를
+     올려야 보이고, 라이트에서는 흰 트랙 위에 «어두운» 틴트를 올려야 보인다.
+     하나로 두면 한쪽이 반드시 흐려진다 — L 0.86 을 두 테마에 같이 썼더니
+     라이트에서 흰 카드에 흰 틴트가 되어 아무것도 안 보였다. */
+  --band-tint-lightness: 0.62;  /* light theme */
+  --band-tint-chroma: 0.15;
+  --band-unlicensed-tint: oklch(var(--band-tint-lightness) var(--band-tint-chroma) var(--band-hue-unlicensed));
+  --band-licensed-tint: oklch(var(--band-tint-lightness) var(--band-tint-chroma) var(--band-hue-licensed));
+  --band-mmwave-tint: oklch(var(--band-tint-lightness) var(--band-tint-chroma) var(--band-hue-mmwave));
+
+  /* ── 게이지·미터 노브 ─────────────────────────────────────────────────
+     굵기와 옅기. 「막대가 너무 진하다/연하다」는 여기 한 줄이다. */
+  /* 빈 트랙이 카드에서 떠오르는 정도.
+     ⚠️ 트랙을 «밝게» 하는 것과 «어둡게» 하는 것은 다른 은유다. 밝으면 행이
+     카드 위에 «떠 있고», 어두우면 카드에 «파인 홈»이 된다. 다크 테마에서는
+     홈 쪽이 대체로 깔끔한데, 여기서는 채움이 옅은 틴트라 홈으로 파면 채움이
+     안 보인다 — 그래서 떠오르는 쪽을 골랐다.
+     반대로 가려면: --gauge-track-mix 를 낮추고 --gauge-track-base 를
+     `var(--surface-bg)` 로 바꾼다(카드보다 어두운 바닥). */
+  --gauge-track-mix: 13%;
+  --gauge-track-base: var(--surface-bg-alt);
+
+  /* ⚠️ 행 간격이 밝기보다 중요하다. 3px 에서는 모드 행 여덟 개가 하나의 회색
+     덩어리로 뭉쳐 읽혔고, 트랙을 밝히는 것으로는 «더 밝은 덩어리»가 될 뿐이었다.
+     간격을 벌리면 같은 밝기에서도 행이 각각으로 보인다. */
+  --gauge-row-gap: 5px;
+  --gauge-rail-width: 3px;      /* 계열 행 좌측 컬러 레일 */
+  --meter-track-mix: 12%;       /* 밴드 카드 미터의 빈 트랙 */
+  /* ── 도넛 ─────────────────────────────────────────────────────────────
+     ⚠️ 「포인트로 만들기」는 두께만으로 안 된다. 두껍기만 한 링은 무거워 보인다.
+     존재감은 «지름»에서 나오고, 정교해 보이는 것은 «조각 사이 틈과 둥근 끝»에서
+     나온다. 셋을 같이 올려야 한다. */
+  --ring-size: 176px;           /* 화면상의 지름 — 존재감 */
+  --ring-track-mix: 8%;         /* 트랙은 더 조용하게, 조각이 튀도록 */
+  --ring-figure-size: var(--font-size-xl);
+
   --accent: var(--p-light-accent);
   --accent-fg: var(--p-light-accent-fg);
   --status-pass: var(--p-light-status-pass);
@@ -146,9 +240,9 @@
      places). The light scale is the :root semantic default above — it is not
      duplicated, so it needs no separate primitive. Layering:
      primitive (--p-dark-*) → semantic (--surface-bg / --status-*) → component. */
-  --p-dark-surface-bg: #0b0d10;
-  --p-dark-surface-bg-alt: #14171b;
-  --p-dark-surface-border: #2a3037;
+  --p-dark-surface-bg: #111420;
+  --p-dark-surface-bg-alt: #181c2a;
+  --p-dark-surface-border: #333b52;
   --p-dark-transparent: transparent;
   --p-dark-overlay-backdrop: rgba(0, 0, 0, 0.5);
   --p-light-control-border: #767d85;
@@ -157,32 +251,32 @@
   --p-layout-max-width: 1440px;
   --p-layout-gutter: 24px;
   --p-layout-workbench-rail-width: 22rem;
-  --p-dark-control-border: #6c7278;
-  --p-dark-fg-primary: #e7eaee;
-  --p-dark-fg-secondary: #b0b6bd;
-  --p-dark-fg-disabled: #6c7278;
-  --p-dark-accent: #5aa0ff;
-  --p-dark-accent-fg: #0b0d10;
-  --p-dark-status-pass: #3fb37f;
-  --p-dark-status-fail: #ff6b6b;
-  --p-dark-status-warn: #d6a13c;
-  --p-dark-status-na: #8a9098;
-  --p-dark-status-running: #5aa0ff;
-  --p-dark-status-stale: #d6a13c;
-  --p-dark-status-missing: #8a9098;
+  --p-dark-control-border: #7c86a3;
+  --p-dark-fg-primary: #eaecf3;
+  --p-dark-fg-secondary: #a8b0c4;
+  --p-dark-fg-disabled: #6a7286;
+  --p-dark-accent: #7b8cff;
+  --p-dark-accent-fg: #111420;
+  --p-dark-status-pass: #4fd1a5;
+  --p-dark-status-fail: #f2726b;
+  --p-dark-status-warn: #f0b45c;
+  --p-dark-status-na: #98a0b5;
+  --p-dark-status-running: #7b8cff;
+  --p-dark-status-stale: #f0b45c;
+  --p-dark-status-missing: #98a0b5;
   --p-dark-status-claimed: #b58dff;
   --p-dark-status-duplicate: #ff8c42;
   --p-dark-status-draft: #8aa9c9;
-  --p-dark-status-published: #46c2a4;
-  --p-dark-status-pass-bg: rgba(63, 179, 127, 0.16);
-  --p-dark-status-fail-bg: rgba(255, 107, 107, 0.16);
-  --p-dark-status-running-bg: rgba(90, 160, 255, 0.16);
-  --p-dark-status-stale-bg: rgba(214, 161, 60, 0.16);
-  --p-dark-status-missing-bg: rgba(138, 144, 152, 0.16);
+  --p-dark-status-published: #4fd1a5;
+  --p-dark-status-pass-bg: rgba(79, 209, 165, 0.16);
+  --p-dark-status-fail-bg: rgba(242, 114, 107, 0.16);
+  --p-dark-status-running-bg: rgba(123, 140, 255, 0.16);
+  --p-dark-status-stale-bg: rgba(240, 180, 92, 0.16);
+  --p-dark-status-missing-bg: rgba(152, 160, 181, 0.16);
   --p-dark-status-claimed-bg: rgba(181, 141, 255, 0.16);
   --p-dark-status-duplicate-bg: rgba(255, 140, 66, 0.16);
   --p-dark-status-draft-bg: rgba(138, 169, 201, 0.16);
-  --p-dark-status-published-bg: rgba(70, 194, 164, 0.16);
+  --p-dark-status-published-bg: rgba(79, 209, 165, 0.16);
   --p-dark-overflow-shadow: rgba(0, 0, 0, 0.35);
   /* W2 §M4.2 — dark shadows need a deeper alpha than light ones: on a near
      black surface a 10% shadow is invisible, so depth there is carried
@@ -219,11 +313,11 @@
   --c-field-success: var(--status-pass-fg);
   --c-field-gap: var(--space-1);
 
-  --c-card-surface: var(--surface-bg);
+  --c-card-surface: var(--surface-bg-alt);
   --c-card-surface-alt: var(--surface-bg-alt);
   --c-card-border: var(--surface-border);
   --c-card-radius: var(--radius-lg);
-  --c-card-shadow: var(--elevation-0);
+  --c-card-shadow: var(--elevation-1);
   --c-card-padding: var(--space-4);
 
   --c-toolbar-gap: var(--space-3);
@@ -405,14 +499,25 @@
   --control-placeholder: var(--fg-secondary);
 
   /* ── Phase 1 §5.0-1A typography ─────────────────────────────────────────
-     Noto Sans KR Variable is self-hosted through the Fontsource package imported
-     by main.tsx (OFL-1.1, local Vite assets). The variable face supplies the
-     existing 400/500/600 hierarchy without depending on the operator OS; the
-     platform Korean stacks remain fallback safety. Mono stays intentionally
-     system-provided until its separate self-hosting decision. */
-  --font-sans: 'Noto Sans KR Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
-    'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+     Two self-hosted families, both through Fontsource (local Vite assets, no
+     CDN — the prod meta CSP names no external font origin and this decision
+     deliberately keeps it that way; it also means the offline lab PC renders
+     the intended faces).
+
+     ⚠️ The stack ORDER carries the design. Schibsted Grotesk has NO Hangul
+     glyphs, so it is listed first only to claim Latin, digits and punctuation;
+     Korean text falls through to Noto Sans KR Variable in the same stack. Do
+     not "simplify" this to one family — dropping Schibsted loses the console
+     voice, dropping Noto breaks every Korean screen.
+
+     Mono is now self-hosted too (DM Mono), resolving the open decision this
+     comment used to record. It dresses measurement numbers, durations, run
+     ids and timestamps, where `tabular-nums` keeps columns from shifting as
+     values change. */
+  --font-sans: 'Schibsted Grotesk', 'Noto Sans KR Variable', ui-sans-serif, system-ui,
+    -apple-system, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Code',
+    Consolas, monospace;
 
   /* ── Phase 1 §5.0-5 — motion vocabulary (restraint by default) ───────────
      Three tiers for the rare high-impact moment (claim acquired, validation
@@ -455,7 +560,13 @@
     --fg-primary: var(--p-dark-fg-primary);
     --fg-secondary: var(--p-dark-fg-secondary);
     --fg-disabled: var(--p-dark-fg-disabled);
-    --accent: var(--p-dark-accent);
+    /* 다크에서는 «명도만» 올린다. 색상·채도는 라이트와 공유하므로 두 테마가
+     같은 색으로 남고 밝기만 반대로 간다. */
+  --band-lightness: 0.72;
+  --ring-track-mix: 10%;
+  --band-tint-lightness: 0.86;
+  --band-tint-chroma: 0.13;
+  --accent: var(--p-dark-accent);
     --accent-fg: var(--p-dark-accent-fg);
 
     --status-pass: var(--p-dark-status-pass);
@@ -498,6 +609,12 @@
   --fg-primary: var(--p-dark-fg-primary);
   --fg-secondary: var(--p-dark-fg-secondary);
   --fg-disabled: var(--p-dark-fg-disabled);
+  /* 다크에서는 «명도만» 올린다. 색상·채도는 라이트와 공유하므로 두 테마가
+     같은 색으로 남고 밝기만 반대로 간다. */
+  --band-lightness: 0.72;
+  --ring-track-mix: 10%;
+  --band-tint-lightness: 0.86;
+  --band-tint-chroma: 0.13;
   --accent: var(--p-dark-accent);
   --accent-fg: var(--p-dark-accent-fg);
 
@@ -1292,7 +1409,7 @@ button.app-nav__toggle {
 .reports-project-context,
 .test-plans-create-bar {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 5%, var(--surface-bg));
+  background: color-mix(in oklab, var(--accent) 5%, var(--surface-bg));
   box-shadow: var(--elevation-1);
 }
 
@@ -1321,7 +1438,7 @@ button.app-nav__toggle {
 
 .test-plans-create-card--primary {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 4%, var(--surface-bg));
+  background: color-mix(in oklab, var(--accent) 4%, var(--surface-bg));
 }
 
 .test-plans-create-card__title {
@@ -4670,4 +4787,1983 @@ pre {
   color: var(--fg-primary);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Console widgets — flowdeck-console-ui (R3, R8~R10)
+
+   Three primitives that dress the operator home as a run console. Every colour
+   here aliases a semantic token; none introduces a literal. The `.mono` helper
+   is the one piece shared with the rest of the app — measurement numbers must
+   not shift their columns as values change, which is the whole reason DM Mono
+   was self-hosted (see the typography block above).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── eyebrow ────────────────────────────────────────────────────────────────
+   A context line ABOVE the page title ("최근 24시간"). It is not a heading:
+   it never appears in the heading outline, because a screen-reader user
+   navigating by heading wants the screen name, not its time window. */
+.eyebrow {
+  display: block;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+/* ── StatTile ───────────────────────────────────────────────────────────── */
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.stat-tile__label {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.stat-tile__value {
+  color: var(--fg-primary);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.15;
+}
+
+.stat-tile__change {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sentiment, not direction, drives the colour — a rising failure rate points
+   up and must still read as bad. The arrow glyph and the label carry the
+   direction, so colour is never the only channel (WCAG 1.4.1). */
+.stat-tile__change[data-sentiment='good'] { color: var(--status-pass); }
+.stat-tile__change[data-sentiment='bad'] { color: var(--status-fail); }
+.stat-tile__change[data-sentiment='neutral'] { color: var(--fg-secondary); }
+
+.stat-tile--unavailable .stat-tile__unavailable {
+  margin: 0;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+  /* A dashed edge marks "a slot that is waiting" as distinct from "a slot that
+     is empty". The distinction is the component's reason to exist (D9). */
+  border-left: 2px dashed var(--surface-border);
+  padding-left: var(--space-2);
+}
+
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: var(--space-5);
+}
+
+/* ── HealthBars ─────────────────────────────────────────────────────────── */
+.health-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.health-bars__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.health-bars__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.health-bars__label {
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.health-bars__detail {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+}
+
+.health-bars__value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.health-bars__track {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-bg-alt);
+  overflow: hidden;
+}
+
+.health-bars__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--status-pass);
+}
+
+.health-bars__row[data-tone='warn'] .health-bars__fill { background: var(--status-warn); }
+.health-bars__row[data-tone='bad'] .health-bars__fill { background: var(--status-fail); }
+.health-bars__row[data-tone='warn'] .health-bars__value { color: var(--status-warn); }
+.health-bars__row[data-tone='bad'] .health-bars__value { color: var(--status-fail); }
+.health-bars__row[data-tone='ok'] .health-bars__value { color: var(--status-pass); }
+
+/* ── TrendChart ─────────────────────────────────────────────────────────── */
+.trend-chart {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.trend-chart__svg {
+  width: 100%;
+  height: 200px;
+  overflow: visible;
+}
+
+/* `color` on the group is what both the stroke and the gradient stop read via
+   `currentColor` — one declaration feeds the line and its fade. */
+.trend-chart__series[data-tone='accent'] { color: var(--accent); }
+.trend-chart__series[data-tone='bad'] { color: var(--status-fail); }
+
+.trend-chart__line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* Non-scaling stroke: the viewBox is stretched by `preserveAspectRatio:none`
+     to fill its column, which would otherwise smear the line thickness with
+     the container width. */
+  vector-effect: non-scaling-stroke;
+}
+
+.trend-chart__series[data-tone='bad'] .trend-chart__line {
+  stroke-dasharray: 4 4;
+}
+
+.trend-chart__ticks {
+  display: flex;
+  justify-content: space-between;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+}
+
+.trend-chart__legend {
+  display: flex;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.trend-chart__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.trend-chart__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-sm);
+  background: currentColor;
+}
+
+.trend-chart__legend-item[data-tone='accent'] .trend-chart__swatch { color: var(--accent); }
+.trend-chart__legend-item[data-tone='bad'] .trend-chart__swatch { color: var(--status-fail); }
+
+/* ── console layout (flowdeck-console-ui, R7/R11) ──────────────────────────
+   Density is the point. The former home spent a full viewport on three links;
+   these rules pull the panels together so the fleet, what is running and the
+   selected chamber all sit above the fold at 1440. */
+
+.console__main,
+.console__rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.console-panel {
+  padding: var(--space-5);
+}
+
+/* The eyebrow takes a row of its own. `.page-header` is a `1fr auto` grid whose
+   items auto-flow; without this span the eyebrow claims column 1 and pushes the
+   `<h1>` into the right-hand action column — measured, not theorised. */
+.page-header__eyebrow {
+  grid-column: 1 / -1;
+  margin-bottom: calc(var(--space-1) * -1);
+}
+
+.console-note {
+  margin: var(--space-4) 0 0;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-xs);
+}
+
+/* ── console table ─────────────────────────────────────────────────────── */
+.console-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.console-table thead th {
+  padding: 0 var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--surface-border);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.console-table tbody tr {
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.console-table tbody th,
+.console-table tbody td {
+  padding: var(--space-3);
+  font-weight: var(--font-weight-normal);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.console-table__num {
+  text-align: right;
+}
+
+/* The selected row is marked by an accent edge AND a tinted surface. The edge
+   alone is invisible to anyone scanning the middle of a wide row; the tint
+   alone is too quiet at this contrast. */
+.console-table tbody tr[data-selected='true'] {
+  background: var(--status-running-bg);
+  box-shadow: inset 3px 0 0 0 var(--accent);
+}
+
+.console-table__pick {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.console-table__name {
+  color: var(--fg-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.console-table__id {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+}
+
+/* ── detail list ───────────────────────────────────────────────────────── */
+.console-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.console-detail > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.console-detail dt {
+  flex: 0 0 auto;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.console-detail dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  text-align: right;
+  /* Long base_url values must wrap rather than widen the rail and push the
+     main column narrow — the rail is the smaller of the two by design. */
+  overflow-wrap: anywhere;
+}
+
+/* ── primary step link ─────────────────────────────────────────────────── */
+.home-step--primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Console grid + depth — flowdeck-console-ui (layout pass 2)
+
+   Pass 1 reused `WorkbenchLayout` (main + rail) and it read badly: the rail is
+   built for ONE working surface with a persistent task list beside it, but this
+   screen has four peer panels whose widths differ per row. The onboarding card
+   ended up in premium space repeating the sidebar, and the lower right stayed
+   empty. This grid places each panel where its content wants to sit.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.console-grid {
+  display: grid;
+  /* 1.9fr / 1fr, not 2/1: the detail column must stay wide enough for a URL and
+     a timestamp without wrapping to three lines, which is what 2/1 produced. */
+  grid-template-columns: minmax(0, 1.9fr) minmax(300px, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.console-grid__full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1100px) {
+  .console-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ── depth ─────────────────────────────────────────────────────────────────
+   Two layers, and only two.
+
+   1. A page-level radial glow anchored off the top-right corner. This is the
+      one flowdeck itself uses (`--glow`), and it is what makes a dark console
+      read as lit rather than as a flat black rectangle. `fixed` attachment so
+      it does not slide with scroll — a moving glow reads as a bug.
+   2. A very quiet linear wash INSIDE each panel. flowdeck's own panels are
+      flat; this is an addition, kept near the threshold of perception (4% of
+      the accent) because a gradient strong enough to notice per-panel starts
+      competing with the status colours it frames.
+
+   ⚠️ Neither layer changes a TOKEN, so the composited-contrast gate keeps
+   measuring the same surface it always did. Depth here is decoration painted
+   under the tokens, never a substitute for one. */
+
+.app-shell {
+  background-image: radial-gradient(
+    120% 90% at 78% -10%,
+    color-mix(in oklab, var(--accent) 5%, transparent),
+    transparent 62%
+  );
+  background-attachment: fixed;
+}
+
+.console-panel {
+  padding: var(--space-5);
+  background-image: linear-gradient(
+    160deg,
+    color-mix(in oklab, var(--accent) 2%, transparent),
+    transparent 46%
+  );
+}
+
+/* ── panel head ────────────────────────────────────────────────────────────
+   Replaces SectionBand inside the console: the band draws a full-width rule and
+   owns the whole row, leaving nowhere for the right-hand meta (server clock,
+   project count, selected status) that each panel needs. */
+.console-panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.console-panel__title {
+  margin: 0;
+  color: var(--fg-primary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  word-break: keep-all;
+}
+
+.console-panel__meta {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  white-space: nowrap;
+}
+
+/* ── progress tone ─────────────────────────────────────────────────────────
+   A measurement that is 29% done is EARLY, not failing. Progress rides the
+   accent, which carries no verdict; the health tones stay reserved for ratios
+   that actually judge something. */
+.health-bars__row[data-tone='progress'] .health-bars__fill { background: var(--accent); }
+.health-bars__row[data-tone='progress'] .health-bars__value { color: var(--accent); }
+
+/* ── onboarding strip ──────────────────────────────────────────────────────
+   Demoted from a column to a quiet full-width footer. */
+.console-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--c-card-radius);
+  background: var(--surface-bg-alt);
+}
+
+.console-steps__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: console-step;
+}
+
+.console-steps__link {
+  display: inline-block;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-pill);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-xs);
+  text-decoration: none;
+}
+
+.console-steps__link:hover,
+.console-steps__link:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── brand mark (flowdeck-console-ui) ──────────────────────────────────────
+   The gradient is the ONE place a second colour is mixed into the accent. It is
+   what makes the mark read as an object rather than a monochrome glyph, and it
+   is confined here so the rest of the shell keeps a single accent. */
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.app-brand__mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  color: var(--accent-fg);
+  background-image: linear-gradient(
+    150deg,
+    var(--accent),
+    color-mix(in oklab, var(--accent) 55%, var(--status-published))
+  );
+  box-shadow: 0 4px 12px -3px color-mix(in oklab, var(--accent) 45%, transparent);
+}
+
+.app-brand__mark svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Chamber cards — flowdeck-console-ui (monitoring pass)
+
+   A chamber is a room, not a row. See `ui/ChamberCard.tsx` for why the fleet
+   left the table.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.console-fleet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.chamber-grid {
+  display: grid;
+  /* 280px is the width at which a chamber name, its badge and a percentage
+     stop competing for the same line at the shell's default type size. */
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.chamber-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--c-card-radius);
+  background: var(--surface-bg-alt);
+  background-image: linear-gradient(
+    160deg,
+    color-mix(in oklab, var(--accent) 2%, transparent),
+    transparent 46%
+  );
+}
+
+/* ── the rail ──────────────────────────────────────────────────────────────
+   A 4px status band across the top. `--rail` is resolved per status below, so
+   every colour still comes from a token; the card never names one itself. */
+.chamber-card__rail {
+  position: relative;
+  height: 4px;
+  overflow: hidden;
+  background: var(--rail, var(--surface-border));
+}
+
+.chamber-card[data-status='running'] { --rail: var(--accent); }
+.chamber-card[data-status='pass'] { --rail: var(--status-pass); }
+.chamber-card[data-status='fail'] { --rail: var(--status-fail); }
+.chamber-card[data-status='stale'] { --rail: var(--status-warn); }
+.chamber-card[data-status='missing'] { --rail: var(--status-missing-fg); }
+
+/* A single travelling highlight, only while a measurement is in flight. It is
+   the one moving thing on the screen on purpose — motion that is always on
+   stops meaning anything, and this one means "work is happening here". */
+.chamber-card__sweep {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--accent-fg) 70%, transparent),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: chamber-sweep 2.4s linear infinite;
+}
+
+@keyframes chamber-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* The OS-level preference wins. A wall display in a lab is exactly where an
+   endless animation becomes a hazard for a motion-sensitive viewer. */
+@media (prefers-reduced-motion: reduce) {
+  .chamber-card__sweep {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+.chamber-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.chamber-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.chamber-card__led {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--rail, var(--fg-disabled));
+}
+
+.chamber-card[data-running='true'] .chamber-card__led {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+.chamber-card__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chamber-card__id {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+}
+
+.chamber-card__progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.chamber-card__track {
+  flex: 1 1 auto;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-bg);
+  overflow: hidden;
+}
+
+.chamber-card__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+/* An idle chamber has no progress to show. The track stays as a spacer so the
+   cards keep a common rhythm — a grid where some cards are shorter reads as
+   "these are different kinds of thing", which they are not. */
+.chamber-card__progress--none {
+  opacity: 0.4;
+}
+
+.chamber-card__pct {
+  flex: none;
+  color: var(--accent);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.chamber-card__detail,
+.chamber-card__note {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+}
+
+.chamber-card__note {
+  color: var(--status-warn);
+}
+
+.chamber-card__foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--surface-border);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+}
+
+.chamber-card__foot dd {
+  margin: 0;
+}
+
+.chamber-card__addr {
+  overflow: hidden;
+  max-width: 15ch;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── nonconformity list ────────────────────────────────────────────────── */
+.console-issues {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.console-issues__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.console-issues__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.console-issues__tech {
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.console-issues__meta {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+}
+
+/* ── measurement flow ──────────────────────────────────────────────────────
+   A timeline, not a list. The left rule and the dots carry the "one after
+   another" that a plain list does not, and a failing row breaks the rule's
+   colour so the eye finds it while still reading the sequence. */
+.console-flow {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0 0 0 var(--space-4);
+  list-style: none;
+  border-left: 1px solid var(--surface-border);
+}
+
+.console-flow__row {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+
+.console-flow__row::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-4) * -1 - 4px);
+  top: calc(var(--space-2) + 6px);
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-border);
+}
+
+.console-flow__row[data-failing='true']::before {
+  background: var(--status-fail);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-fail) 22%, transparent);
+}
+
+.console-flow__when {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  white-space: nowrap;
+}
+
+.console-flow__what {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.console-flow__tech {
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.console-flow__who {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+}
+
+/* The declared gap. Dashed, quiet, and deliberately not hidden — the reader
+   should know the flow is missing two columns rather than assume it is whole. */
+.console-flow__gap {
+  margin: var(--space-4) 0 0;
+  padding-left: var(--space-2);
+  border-left: 2px dashed var(--surface-border);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  line-height: 1.45;
+}
+
+/* ── my projects + to-do ───────────────────────────────────────────────── */
+.console-projects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.console-projects__item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+}
+
+/* The project the panels below are actually about. Without this mark a reader
+   assumes the to-do list covers every project it can see listed. */
+.console-projects__item[data-current='true'] {
+  border-color: var(--accent);
+  background: var(--status-running-bg);
+}
+
+.console-projects__code {
+  color: var(--fg-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.console-projects__model {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+}
+
+.console-todo {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.console-todo__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.console-todo__row:last-child {
+  border-bottom: none;
+}
+
+.console-todo__tech {
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+}
+
+.console-todo__count {
+  flex: none;
+  color: var(--accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ── programme: donut + 2x2 areas ──────────────────────────────────────── */
+.programme {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-6, var(--space-5));
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .programme {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+}
+
+.donut {
+  position: relative;
+  width: 132px;
+  height: 132px;
+}
+
+.donut__svg {
+  width: 100%;
+  height: 100%;
+}
+
+.donut__track {
+  stroke: var(--surface-bg);
+}
+
+.donut__value {
+  stroke: var(--accent);
+}
+
+.donut__figure {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.donut__value-text {
+  color: var(--fg-primary);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+}
+
+.donut__caption {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  text-align: center;
+}
+
+/* 2 columns, so three areas land 2 + 1 and a fourth completes the square. */
+.area-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.area-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+}
+
+.area-card__name {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.area-card__pct {
+  color: var(--fg-primary);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.1;
+}
+
+.area-card__track {
+  height: 5px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-bg);
+  overflow: hidden;
+}
+
+.area-card__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--status-pass);
+}
+
+.area-card[data-tone='warn'] .area-card__fill { background: var(--status-warn); }
+.area-card[data-tone='bad'] .area-card__fill { background: var(--status-fail); }
+.area-card[data-tone='warn'] .area-card__pct { color: var(--status-warn); }
+.area-card[data-tone='bad'] .area-card__pct { color: var(--status-fail); }
+
+.area-card__detail {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+}
+
+/* ── category donuts, 2x2 ──────────────────────────────────────────────── */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+@media (max-width: 760px) {
+  .cat-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.cat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+}
+
+/* The overall ring gets the accent edge so the eye starts there. The three
+   category rings are peers of each other, not of it. */
+.cat-card--overall {
+  border-color: var(--accent);
+  background-image: linear-gradient(
+    160deg,
+    color-mix(in oklab, var(--accent) 8%, transparent),
+    transparent 52%
+  );
+  justify-content: center;
+}
+
+/* ── mode detail, three columns ────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .mode-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+
+
+
+
+
+
+
+
+/* ── programme: one donut + three band cards ───────────────────────────────
+   Four donuts made the reader compare four rings, which is the one thing rings
+   are bad at. One ring answers "how far overall"; the three cards below answer
+   "which band is behind", and a bar compares far better than an arc. */
+.programme-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .programme-head {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+}
+
+.band-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (max-width: 760px) {
+  .band-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+
+
+
+
+
+
+/* The mode columns inherit their band's colour, so a reader scanning down a
+   column never has to re-establish which category they are inside. */
+
+
+/* ⚠️ 숫자는 tone(늦음/양호), 막대는 band(분류). 둘 다 색을 요구하지만 답하는
+   질문이 다르므로 «다른 자리»에 준다. 한 속성을 다투게 두면 뒤에 선언된 쪽이
+   이기고, 실제로 40% 와 68% 가 같은 파랑이 되어 늦은 것이 보이지 않았다. */
+
+/* Test time under the figure. Minutes are a planning unit; hours are what a
+   person schedules in, so the label converts and the raw minutes never surface. */
+/* case 수와 test time 은 한 줄에 나란히 선다. 서체를 나누지 않는다 — 숫자만
+   고정폭으로 만들면 같은 줄에 두 서체가 섞이고, 그것이 «글씨체가 다르다»로
+   보인다. 자리 흔들림은 tabular-nums 만으로 충분하다. */
+.band-card__detail,
+.family-block__meta,
+.mode-list__meta {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── family strip (the middle tier) ────────────────────────────────────────
+   Between the three band cards and the mode columns. Families wrap rather than
+   sit in fixed columns: their number is data-driven (a licensed band may carry
+   GSM/WCDMA/LTE/5G NR while mmWave carries one), and a fixed grid would leave
+   holes on one row and crush another. */
+
+
+
+
+/* Tone on the number, band on the bar — the same split the mode rows use, so a
+   reader learns the rule once. */
+
+
+
+
+/* ── band columns: three categories, families stacked ──────────────────────
+   The columns sit in the SAME left-to-right order as the three cards above, so
+   the eye drops straight from a card into that category's contents. Families
+   stack inside a column rather than spreading across one, which keeps a family
+   and its modes in one vertical read. */
+.band-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5);
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--surface-border);
+}
+
+@media (max-width: 900px) {
+  .band-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.band-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.band-column[data-band='unlicensed'] { --band: var(--band-unlicensed); --band-tint: var(--band-unlicensed-tint); }
+.band-column[data-band='licensed'] { --band: var(--band-licensed); --band-tint: var(--band-licensed-tint); }
+.band-column[data-band='mmwave'] { --band: var(--band-mmwave); --band-tint: var(--band-mmwave-tint); }
+
+.band-column__title {
+  margin: 0;
+  color: var(--band, var(--fg-secondary));
+}
+
+/* ── family block ──────────────────────────────────────────────────────── */
+.family-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: var(--space-3);
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid var(--band, var(--surface-border));
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+}
+
+.family-block__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.family-block__name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tone on the number, band on the bar. The reader learns the rule once and it
+   holds at every tier — family and mode alike. */
+.family-block__pct {
+  flex: none;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.family-block[data-tone='ok'] .family-block__pct { color: var(--status-pass); }
+.family-block[data-tone='warn'] .family-block__pct { color: var(--status-warn); }
+.family-block[data-tone='bad'] .family-block__pct { color: var(--status-fail); }
+
+.family-block__track,
+.mode-list__track {
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-bg);
+  overflow: hidden;
+}
+
+.family-block__fill,
+.mode-list__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  /* Band colour, and denser toward the leading edge — the point on the bar
+     that actually carries the value. */
+  /* 시작점을 «투명»이 아니라 «옅은 밴드색»으로 둔다. 투명이면 밝은 배경에서
+     막대의 앞부분이 배경과 구별되지 않아 길이를 잘못 읽는다. */
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--band, var(--accent)) 45%, var(--surface-bg)),
+    var(--band, var(--accent))
+  );
+}
+
+.family-block__meta,
+.mode-list__meta {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── modes inside a family ─────────────────────────────────────────────── */
+.mode-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3) 0 0 var(--space-3);
+  list-style: none;
+  border-top: 1px solid var(--surface-border);
+  /* Indented behind a hairline so the modes read as "inside" the family rather
+     than as siblings of it. */
+  box-shadow: inset 1px 0 0 var(--surface-border);
+}
+
+.mode-list__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mode-list__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.mode-list__name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mode-list__pct {
+  flex: none;
+  color: var(--fg-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Gauge — the row IS the bar
+
+   Replaces the label-over-hairline pattern, which splits one fact across two
+   lines: the eye reads a name, drops, reads a length, comes back for a number.
+
+   ⚠️ First attempt failed and the failure is worth recording. The fill was 26%
+   band colour and the empty half used `--surface-bg`, which on the dark theme is
+   the SAME value as the panel behind it. So the filled part read as a solid
+   block and the empty part read as nothing — a gauge whose track is invisible is
+   not a gauge, it is a rectangle of varying width. Quarter ticks at 12% then cut
+   that rectangle into what looked like separate boxes.
+
+   The fix is contrast between three layers, not more colour: a track that is
+   visibly different from the panel, a fill that is clearly lighter than solid,
+   and ticks near the threshold of perception.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gauge {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-3);
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  /* The track must differ from the panel it sits on, in BOTH themes. Mixing the
+     foreground into the surface moves it toward the reader's contrast direction
+     whichever way the theme runs, so one declaration serves both. */
+  background-color: color-mix(in oklab, var(--fg-primary) var(--gauge-track-mix), var(--gauge-track-base));
+  /* Hard stop at the value — a gradient would blur the one point that carries
+     the number. */
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--band-tint, var(--accent)) var(--gauge-tint), var(--gauge-track-base))
+      0 var(--fill, 0%),
+    transparent var(--fill, 0%)
+  );
+}
+
+/* The left rail states the category without a word. */
+.gauge::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--gauge-rail-width);
+  background: var(--band, var(--accent));
+}
+
+/* A crisp edge exactly at the value, so the fill has a readable end. */
+/* 색을 나르는 유일한 «면». 3px 이라 밴드색이 온전한 밝기로 살고, 라벨을
+   관통하지 않으며, 길이가 곧 값이다. */
+.gauge::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: var(--fill, 0%);
+  height: 3px;
+  background: var(--band, var(--accent));
+  transition: width var(--motion-emphasis) var(--motion-easing);
+}
+
+/* Ticks quarter the scale so a length can be read as a number without reading
+   the number. Deliberately faint — at 12% they cut the row into boxes. */
+/* ⚠️ 눈금은 뺐다. 채움을 20% -> 9% 로 낮추고 나니 유일하게 남은 소음이
+   눈금이었고, 25% 마다 그은 선이 한 행을 «칸막이 넷»으로 보이게 했다.
+   요소는 남겨 둔다 — 되살릴 때 마크업을 다시 만지지 않도록. */
+.gauge__ticks {
+  display: none;
+}
+
+.gauge__name {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ⚠️ 퍼센트에 고정폭 «서체»를 쓰지 않는다. 라벨은 본문 서체인데 값만 DM Mono 면
+   같은 줄에 두 서체가 섞여 「저기만 글씨체가 다르다」로 보인다 — 실제로 그렇게
+   지적받았다. 필요한 것은 서체가 아니라 «숫자 폭 고정»뿐이고, 그것은
+   tabular-nums 가 본문 서체 안에서 해 준다. mono 는 시각·ID 처럼 «자리수가
+   길고 스캔하는» 값에만 남긴다. */
+.gauge__pct {
+  font-variant-numeric: tabular-nums;
+  position: relative;
+  flex: none;
+  margin-left: auto;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Band says which category; tone says whether it is behind. */
+/* ⚠️ 숫자에 tone 색을 주지 않는다. 채움 위에 올라가는 글자라 「주황 채움 위
+   주황 숫자」·「갈색 위 초록 숫자」가 되어 대비가 무너졌다 — 실측으로 확인.
+   늦었는지는 막대 «길이»가 이미 말하고, 숫자는 값만 말하면 된다.
+   경고가 필요한 자리는 좌측 레일 옆의 점 하나로 따로 표시한다. */
+.gauge__pct {
+  color: var(--fg-primary);
+}
+
+.family-block[data-tone='bad'] .gauge::before,
+.family-block[data-tone='warn'] .gauge::before {
+  width: 3px;
+}
+
+.family-block[data-tone='bad'] > .gauge {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--status-fail) 35%, transparent);
+}
+
+/* ⚠️ 모드 행에는 레일을 그리지 않는다. 계열 행에 한 번만 서 있어야 그 색이
+   「여기부터 이 분류」라는 «경계» 를 말한다. 모든 행이 물면 색은 경계가 아니라
+   배경이 되고, 아무것도 구분하지 않는다. */
+.gauge--sm::before {
+  display: none;
+}
+
+.gauge--sm {
+  min-height: 24px;
+  padding-left: var(--space-2);
+}
+
+/* 계열 행의 % 만 굵게. 모드 행까지 굵으면 두 층이 같은 무게로 읽혀 계층이
+   사라진다 — 굵기는 여기서 «층»을 말하는 유일한 신호다. */
+.gauge--sm .gauge__name,
+.gauge--sm .gauge__pct {
+  font-size: var(--font-size-2xs);
+}
+
+.gauge--sm .gauge__pct {
+  font-weight: var(--font-weight-normal);
+  color: var(--fg-primary);
+}
+
+/* ⚠️ 대분류 카드에서 게이지를 뺐다. 카드 안에 채워진 큰 블록은 「값」이 아니라
+   「면적」으로 읽혀 조잡했다. 대신 카드 아래 모서리에 2px 인디케이터를 깔고
+   숫자를 크게 세운다 — 값은 숫자가 정확히 말하고, 막대는 «대략 어디쯤»만
+   말하면 되는 자리다. */
+
+
+
+
+/* The gauge rows carry the structure now; the block only groups them. */
+.family-block {
+  gap: var(--gauge-row-gap);
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.mode-list {
+  gap: var(--gauge-row-gap);
+  margin: 0;
+  padding: 0 0 0 var(--space-4);
+  border-top: none;
+  box-shadow: none;
+}
+
+/* ── model toggle ─────────────────────────────────────────────────────────
+   A segmented control in the panel head, where a static count used to sit.
+   `aria-pressed` rather than radio inputs: these are view filters, not a form
+   value, and nothing is submitted. */
+.model-toggle {
+  display: inline-flex;
+  flex: none;
+  padding: 2px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-bg);
+}
+
+.model-toggle__btn {
+  padding: 3px var(--space-3);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--fg-secondary);
+  font: inherit;
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+/* ⚠️ `--accent-fg` 를 쓰면 안 된다. 다크에서 그 토큰은 「강조색 위에 얹는 어두운
+   글자」인데, 라이트에서는 흰색이라 흰 알약 위 흰 글자가 되어 라벨이 사라졌다
+   (실측). 선택 상태는 «배경을 옅게, 글자를 강조색으로» 뒤집어 두 테마 모두에서
+   읽히게 한다. */
+.model-toggle__btn[aria-pressed='true'] {
+  background: color-mix(in oklab, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.model-toggle__btn:not([aria-pressed='true']):hover {
+  color: var(--fg-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Motion — model switching
+
+   Switching the model toggle replaced every number at once and the panel
+   "clicked" between states. The values are the same measurements seen through a
+   different filter, so they should MOVE rather than jump — a bar that slides
+   from 52% to 30% tells the reader the two are comparable; one that teleports
+   makes them look unrelated.
+
+   `--fill` drives a gradient stop and a pseudo-element offset, and a plain
+   custom property cannot be transitioned — `@property` gives it a type so the
+   engine can interpolate it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@property --fill {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+
+.gauge {
+  transition: --fill var(--motion-emphasis) var(--motion-easing);
+}
+
+
+.donut__value {
+  transition: stroke-dasharray var(--motion-emphasis) var(--motion-easing);
+}
+
+/* The rows themselves settle in when the set of modes changes between models
+   (840 carries 13, 845N carries 42). Without this the column re-flows as a
+   hard cut. */
+.family-block,
+.mode-list__row {
+  animation: console-settle var(--motion-base) var(--motion-easing) both;
+}
+
+@keyframes console-settle {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gauge,
+  .band-card__bar,
+  .donut__value {
+    transition: none;
+  }
+
+  .family-block,
+  .mode-list__row {
+    animation: none;
+  }
+}
+
+/* ── band card — the "quota" shape ─────────────────────────────────────────
+   Label bold on the left, value small and quiet on the right, a 5px meter
+   carrying the visual weight, one caption line under it.
+
+   ⚠️ The value is deliberately NOT a headline number. Three big figures side by
+   side compete with each other and with the donut; three meters of the same
+   height COMPARE. The number is there for anyone who needs it exact, which is
+   not the reason this row exists.
+   ═══════════════════════════════════════════════════════════════════════ */
+.band-card {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg);
+}
+
+.band-card[data-band='unlicensed'] { --band: var(--band-unlicensed); --band-tint: var(--band-unlicensed-tint); }
+.band-card[data-band='licensed'] { --band: var(--band-licensed); --band-tint: var(--band-licensed-tint); }
+.band-card[data-band='mmwave'] { --band: var(--band-mmwave); --band-tint: var(--band-mmwave-tint); }
+
+.band-card__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.band-card__name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.band-card__pct {
+  font-variant-numeric: tabular-nums;
+  flex: none;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+}
+
+.band-card__meter {
+  height: 5px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--fg-primary) var(--meter-track-mix), transparent);
+  overflow: hidden;
+}
+
+.band-card__meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--band, var(--accent));
+  transition: width var(--motion-emphasis) var(--motion-easing);
+}
+
+.band-card__caption {
+  margin: var(--space-2) 0 0;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .band-card__meter i {
+    transition: none;
+  }
+}
+
+/* ── concentric rings ─────────────────────────────────────────────────────
+   One ring per band, outermost first, overall figure in the middle. Colour is
+   the only thing distinguishing the rings from each other, which is fine here
+   and only here: the band cards next to the dial state every one of these
+   values in words, so nothing depends on telling the arcs apart.
+   ═══════════════════════════════════════════════════════════════════════ */
+.rings {
+  position: relative;
+  flex: none;
+  width: var(--ring-size);
+  height: var(--ring-size);
+}
+
+.rings__svg {
+  width: 100%;
+  height: 100%;
+}
+
+.rings__track {
+  stroke: color-mix(in srgb, var(--fg-primary) var(--ring-track-mix), transparent);
+}
+
+.rings__seg {
+  stroke: var(--band, var(--accent));
+  transition:
+    stroke-dasharray var(--motion-emphasis) var(--motion-easing),
+    stroke-dashoffset var(--motion-emphasis) var(--motion-easing);
+}
+
+.rings__seg[data-band='unlicensed'] { --band: var(--band-unlicensed); --band-tint: var(--band-unlicensed-tint); }
+.rings__seg[data-band='licensed'] { --band: var(--band-licensed); --band-tint: var(--band-licensed-tint); }
+.rings__seg[data-band='mmwave'] { --band: var(--band-mmwave); --band-tint: var(--band-mmwave-tint); }
+
+.rings__centre {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  pointer-events: none;
+}
+
+.rings__figure {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-primary);
+  font-size: var(--ring-figure-size);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1;
+}
+
+.rings__caption {
+  max-width: 76px;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  line-height: 1.25;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rings__seg {
+    transition: none;
+  }
+}
+
+/* ── sidebar, flowdeck-style ──────────────────────────────────────────────
+   The active item was a filled block; flowdeck instead tints the background
+   faintly and turns the LABEL to the accent. That reads as "you are here"
+   without the item shouting over the ones you might go to next. Both states
+   cross-fade rather than snap.
+   ═══════════════════════════════════════════════════════════════════════ */
+.nav-link {
+  border-radius: var(--radius-md);
+  color: var(--fg-secondary);
+  transition:
+    background var(--motion-fast) var(--motion-easing),
+    color var(--motion-fast) var(--motion-easing);
+}
+
+.nav-link:hover {
+  background: color-mix(in srgb, var(--fg-primary) 6%, transparent);
+  color: var(--fg-primary);
+}
+
+.nav-link.active {
+  background: color-mix(in oklab, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Every control in the shell settles rather than snaps. */
+.model-toggle__btn,
+.home-step,
+.console-table__pick {
+  transition:
+    background var(--motion-fast) var(--motion-easing),
+    color var(--motion-fast) var(--motion-easing),
+    border-color var(--motion-fast) var(--motion-easing);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-link,
+  .model-toggle__btn,
+  .home-step,
+  .console-table__pick {
+    transition: none;
+  }
+}
+
+/* ── export (mockup) ──────────────────────────────────────────────────────
+   The screen's purpose is PM observation and customer reporting, so the export
+   affordance belongs in its head. What it should PRODUCE is undecided, and the
+   note below says so rather than letting a dead button imply a feature.
+   ═══════════════════════════════════════════════════════════════════════ */
+.panel-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 4px var(--space-3);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-bg);
+  color: var(--fg-secondary);
+  font: inherit;
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) var(--motion-easing),
+    border-color var(--motion-fast) var(--motion-easing),
+    color var(--motion-fast) var(--motion-easing);
+}
+
+.export-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.export-btn:hover,
+.export-btn[aria-expanded='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Dashed, like every other "declared gap" on this screen — the shape says
+   "waiting on a decision", not "broken". */
+.export-note {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg);
+}
+
+.export-note__lede {
+  margin: 0 0 var(--space-2);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  line-height: 1.5;
+}
+
+.export-note__list {
+  margin: 0;
+  padding-left: var(--space-4);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  line-height: 1.6;
+}
+
+/* ── issue tracker ────────────────────────────────────────────────────────
+   Sits beside the progress panel on the PM screen. The question after "how
+   many percent" is always "what is stuck", and putting the two on different
+   screens makes someone change tabs mid-report.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* PM 화면은 진행률이 세 열을 품으므로 넓은 쪽에 더 준다. 기본 1.9:1 로는
+   모드 이름("802.11n HT20")이 열 안에서 줄임표가 된다. */
+.console-grid[data-scope='pm'],
+.console-grid[data-scope='manager'] {
+  grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr);
+}
+
+.issue-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ⚠️ 좌측 표시는 «있는 줄 알면 되는» 정도여야 한다. 2px 실선 빨강은 행마다
+   빨간 기둥을 세워 목록 전체가 경고처럼 읽혔고, 정작 각 행의 배지·건수보다
+   눈에 먼저 들어왔다. 판정은 배지가 하고, 이 선은 «여기가 그 목록이다» 만
+   말한다 — 그래서 1px 에 반투명, 그리고 행 높이를 다 쓰지 않는다. */
+.issue-row {
+  position: relative;
+  display: flex;
+  padding-left: var(--space-3);
+}
+
+.issue-row::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: 1px;
+  border-radius: 1px;
+  background: color-mix(in oklab, var(--status-fail) 45%, transparent);
+}
+
+.issue-row__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.issue-row__tech {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.issue-row__meta {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── cross-highlight: issue row ⇄ progress row ────────────────────────────
+   Hovering (or focusing) an issue lights the same mode in the progress
+   columns. Three columns and forty rows make "find 802.11n HT40" a search the
+   reader gives up on; this turns it into a glance.
+
+   The highlight uses an outline + a lifted track, never a colour swap: the row
+   already carries a band colour that means something, and overwriting it would
+   trade one fact for another.
+   ═══════════════════════════════════════════════════════════════════════ */
+/* ⚠️ `outline` 은 전환되지 않는다(브라우저가 보간하지 않는 속성이다). 그래서
+   하이라이트를 outline 으로 그리면 «딸깍» 켜진다 — box-shadow 로 같은 테두리를
+   그리면 두께·색이 모두 보간돼 부드럽게 들어오고 나간다. */
+.mode-list__row .gauge {
+  box-shadow: 0 0 0 0 transparent;
+  transition:
+    box-shadow var(--motion-base) var(--motion-easing),
+    background-color var(--motion-base) var(--motion-easing);
+}
+
+.mode-list__row[data-linked='true'] .gauge {
+  box-shadow:
+    0 0 0 2px var(--status-fail),
+    0 0 0 6px color-mix(in oklab, var(--status-fail) 22%, transparent);
+  background-color: color-mix(in oklab, var(--status-fail) 12%, var(--gauge-track-base));
+}
+
+.issue-row__btn {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--motion-easing);
+}
+
+.issue-row__btn:hover,
+.issue-row__btn[data-linked='true'] {
+  background: color-mix(in oklab, var(--status-fail) 10%, transparent);
+}
+
+/* 고정된 것은 «계속» 켜져 있다는 표시가 필요하다 — hover 와 같은 모양이면
+   커서를 뗐을 때 고정됐는지 알 수 없다. */
+.issue-row__btn[aria-pressed='true'] {
+  background: color-mix(in oklab, var(--status-fail) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--status-fail) 45%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .issue-row__btn,
+  .mode-list__row .gauge {
+    transition: none;
+  }
+}
+
+/* 묶음 건수. 배지 옆에 붙어 「이 모드에 몇 건」을 말한다 — 1건이면 그리지
+   않는다(「1」은 정보가 없고 줄만 복잡하게 만든다). */
+.issue-row__count {
+  flex: none;
+  min-width: 18px;
+  margin-left: auto;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--status-fail) 22%, transparent);
+  color: var(--status-fail);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.issue-row__head {
+  gap: var(--space-2);
+}
+
+/* ── the gauge as a button ────────────────────────────────────────────────
+   Mode rows became interactive so the issue⇄progress link works both ways.
+   A `<button>` brings its own border/background/font, all of which the gauge
+   already owns — reset them rather than fight the cascade.
+   ═══════════════════════════════════════════════════════════════════════ */
+button.gauge {
+  width: 100%;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.gauge:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* Pinned from EITHER side. The same shape means the reader does not have to
+   learn two vocabularies for one relationship. */
+.mode-list__row .gauge[aria-pressed='true'],
+.mode-list__row[data-linked='true'] .gauge {
+  box-shadow:
+    0 0 0 2px var(--status-fail),
+    0 0 0 6px color-mix(in oklab, var(--status-fail) 22%, transparent);
+  background-color: color-mix(in oklab, var(--status-fail) 12%, var(--gauge-track-base));
+}
+
+/* Hovering a mode that has no issue should still show the link is live, but
+   quietly — a red ring on a healthy row would read as a failure. */
+.mode-list__row .gauge[data-linked='true']:not([aria-pressed='true']) {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 60%, transparent);
+  background-color: color-mix(in oklab, var(--accent) 10%, var(--gauge-track-base));
+}
+
+.issue-row__btn[data-linked='true'] {
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--status-fail) 40%, transparent);
 }

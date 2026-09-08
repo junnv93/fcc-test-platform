@@ -8,6 +8,12 @@ import { getRuntimeConfig, RuntimeConfigError } from './config/runtime';
 import { t } from './i18n';
 import { initObservability } from './observability/bootstrap';
 import '@fontsource-variable/noto-sans-kr';
+import '@fontsource/schibsted-grotesk/400.css';
+import '@fontsource/schibsted-grotesk/500.css';
+import '@fontsource/schibsted-grotesk/600.css';
+import '@fontsource/schibsted-grotesk/700.css';
+import '@fontsource/dm-mono/400.css';
+import '@fontsource/dm-mono/500.css';
 import './styles/global.css';
 
 import type { RuntimeConfig } from './config/runtime';

@@ -31,6 +31,8 @@ function ScreenTracker({ children }: { children: ReactNode }): JSX.Element {
 }
 
 const OverviewRoute = lazy(() => import('@/routes/overview'));
+const ProgrammeOverviewRoute = lazy(() => import('@/routes/overview-programme'));
+const CombinedOverviewRoute = lazy(() => import('@/routes/overview-combined'));
 const DiagnosticsRoute = lazy(() => import('@/routes/diagnostics'));
 const ChambersRoute = lazy(() => import('@/routes/chambers'));
 const TestPlansRoute = lazy(() => import('@/routes/test-plans'));
@@ -213,6 +215,18 @@ export const appRoutes: readonly AppRoute[] = [
         element: <OverviewRoute />,
         errorElement: ROUTE_ERROR_ELEMENT,
         handle: { titleKey: 'routes.home.title' },
+      },
+      {
+        path: 'programme',
+        element: <ProgrammeOverviewRoute />,
+        errorElement: ROUTE_ERROR_ELEMENT,
+        handle: { titleKey: 'routes.home.scope.pm.title' },
+      },
+      {
+        path: 'combined',
+        element: <CombinedOverviewRoute />,
+        errorElement: ROUTE_ERROR_ELEMENT,
+        handle: { titleKey: 'routes.home.scope.manager.title' },
       },
       // 멀티챔버 P6 (2026-06-16): chamber availability + distributed remote
       // measurement (central proxy — start + progress poll).

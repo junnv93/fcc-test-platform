@@ -19,6 +19,25 @@ export type { ButtonProps, ButtonSize, ButtonVariant } from './Button';
 export { Card } from './Card';
 export type { CardProps } from './Card';
 
+// ── console widgets (flowdeck-console-ui) ─────────────────────────────────
+export { ProgressRings } from './ProgressRings';
+export type { ProgressRingsProps, RingSegment } from './ProgressRings';
+
+export { DonutProgress } from './DonutProgress';
+export type { DonutProgressProps } from './DonutProgress';
+
+export { ChamberCard } from './ChamberCard';
+export type { ChamberCardProps } from './ChamberCard';
+
+export { StatTile } from './StatTile';
+export type { StatTileProps, StatDirection, StatSentiment } from './StatTile';
+
+export { HealthBars } from './HealthBars';
+export type { HealthBarsProps, HealthRow, HealthTone } from './HealthBars';
+
+export { TrendChart } from './TrendChart';
+export type { TrendChartProps, TrendSeries } from './TrendChart';
+
 export { WorkbenchLayout } from './WorkbenchLayout';
 export type { WorkbenchLayoutProps } from './WorkbenchLayout';
 
