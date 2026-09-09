@@ -34,6 +34,8 @@ const OverviewRoute = lazy(() => import('@/routes/overview'));
 const ProgrammeOverviewRoute = lazy(() => import('@/routes/overview-programme'));
 const CombinedOverviewRoute = lazy(() => import('@/routes/overview-combined'));
 const SystemDashboardRoute = lazy(() => import('@/routes/system-dashboard'));
+const TestItemsRoute = lazy(() => import('@/routes/test-items'));
+const DataReviewRoute = lazy(() => import('@/routes/data-review'));
 const DiagnosticsRoute = lazy(() => import('@/routes/diagnostics'));
 const ChambersRoute = lazy(() => import('@/routes/chambers'));
 const TestPlansRoute = lazy(() => import('@/routes/test-plans'));
@@ -236,6 +238,23 @@ export const appRoutes: readonly AppRoute[] = [
         element: <SystemDashboardRoute />,
         errorElement: ROUTE_ERROR_ELEMENT,
         handle: { titleKey: 'routes.systemDashboard.title' },
+      },
+      // 시험항목 목록 — 실무자 홈의 계열 행에서 «내려오는» 화면. 사이드바에
+      // 넣지 않는다: 모델과 계열을 쿼리로 받으므로 메뉴에서 곧장 누르면 답할
+      // 대상이 없는 빈 화면이 된다. 도착하는 길은 홈의 그 행 하나다.
+      {
+        path: 'test-items',
+        element: <TestItemsRoute />,
+        errorElement: ROUTE_ERROR_ELEMENT,
+        handle: { titleKey: 'routes.testItems.title' },
+      },
+      // 데이터 리뷰 — «목업». 진행률이 「얼마나 했나」라면 여기는 「한 것이
+      // 맞나」다. 측정값 자체를 주는 읽기가 아직 없어 칸만 잡아 둔다.
+      {
+        path: 'data-review',
+        element: <DataReviewRoute />,
+        errorElement: ROUTE_ERROR_ELEMENT,
+        handle: { titleKey: 'routes.dataReview.title' },
       },
       // 멀티챔버 P6 (2026-06-16): chamber availability + distributed remote
       // measurement (central proxy — start + progress poll).

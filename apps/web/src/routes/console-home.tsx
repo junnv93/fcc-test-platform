@@ -1,16 +1,23 @@
 import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 
 
 import {
   fetchChambers,
+  fetchClaimsPage,
   fetchCoveragePage,
+  type ActiveClaimEnvelope,
+  fetchPlanConditionsPage,
+  type PlanConditionEnvelope,
   fetchProjectProgress,
   fetchProjects,
 } from '@/api/platform-client';
 import { queryKeys } from '@/api/query-config';
 import { useT } from '@/i18n';
+import { useCurrentOperator } from '@/shared/current-operator';
+import { ROUTE_PATHS } from '@/shared/route-links';
 import {
   BlockSkeleton,
   Card,
@@ -71,8 +78,32 @@ const CATEGORY_ORDER = ['Unlicensed band', 'Licensed band', 'mmWave'];
 
 export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
   const { t } = useT();
+  const me = useCurrentOperator();
   const showsOperator = scope === 'operator' || scope === 'manager';
-  const showsProgramme = scope === 'pm' || scope === 'manager';
+  /** 계획 패널(대분류 카드 + 계열 열) — 세 화면 전부. */
+  const showsProgramme = true;
+
+  /** 현장 패널들(시험 구성 현황 · 진행 중인 측정 · 할 일 · 기술별 진행 ·
+   *  측정 흐름 · 구성 블록)을 «잠시» 내린 스위치.
+   *
+   *  ⚠️ 지우지 않았다. 실무자 화면을 「진행률 + 이슈」 둘로 좁혀 보는 중이고,
+   *  그 판단이 옳은지는 써 봐야 안다. 코드를 지우면 되돌리는 데 커밋을 뒤져야
+   *  하고, 그러면 「일단 빼 보자」가 값싼 실험이 아니게 된다.
+   *
+   *  ⚠️ 그리고 이 상수는 «죽은 코드를 만든다». 아래 패널들이 렌더되지 않는
+   *  동안에도 그 데이터(fleet · runningRows · technologyRows · flow)는 계속
+   *  계산되고 질의도 계속 나간다. 그것을 아는 채로 두는 것이고, 이 스위치가
+   *  영구가 되는 순간 — 즉 「돌아갈 생각이 없다」가 정해지는 순간 — 패널과
+   *  그 데이터를 함께 지우는 것이 그때의 정공이다. 스위치가 오래 남으면
+   *  그 자체가 부채다. */
+  const SHOWS_FIELD_PANELS = false;
+  /** 링과 추이는 «보고»의 도구다.
+   *
+   *  ⚠️ 실무자 화면에서 뺀다. 「전체 48%」와 「지난 2주 기울기」는 참이지만
+   *  시험할 사람의 다음 행동을 바꾸지 않는다 — 그가 묻는 것은 「이 계열에서
+   *  뭐가 남았나」이고 그 답은 아래 표에 있다. 화면의 첫 줄은 보는 사람의
+   *  질문에 답해야 한다(현장 패널을 PM 화면에서 뺀 것과 같은 판단). */
+  const showsProgrammeSummary = scope === 'pm' || scope === 'manager';
 
 /** 분 → 시간. 계획은 분 단위로 쌓이지만 사람이 일정을 잡는 단위는 시간이라,
    *  화면에는 시간만 나온다. 한 자리 소수까지 — 「12h」와 「12.5h」의 차이가
@@ -179,6 +210,53 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
   /** ⚠️ 커버리지는 «선택된 모델» 을 따른다. 예전에는 항상 첫 프로젝트를 봤는데,
    *  그러면 PM 이 840 을 골라도 이슈 목록은 845N 의 것이 나온다 — 화면 안에서
    *  두 개의 「지금 보고 있는 모델」이 생기는 셈이다. */
+  /** 계획 조건. 이 화면이 이것을 받는 이유는 «시간»이다 — 커버리지는 무엇이
+   *  측정됐는지는 알려주지만 그 하나가 몇 분짜리였는지는 모른다.
+   *  `condition_hash` 로 조인해야 「이 날까지 몇 «시간»이 끝났나」가 나온다. */
+  const planConditions = useQuery({
+    queryKey: ['console-plan-conditions', activeModelId],
+    queryFn: async () => {
+      const items: PlanConditionEnvelope[] = [];
+      let cursor: string | undefined;
+      for (let page = 0; page < 25; page += 1) {
+        const chunk = await fetchPlanConditionsPage(activeModelId ?? '', cursor);
+        items.push(...chunk.items);
+        if (chunk.nextCursor == null || chunk.nextCursor === '') break;
+        cursor = chunk.nextCursor;
+      }
+      return items;
+    },
+    enabled: activeModelId !== null,
+    placeholderData: keepPreviousData,
+  });
+
+  /** 지금 «배정된» 조건. 15명이 한 프로젝트를 나눠 하므로, 남은 목록에 남이
+   *  이미 손대고 있는 것이 섞여 있으면 두 사람이 같은 것을 재게 된다.
+   *
+   *  ⚠️ 읽기만 한다. 잡기·놓기는 작업 화면의 일이다.
+   *
+   *  🔴 「내 것」은 «아직 계산할 수 없다». 이 원장의 `operator` 는 문자열이고
+   *  로그인 신원은 OIDC subject 라 두 키가 다르다. 사번이 양쪽에 같은 값으로
+   *  들어오기 전까지 「내 배정」과 「남의 배정」을 가르면 조용히 틀린다 — 그래서
+   *  지금은 «배정된 것 전부»를 표시하고 누가 잡았는지를 함께 적는다. 키가
+   *  맞춰지면 여기 필터 한 줄이 붙고 화면 구조는 그대로다. */
+  const claims = useQuery({
+    queryKey: ['console-claims', activeModelId],
+    queryFn: async () => {
+      const items: ActiveClaimEnvelope[] = [];
+      let cursor: string | undefined;
+      for (let page = 0; page < 25; page += 1) {
+        const chunk = await fetchClaimsPage(activeModelId ?? '', cursor);
+        items.push(...chunk.items);
+        if (chunk.nextCursor == null || chunk.nextCursor === '') break;
+        cursor = chunk.nextCursor;
+      }
+      return items;
+    },
+    enabled: activeModelId !== null && showsOperator,
+    placeholderData: keepPreviousData,
+  });
+
   const coverage = useQuery({
     queryKey: ['console-coverage', activeModelId],
     queryFn: async () => {
@@ -328,6 +406,84 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
    *  ⚠️ 개별 case 를 못 보게 된 것은 아니다 — 이 묶음을 펼쳐 case 를 보는 것은
    *  다음 단계이고, 그때 필요한 것은 조건별 attempts 계약이다(이미 있다:
    *  `/conditions/{hash}/attempts`). 지금은 «묶음»까지가 화면의 답이다. */
+  /** 모드 → 「배정됐나 · 이슈 있나」.
+   *
+   *  이 둘은 «다른 사실»이라 한 칸에 섞지 않는다. 배정은 「내가(누군가) 할 일」이고
+   *  이슈는 「다시 해야 할 일」이다. 그래서 표식이 반반으로 갈린다 — 왼쪽이 배정,
+   *  오른쪽이 이슈. 이슈가 없으면 왼쪽 색 하나로 채운다.
+   *
+   *  ⚠️ 색을 하나로 합치면(예: 배정+이슈 = 더 진한 빨강) 두 사실 중 하나가
+   *  사라진다. 「배정됐지만 멀쩡한 것」과 「배정 안 됐는데 터진 것」은 다음 행동이
+   *  전혀 다르고, 그 구분이 이 표식의 전부다. */
+  const modeMarks = useMemo(() => {
+    const marks = new Map<string, { holders: string[]; mine: boolean; issues: number }>();
+    for (const claim of claims.data ?? []) {
+      const mode = claim.technology ?? '—';
+      const cur = marks.get(mode) ?? { holders: [], mine: false, issues: 0 };
+      const who = claim.operator ?? '—';
+      if (!cur.holders.includes(who)) cur.holders.push(who);
+      // 「내 것」은 사번이 같을 때만이다. 신원을 모르면(me === null) 아무것도
+      // 내 것이 아니고, 화면은 그 사실을 한 줄로 말한다 — 전부 내 것처럼
+      // 보이는 쪽이 훨씬 비싼 오해다.
+      if (me !== null && who === me) cur.mine = true;
+      marks.set(mode, cur);
+    }
+    for (const row of coverage.data?.items ?? []) {
+      if (!FAILING_VERDICTS.has((row.latest_verdict ?? '').trim().toLowerCase())) continue;
+      const mode = row.technology ?? '—';
+      const cur = marks.get(mode) ?? { holders: [], mine: false, issues: 0 };
+      cur.issues += 1;
+      marks.set(mode, cur);
+    }
+    return marks;
+  }, [claims.data, coverage.data, me]);
+
+  /** 내가 측정한 건수. 신원을 모르면 `null` — 「0건」이 아니다. 그 둘은 다르고,
+   *  0 을 보여 주면 아무것도 안 한 사람처럼 읽힌다. */
+  const mineDone = useMemo(() => {
+    if (me === null) return null;
+    return (coverage.data?.items ?? []).filter((row) => row.latest_operator === me).length;
+  }, [coverage.data, me]);
+
+  /** 세 칸이 각각 들여다볼 넷.
+   *
+   *  ⚠️ 「한 것」만 열리고 나머지는 안 열리면, 세 칸이 같은 모양인데 하나만
+   *  반응하는 상태가 된다 — 그건 기능이 아니라 고장으로 읽힌다. 같은 자리에
+   *  같은 동작을 준다.
+   *
+   *  ⚠️ 내 것을 «위로» 올린다. 목록이 넷뿐이라 정렬 하나가 곧 「무엇을 보여줄
+   *  것인가」이고, 이 화면에서 그 답은 내 일이다. 신원을 모르면 정렬이 원래
+   *  순서로 남는다 — 추측해서 올리지 않는다. */
+  const byMineFirst = <T,>(rows: readonly T[], who: (row: T) => string): T[] => {
+    const copy = [...rows];
+    if (me === null) return copy;
+    return copy.sort((a, b) => Number(who(b) === me) - Number(who(a) === me));
+  };
+
+  /** 할 것 — 지금 «배정된» 조건 중 아직 측정되지 않은 것. */
+  const todoPeek = useMemo(() => {
+    const measured = new Set(
+      (coverage.data?.items ?? []).map((row) => row.condition_hash ?? ''),
+    );
+    const open = (claims.data ?? []).filter(
+      (row) => !measured.has(row.condition_hash ?? ''),
+    );
+    return byMineFirst(open, (row) => row.operator ?? '').slice(0, 4);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claims.data, coverage.data, me]);
+
+  /** 이슈 — 부적합 판정이 난 것, 최근 순. */
+  const issuePeek = useMemo(() => {
+    const failed = (coverage.data?.items ?? []).filter((row) =>
+      FAILING_VERDICTS.has((row.latest_verdict ?? '').trim().toLowerCase()),
+    );
+    failed.sort((a, b) =>
+      (b.latest_measured_at ?? '').localeCompare(a.latest_measured_at ?? ''),
+    );
+    return byMineFirst(failed, (row) => row.latest_operator ?? '').slice(0, 4);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coverage.data, me]);
+
   const issueGroups = useMemo(() => {
     const acc = new Map<
       string,
@@ -374,7 +530,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
 
   // ── pm: 프로젝트별 영역 진행률 ────────────────────────────────────────────
   const progressQueries = useQueries({
-    queries: (showsProgramme ? activeProjects : []).map((project) => ({
+    queries: activeProjects.map((project) => ({
       queryKey: ['console-progress', project.project_id],
       queryFn: () => fetchProjectProgress(project.project_id ?? ''),
       enabled: project.project_id != null,
@@ -412,6 +568,14 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
       spent: a.spent + b.spent,
     });
 
+    /* 모드별 실측 건수. 계획 읽기는 시간만 정확히 알고 건수는 커버리지가 안다 —
+       각자 아는 것을 각자에게 묻는다. */
+    const measuredByMode = new Map<string, number>();
+    for (const row of coverage.data?.items ?? []) {
+      const mode = row.technology ?? '';
+      measuredByMode.set(mode, (measuredByMode.get(mode) ?? 0) + 1);
+    }
+
     const acc = new Map<string, { tally: Tally; families: Map<string, { tally: Tally; modes: Map<string, Tally> }> }>();
 
     progressQueries.forEach((query, index) => {
@@ -428,9 +592,12 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
         const mode = bucket.progress_area ?? '—';
 
         const total = bucket.total_conditions ?? 0;
+        // ⚠️ `done` 은 더 이상 «시간 백분율 × 조건 수» 가 아니다.
+        // 그 곱은 뜻이 없었다 — 55.8% 의 시간을 393건에 곱하면 219 가 나오는데
+        // 실제로 끝난 것은 238건이었다(실측 2026-09-09). 건수는 건수로 센다.
         const one: Tally = {
           total,
-          done: Math.round(((bucket.percent ?? 0) / 100) * total),
+          done: measuredByMode.get(bucket.progress_area ?? '') ?? 0,
           planned: Number(bucket.planned_minutes ?? 0),
           spent: Number(bucket.completed_minutes ?? 0),
         };
@@ -448,7 +615,17 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
       }
     });
 
-    const ratioOf = (v: Tally): number => (v.total === 0 ? 0 : v.done / v.total);
+    /** ⚠️ 진행률은 «시간»이다, 건수가 아니다.
+     *
+     *  100건 중 80건을 끝냈어도 남은 20건이 방사(RSE 90분 · RBE 75분)면 시간으로는
+     *  절반쯤이다. 그리고 실제 시험이 그렇게 돈다 — 짧고 쉬운 것을 앞에서 걷어내고
+     *  긴 것이 뒤에 남는다. 그래서 건수 진행률은 «끝날수록 과대평가»되고, 그 거짓은
+     *  마감 앞에서 발견된다. 계획이 조건마다 표준시간을 들고 있으므로 시간으로 셀
+     *  수 있고, 셀 수 있으면 그쪽이 맞다.
+     *
+     *  건수는 버리지 않는다 — 아래 `done`/`total` 로 남아 «보조»로 표시된다.
+     *  둘이 어긋나는 것(61% vs 56%)이 그 자체로 「짧은 것부터 했구나」라는 정보다. */
+    const ratioOf = (v: Tally): number => (v.planned === 0 ? 0 : v.spent / v.planned);
     const toneOf = (r: number): string => (r < 0.5 ? 'bad' : r < 0.8 ? 'warn' : 'ok');
     const dress = (label: string, v: Tally) => ({
       id: label,
@@ -495,7 +672,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
           .sort((a, b) => a.label.localeCompare(b.label)),
       }))
       .sort(byDeclared);
-  }, [progressQueries, activeProjects, activeModelId, t]);
+  }, [progressQueries, activeProjects, activeModelId, coverage.data, t]);
 
   /** ⚠️ 대분류 카드와 «같은 방식»으로 센다(조건 수 가중). 도넛이 단순 평균이고
    *  카드가 가중 평균이면 둘이 어긋나고, 읽는 사람은 어느 쪽이 맞는지 알 수
@@ -520,15 +697,18 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
     () => categories.reduce((n, c) => n + c.spent, 0),
     [categories],
   );
-  const plannedMinutes = useMemo(
+  /** 전체 계획 «분». 추이의 분모이자 링 범례의 남은 시간이다 — 한 값을 두 이름
+   *  으로 만들면 언젠가 한쪽만 바뀐다. */
+  const plannedMinutesTotal = useMemo(
     () => categories.reduce((n, c) => n + c.planned, 0),
     [categories],
   );
 
+  /** 전체 진행률 — «시간». 대분류 카드와 같은 축이라 링과 카드가 어긋나지 않는다. */
   const programmeOverall = useMemo(() => {
-    const total = categories.reduce((n, c) => n + c.total, 0);
-    if (total === 0) return null;
-    return categories.reduce((n, c) => n + c.done, 0) / total;
+    const planned = categories.reduce((n, c) => n + c.planned, 0);
+    if (planned === 0) return null;
+    return categories.reduce((n, c) => n + c.spent, 0) / planned;
   }, [categories]);
 
   /** 일자별 누적 진행 추이 — 밴드별로 쌓아 올린다.
@@ -549,7 +729,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
    *  가장 하지 말아야 할 일이다(§StatTile 의 판정과 같은 이유). */
   const timelineNow = useMemo(() => {
     const rows = coverage.data?.items ?? [];
-    if (rows.length === 0 || plannedTotal === 0) return null;
+    if (rows.length === 0 || plannedMinutesTotal === 0) return null;
 
     // 모드 → 대분류. 계획이 그 대응을 갖고 있으므로 UI 가 추측하지 않는다.
     const bandOfMode = new Map<string, string>();
@@ -566,13 +746,21 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
       }
     });
 
+    /* 조건 → 표준시간. 이것이 없으면 이 그래프는 «건수»를 세게 되고, 그러면
+       같은 화면의 링(시간)과 다른 숫자가 된다 — 실제로 그랬다(61% vs 56%). */
+    const minutesOf = new Map<string, number>();
+    for (const plan of planConditions.data ?? []) {
+      minutesOf.set(plan.condition_hash ?? '', plan.planned_minutes ?? 0);
+    }
+
     const perDay = new Map<string, Map<string, number>>();
     for (const row of rows) {
       const day = (row.latest_measured_at ?? '').slice(0, 10);
       if (day === '') continue;
       const band = bandOfMode.get(row.technology ?? '') ?? '—';
       const bucket = perDay.get(day) ?? new Map<string, number>();
-      bucket.set(band, (bucket.get(band) ?? 0) + 1);
+      // 건수가 아니라 «분»을 더한다.
+      bucket.set(band, (bucket.get(band) ?? 0) + (minutesOf.get(row.condition_hash ?? '') ?? 0));
       perDay.set(day, bucket);
     }
     if (perDay.size < 2) return null;
@@ -601,13 +789,20 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
       }
       return {
         day,
-        // 전체 계획 대비 «기여분». 셋을 더하면 그 날의 전체 진행률이 된다.
-        values: bands.map((band) => (running.get(band) ?? 0) / plannedTotal),
+        // 전체 계획 «시간» 대비 기여분. 셋을 더하면 그 날의 전체 진행률이 된다.
+        values: bands.map((band) => (running.get(band) ?? 0) / plannedMinutesTotal),
       };
     });
 
     return { bands, days, points };
-  }, [coverage.data, progressQueries, activeProjects, activeModelId, plannedTotal]);
+  }, [
+    coverage.data,
+    planConditions.data,
+    progressQueries,
+    activeProjects,
+    activeModelId,
+    plannedMinutesTotal,
+  ]);
 
   /** ⚠️ 이전 커버리지를 «그대로 그리면 안 된다».
    *
@@ -688,10 +883,127 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
       />
 
       <div className="console-grid" data-scope={scope} data-testid="console-grid">
+        {/* ── 오늘의 세 숫자 ─────────────────────────────────────────────
+            시험할 사람이 화면을 열자마자 묻는 것은 셋뿐이다: 얼마나 했나 ·
+            뭐가 남았나 · 뭐가 터졌나. 그 셋을 한 줄로 먼저 답하고, 자세한 것은
+            아래 계열 열이 답한다.
+
+            ⚠️ 낮게 유지한다. 이 띠는 «시작점»이지 목적지가 아니라, 키가 커지면
+            정작 일하는 목록을 화면 밖으로 밀어낸다. 큰 숫자를 세우지 않고 값과
+            라벨을 한 줄에 눕히는 것이 그 결정이다.
+
+            ⚠️ 시간이 앞, 건수가 뒤 — 이 콘솔의 진행률은 시간이다(§ratioOf).
+            ⚠️ PM 화면에는 없다. 그쪽의 첫 줄은 링과 추이가 답한다. */}
+        {showsOperator && programmeOverall !== null && (
+          <div className="today-strip console-grid__full" data-testid="console-today">
+            {/* 「한 것」 칸만 «들여다볼» 수 있다. 숫자는 얼마나 했는지를 말하고,
+                올려 보면 «무엇을» 했는지 넷이 나온다 — 아침에 화면을 열었을 때
+                「어제 어디까지 했더라」에 답하는 자리다.
+                ⚠️ 보기만 한다. 누르는 것도, 여기서 이어 하는 것도 아니다 —
+                그건 작업 화면의 일이고, 이 칸은 «기억을 되살리는» 용도다. */}
+            <div className="today-cell today-cell--peek">
+              <span className="today-cell__label">{t('routes.home.today.done')}</span>
+              <b className="today-cell__value">{hours(spentTotal)}</b>
+              <span className="today-cell__aside">
+                {t('routes.home.donutCases', { count: String(doneTotal) })}
+                {mineDone !== null && (
+                  <span className="today-cell__mine">
+                    {' '}
+                    · {t('routes.home.today.mineCount', { count: String(mineDone) })}
+                  </span>
+                )}
+              </span>
+              {me === null && (
+                <span className="today-cell__unknown" title={t('routes.home.today.noIdentityHint')}>
+                  {t('routes.home.today.noIdentity')}
+                </span>
+              )}
+              {flow.length > 0 && (
+                <div className="today-peek" role="note">
+                  <p className="today-peek__head">{t('routes.home.today.recent')}</p>
+                  <ul className="today-peek__list">
+                    {byMineFirst(flow, (row) => row.latest_operator ?? '')
+                      .slice(0, 4)
+                      .map((row) => (
+                      <li
+                        key={row.condition_hash ?? ''}
+                        data-mine={row.latest_operator === me ? 'true' : undefined}
+                      >
+                        <span className="today-peek__mode">{row.technology ?? '\u2014'}</span>
+                        <span className="today-peek__who">{row.latest_operator ?? '\u2014'}</span>
+                        <span className="today-peek__when">
+                          {(row.latest_measured_at ?? '').slice(5, 16).replace('T', ' ')}
+                        </span>
+                      </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <div className="today-cell today-cell--peek">
+              <span className="today-cell__label">{t('routes.home.today.todo')}</span>
+              <b className="today-cell__value">
+                {hours(Math.max(0, plannedMinutesTotal - spentTotal))}
+              </b>
+              <span className="today-cell__aside">
+                {t('routes.home.donutCases', {
+                  count: String(Math.max(0, plannedTotal - doneTotal)),
+                })}
+              </span>
+              {todoPeek.length > 0 && (
+                <div className="today-peek" role="note">
+                  <p className="today-peek__head">{t('routes.home.today.assignedNow')}</p>
+                  <ul className="today-peek__list">
+                    {todoPeek.map((row) => (
+                      <li
+                        key={row.condition_hash ?? ''}
+                        data-mine={row.operator === me ? 'true' : undefined}
+                      >
+                        <span className="today-peek__mode">{row.technology ?? '\u2014'}</span>
+                        <span className="today-peek__who">{row.operator ?? '\u2014'}</span>
+                        <span className="today-peek__when">
+                          {(row.occurred_at ?? '').slice(5, 16).replace('T', ' ')}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <div
+              className="today-cell today-cell--peek"
+              data-tone={nonconformities.length > 0 ? 'bad' : undefined}
+            >
+              <span className="today-cell__label">{t('routes.home.today.issues')}</span>
+              <b className="today-cell__value">{String(nonconformities.length)}</b>
+              <span className="today-cell__aside">{t('routes.home.today.issuesAside')}</span>
+              {issuePeek.length > 0 && (
+                <div className="today-peek" role="note">
+                  <p className="today-peek__head">{t('routes.home.today.recentIssues')}</p>
+                  <ul className="today-peek__list">
+                    {issuePeek.map((row) => (
+                      <li
+                        key={row.condition_hash ?? ''}
+                        data-mine={row.latest_operator === me ? 'true' : undefined}
+                      >
+                        <span className="today-peek__mode">{row.technology ?? '\u2014'}</span>
+                        <span className="today-peek__who">{row.latest_operator ?? '\u2014'}</span>
+                        <span className="today-peek__when">
+                          {(row.latest_measured_at ?? '').slice(5, 16).replace('T', ' ')}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── fleet — 현장 범위 전용 ─────────────────────────────────────
             PM 화면에서 뺐다. 「구성 5개 중 1개 가용」은 사실이지만 PM 의 결정에
             들어가지 않는 사실이고, 화면의 첫 번째 띠는 그의 질문에 답해야 한다. */}
-        {showsOperator && (
+        {showsOperator && SHOWS_FIELD_PANELS && (
         <Card
           as="section"
           className="console-panel console-grid__wide"
@@ -777,7 +1089,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
         )}
 
         {/* ── running now — 현장 범위 전용 ─────────────────────────────── */}
-        {showsOperator && (
+        {showsOperator && SHOWS_FIELD_PANELS && (
         <Card
           as="section"
           className="console-panel console-grid__narrow"
@@ -812,7 +1124,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
         {/* ── operator: 내 프로젝트 + 할 일 ──────────────────────────────
             이 화면의 첫 번째 질문은 「내가 뭘 해야 하나」다. 그래서 이 패널이
             맨 앞에 서고, 챔버·집계는 그 뒤의 맥락이 된다. 순서가 곧 주장이다. */}
-        {showsOperator && (
+        {showsOperator && SHOWS_FIELD_PANELS && (
           <Card
             as="section"
             className="console-panel console-grid__wide"
@@ -866,7 +1178,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
         )}
 
         {/* ── operator: 기술별 진행 ───────────────────────────────────────── */}
-        {showsOperator && (
+        {showsOperator && SHOWS_FIELD_PANELS && (
           <Card
             as="section"
             className="console-panel console-grid__wide"
@@ -903,7 +1215,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
             count is one more scattered aggregate; a failure sitting red inside
             the timeline says the same thing AND says when it happened and what
             came before it. */}
-        {showsOperator && (
+        {showsOperator && SHOWS_FIELD_PANELS && (
           <Card
             as="section"
             className="console-panel console-grid__narrow"
@@ -989,6 +1301,11 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                   </button>
                 ))}
                 </div>
+                {/* ⚠️ 실무자 화면에서는 내린다. 시험할 사람이 이 화면에서
+                    보고서를 뽑을 일이 없고, 그 자리는 모델 토글 옆이라 누르려던
+                    것을 잘못 누르기 좋다. PM·관리자 화면에는 그대로 있다 —
+                    「시험 진행률은 건드리지 않는다」(2026-09-09). */}
+                {showsProgrammeSummary && (
                 <button
                   type="button"
                   className="export-btn"
@@ -1001,10 +1318,11 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                   </svg>
                   {t('routes.home.exportLabel')}
                 </button>
+                )}
               </div>
             </div>
 
-            {exportOpen && (
+            {showsProgrammeSummary && exportOpen && (
               <aside className="export-note" data-testid="export-note">
                 <p className="export-note__lede">{t('routes.home.exportMockup')}</p>
                 <ul className="export-note__list">
@@ -1024,6 +1342,8 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
               />
             ) : (
               <>
+              {showsProgrammeSummary && (
+              <>
               {/* 좌 «상태» · 우 «속도». 링은 「지금 어디」 하나를 크게 말하고,
                   추이는 「어떻게 왔고 100% 까지 얼마나 남았나」를 말한다. 둘은
                   같은 질문의 두 시제라 나란히 서야 의미가 있고, 그래서 하나를
@@ -1042,17 +1362,19 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                         id: 'done',
                         kind: 'done',
                         label: t('routes.home.donutDone'),
-                        value: t('routes.home.donutCases', { count: String(doneTotal) }),
-                        time: hours(spentTotal),
+                        primary: hours(spentTotal),
+                        secondary: t('routes.home.donutCases', {
+                          count: String(doneTotal),
+                        }),
                       },
                       {
                         id: 'rest',
                         kind: 'rest',
                         label: t('routes.home.donutRest'),
-                        value: t('routes.home.donutCases', {
+                        primary: hours(Math.max(0, plannedMinutesTotal - spentTotal)),
+                        secondary: t('routes.home.donutCases', {
                           count: String(Math.max(0, plannedTotal - doneTotal)),
                         }),
-                        time: hours(Math.max(0, plannedMinutes - spentTotal)),
                       },
                     ]}
                   />
@@ -1069,6 +1391,8 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                   />
                 )}
               </div>
+              </>
+              )}
               <div className="band-cards" data-testid="programme-categories">
                   {categories.map((category) => (
                     <section
@@ -1087,8 +1411,12 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                       <div className="band-card__meter">
                         <i style={{ width: `${category.ratio * 100}%` }} />
                       </div>
+                      {/* ⚠️ 시간이 앞이다. 먼저 오는 숫자가 인용되는 숫자이고,
+                          이 화면에서 진행률은 시간이다. 건수는 뒤에 조용히 서서
+                          「그 시간이 몇 건에서 나왔나」를 보탠다. */}
                       <p className="band-card__caption">
-                        {category.detail} · {category.time}
+                        {category.time}
+                        <span className="band-card__aside"> · {category.detail}</span>
                       </p>
                     </section>
                   ))}
@@ -1117,11 +1445,35 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                             「막대 줄」이 갈라져 눈이 두 번 움직이는데, 채움을
                             배경으로 내리면 한 번에 읽힌다. 눈금은 계측기 미터의
                             어휘이고, 여기서는 25% 단위를 세어 준다. */}
-                        <div className="gauge" style={{ '--fill': `${family.ratio * 100}%` } as CSSProperties}>
-                          <span className="gauge__ticks" aria-hidden="true" />
-                          <span className="gauge__name">{family.label}</span>
-                          <span className="gauge__pct">{percent(family.ratio)}</span>
-                        </div>
+                        {/* ⚠️ 펼치지 않고 «간다». 한 계열이 70행을 넘으면 이 열
+                            하나만 길어져 옆 두 대분류와 높이가 어긋나고, 3열로
+                            세운 이유(같은 높이에서 비교)가 사라진다.
+                            ⚠️ 실무자 화면에서만 링크다 — PM 의 질문은 「어느 계열이
+                            늦나」이고, 거기서 조건으로 내려가는 길을 열면 보고
+                            자리에서 길을 잃는다. */}
+                        {showsOperator ? (
+                          <Link
+                            className="gauge gauge--link"
+                            style={{ '--fill': `${family.ratio * 100}%` } as CSSProperties}
+                            to={`${ROUTE_PATHS.testItems}?model=${encodeURIComponent(
+                              activeModelId ?? '',
+                            )}&family=${encodeURIComponent(family.label)}`}
+                          >
+                            <span className="gauge__ticks" aria-hidden="true" />
+                            <span className="gauge__name">{family.label}</span>
+                            <span className="gauge__pct">{percent(family.ratio)}</span>
+                            <span className="gauge__go" aria-hidden="true" />
+                          </Link>
+                        ) : (
+                          <div
+                            className="gauge"
+                            style={{ '--fill': `${family.ratio * 100}%` } as CSSProperties}
+                          >
+                            <span className="gauge__ticks" aria-hidden="true" />
+                            <span className="gauge__name">{family.label}</span>
+                            <span className="gauge__pct">{percent(family.ratio)}</span>
+                          </div>
+                        )}
 
                         <ul className="mode-list">
                           {family.modes.map((mode) => (
@@ -1129,6 +1481,26 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                               className="mode-list__row"
                               key={mode.id}
                               data-linked={linkedMode === mode.label}
+                              data-assigned={
+                                !showsOperator ||
+                                (modeMarks.get(mode.label)?.holders.length ?? 0) === 0
+                                  ? undefined
+                                  : modeMarks.get(mode.label)?.mine === true
+                                    ? 'mine'
+                                    // ⚠️ 신원을 모르면 «남의 것»이 아니라 «주인
+                                    // 미상»이다. 둘은 다르다 — 「남의 것」은 내가
+                                    // 손대면 안 된다는 뜻이고, 「미상」은 아직
+                                    // 아무 말도 못 한다는 뜻이다. 사번이 없을 때
+                                    // 앞엣것을 주장하면 화면이 거짓을 말한다.
+                                    : me === null
+                                      ? 'unknown'
+                                      : 'other'
+                              }
+                              data-issue={
+                                showsOperator && (modeMarks.get(mode.label)?.issues ?? 0) > 0
+                                  ? 'true'
+                                  : undefined
+                              }
                             >
                               {/* 링크는 «양방향»이다. 이슈에서 진행률로만 갈 수
                                   있으면, 진행률을 보다가 「이건 왜 늦지」라고
@@ -1140,6 +1512,17 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                                 className="gauge gauge--sm"
                                 style={{ '--fill': `${mode.ratio * 100}%` } as CSSProperties}
                                 data-linked={linkedMode === mode.label}
+                                title={
+                                  showsOperator && modeMarks.has(mode.label)
+                                    ? t('routes.home.markTitle', {
+                                        who:
+                                          (modeMarks.get(mode.label)?.holders ?? [])
+                                            .map((w) => (w === me ? t('routes.home.mine', { who: w }) : w))
+                                            .join(', ') || '\u2014',
+                                        issues: String(modeMarks.get(mode.label)?.issues ?? 0),
+                                      })
+                                    : undefined
+                                }
                                 aria-pressed={pinnedMode === mode.label}
                                 onMouseEnter={() => setHoverMode(mode.label)}
                                 onMouseLeave={() => setHoverMode(null)}
@@ -1215,13 +1598,31 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                           window.requestAnimationFrame(() => revealMode(next));
                         }}
                       >
-                        <span className="issue-row__head">
-                          <span className="issue-row__tech">{row.mode}</span>
-                          {row.count > 1 && (
-                            <span className="issue-row__count">{row.count}</span>
-                          )}
-                          {kind !== null && <StatusBadge status={kind} />}
+                        {/* 🔴 두 줄 → 한 줄 (2026-09-09). 「모드 · 배지 · 시각 ·
+                            담당」이 두 줄을 쓰면 12건이 패널을 가득 채우고,
+                            정작 이 목록의 값은 «얼마나 많은가»를 한눈에 보는
+                            것이다. 한 줄이면 같은 높이에 두 배가 들어간다.
+
+                            판정은 글자 배지가 아니라 ✕ 하나다 — 이 목록에
+                            들어온 것은 전부 부적합이라 「Fail」을 12번 쓰는 것은
+                            같은 말을 12번 하는 것이다. 아이콘은 그 자리를
+                            1/4 로 줄이고, 색이 이미 같은 말을 한다.
+                            ⚠️ 그래도 «글자»가 필요하다 — 색과 모양만으로 말하면
+                            색각 이상에서 판정이 사라진다. `aria-label` 로 남긴다. */}
+                        <span
+                          className="issue-row__x"
+                          role="img"
+                          aria-label={kind !== null ? t(`ui.statusBadge.${kind}`) : ''}
+                        >
+                          <svg viewBox="0 0 12 12" aria-hidden="true" fill="none"
+                               stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <path d="M3 3l6 6M9 3l-6 6" />
+                          </svg>
                         </span>
+                        <span className="issue-row__tech">{row.mode}</span>
+                        {row.count > 1 && (
+                          <span className="issue-row__count">{row.count}</span>
+                        )}
                         <span className="issue-row__meta">
                           {stampOf(row.latestAt)} ·{' '}
                           {t('routes.home.issueWho', {
@@ -1242,7 +1643,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
             A PM does not act on "which bay is free"; showing it spends the
             screen's most valuable band on something their decisions never
             read. Scope is what makes three homes three homes. */}
-        {showsOperator && (
+        {showsOperator && SHOWS_FIELD_PANELS && (
         <>
         {/* ── the fleet, as blocks ────────────────────────────────────────
             A chamber is a room, not a row (see `ChamberCard`). The grid keeps

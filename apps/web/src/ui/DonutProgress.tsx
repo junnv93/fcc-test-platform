@@ -32,11 +32,17 @@ export interface DonutLegendItem {
   readonly label: string;
   /** `done` takes the sweep colour, `rest` the track colour. */
   readonly kind: 'done' | 'rest';
-  /** Already-localised count, e.g. "489 case". */
-  readonly value?: string;
-  /** Already-localised duration for the same row, e.g. "47.6h". Sits beside the
-   *  count, not under it: a row that wraps stops reading as one fact. */
-  readonly time?: string;
+  /** The row's PRIMARY figure — on this console that is time, because progress
+   *  is measured in time (a plan prices every condition in minutes). */
+  readonly primary?: string;
+  /** The SECONDARY figure on the same row, e.g. a case count. Sits beside the
+   *  primary, not under it: a row that wraps stops reading as one fact.
+   *
+   *  ⚠️ Order is the argument. 100 of 100 cases done says "finished" while the
+   *  remaining minutes say otherwise — the long radiated items are the ones
+   *  left. Whichever number comes first is the one people quote, so time comes
+   *  first and the count stands beside it as corroboration. */
+  readonly secondary?: string;
 }
 
 export interface DonutProgressProps {
@@ -145,11 +151,11 @@ export function DonutProgress({
             <li className="donut__legend-item" data-kind={item.kind} key={item.id}>
               <span className="donut__legend-dot" aria-hidden="true" />
               {item.label}
-              {item.value !== undefined && (
-                <span className="donut__legend-value">{item.value}</span>
+              {item.primary !== undefined && (
+                <span className="donut__legend-value">{item.primary}</span>
               )}
-              {item.time !== undefined && (
-                <span className="donut__legend-time">{item.time}</span>
+              {item.secondary !== undefined && (
+                <span className="donut__legend-time">{item.secondary}</span>
               )}
             </li>
           ))}

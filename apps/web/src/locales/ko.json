@@ -233,7 +233,9 @@
         "home": "대시보드",
         "measure": "시험하기",
         "results": "결과",
-        "settings": "설정"
+        "settings": "설정",
+        "samples": "샘플 정보",
+        "facility": "설비 · 기준정보"
       },
       "nav": {
         "overview": "내 시험 작업",
@@ -251,13 +253,14 @@
         "gridPoc": "그리드 실험",
         "chambers": "시험 구성",
         "testPlans": "테스트 플랜",
-        "myProjects": "내 프로젝트",
+        "myProjects": "내 작업",
         "inventory": "시료 목록",
         "diagnostics": "진단",
         "referenceData": "참조 데이터",
         "overviewProgramme": "시험 진행률",
         "overviewCombined": "전체 총괄",
-        "systemDashboard": "시스템 대시보드"
+        "systemDashboard": "시스템 대시보드",
+        "dataReview": "데이터 리뷰"
       },
       "projectNav": {
         "title": "현재 프로젝트",
@@ -1822,11 +1825,51 @@
       "issueWhen": "{when}",
       "issueWho": "{attempt}차 · {operator}",
       "donutTitle": "전체 진행률",
-      "donutCaption": "전체 계획 대비",
+      "donutCaption": "계획 시간 대비",
       "donutDone": "측정 완료",
       "donutRest": "남은 분량",
       "donutCases": "{count} case",
-      "trendCeiling": "100 % · 계획 완료"
+      "trendCeiling": "100 % · 계획 완료",
+      "items": {
+        "none": "이 계열에 계획 행이 없습니다.",
+        "colState": "상태",
+        "colWho": "담당",
+        "attempt": "{n}차",
+        "gapNote": "⚠ 같아 보이는 행이 있습니다. 같은 모드·시험항목에 계획 조건이 둘 이상이고, 그것을 가르는 축(채널·대역폭·안테나)이 중앙 DB 까지 오지 않습니다. 개수는 맞고 «어느 것인지»는 맞지 않습니다.",
+        "verdict": {
+          "pass": "적합",
+          "fail": "부적합",
+          "failed": "부적합",
+          "nonconforming": "부적합",
+          "ng": "부적합",
+          "inconclusive": "판정 보류"
+        },
+        "colItem": "시험항목",
+        "minutes": "{n}분",
+        "colPlanned": "계획",
+        "groupCount": "{done}/{total}",
+        "noneForFilter": "이 필터에 해당하는 항목이 없습니다.",
+        "state": {
+          "held": "진행 중",
+          "done": "완료",
+          "todo": "미착수"
+        }
+      },
+      "today": {
+        "done": "한 것",
+        "todo": "할 것",
+        "issues": "이슈",
+        "issuesAside": "재측정 대상",
+        "assigned": "배정 {total}건 · {modes}개 모드 · 아직 측정 안 된 것 {open}건",
+        "recent": "최근 측정",
+        "mineCount": "내 것 {count}건",
+        "noIdentity": "신원 미연결",
+        "noIdentityHint": "로그인 정보에 사번이 없어 「내 것」과 「남의 것」을 가를 수 없습니다. 아무것도 내 것으로 표시되지 않으며, 이것은 「내 것이 없다」와 다릅니다.",
+        "assignedNow": "지금 배정된 것",
+        "recentIssues": "최근 부적합"
+      },
+      "markTitle": "{who} 배정 · 부적합 {issues}건",
+      "mine": "{who} (나)"
     },
     "testReports": {
       "title": "성적서 대장",
@@ -2129,6 +2172,53 @@
         "errors": {
           "title": "오류",
           "body": "엔드포인트별 5xx 추이. 「무엇이 언제부터 깨졌나」에 답합니다."
+        }
+      }
+    },
+    "testItems": {
+      "title": "시험항목",
+      "eyebrow": "{model} · 시험항목",
+      "back": "← 내 시험",
+      "noFamily": "계열이 선택되지 않았습니다",
+      "emptyTitle": "이 계열에 계획 행이 없습니다",
+      "emptyBody": "선택한 모델의 발행된 계획에 이 계열의 조건이 없습니다.",
+      "filterLabel": "시험항목 거르기",
+      "filter": {
+        "all": "전체",
+        "todo": "미착수",
+        "failed": "부적합"
+      }
+    },
+    "dataReview": {
+      "eyebrow": "결과",
+      "title": "데이터 리뷰",
+      "lede": "「얼마나 했나」가 아니라 「한 것이 맞나」입니다. 앞의 것은 세면 되고, 뒤의 것은 봐야 합니다.",
+      "mockupNote": "⚠ 이 화면은 «목업»입니다. 칸이 비어 있는 것은 만들다 만 것이 아니라, «측정값 자체»를 주는 읽기 계약이 아직 없기 때문입니다 — 커버리지는 판정과 시각까지만 주고 마진·스펙 한계·재측정 간 편차는 주지 않습니다. 여기 있는 것은 측정값이 아닙니다.",
+      "noContract": "읽기 계약 없음",
+      "slots": {
+        "margin": {
+          "title": "빠듯한 마진",
+          "body": "정한 여유보다 적게 통과한 조건. 0.3 dB 로 붙은 적합과 12 dB 로 붙은 적합은 같은 글자이고 다른 상황입니다."
+        },
+        "spread": {
+          "title": "재측정 편차",
+          "body": "같은 조건을 두 번 쟀는데 값이 벌어진 것. 세팅이 움직였거나 둘 중 하나가 틀렸거나 — 둘 다 성적서 전에 알아야 합니다."
+        },
+        "borderline": {
+          "title": "경계값",
+          "body": "판정과 무관하게 스펙 경계에 붙어 있는 값. 리뷰어가 플롯을 열어 보고 싶어 하는 바로 그것들입니다."
+        },
+        "outlier": {
+          "title": "튀는 값",
+          "body": "같은 모드의 이웃들과 동떨어진 값. 대개는 세팅 실수이고, 가끔은 진짜 발견입니다."
+        },
+        "coverage": {
+          "title": "증적 공백",
+          "body": "측정은 됐는데 플롯이 없거나, 있어도 되짚을 수 없는 것. 증적 없는 숫자에는 서명할 수 없습니다."
+        },
+        "sign": {
+          "title": "리뷰 확인",
+          "body": "누가 무엇을 언제 봤나. 리뷰는 단계이지 기분이 아니며, 흔적이 없으면 일어나지 않은 것입니다."
         }
       }
     }

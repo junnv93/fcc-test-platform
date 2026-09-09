@@ -5211,9 +5211,33 @@ pre {
   grid-column: 1 / -1;
 }
 
+/* 🔴 2026-09-09 — `__wide` 와 `__narrow` 는 TSX 가 여섯 군데에서 쓰는데 CSS 에
+   «정의가 없었다». 즉 지금까지의 2열 배치는 규칙이 아니라 자동 배치의 우연이었고,
+   패널을 하나 넣거나 순서를 바꾸면 조용히 무너진다(실제로 요약 띠를 앞에 넣자
+   진행률 패널이 오른쪽 좁은 열로 밀려났다).
+
+   ⚠️ 이런 클래스는 «오타보다 나쁘다». 오타는 스타일이 하나도 안 붙어서 바로
+   보이는데, 이건 자동 배치가 그럴듯한 결과를 내주는 동안 아무도 모른다.
+   두 이름에 실제 배치를 준다 — 넓은 쪽은 왼쪽 열, 좁은 쪽은 오른쪽 열. */
+.console-grid__wide {
+  grid-column: 1;
+}
+
+.console-grid__narrow {
+  grid-column: 2;
+}
+
 @media (max-width: 1100px) {
   .console-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 열이 하나면 「왼쪽/오른쪽」이라는 말이 없다 — 둘 다 그 한 열을 쓴다.
+     이 재정의가 없으면 `grid-column: 2` 가 없는 열을 가리켜 암시적 열이
+     하나 더 생기고, 화면이 옆으로 스크롤된다. */
+  .console-grid__wide,
+  .console-grid__narrow {
+    grid-column: 1;
   }
 }
 
@@ -5902,14 +5926,14 @@ pre {
    것이 이 범례의 전부이고, 자리가 흔들리면 그 비교가 안 된다. */
 .donut__legend-value {
   margin-left: auto;
-  min-width: 4.6em;
+  min-width: 3.8em;
   color: var(--fg-primary);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
 .donut__legend-time {
-  min-width: 3.6em;
+  min-width: 4.8em;
   color: var(--fg-secondary);
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -6788,10 +6812,13 @@ pre {
   grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr);
 }
 
+/* ⚠️ 간격이 «행보다 크면» 목록이 아니라 카드 여러 장으로 읽힌다. 두 줄이던
+   시절의 12px 은 맞았지만 한 줄이 된 뒤로는 틈이 내용보다 넓어졌다.
+   2px 로 좁히고, 행을 가르는 일은 hover 배경이 한다. */
 .issue-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -6870,10 +6897,11 @@ pre {
 .issue-row__btn {
   display: flex;
   flex: 1 1 auto;
-  flex-direction: column;
-  gap: 2px;
+  /* 한 줄. 세로로 쌓던 것을 눕히고, 남는 폭은 시각·담당이 가져간다. */
+  align-items: center;
+  gap: var(--space-2);
   min-width: 0;
-  padding: var(--space-1) var(--space-2);
+  padding: 3px var(--space-2);
   border: none;
   border-radius: var(--radius-sm);
   background: none;
@@ -7238,7 +7266,10 @@ button.gauge:focus-visible {
    달고 3.22:1 까지 내려간다. 이건 읽으라고 있는 계층이라 5:1 대에 둔다.
    ═══════════════════════════════════════════════════════════════════════ */
 .issue-row__meta,
-.band-card__caption,
+/* ⚠️ `.band-card__caption` 은 여기서 뺐다(2026-09-09). 캡션 전체를 3단으로
+   내리면 그 안의 «보조» 숫자(건수)를 더 내릴 자리가 없어져, 시간과 건수가 같은
+   세기로 서고 어느 쪽이 진행률인지 다시 알 수 없게 된다. 캡션은 2단으로 두고
+   그 안의 `.band-card__aside` 만 3단으로 내린다 — 위계는 «차이»로만 산다. */
 .donut__caption,
 .donut__legend-time,
 .family-block__meta,
@@ -7422,4 +7453,625 @@ button.gauge:focus-visible {
   /* 값이 확정되지 않은 동안에는 아무것도 누를 수 없다. 지금은 누를 것이 없지만,
      선을 클릭할 수 있게 되는 날 이 한 줄이 없으면 이전 모델의 점을 누르게 된다. */
   pointer-events: none;
+}
+
+/* ── 계열을 펼치는 게이지 ────────────────────────────────────────────────
+   행 «전체»가 버튼이다. 옆에 펼침 아이콘을 따로 두면 누를 곳이 두 군데가 되고,
+   막대를 눌렀는데 아무 일도 안 일어나는 쪽이 실제로 더 자주 일어난다. */
+.gauge--button {
+  width: 100%;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* 삼각형은 «상태»를 말한다 — 닫히면 오른쪽, 열리면 아래. 회전으로 그리는 이유는
+   두 글리프를 갈아 끼우면 그 순간이 튀기 때문이다. */
+.gauge__caret {
+  flex: none;
+  width: 0;
+  height: 0;
+  margin-right: var(--space-2);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid currentColor;
+  opacity: 0.55;
+  transition: transform var(--motion-fast) var(--motion-easing);
+}
+
+.gauge--button[aria-expanded='true'] .gauge__caret {
+  transform: rotate(90deg);
+}
+
+/* ── 시험항목 표 ──────────────────────────────────────────────────────────
+   계열 아래에 «들여쓰기» 로 붙는다. 카드로 띄우면 계열과의 소속 관계가 끊기고,
+   3열 레이아웃에서 어느 열의 것인지 눈으로 다시 찾아야 한다. */
+.item-table {
+  margin: var(--space-2) 0 var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid color-mix(in oklab, var(--band, var(--accent)) 45%, transparent);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: color-mix(in oklab, var(--fg-primary) 3%, transparent);
+  animation: console-settle var(--motion-base) var(--motion-easing) both;
+}
+
+.item-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-2xs);
+}
+
+.item-table__caption {
+  caption-side: top;
+  padding-bottom: var(--space-2);
+  color: var(--fg-secondary);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+
+.item-table th {
+  padding: 0 var(--space-2) 4px 0;
+  border-bottom: 1px solid var(--surface-border);
+  color: var(--fg-tertiary);
+  font-weight: var(--font-weight-medium);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.item-table td {
+  padding: 3px var(--space-2) 3px 0;
+  color: var(--fg-secondary);
+  vertical-align: baseline;
+}
+
+.item-row__when,
+.item-row__count {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 상태 점. 글자만으로도 읽히지만 세 상태가 섞인 목록에서는 눈이 색으로 먼저
+   훑는다 — 그리고 색«만»으로 말하지 않으므로 색각 이상에서도 같은 정보가 남는다. */
+.item-row__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--fg-tertiary);
+}
+
+.item-row[data-state='held'] .item-row__dot { background: var(--status-running); }
+.item-row[data-state='done'] .item-row__dot { background: var(--status-pass); }
+.item-row[data-state='done'][data-verdict='fail'] .item-row__dot,
+.item-row[data-state='done'][data-verdict='failed'] .item-row__dot,
+.item-row[data-state='done'][data-verdict='nonconforming'] .item-row__dot,
+.item-row[data-state='done'][data-verdict='ng'] .item-row__dot {
+  background: var(--status-fail);
+}
+
+/* 미착수 행은 조용하다. 「아직 아무 일도 없었다」가 그 행의 전부이므로 완료·진행
+   중과 같은 무게로 서면 목록이 평평해진다. */
+.item-row[data-state='todo'] td {
+  color: var(--fg-tertiary);
+}
+
+.item-row__attempt {
+  margin-left: 6px;
+  color: var(--status-warn);
+}
+
+/* 선언된 구멍. 이 저장소가 쓰는 «점선 왼쪽 선» 어휘 그대로 — 없는 것을 없다고
+   적는 자리는 화면 어디서나 같은 모양이어야 한다. */
+.item-table__gap {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-2);
+  border-left: 2px dashed var(--surface-border);
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+  line-height: 1.5;
+}
+
+.item-table__empty {
+  margin: var(--space-2) 0 var(--space-3) var(--space-4);
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+}
+
+/* 계열 행이 링크가 되면, 그 사실이 «보여야» 한다. 커서만으로는 마우스를 올린
+   사람만 알고, 훑어보는 사람은 모른다. 오른쪽 끝의 갈매기가 「여기로 들어간다」
+   를 말하고, hover 에서 조금 나가 방향을 확인해 준다. */
+.gauge--link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.gauge__go {
+  flex: none;
+  width: 0;
+  height: 0;
+  margin-left: var(--space-2);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid currentColor;
+  opacity: 0.45;
+  transition:
+    transform var(--motion-fast) var(--motion-easing),
+    opacity var(--motion-fast) var(--motion-easing);
+}
+
+.gauge--link:hover .gauge__go {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+/* 돌아가는 길. 제목 «위»에 둔다 — 아래에 두면 페이지를 다 읽고 나서야 보이고,
+   잘못 들어온 사람은 그 전에 나가고 싶다. */
+.console__back {
+  display: inline-block;
+  margin-bottom: var(--space-2);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-xs);
+  text-decoration: none;
+}
+
+.console__back:hover {
+  color: var(--accent);
+}
+
+/* ── 시험항목 필터 ────────────────────────────────────────────────────────
+   모델 토글과 «같은 모양»이다. 같은 동작(하나만 고르는 뷰 필터)에 두 가지
+   생김새를 두면 사용자가 이 화면에서만 새로 배워야 한다. 라벨에 건수를 붙이는
+   이유: 누르기 «전»에 그 안에 뭐가 있는지 알면 빈 필터를 눌러 보는 왕복이 없다. */
+.item-filter {
+  display: inline-flex;
+  margin-bottom: var(--space-4);
+  padding: 2px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-bg);
+}
+
+.item-filter__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px var(--space-3);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--fg-secondary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) var(--motion-easing),
+    color var(--motion-fast) var(--motion-easing);
+}
+
+.item-filter__btn[aria-pressed='true'] {
+  background: color-mix(in oklab, var(--accent) 16%, transparent);
+  color: var(--fg-primary);
+}
+
+.item-filter__count {
+  color: var(--fg-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.item-filter__btn[aria-pressed='true'] .item-filter__count {
+  color: var(--accent);
+}
+
+/* ── 모드 그룹 ────────────────────────────────────────────────────────────
+   tbody 하나가 모드 하나다. 굵은 줄 하나로 「이 아래는 이것들」을 말하고,
+   오른쪽 끝에 그 모드의 진척(5/9)을 둔다 — 필터와 무관하게 전체에서 센 값이다. */
+.item-group__head th {
+  padding-top: var(--space-3);
+  border-bottom: 1px solid var(--surface-border);
+  color: var(--fg-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.item-group__count {
+  padding-top: var(--space-3);
+  border-bottom: 1px solid var(--surface-border);
+  color: var(--fg-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.item-group + .item-group .item-group__head th,
+.item-group + .item-group .item-group__count {
+  padding-top: var(--space-4);
+}
+
+.item-table__num {
+  text-align: right;
+}
+
+/* 카드 캡션의 «보조» 숫자(건수). 시간과 같은 크기·같은 색으로 두면 둘 중
+   어느 것이 진행률인지 읽는 사람이 매번 고른다 — 한 단 내려서 답을 정해 준다. */
+.band-card__aside {
+  color: var(--fg-tertiary);
+}
+
+/* ── 오늘의 세 숫자 ──────────────────────────────────────────────────────
+   ⚠️ 낮게. 값·라벨·보조를 «한 줄에 눕혀» 카드 높이를 한 줄로 묶는다. 큰 숫자를
+   세우면(라벨 위, 값 아래) 같은 정보가 세 배 높이를 먹고, 그만큼 아래의 일하는
+   목록이 화면 밖으로 밀린다. 이 띠는 시작점이지 목적지가 아니다.
+   높이는 패딩 두 줄 + 한 줄 텍스트 = 약 46px. */
+/* 카드 셋이 아니라 «한 칸»이다. 셋으로 쪼개면 세 개의 물건이 되고, 이 띠가
+   말하려는 것은 「오늘의 상태」 하나다 — 안에서 구분선으로만 나눈다. */
+.today-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--elevation-1);
+  overflow: hidden;
+}
+
+.today-cell {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2) var(--space-4);
+}
+
+/* 구분선은 «칸 사이»에만. 바깥 테두리는 카드가 이미 갖고 있다. */
+.today-cell + .today-cell {
+  border-left: 1px solid var(--surface-border);
+}
+
+.today-cell__label {
+  flex: none;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* 값은 굵기로 이긴다, 크기가 아니라. 20px 이면 한 줄 안에서 라벨보다 확실히
+   앞서면서도 줄 높이를 늘리지 않는다. */
+.today-cell__value {
+  margin-left: auto;
+  color: var(--fg-primary);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.today-cell__aside {
+  flex: none;
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 이슈가 0 이 아닐 때만 색이 붙는다. 늘 빨가면 그것은 상태가 아니라 장식이다. */
+.today-cell[data-tone='bad'] .today-cell__value {
+  color: var(--status-fail);
+}
+
+@media (max-width: 760px) {
+  .today-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 세로로 쌓이면 구분선도 가로가 된다 — 왼쪽에 남으면 그건 선이 아니라 흠집이다. */
+  .today-cell + .today-cell {
+    border-left: none;
+    border-top: 1px solid var(--surface-border);
+  }
+}
+
+/* 배정 요약 한 줄. 위 세 숫자가 프로젝트를 말하고, 이 줄이 사람을 말한다. */
+.today-note {
+  margin: calc(var(--space-3) * -1) 0 var(--space-4);
+  padding-left: var(--space-4);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 오늘의 세 숫자, 다시 ────────────────────────────────────────────────
+   ⚠️ 처음엔 한 줄로 눕혀 39px 로 만들었다. 낮은 것 자체는 맞았는데, 「한 것」
+   칸이 들여다볼 수 있게 되면서 «올릴 자리»가 필요해졌다 — 39px 짜리 줄에
+   마우스를 정확히 얹는 것은 조준이지 조작이 아니다. 라벨을 위로 올리고 값을
+   아래 세워 한 칸을 하나의 «과녁»으로 만든다. */
+.today-cell {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--space-3) var(--space-4);
+}
+
+.today-cell__value {
+  margin-left: 0;
+  font-size: var(--font-size-xl);
+}
+
+.today-cell__aside {
+  color: var(--fg-tertiary);
+}
+
+/* ── 「한 것」 들여다보기 ────────────────────────────────────────────────
+   보기만 하는 층이라 `pointer-events: none` 이다 — 마우스가 이 위를 지나도
+   아래 칸의 hover 가 끊기지 않고, 실수로 눌리는 일도 없다. */
+.today-cell--peek {
+  position: relative;
+}
+
+.today-peek {
+  position: absolute;
+  top: calc(100% - 4px);
+  left: var(--space-3);
+  right: var(--space-3);
+  z-index: 5;
+  padding: var(--space-3);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+  box-shadow: var(--elevation-2);
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition:
+    opacity var(--motion-fast) var(--motion-easing),
+    transform var(--motion-fast) var(--motion-easing);
+}
+
+.today-cell--peek:hover .today-peek,
+.today-cell--peek:focus-within .today-peek {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.today-peek__head {
+  margin: 0 0 var(--space-2);
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.today-peek__list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.today-peek__list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: var(--space-2);
+  font-size: var(--font-size-2xs);
+}
+
+.today-peek__mode {
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.today-peek__who,
+.today-peek__when {
+  color: var(--fg-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 배정·이슈 표시 ──────────────────────────────────────────────────────
+   🔴 2026-09-09 — 처음엔 «윤곽선»으로 그렸다(이슈트래커의 hover 링을 좌우 반반
+   색으로 나눈 것). 시험 진행률 화면에서는 그 링이 돋보인다 — 한 번에 «하나»만
+   켜지기 때문이다. 실무자 화면에서는 42행 중 26행에 «상시로» 켜졌고, 그러면
+   그것은 하이라이트가 아니라 배경이 된다. 세기를 낮추면 안 보이고 올리면
+   눈이 아팠다 — 튜닝으로 풀 문제가 아니라 «채널»이 틀린 문제였다.
+
+   그래서 두 사실을 서로 다른 채널에 싣는다:
+
+     배정  →  «면» (행 배경의 옅은 워시).  「이 줄 전체가 누군가의 일이다」는
+              줄 전체에 대한 말이라 면이 맞다.
+     이슈  →  «가장자리» (왼쪽 레일).      「이 줄에 문제가 붙었다」는 표식이라
+              가장자리가 맞고, 이슈트래커가 이미 쓰는 어휘다.
+
+   채널이 다르므로 둘이 동시에 켜져도 서로를 가리지 않는다. 그리고 26줄이 옅은
+   면을 갖는 것은 소음이 아니라 «그룹»으로 읽힌다 — 윤곽선 26개와 다른 점이다. */
+.mode-list__row[data-assigned],
+.mode-list__row[data-issue='true'] {
+  position: relative;
+  border-radius: var(--radius-md);
+}
+
+/* 배정 — 면. 내 것이 가장 진하고, 남의 것은 무채색, 주인 미상은 그보다 더 옅다. */
+.mode-list__row[data-assigned='mine'] {
+  background: color-mix(in oklab, var(--accent) 7%, transparent);
+}
+
+.mode-list__row[data-assigned='other'] {
+  background: color-mix(in oklab, var(--fg-primary) 5%, transparent);
+}
+
+.mode-list__row[data-assigned='unknown'] {
+  background: color-mix(in oklab, var(--fg-primary) 3%, transparent);
+}
+
+/* 이슈 — 왼쪽 레일. 행 높이를 다 쓰지 않는 것도 이슈트래커와 같다(§issue-row). */
+.mode-list__row[data-issue='true']::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: -6px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--status-fail);
+  pointer-events: none;
+}
+
+/* 내 것에는 레일이 하나 더 붙는다 — 왼쪽 끝에서 accent. 면만으로는 스크롤 중에
+   훑기 어렵고, 세로선은 눈이 «줄줄이» 따라가는 데 강하다.
+   ⚠️ 이슈 레일과 자리를 나눈다(-6px / -10px). 겹치면 뒤엣것이 이긴다. */
+.mode-list__row[data-assigned='mine']::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: -10px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+/* ── 요약 팝업이 칸 밖으로 ───────────────────────────────────────────────
+   `.today-strip` 의 `overflow: hidden` 한 줄이 팝업을 칸 «안»에 가뒀다. 모서리는
+   각 칸의 radius 로 해결하고 overflow 는 푼다 — 잘라야 하는 것은 배경이지 위에
+   뜨는 층이 아니다. */
+.today-strip {
+  overflow: visible;
+}
+
+.today-cell:first-child {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.today-cell:last-child {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+/* ── hover 링은 «내 시험 쪽에서만» 끈다 ──────────────────────────────────
+   🔴 2026-09-09 정정. 처음엔 `.mode-list__row` 전역에서 hover/pin 링을 뺐는데,
+   그러면 시험 진행률(pm) 화면의 이슈트래커 ↔ 모드 연결까지 같이 사라진다.
+   그 화면에서 두 트래커는 «용도가 다르다»:
+
+     시험 진행률(pm)  — 이슈가 «어느 모드에서» 났는지 훑는 자리. 링이 유일한
+                        표시이고, 그것을 지우면 연결 자체가 없어진다.
+     내 시험(operator) — 「내가 할 것」과 「다시 할 것」이 상시로 떠 있는 자리.
+                        그 위에 hover 링이 겹치면 「원래 그런 것」과 「지금
+                        가리키는 것」이 구별되지 않는다.
+
+   충돌은 뒤쪽에만 있으므로 끄는 범위도 뒤쪽뿐이다. 지목은 면(배경색)이 계속 한다.
+
+   ⚠️ 범위를 `data-scope` 로 잡는 이유: 같은 컴포넌트가 세 화면에 서고, 화면마다
+   무엇이 이미 켜져 있는지가 다르다. 규칙을 컴포넌트에만 걸면 그 차이를 표현할 수
+   없어 이번처럼 남의 화면을 건드리게 된다. */
+.console-grid:where([data-scope='operator'], [data-scope='manager'])
+  .mode-list__row[data-linked='true']
+  .gauge,
+.console-grid:where([data-scope='operator'], [data-scope='manager'])
+  .mode-list__row
+  .gauge[aria-pressed='true'],
+.console-grid:where([data-scope='operator'], [data-scope='manager'])
+  .mode-list__row
+  .gauge[data-linked='true']:not([aria-pressed='true']) {
+  box-shadow: none;
+}
+
+/* 「한 것」 칸의 내 건수 · 신원 고지 */
+.today-cell__mine {
+  color: var(--accent);
+}
+
+.today-cell__unknown {
+  color: var(--status-warn);
+  font-size: var(--font-size-2xs);
+  cursor: help;
+}
+
+/* 팝업에서 내 줄. 굵기로만 — 색까지 쓰면 넷 중 하나가 경고처럼 보인다. */
+.today-peek__list li[data-mine='true'] .today-peek__mode {
+  font-weight: var(--font-weight-semibold);
+}
+
+.today-peek__list li[data-mine='true'] .today-peek__who {
+  color: var(--accent);
+}
+
+/* ── 이슈 한 줄 ──────────────────────────────────────────────────────────
+   ✕ · 모드 · (건수) · 시각 · 담당 — 한 줄. 판정 배지를 아이콘으로 바꾼 이유는
+   이 목록에 들어온 것이 «전부» 부적합이라서다. 같은 말을 12번 쓰는 자리를
+   아이콘 하나가 1/4 로 줄이고, 색이 이미 같은 말을 한다.
+   ⚠️ 그래도 글자는 남긴다(`aria-label`) — 색과 모양만으로 말하면 색각 이상에서
+   판정이 통째로 사라진다. */
+.issue-row__x {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--status-fail) 18%, transparent);
+  color: var(--status-fail);
+}
+
+.issue-row__x svg {
+  width: 9px;
+  height: 9px;
+}
+
+/* 모드 이름이 남는 폭을 먹고, 길면 줄인다 — 줄바꿈은 한 줄 컨셉을 깬다. */
+.issue-row__tech {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 시각·담당은 오른쪽 끝에 고정폭으로 — 세로로 자릿수가 맞아야 훑을 수 있다. */
+.issue-row .issue-row__meta {
+  flex: none;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.issue-row__count {
+  margin-left: 0;
+}
+
+/* 한 줄 행의 최종 치수. 아이콘 15px 이 행 높이를 정하므로 그보다 큰 line-height
+   는 그냥 빈 공간이다. */
+.issue-row__btn {
+  line-height: 1.35;
+}
+
+.issue-row__x {
+  width: 14px;
+  height: 14px;
+}
+
+.issue-row__x svg {
+  width: 8px;
+  height: 8px;
+}
+
+/* 좌측 레일도 짧아진 행에 맞춘다 — 6px 여백이 남으면 선이 거의 안 보인다. */
+.issue-row::before {
+  top: 3px;
+  bottom: 3px;
+}
+
+/* ⚠️ 전역 컨트롤 규칙이 모든 `button` 에 `min-height: var(--control-height)`
+   (기본 36px)를 건다 — 손가락·장갑 탭 대상을 위한 계약이다. 이 행은 그 대상이
+   아니다: 대시보드에서 «훑는» 목록이고, 클릭은 하이라이트를 고정하는 보조
+   동작이며, 키보드로도 같은 자리에 닿는다. 그래서 여기서만 푼다.
+   ⚠️ 푸는 것이지 없애는 것이 아니다 — 24px 은 여전히 마우스로 무리 없이 짚히는
+   높이이고, compact 밀도에서는 이 값이 더 줄지 않는다(패딩이 이미 최소다). */
+.issue-row__btn {
+  min-height: var(--space-6);
+}
+
+/* 레일 둘이 설 자리. `.mode-list` 가 이미 왼쪽 12px 을 갖고 있으므로(§6246)
+   -6px / -10px 레일은 그 안에 앉는다 — 새 패딩을 더하면 목록이 오른쪽으로
+   밀리기만 한다. 행에 넘침을 허용하는 것으로 충분하다. */
+.mode-list {
+  overflow: visible;
 }

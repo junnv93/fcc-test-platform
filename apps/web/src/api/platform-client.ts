@@ -38,6 +38,8 @@ import type { PathsWithMethod } from 'openapi-typescript-helpers';
  * Routes (contract → OpenAPI → TS chain):
  * - GET `/platform/projects/{project_id}/coverage` — project coverage
  *   (operationId `get_project_coverage`).
+ * - GET `/platform/projects/{project_id}/plan-conditions` — planned conditions
+ *   (operationId `list_project_plan_conditions`).
  * - GET `/platform/projects/{project_id}/claims` — active claims
  *   (operationId `list_project_claims`).
  */
@@ -96,6 +98,7 @@ export const PLATFORM_PAGE_SIZE = 200;
 
 export type CoverageEnvelope = components['schemas']['CoverageEnvelope'];
 export type ActiveClaimEnvelope = components['schemas']['ActiveClaimEnvelope'];
+export type PlanConditionEnvelope = components['schemas']['PlanConditionEnvelope'];
 export type ClaimEventEnvelope = components['schemas']['ClaimEventEnvelope'];
 export type AcquireClaimRequest = components['schemas']['AcquireClaimRequest'];
 export type ReleaseClaimRequest = components['schemas']['ReleaseClaimRequest'];
@@ -171,6 +174,38 @@ export async function fetchCoveragePage(
  * (and complete for) the filtered technology. It auto-advances claim pages
  * because the active-claim set is bounded, unlike the 16k+ coverage conditions.
  */
+/**
+ * Fetch one keyset page of PLANNED conditions (2026-09-09).
+ *
+ * The denominator, listed rather than counted. `fetchProjectProgress` reports
+ * how many conditions a mode plans but groups them, and coverage only holds
+ * conditions that have been measured — so a condition still to be done had no
+ * name anywhere in the read surface. This returns the plan rows themselves,
+ * each carrying `test_item` (POWER / PSD / OBW / CBE / CSE / …), which is the
+ * layer an operator schedules by.
+ *
+ * ⚠️ It does NOT carry the axes that fully identify one condition (channel,
+ * bandwidth, antenna, modulation). Those stop at plan publication and never
+ * reach the central table; the envelope has no field for them on purpose,
+ * rather than a field that is always empty.
+ *
+ * Same keyset + `technology` facet contract as {@link fetchCoveragePage}.
+ */
+export async function fetchPlanConditionsPage(
+  projectId: string,
+  cursor?: string,
+  technology?: string,
+): Promise<PlatformPage<PlanConditionEnvelope>> {
+  const { data, error, response } = await platformClient.GET(
+    '/platform/projects/{project_id}/plan-conditions',
+    { params: { path: { project_id: projectId }, query: pageQuery(cursor, technology) } },
+  );
+  if (error) {
+    throw apiErrorFromResponse('plan conditions lookup failed', { error, response });
+  }
+  return { items: data ?? [], nextCursor: nextCursorFromResponse(response) };
+}
+
 export async function fetchClaimsPage(
   projectId: string,
   cursor?: string,

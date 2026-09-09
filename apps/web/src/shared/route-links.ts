@@ -31,6 +31,8 @@ export const ROUTE_PATHS = {
   overviewProgramme: '/programme',
   overviewCombined: '/combined',
   systemDashboard: '/system',
+  testItems: '/test-items',
+  dataReview: '/data-review',
   myProjects: '/my-projects',
   fields: '/fields',
   projects: '/projects',

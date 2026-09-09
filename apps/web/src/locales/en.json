@@ -233,7 +233,9 @@
         "home": "Dashboard",
         "measure": "Run a test",
         "results": "Results",
-        "settings": "Settings"
+        "settings": "Settings",
+        "samples": "SAMPLES",
+        "facility": "FACILITY"
       },
       "nav": {
         "overview": "My testing",
@@ -251,13 +253,14 @@
         "gridPoc": "Grid PoC",
         "chambers": "Test configs",
         "testPlans": "Test Plans",
-        "myProjects": "My Projects",
+        "myProjects": "My work",
         "inventory": "Samples",
         "diagnostics": "Diagnostics",
         "referenceData": "Reference data",
         "overviewProgramme": "Test progress",
         "overviewCombined": "Everything",
-        "systemDashboard": "System dashboard"
+        "systemDashboard": "System dashboard",
+        "dataReview": "Data review"
       },
       "projectNav": {
         "title": "Current project",
@@ -1822,11 +1825,51 @@
       "issueWhen": "{when}",
       "issueWho": "attempt {attempt} · {operator}",
       "donutTitle": "Overall progress",
-      "donutCaption": "of the whole plan",
+      "donutCaption": "of planned time",
       "donutDone": "Measured",
       "donutRest": "Remaining",
       "donutCases": "{count} case",
-      "trendCeiling": "100 % · plan complete"
+      "trendCeiling": "100 % · plan complete",
+      "items": {
+        "none": "No plan rows for this family.",
+        "colState": "State",
+        "colWho": "Who",
+        "attempt": "attempt {n}",
+        "gapNote": "⚠ Some rows read identically: more than one planned condition shares the same mode and test item, and the axes that would tell them apart (channel, bandwidth, antenna) do not reach the central database. The counts are right; the identities are not.",
+        "verdict": {
+          "pass": "Pass",
+          "fail": "Fail",
+          "failed": "Fail",
+          "nonconforming": "Nonconforming",
+          "ng": "NG",
+          "inconclusive": "Inconclusive"
+        },
+        "colItem": "Test item",
+        "minutes": "{n} min",
+        "colPlanned": "Planned",
+        "groupCount": "{done}/{total}",
+        "noneForFilter": "Nothing matches this filter.",
+        "state": {
+          "held": "In progress",
+          "done": "Measured",
+          "todo": "Not started"
+        }
+      },
+      "today": {
+        "done": "Measured",
+        "todo": "Remaining",
+        "issues": "Nonconforming",
+        "issuesAside": "to re-measure",
+        "assigned": "Assigned: {total} conditions across {modes} modes · {open} not yet measured",
+        "recent": "Most recent",
+        "mineCount": "{count} mine",
+        "noIdentity": "identity not linked",
+        "noIdentityHint": "Your sign-in carries no employee number, so «mine» cannot be told from «someone else's». Nothing is marked as yours — that is not the same as having none.",
+        "assignedNow": "Assigned now",
+        "recentIssues": "Most recent"
+      },
+      "markTitle": "Assigned to {who} · {issues} nonconforming",
+      "mine": "{who} (you)"
     },
     "testReports": {
       "title": "Test Report Register",
@@ -2129,6 +2172,53 @@
         "errors": {
           "title": "Errors",
           "body": "5xx by endpoint over time. Answers «what broke, and since when»."
+        }
+      }
+    },
+    "testItems": {
+      "title": "Test items",
+      "eyebrow": "{model} · test items",
+      "back": "← My testing",
+      "noFamily": "No family selected",
+      "emptyTitle": "No plan rows for this family",
+      "emptyBody": "The published plan carries no conditions under this family for the selected model.",
+      "filterLabel": "Filter test items",
+      "filter": {
+        "all": "All",
+        "todo": "Not started",
+        "failed": "Nonconforming"
+      }
+    },
+    "dataReview": {
+      "eyebrow": "RESULTS",
+      "title": "Data review",
+      "lede": "Not «how much is done» — «is what was done sound». Counting answers the first; only looking answers the second.",
+      "mockupNote": "⚠ This screen is a MOCKUP. The panels are empty because no read contract serves measured VALUES yet — coverage carries the verdict and the timestamp, not the margin, the limit, or the spread between re-measurements. Nothing here is a measurement.",
+      "noContract": "no read contract yet",
+      "slots": {
+        "margin": {
+          "title": "Thin margins",
+          "body": "Conditions that passed by less than a set margin. A pass at 0.3 dB and a pass at 12 dB are the same word and a different situation."
+        },
+        "spread": {
+          "title": "Re-measure spread",
+          "body": "The same condition measured twice with results far apart. Either the setup moved or one of them is wrong — both are worth knowing before the report."
+        },
+        "borderline": {
+          "title": "At the limit",
+          "body": "Values sitting on the spec boundary, regardless of verdict. These are the ones a reviewer wants to see the plot for."
+        },
+        "outlier": {
+          "title": "Outliers",
+          "body": "A value far from its neighbours in the same mode. Usually a setup slip, occasionally a real finding."
+        },
+        "coverage": {
+          "title": "Evidence gaps",
+          "body": "Measured conditions with no plot or with a plot that cannot be traced back. A number without evidence cannot be signed."
+        },
+        "sign": {
+          "title": "Review sign-off",
+          "body": "Who looked at what, and when. Review is a step, not a feeling; if it leaves no trace it did not happen."
         }
       }
     }

@@ -38,6 +38,9 @@ export type { StatTileProps, StatDirection, StatSentiment } from './StatTile';
 export { HealthBars } from './HealthBars';
 export type { HealthBarsProps, HealthRow, HealthTone } from './HealthBars';
 
+export { ItemTable } from './ItemTable';
+export type { ItemTableProps, ItemBundle, ItemRow, ItemState, ItemFilter } from './ItemTable';
+
 export { NavIcon } from './NavIcon';
 export type { NavIconProps, NavIconName } from './NavIcon';
 
