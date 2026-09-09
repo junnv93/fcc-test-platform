@@ -25,7 +25,18 @@ export const APP_SHELL_NAV_GROUPS: readonly AppShellNavGroup[] = [
       { to: '/', labelKey: 'routes.layout.nav.overview', end: true, icon: 'gauge' },
       { to: ROUTE_PATHS.overviewProgramme, labelKey: 'routes.layout.nav.overviewProgramme', end: false, icon: 'trend' },
       { to: ROUTE_PATHS.overviewCombined, labelKey: 'routes.layout.nav.overviewCombined', end: false, icon: 'grid' },
-      { to: ROUTE_PATHS.systemDashboard, labelKey: 'routes.layout.nav.systemDashboard', end: false, icon: 'pulse' },
+      // 🔴 2026-09-09 — 내비에서 «내렸다». 라우트와 파일은 남는다.
+      //
+      // 이 화면은 빈 목업이었고, 빈 목업이 메뉴에 걸려 있으면 누르는 사람마다
+      // 실망한다 — 그리고 그 실망은 「이 시스템은 만들다 만 것」이라는 인상으로
+      // 남는다. 없는 것은 없다고 적는 것이 이 저장소의 규칙이고, 메뉴에서
+      // 빼는 것이 그 규칙을 화면에 적용한 모양이다.
+      //
+      // ⚠️ 지우지 않은 이유: 목적이 «정해졌기» 때문이다 — 중앙 서버의 자원
+      // (CPU · 메모리 · DB 커넥션 · 요청/에러율), 즉 「버티나」의 화면이다.
+      // 「붙어 있나」는 연결 진단이 가져갔다. 자세한 것은
+      // intent/server-health-reads/ 에 있다 — 그 자원 지표는 지금 «진단»(/diagnostics)
+      // 화면이 「읽기 없음」으로 자리를 잡아 두고 있다.
     ],
   },
   /* ── 시험하기 — «순서»대로 세 개 ────────────────────────────────────────

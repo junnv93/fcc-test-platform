@@ -8757,3 +8757,436 @@ button.gauge:focus-visible {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* ══ 진단 (/diagnostics) — 두 파트 ═══════════════════════════════════════
+   🔴 이 화면은 «서버»와 «그 서버에 붙은 TC» 두 파트다. 한때 열(런타임/도달성/
+   자원)로 나눴는데 그러면 「서버」가 세 카드에 흩어져 조직 원리가 사라진다.
+   사람이 이 화면에 올 때 묻는 것은 둘 중 하나이고, 그 둘이 그대로 파트다.
+
+   ⚠️ 참고한 모니터링 화면의 «골격»만 빌린다(제목 → 갱신 주기 → KPI 넷 → 카드
+   그리드). 어휘는 우리 것이다 — 3단 색 위계 · 간격 토큰 · tabular-nums.
+   전문가용이라고 다른 디자인을 쓰기 시작하면 그때부터 두 벌을 유지하게 된다.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.diag-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.diag-toolbar__note {
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+}
+
+.diag-toolbar .button {
+  margin-left: auto;
+}
+
+/* 파트 사이는 «카드 사이보다 넓다». 그래야 두 덩어리가 두 덩어리로 읽힌다 —
+   같은 간격이면 카드 여섯 장이 죽 늘어선 것으로 보인다. */
+.diag-part + .diag-part {
+  margin-top: var(--space-8);
+}
+
+.diag-part__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.diag-part__title {
+  margin: 0;
+  color: var(--fg-primary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.diag-part__lede {
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+}
+
+/* KPI 넷. 참고 화면과 같은 자리이되 «중복하지 않는다» — 아래 목록이 줄 단위로
+   말하지 못하는 집계만 싣는다. */
+.diag-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+/* 🔴 카드 높이를 «고정»한다. 안 그러면 값이 두 줄인 칸 하나 때문에 그 행 전체가
+   늘어나고(실측 64 → 77px), 나머지 셋은 위에 붙어 아래가 빈다 — 즉 네 칸의 숫자가
+   서로 다른 높이에 놓인다. 격자에서 «비교되는 값»은 같은 높이에 있어야 한다.
+
+   `space-between` 이 라벨을 위, 값을 아래에 붙인다. 그러면 라벨 길이가 한 줄이든
+   두 줄이든 값의 baseline 은 흔들리지 않는다. */
+.diag-kpi {
+  min-height: 96px;
+  padding: var(--space-4);
+}
+
+/* 🔴 `Card` 는 자식을 `.card__body` 로 한 번 감싼다. 그래서 카드 자체에
+   flex 를 걸면 «닿지 않는다» — 라벨과 값이 그대로 인라인으로 이어져
+   「Services reachable2 / 3」이 된다(실측). 높이만 늘고 내용은 위에 붙었다.
+
+   ⚠️ 이것이 «조용한 결함»의 모양이다: 규칙은 적용되고(min-height 가 실제로
+   들어갔다) 아무것도 빨개지지 않는데 의도한 배치만 없다. 카드가 감싸는
+   구조라는 사실을 알아야만 보인다. */
+.diag-kpi > .card__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-2);
+  height: 100%;
+}
+
+/* 🔴 11px → 12px. 322px 짜리 카드에 11px 라벨은 «부속»으로 읽힌다 — 그런데 이
+   라벨은 부속이 아니라 그 숫자가 «무엇인지»다. 숫자만 있고 이름이 안 보이면
+   KPI 띠는 그냥 큰 글자 넷이다. */
+.diag-kpi__label {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.3;
+}
+
+/* 🔴 값은 «전부 같은 활자»다 — 크기 · 굵기 · 서체 · 자간. 한때 긴 값 하나를
+   담으려고 `--sm`(11px 모노) 변형을 두었는데, 그 결과 한 줄에 선 네 칸 중 둘은
+   26px 그로테스크 둘은 11px 모노가 됐다(실측). 값 하나를 넣으려고 그 줄 전체의
+   리듬을 버린 셈이다. 긴 값은 활자를 낮추는 대신 «보조 줄»로 내린다.
+
+   ⚠️ 26px(xl) → 20px(lg). 카드가 넷이 나란히 서는 자리라 xl 은 라벨을 압도한다.
+   그리고 20px 부터 `--tracking-tight` 가 도는 구간이다. */
+.diag-kpi__value {
+  color: var(--fg-primary);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+/* 긴 값(ISO 시각 등)이 사는 자리. 여기서는 모노가 맞다 — 로그와 문자 단위로
+   대조하는 값이고, 값 줄과 «다른 층»이라 서체가 달라도 리듬을 깨지 않는다. */
+.diag-kpi__aside {
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.diag-kpi__value[data-tone='ok'] { color: var(--status-pass); }
+.diag-kpi__value[data-tone='warn'] { color: var(--status-warn); }
+.diag-kpi__value[data-tone='bad'] { color: var(--status-fail); }
+
+/* 읽기가 없는 값은 «없음»의 색이다 — 초록도 빨강도 아니다. 셋 중 어느 쪽으로
+   칠해도 그것은 «관측하지 않은 것»에 대한 판정이 된다.
+   ⚠️ 기울임을 뺐다. 기울임은 서체가 바뀐 것처럼 보여서, 「같은 활자」로 맞춘
+   방금의 결정을 도로 무너뜨린다. 색 한 단이면 충분하다. */
+.diag-kpi__value[data-tone='none'] {
+  color: var(--fg-tertiary);
+}
+
+.diag-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-4);
+  /* 🔴 stretch 다. 한 파트 안의 카드들은 «함께 읽는 한 묶음»이라 밑이
+     들쭉날쭉하면 눈이 짧은 카드 아래의 빈자리를 먼저 읽는다. 상단이 맞는
+     것만으로는 부족하다 — 카드는 면이라 네 모서리가 다 보인다. */
+  align-items: stretch;
+}
+
+/* TC 파트는 카드가 둘이고 앞엣것이 본문이라 비율을 준다. */
+.diag-cols--tc {
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+}
+
+@media (max-width: 1100px) {
+  .diag-cols--tc {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.diag-card {
+  padding: var(--space-4);
+}
+
+/* 위와 같은 이유 — 간격은 `.card__body` 가 가져야 한다. */
+.diag-card > .card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.diag-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.diag-card__title {
+  margin: 0;
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.diag-card__meta {
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 「읽기 없음」 카드는 «흐리게 두되 숨기지 않는다». 흐리면 「아직 아니다」로
+   읽히고, 숨기면 그 축이 존재한다는 사실 자체가 사라진다. 이 화면의 절반은
+   「무엇이 아직 없는가」를 말하는 일이다. */
+.diag-card[data-missing='true'] .diag-card__meta,
+.diag-facts > div[data-missing='true'] dd {
+  color: var(--fg-tertiary);
+  font-style: italic;
+}
+
+/* 사실 목록. 라벨 왼쪽, 값 오른쪽 — 참고 화면의 「주요 엔드포인트」와 같은 결. */
+.diag-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.diag-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--font-size-xs);
+}
+
+.diag-facts dt {
+  flex: none;
+  color: var(--fg-tertiary);
+}
+
+.diag-facts dd {
+  margin: 0;
+  color: var(--fg-primary);
+  font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.diag-facts__wrap {
+  overflow-wrap: anywhere;
+}
+
+/* 홉 한 줄: 점 · 이름 · 값 · 시각, 필요하면 아랫줄에 원문. */
+.diag-hops {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.diag-hop {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
+.diag-hop__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fg-disabled);
+}
+
+.diag-hop[data-tone='ok'] .diag-hop__dot { background: var(--status-pass); }
+.diag-hop[data-tone='warn'] .diag-hop__dot { background: var(--status-warn); }
+.diag-hop[data-tone='bad'] .diag-hop__dot { background: var(--status-fail); }
+
+/* 없는 것은 «비어 있는» 점이다 — 채워진 점은 어느 색이든 관측됐다는 뜻이 된다. */
+.diag-hop[data-tone='none'] .diag-hop__dot {
+  background: none;
+  border: 1.5px dashed var(--fg-tertiary);
+}
+
+.diag-hop__name {
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diag-hop__value {
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.diag-hop[data-tone='none'] .diag-hop__value {
+  color: var(--fg-tertiary);
+  font-style: italic;
+  font-weight: var(--font-weight-normal);
+}
+
+/* 시각과 원문은 «둘째 줄»이다 — 격자의 2·3열을 이어 받아 이름 아래로 흐른다. */
+.diag-hop__meta,
+.diag-hop__raw {
+  grid-column: 2 / -1;
+  font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.diag-hop__meta {
+  color: var(--fg-tertiary);
+}
+
+.diag-hop__raw {
+  color: var(--status-fail);
+}
+
+/* 노드 한 줄. 표가 아닌 이유는 ISO 시각(24자)과 오류 원문이 셀에 안 들어가기
+   때문이다 — 둘 다 «줄»로 흘러야 한다. */
+.diag-nodes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.diag-node {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) 0;
+}
+
+.diag-node + .diag-node {
+  border-top: 1px solid var(--surface-border);
+}
+
+.diag-node__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.diag-node__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--fg-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diag-node__line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.diag-node__id {
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+}
+
+/* 🔴 이 화면에서 모노를 «전부 걷었다» (2026-09-09).
+
+   한때 「개발자는 로그와 문자 단위로 대조하니 여기는 모노가 맞다」고 적었다.
+   그 판단은 틀렸다 — 모노가 사는 자리가 식별자·시각·값처럼 «작고 조용한»
+   자리뿐이라, 결과적으로 부속 정보만 서체가 달라 본문에서 떨어져 나와 보였다.
+   챔버 카드에서 같은 이유로 걷어내고도 여기서 다시 넣은 것은 일관성이 없었다.
+
+   ⚠️ 모노의 값은 «자릿수가 세로로 맞는 것»인데, 그 일은 `tabular-nums` 가 이미
+   한다 — 서체를 바꾸지 않고. 그래서 숫자가 서는 모든 자리에 그것만 남긴다. */
+.diag-node__stamp {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.diag-node__verdict {
+  flex: none;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--fg-tertiary) 14%, transparent);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+}
+
+/* 이 축의 «유일하게 명확한» 사고 — 승인 없이 서빙 중. */
+.diag-node__verdict[data-verdict='POLICY_CONFLICT'] {
+  background: color-mix(in oklab, var(--status-fail) 18%, transparent);
+  color: var(--status-fail);
+}
+
+.diag-node__verdict[data-verdict='NOT_OBSERVED'] {
+  background: color-mix(in oklab, var(--status-warn) 18%, transparent);
+  color: var(--status-warn);
+}
+
+/* 원문 그대로. 접지 않는다 — 접으면 이 화면을 열 이유가 없어진다. */
+.diag-node__error {
+  margin-top: var(--space-1);
+  color: var(--status-fail);
+  font-size: var(--font-size-2xs);
+  overflow-wrap: anywhere;
+}
+
+/* 아직 계약이 없는 지표 목록 = «작업 목록». */
+.diag-missing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.diag-missing li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--font-size-xs);
+}
+
+.diag-missing span {
+  color: var(--fg-secondary);
+}
+
+.diag-missing b {
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+  font-style: italic;
+  font-weight: var(--font-weight-normal);
+}
+
+/* 「이것이 왜 비어 있는가」를 적는 자리. 빈 칸의 «이유»는 빈 칸보다 길다. */
+.diag-note {
+  margin: 0;
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+  line-height: 1.6;
+}
