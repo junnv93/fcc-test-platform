@@ -1,5 +1,5 @@
-import { useQueries, useQuery } from '@tanstack/react-query';
-import { useCallback, useMemo, useState } from 'react';
+import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 
 
@@ -15,7 +15,8 @@ import {
   BlockSkeleton,
   Card,
   ChamberCard,
-  ProgressRings,
+  DonutProgress,
+  StackedTrend,
   chamberStatusKind,
   describeApiError,
   EmptyState,
@@ -59,6 +60,14 @@ export interface ConsoleHomeProps {
  *  a `!== 'pass'` test: an unmeasured condition is not a nonconformity, and
  *  lumping the two would inflate the count the operator acts on. */
 const FAILING_VERDICTS = new Set(['fail', 'failed', 'nonconforming', 'ng']);
+
+/** 계획이 «대분류 / 계열» 을 한 칸에 담는 구분자. 정식 컬럼이 생기면 사라진다. */
+const SEP = ' / ';
+
+/** 대분류의 «선언된» 순서 — 주파수가 낮은 쪽부터. 정렬·추이 스택·카드가 같은
+ *  순서를 써야 같은 밴드가 화면 어디서나 같은 자리에 온다.
+ *  ⚠️ 모듈 상수다. 컴포넌트 안에 두면 렌더마다 새 배열이라 useMemo 가 매번 다시 돈다. */
+const CATEGORY_ORDER = ['Unlicensed band', 'Licensed band', 'mmWave'];
 
 export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
   const { t } = useT();
@@ -172,8 +181,28 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
    *  두 개의 「지금 보고 있는 모델」이 생기는 셈이다. */
   const coverage = useQuery({
     queryKey: ['console-coverage', activeModelId],
-    queryFn: () => fetchCoveragePage(activeModelId ?? ''),
+    queryFn: async () => {
+      // ⚠️ 한 페이지가 200 건인데 모델당 조건이 그보다 많다(845N 218 · 848U 242).
+      // 첫 페이지만 받으면 진행률·이슈·추이가 «조용히» 일부만 세고, 그 오차는
+      // 화면 어디에도 나타나지 않는다. 커서가 끝날 때까지 이어 받는다.
+      const items = [];
+      let cursor: string | undefined;
+      // 상한을 둔다 — 커서가 끝나지 않는 서버 결함이 브라우저를 멈추게 두지 않는다.
+      for (let page = 0; page < 25; page += 1) {
+        const chunk = await fetchCoveragePage(activeModelId ?? '', cursor);
+        items.push(...chunk.items);
+        if (chunk.nextCursor == null || chunk.nextCursor === '') break;
+        cursor = chunk.nextCursor;
+      }
+      return { items, nextCursor: undefined };
+    },
     enabled: activeModelId !== null,
+    /* 모델을 바꾸는 동안 이전 모델의 커버리지를 «들고 있는다». 없으면 데이터가
+       비는 순간 추이가 통째로 사라졌다가 다시 그려져, 그 자리만 화면에서 깜빡인다
+       (실측: 840 은 약 75ms, 848U 는 커서 2페이지라 약 400ms 동안 점이 0개였다).
+       계획·카드·링은 이미 전 모델치를 받아 둬서 즉시 바뀌는데 이 그래프만
+       왕복을 기다리므로, 눈에는 「그래프가 고장 났다」로 보인다. */
+    placeholderData: keepPreviousData,
   });
 
   const byTechnology = useMemo(() => {
@@ -367,7 +396,6 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
    *
    *  비율은 «case 수로 가중»한다. 단순 평균은 case 11개짜리 계열과 62개짜리
    *  계열을 같은 무게로 세어 작은 쪽이 전체를 흔든다. */
-  const SEP = ' / ';
 
   const categories = useMemo(() => {
     interface Tally {
@@ -429,6 +457,10 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
       tone: toneOf(ratioOf(v)),
       done: v.done,
       total: v.total,
+      // 원시 분(minute). 문자열만 넘기면 합계를 다시 셀 수 없다 — 링 범례가
+      // 세 분류를 «더해» 전체 시간을 말해야 하므로 값 자체를 들고 다닌다.
+      spent: v.spent,
+      planned: v.planned,
       detail: t('routes.home.areaDetail', { done: String(v.done), total: String(v.total) }),
       time: t('routes.home.timeSpent', { spent: hours(v.spent), planned: hours(v.planned) }),
     });
@@ -443,7 +475,6 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
      *  그래서 위치는 «필터와 무관하게» 고정한다. 늦었다는 사실은 위치가 아니라
      *  막대 길이와 색이 말하고, 그 둘은 필터가 바뀌어도 같은 자리에서 변한다.
      *  대분류는 주파수가 낮은 쪽부터라는 도메인 순서를 선언으로 갖는다. */
-    const CATEGORY_ORDER = ['Unlicensed band', 'Licensed band', 'mmWave'];
     const byDeclared = (a: { label: string }, b: { label: string }): number => {
       const ia = CATEGORY_ORDER.indexOf(a.label);
       const ib = CATEGORY_ORDER.indexOf(b.label);
@@ -475,13 +506,142 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
     [categories],
   );
 
+  /** 끝난 case 수. 도넛 범례가 비율만이 아니라 «몇 건 중 몇 건»을 말하려면
+   *  분자가 필요하다 — 48% 는 1,024건 중 489건일 때와 21건 중 10건일 때 같은
+   *  글자지만 같은 뜻이 아니다. */
+  const doneTotal = useMemo(
+    () => categories.reduce((n, c) => n + c.done, 0),
+    [categories],
+  );
+
+  /** 링 범례의 «시간» 축. 건수만으로는 남은 분량의 «무게»를 모른다 — 232건이
+   *  40시간일 수도 200시간일 수도 있고, 일정을 잡는 사람이 세는 것은 후자다. */
+  const spentTotal = useMemo(
+    () => categories.reduce((n, c) => n + c.spent, 0),
+    [categories],
+  );
+  const plannedMinutes = useMemo(
+    () => categories.reduce((n, c) => n + c.planned, 0),
+    [categories],
+  );
+
   const programmeOverall = useMemo(() => {
     const total = categories.reduce((n, c) => n + c.total, 0);
     if (total === 0) return null;
     return categories.reduce((n, c) => n + c.done, 0) / total;
   }, [categories]);
 
-  const percent = (ratio: number): string => `${Math.round(ratio * 100)}%`;
+  /** 일자별 누적 진행 추이 — 밴드별로 쌓아 올린다.
+   *
+   *  ⚠️ 새 읽기 계약을 만들지 않았다. 커버리지가 조건마다 `latest_measured_at`
+   *  을 주므로 그것을 날짜로 묶어 누적하면 「그 날까지 몇 건이 측정됐나」가 나오고,
+   *  분모는 계획(`progress`)의 총 case 수다. 두 읽기 모두 이미 화면이 쓰는 것이다.
+   *
+   *  ⚠️ 한계를 적어 둔다. 커버리지는 조건당 «최신» 시도만 담으므로, 재측정한
+   *  조건은 «처음 측정한 날»이 아니라 «마지막으로 측정한 날»에 계산된다. 즉 이
+   *  곡선은 「그 날 실제로 몇 건이 끝나 있었나」의 근사이고, 재측정이 많을수록
+   *  과거가 실제보다 낮게 그려진다. 정확한 곡선은 시도 전량의 시계열을 주는
+   *  읽기가 필요하고 그것은 아직 없다.
+   *
+   *  ⚠️ 마감일도 없다. 계획 발행일 + 창(window)으로 «일정선»을 그으려면 그 창이
+   *  데이터에 있어야 하는데 `published_plan_expectation` 에 마감 칸이 없다.
+   *  그래서 일정선은 그리지 않는다 — 없는 값을 그럴듯하게 그리는 것이 이 화면이
+   *  가장 하지 말아야 할 일이다(§StatTile 의 판정과 같은 이유). */
+  const timelineNow = useMemo(() => {
+    const rows = coverage.data?.items ?? [];
+    if (rows.length === 0 || plannedTotal === 0) return null;
+
+    // 모드 → 대분류. 계획이 그 대응을 갖고 있으므로 UI 가 추측하지 않는다.
+    const bandOfMode = new Map<string, string>();
+    progressQueries.forEach((query, index) => {
+      const project = activeProjects[index];
+      if ((project?.project_id ?? null) !== activeModelId) return;
+      for (const bucket of query.data ?? []) {
+        const bucketId = bucket.progress_bucket_id ?? '';
+        const cut = bucketId.indexOf(SEP);
+        bandOfMode.set(
+          bucket.progress_area ?? '',
+          cut === -1 ? bucketId : bucketId.slice(0, cut),
+        );
+      }
+    });
+
+    const perDay = new Map<string, Map<string, number>>();
+    for (const row of rows) {
+      const day = (row.latest_measured_at ?? '').slice(0, 10);
+      if (day === '') continue;
+      const band = bandOfMode.get(row.technology ?? '') ?? '—';
+      const bucket = perDay.get(day) ?? new Map<string, number>();
+      bucket.set(band, (bucket.get(band) ?? 0) + 1);
+      perDay.set(day, bucket);
+    }
+    if (perDay.size < 2) return null;
+
+    /** 분모는 «전체 계획»이다. 밴드 값은 «전체의 몇 점(point)을 채웠나»이고,
+     *  그래프는 그것을 쌓아 올린다 — 맨 위 선이 곧 전체 진행률이고, 그 선이
+     *  가는 곳이 화면 위쪽의 100% 선이다.
+     *
+     *  ⚠️ 한 번 각 밴드의 «자기 계획 대비»로 바꿨다가 되돌렸다. 그 편이 선 하나만
+     *  볼 때는 읽기 쉬웠지만, 이 그래프가 대답해야 하는 질문은 「이 계열이 얼마나
+     *  끝났나」가 아니라 «전부 합쳐 100% 까지 얼마나 남았나» 다. 그건 쌓아야만
+     *  보인다. 계열별 완료율은 바로 아래 카드 세 장이 이미 말하고 있다.
+     *
+     *  ⚠️ 그래서 범례의 단위는 % 가 아니라 «pt» 다. 「mmWave 4%」와 아래 카드의
+     *  「mmWave 27%」가 한 화면에 같이 있으면 읽는 사람은 어느 쪽도 믿지 않는다.
+     *  전체의 4점과 자기 계획의 27% 는 둘 다 참이고, 그 둘을 가르는 것은 단위뿐이다. */
+    const bands = CATEGORY_ORDER.filter((band) =>
+      [...perDay.values()].some((m) => m.has(band)),
+    );
+    const days = [...perDay.keys()].sort();
+    const running = new Map<string, number>();
+    const points = days.map((day) => {
+      const add = perDay.get(day);
+      for (const band of bands) {
+        running.set(band, (running.get(band) ?? 0) + (add?.get(band) ?? 0));
+      }
+      return {
+        day,
+        // 전체 계획 대비 «기여분». 셋을 더하면 그 날의 전체 진행률이 된다.
+        values: bands.map((band) => (running.get(band) ?? 0) / plannedTotal),
+      };
+    });
+
+    return { bands, days, points };
+  }, [coverage.data, progressQueries, activeProjects, activeModelId, plannedTotal]);
+
+  /** ⚠️ 이전 커버리지를 «그대로 그리면 안 된다».
+   *
+   *  `keepPreviousData` 가 붙들고 있는 것은 분자(이전 모델의 측정 건수)인데,
+   *  분모(`plannedTotal`)와 밴드 목록은 계획에서 오고 계획은 이미 캐시라
+   *  «새 모델 것으로 즉시» 바뀐다. 그 둘을 곱하면 848U 의 측정을 845N 의 계획으로
+   *  나눈 값이 나온다 — 어느 모델에도 존재하지 않는 숫자이고, 화면에는 멀쩡한
+   *  곡선으로 보인다. 이 저장소가 가장 하지 말라고 적어 둔 종류의 그림이다.
+   *
+   *  그래서 붙드는 단위를 «데이터»가 아니라 «완성된 그래프»로 올린다. 마지막으로
+   *  분자와 분모가 같은 모델이었던 결과를 통째로 들고 있다가, 새 조합이 완성되면
+   *  교체한다. 그동안 그려지는 것은 「이전 모델의 진짜 그래프」이고, 그것을
+   *  흐리게 두는 것(`data-stale`)이 「이건 지금 값이 아니다」라는 말이 된다.
+   *
+   *  ref 는 렌더가 아니라 effect 에서만 쓴다 — 렌더 중에 쓰면 StrictMode 의
+   *  이중 렌더에서 순서가 보장되지 않는다. */
+  const settledTimeline = useRef<typeof timelineNow>(null);
+  const timelineIsStale = coverage.isPlaceholderData;
+  useEffect(() => {
+    if (!timelineIsStale && timelineNow !== null) settledTimeline.current = timelineNow;
+  }, [timelineNow, timelineIsStale]);
+  const timeline = timelineIsStale ? settledTimeline.current : timelineNow;
+
+
+  /** 숫자와 % 사이를 한 칸 띄운다. 붙여 쓰면 「48%」가 한 덩어리로 뭉쳐
+   *  숫자가 답답해 보이고, 특히 큰 활자(링 가운데 30px)에서 두드러진다.
+   *
+   *  ⚠️ 일반 공백이 아니라 U+00A0 이다. 좁은 칸에서 「48」과 「%」가 서로 다른
+   *  줄로 갈라지면 그건 띄어쓰기가 아니라 «깨진 값»으로 읽힌다.
+   *
+   *  이 화면의 모든 백분율은 이 함수 하나를 지난다 — 링·카드·계열 게이지·
+   *  모드 행·추이의 축과 끝값·상단 StatTile. 표기 규칙이 한 군데 있으면
+   *  다음에 바꿀 때도 한 군데다. */
+  const percent = (ratio: number): string => `${Math.round(ratio * 100)}\u00a0%`;
 
 
   /** 분류 라벨 → 색 슬롯.
@@ -863,22 +1023,53 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                 description={t('routes.home.programmeEmptyBody')}
               />
             ) : (
+              <>
+              {/* 좌 «상태» · 우 «속도». 링은 「지금 어디」 하나를 크게 말하고,
+                  추이는 「어떻게 왔고 100% 까지 얼마나 남았나」를 말한다. 둘은
+                  같은 질문의 두 시제라 나란히 서야 의미가 있고, 그래서 하나를
+                  다른 하나로 대체하지 않았다. 대분류 카드 셋은 그 아래 한 줄로
+                  내려간다 — 위 두 개가 「전체」를 말한 다음에 오는 것이 「쪼갬」이다. */}
               <div className="programme-head">
-                {/* share = 이 밴드가 «전체 계획» 중 끝낸 비율. 각 밴드의 자기
-                    완성도(52%/51%/30%)가 아니라 전체에 대한 기여도라야 세 조각의
-                    합이 가운데 숫자와 같아진다. */}
-                <ProgressRings
-                  testId="programme-rings"
-                  segments={categories.map((category) => ({
-                    id: category.id,
-                    label: category.label,
-                    share: plannedTotal === 0 ? 0 : category.done / plannedTotal,
-                    band: bandOf(category.label),
-                  }))}
-                  centreLabel={percent(programmeOverall ?? 0)}
-                  centreCaption={t('routes.home.statProgramme')}
-                />
-                <div className="band-cards" data-testid="programme-categories">
+                {programmeOverall !== null && (
+                  <DonutProgress
+                    testId="programme-donut"
+                    ratio={programmeOverall}
+                    label={percent(programmeOverall)}
+                    title={t('routes.home.donutTitle')}
+                    caption={t('routes.home.donutCaption')}
+                    legend={[
+                      {
+                        id: 'done',
+                        kind: 'done',
+                        label: t('routes.home.donutDone'),
+                        value: t('routes.home.donutCases', { count: String(doneTotal) }),
+                        time: hours(spentTotal),
+                      },
+                      {
+                        id: 'rest',
+                        kind: 'rest',
+                        label: t('routes.home.donutRest'),
+                        value: t('routes.home.donutCases', {
+                          count: String(Math.max(0, plannedTotal - doneTotal)),
+                        }),
+                        time: hours(Math.max(0, plannedMinutes - spentTotal)),
+                      },
+                    ]}
+                  />
+                )}
+                {timeline !== null && (
+                  <StackedTrend
+                    testId="programme-trend"
+                    bands={timeline.bands}
+                    points={timeline.points}
+                    bandSlot={bandOf}
+                    stale={timelineIsStale}
+                    formatRatio={percent}
+                    ceilingLabel={t('routes.home.trendCeiling')}
+                  />
+                )}
+              </div>
+              <div className="band-cards" data-testid="programme-categories">
                   {categories.map((category) => (
                     <section
                       className="band-card"
@@ -901,8 +1092,8 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                       </p>
                     </section>
                   ))}
-                </div>
               </div>
+              </>
             )}
 
             {/* 대분류 3열 × 계열 세로 누적.

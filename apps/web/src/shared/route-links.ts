@@ -30,6 +30,7 @@ export const ROUTE_PATHS = {
   // 때문이다(`routes/console-home.tsx`).
   overviewProgramme: '/programme',
   overviewCombined: '/combined',
+  systemDashboard: '/system',
   myProjects: '/my-projects',
   fields: '/fields',
   projects: '/projects',

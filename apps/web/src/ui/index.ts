@@ -20,11 +20,14 @@ export { Card } from './Card';
 export type { CardProps } from './Card';
 
 // ── console widgets (flowdeck-console-ui) ─────────────────────────────────
+export { StackedTrend } from './StackedTrend';
+export type { StackedTrendProps, TrendPoint } from './StackedTrend';
+
 export { ProgressRings } from './ProgressRings';
 export type { ProgressRingsProps, RingSegment } from './ProgressRings';
 
 export { DonutProgress } from './DonutProgress';
-export type { DonutProgressProps } from './DonutProgress';
+export type { DonutProgressProps, DonutLegendItem } from './DonutProgress';
 
 export { ChamberCard } from './ChamberCard';
 export type { ChamberCardProps } from './ChamberCard';
@@ -34,6 +37,9 @@ export type { StatTileProps, StatDirection, StatSentiment } from './StatTile';
 
 export { HealthBars } from './HealthBars';
 export type { HealthBarsProps, HealthRow, HealthTone } from './HealthBars';
+
+export { NavIcon } from './NavIcon';
+export type { NavIconProps, NavIconName } from './NavIcon';
 
 export { TrendChart } from './TrendChart';
 export type { TrendChartProps, TrendSeries } from './TrendChart';

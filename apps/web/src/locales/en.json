@@ -256,7 +256,8 @@
         "diagnostics": "Diagnostics",
         "referenceData": "Reference data",
         "overviewProgramme": "Test progress",
-        "overviewCombined": "Everything"
+        "overviewCombined": "Everything",
+        "systemDashboard": "System dashboard"
       },
       "projectNav": {
         "title": "Current project",
@@ -277,7 +278,9 @@
         "toLight": "Switch to light mode",
         "toDark": "Switch to dark mode",
         "light": "Light",
-        "dark": "Dark"
+        "dark": "Dark",
+        "nord": "Nord",
+        "next": "Next theme"
       },
       "localeToggle": {
         "ariaLabel": "Display language",
@@ -1817,7 +1820,13 @@
       "exportQ4": "Evidence — include verdicts and measured values? If so, no read contract serves those yet.",
       "issuesMeta": "{count} nonconforming",
       "issueWhen": "{when}",
-      "issueWho": "attempt {attempt} · {operator}"
+      "issueWho": "attempt {attempt} · {operator}",
+      "donutTitle": "Overall progress",
+      "donutCaption": "of the whole plan",
+      "donutDone": "Measured",
+      "donutRest": "Remaining",
+      "donutCases": "{count} case",
+      "trendCeiling": "100 % · plan complete"
     },
     "testReports": {
       "title": "Test Report Register",
@@ -2088,6 +2097,39 @@
         "scopeId": "Scope id (room or project)",
         "firstRow": "First row",
         "submit": "Create"
+      }
+    },
+    "systemDashboard": {
+      "eyebrow": "PLATFORM",
+      "title": "System dashboard",
+      "lede": "For whoever operates the platform itself — not the people running tests on it.",
+      "mockupNote": "⚠ This screen is a MOCKUP. The panels are empty because no read contract serves these figures yet, not because they are unfinished. Nothing here is a measurement, and nothing here should be used to decide anything.",
+      "noContract": "no read contract yet",
+      "slots": {
+        "ingest": {
+          "title": "Measurement ingest",
+          "body": "Rows accepted per hour, and how far behind the newest attempt is. Answers «is data still arriving»."
+        },
+        "queue": {
+          "title": "Job queue",
+          "body": "Depth, oldest waiting job, and failure rate. Answers «is work piling up»."
+        },
+        "chambers": {
+          "title": "Chamber links",
+          "body": "Heartbeat age per chamber node against its TTL. Answers «which room stopped talking»."
+        },
+        "storage": {
+          "title": "Artifact storage",
+          "body": "Plot and report volume, and what fraction is unreferenced. Answers «what is this costing»."
+        },
+        "auth": {
+          "title": "Sign-in",
+          "body": "Token issue and refresh failures by realm. Answers «is anyone locked out»."
+        },
+        "errors": {
+          "title": "Errors",
+          "body": "5xx by endpoint over time. Answers «what broke, and since when»."
+        }
       }
     }
   }

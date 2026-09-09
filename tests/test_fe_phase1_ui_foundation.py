@@ -108,6 +108,16 @@ STATUS_KIND_TOKENS = (
 MOTION_TOKENS = ("--motion-fast", "--motion-base", "--motion-emphasis")
 
 
+def _relative_luminance(hex_color: str) -> float:
+    """WCAG relative luminance. Module-level so both token test classes can use
+    it — it was a private classmethod on the contrast class, and copying it
+    would have been a second source of truth for one formula."""
+    value = hex_color.lstrip("#")
+    channels = [int(value[i : i + 2], 16) / 255 for i in (0, 2, 4)]
+    linear = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
 class TestDesignTokensSsot(unittest.TestCase):
     """§5.0 design tokens live in ``global.css`` as named CSS variables."""
 
@@ -205,10 +215,27 @@ class TestDesignTokensSsot(unittest.TestCase):
         # Light default surface — the operator-tool default is now light. The
         # semantic token deliberately aliases the primitive palette so the
         # primitive→semantic→component graph remains machine-checkable.
-        self.assertRegex(
-            root_body,
-            r"--p-light-surface-bg\s*:\s*#[fF]{6}",
-            ":root light surface primitive must default to #ffffff",
+        #
+        # 🔴 2026-09-09. This used to demand `--p-light-surface-bg: #ffffff`
+        # literally. That became FALSE on 2026-09-08 and the check called the
+        # fix a violation: page and card were both pure white, so a card never
+        # lifted off the page, and the ladder was rebuilt as
+        # page #eef0f6 → card #ffffff. Pinning a literal made the seal age into
+        # a liar the moment the palette moved, which is the failure mode this
+        # repo names most often. What actually has to hold is the DIRECTION —
+        # a surface that sits on top is never darker than the one beneath it —
+        # so that is what is measured, and a future repaint is free.
+        light_bg = re.search(r"--p-light-surface-bg\s*:\s*(#[0-9a-fA-F]{6})", root_body)
+        light_alt = re.search(
+            r"--p-light-surface-bg-alt\s*:\s*(#[0-9a-fA-F]{6})", root_body
+        )
+        self.assertIsNotNone(light_bg, "--p-light-surface-bg not found in :root")
+        self.assertIsNotNone(light_alt, "--p-light-surface-bg-alt not found in :root")
+        self.assertLessEqual(
+            _relative_luminance(light_bg.group(1)),
+            _relative_luminance(light_alt.group(1)),
+            "light: the card surface must not be darker than the page it sits on "
+            f"(page {light_bg.group(1)} / card {light_alt.group(1)})",
         )
         self.assertRegex(
             root_body,
@@ -246,7 +273,7 @@ class TestThemeTogglePrePaintSsot(unittest.TestCase):
         self.assertIn("THEME_STORAGE_KEY = 'fcc-theme'", ts)
         self.assertIn("THEME_ATTRIBUTE = 'data-theme'", ts)
         self.assertRegex(
-            ts, r"SUPPORTED_THEMES\s*=\s*\[\s*'light',\s*'dark'\s*\]"
+            ts, r"SUPPORTED_THEMES\s*=\s*\[\s*'light',\s*'dark',\s*'nord'\s*\]"
         )
         self.assertIn("DEFAULT_THEME: Theme = 'light'", ts)
 
@@ -254,6 +281,36 @@ class TestThemeTogglePrePaintSsot(unittest.TestCase):
         init = self._read("public/theme-init.js")
         self.assertIn("var STORAGE_KEY = 'fcc-theme';", init)
         self.assertIn("var ATTRIBUTE = 'data-theme';", init)
+
+    def test_every_supported_theme_is_accepted_prepaint_and_styled(self) -> None:
+        """A theme the store knows but the pre-paint script or the stylesheet
+        does not is *selectable and does nothing* — the failure is silent.
+
+        Added 2026-09-09 with the `nord` theme. Before it, the seal pinned the
+        theme list to exactly ``['light', 'dark']`` and so it caught a THIRD
+        theme only by refusing it; it did not check that a listed theme was
+        actually wired. This axis does, and it grows with the list.
+        """
+        ts = self._read("src/theme/index.ts")
+        init = self._read("public/theme-init.js")
+        css = self._read("src/styles/global.css")
+
+        listed = re.findall(r"'([a-z-]+)'", re.search(
+            r"SUPPORTED_THEMES\s*=\s*\[(.*?)\]", ts, re.S).group(1))
+        self.assertIn("light", listed)
+
+        for theme in listed:
+            with self.subTest(theme=theme):
+                self.assertIn(
+                    f"stored === '{theme}'", init,
+                    f"pre-paint script does not accept '{theme}' — it would apply one paint late",
+                )
+                if theme == "light":
+                    continue  # light is the bare :root baseline
+                self.assertIn(
+                    f":root[data-theme='{theme}']", css,
+                    f"global.css has no block for '{theme}' — selecting it changes nothing",
+                )
 
     def test_index_html_loads_prepaint_script_before_bundle(self) -> None:
         html = self._read("index.html")
@@ -304,7 +361,7 @@ class TestLightStatusWcagAa(unittest.TestCase):
         light_root = root_match.group(1)
         fgs = dict(
             re.findall(
-                r"(--p-light-status-[a-z]+-fg|--p-light-fg-primary|--p-light-fg-secondary|--p-light-accent)\s*:\s*(#[0-9a-fA-F]{6})",
+                r"(--p-light-status-[a-z]+-fg|--p-light-fg-primary|--p-light-fg-secondary|--p-light-fg-tertiary|--p-light-accent)\s*:\s*(#[0-9a-fA-F]{6})",
                 light_root,
             )
         )
@@ -318,6 +375,116 @@ class TestLightStatusWcagAa(unittest.TestCase):
             failures,
             {},
             f"light theme foreground tokens below WCAG AA 4.5:1 vs {self.LIGHT_SURFACE}: {failures}",
+        )
+
+    def test_text_tiers_are_three_and_stay_apart(self) -> None:
+        """Added 2026-09-09 with `--fg-tertiary`.
+
+        The page had exactly TWO text colours, so a 30px figure and an 11px
+        legend value were painted the same — hierarchy was carried by size and
+        weight alone and the screen read flat. A third rung fixes that only if
+        it is (a) present in every theme and (b) actually distinguishable from
+        the rung above it. Both halves are checked here, because a tertiary that
+        drifts up to secondary is invisible in exactly the way the old two-tier
+        scheme was, and nothing else in the suite would notice.
+
+        ⚠️ It must ALSO stay readable. `--fg-disabled` is allowed below 4.5:1
+        because WCAG 1.4.3 exempts inactive controls; this rung carries live
+        text (timestamps, operators, axis ticks) and gets no such exemption.
+        The 4.5:1 floor for the light value is enforced by
+        `test_light_status_fg_meets_aa`, whose collection regex now includes it.
+        """
+        css = GLOBAL_CSS.read_text(encoding="utf-8")
+        no_comment = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+
+        pairs = {
+            "light": ("--p-light-fg-secondary", "--p-light-fg-tertiary", "#ffffff"),
+            "dark": ("--p-dark-fg-secondary", "--p-dark-fg-tertiary", "#1f2436"),
+        }
+        for theme, (secondary, tertiary, surface) in pairs.items():
+            with self.subTest(theme=theme):
+                found = dict(
+                    re.findall(
+                        rf"({re.escape(secondary)}|{re.escape(tertiary)})\s*:\s*(#[0-9a-fA-F]{{6}})",
+                        no_comment,
+                    )
+                )
+                self.assertIn(tertiary, found, f"{tertiary} is not defined")
+                self.assertIn(secondary, found, f"{secondary} is not defined")
+
+                # 두 칸이 실제로 «떨어져» 있는가. 같은 면 위에서 잰다.
+                r_secondary = self._ratio(found[secondary], surface)
+                r_tertiary = self._ratio(found[tertiary], surface)
+                self.assertGreater(
+                    r_secondary,
+                    r_tertiary,
+                    f"{theme}: tertiary is not quieter than secondary "
+                    f"({r_tertiary} vs {r_secondary})",
+                )
+                self.assertGreaterEqual(
+                    r_secondary - r_tertiary,
+                    1.0,
+                    f"{theme}: the two rungs are within 1.0 of each other "
+                    f"({r_secondary} vs {r_tertiary}) — that is not a hierarchy",
+                )
+                # …그리고 여전히 읽히는가.
+                self.assertGreaterEqual(
+                    r_tertiary,
+                    4.5,
+                    f"{theme}: tertiary {found[tertiary]} is {r_tertiary} on "
+                    f"{surface} — below AA. It carries live text, not a "
+                    f"disabled state, so it gets no exemption.",
+                )
+
+        # 모든 테마가 이 이름을 갖는가. 한 테마에서 빠지면 그 테마에서만
+        # 상속값이 새어 나오고, 그건 화면을 봐야만 보인다.
+        for block in (
+            r":root\s*\{",
+            r"@media \(prefers-color-scheme: dark\)",
+            r":root\[data-theme='dark'\]",
+            r":root\[data-theme='nord'\]",
+        ):
+            with self.subTest(block=block):
+                start = re.search(block, no_comment)
+                self.assertIsNotNone(start, f"{block} not found")
+                tail = no_comment[start.end() : start.end() + 2400]
+                self.assertIn(
+                    "--fg-tertiary:", tail, f"{block} does not define --fg-tertiary"
+                )
+                self.assertIn(
+                    "--surface-raised:", tail, f"{block} does not define --surface-raised"
+                )
+
+    def test_the_elevation_ladder_only_goes_up(self) -> None:
+        """Added 2026-09-09.
+
+        A card that sits INSIDE a panel must not be darker than the panel. It
+        was: `--p-dark-surface-raised` did not exist, so `.band-card` used
+        `--surface-bg` — the PAGE colour — and read as a hole punched in the
+        panel rather than a card lifted off it. Only a 1px border was holding
+        it together, which is why the screen looked like boxes inside boxes.
+
+        This axis is luminance ORDER, not any particular value, so a future
+        repaint is free as long as the ladder keeps its direction.
+        """
+        css = GLOBAL_CSS.read_text(encoding="utf-8")
+        no_comment = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+        rungs = dict(
+            re.findall(
+                r"(--p-dark-surface-bg|--p-dark-surface-bg-alt|--p-dark-surface-raised)"
+                r"\s*:\s*(#[0-9a-fA-F]{6})",
+                no_comment,
+            )
+        )
+        self.assertEqual(len(rungs), 3, f"expected three dark surface rungs: {rungs}")
+        page = self._luminance(rungs["--p-dark-surface-bg"])
+        panel = self._luminance(rungs["--p-dark-surface-bg-alt"])
+        card = self._luminance(rungs["--p-dark-surface-raised"])
+        self.assertLess(page, panel, f"panel must sit above the page: {rungs}")
+        self.assertLess(
+            panel,
+            card,
+            f"a card inside the panel must sit above it, not below: {rungs}",
         )
 
 
@@ -699,9 +866,19 @@ class TestPrimitivesNoInlineHexColors(unittest.TestCase):
 
     def test_no_hex_color_literals_in_primitive_source(self):
         # Walk ui/*.tsx + ui/*.ts (errors.ts).
+        # ⚠️ 주석을 먼저 걷어낸다. 이 검사는 「소스에 인라인 hex 리터럴이 있다」
+        # 고 말하는데, 주석 안의 hex 는 리터럴이 아니라 «문장»이다. 실제로
+        # `TrendChart.tsx` 는 「호출자가 #4fd1a5 같은 걸 넘기면 그게 바로 이
+        # 게이트가 막는 인라인 hex 다」라고 «설명하다가» 이 게이트에 걸렸다 —
+        # 검사가 자기를 설명하는 문장을 위반으로 읽은 것이다(2026-09-09 실측).
+        # 축이 「hex 문자열의 존재」였는데 재려던 것은 「적용되는 색」이었다.
+        def _strip_ts_comments(text: str) -> str:
+            without_block = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+            return re.sub(r"(?<![:\w])//[^\n]*", "", without_block)
+
         offenders = []
         for path in sorted(UI_DIR.glob("*.tsx")) + sorted(UI_DIR.glob("*.ts")):
-            text = path.read_text(encoding="utf-8")
+            text = _strip_ts_comments(path.read_text(encoding="utf-8"))
             # Strip strings that are obvious icon glyphs / unicode escapes.
             # We DO want to flag e.g. `#0b66ff` literals.
             for match in self.HEX_LITERAL.finditer(text):
@@ -716,6 +893,28 @@ class TestPrimitivesNoInlineHexColors(unittest.TestCase):
             "they must consume --status-*/--accent/--fg-* tokens from "
             f"global.css instead. Offenders: {offenders}",
         )
+
+    def test_the_hex_gate_still_bites_after_comment_stripping(self):
+        """CLAUDE.md §P0-4 — a check that was loosened must be shown to still
+        have teeth. Comment stripping was added on 2026-09-09 so a doc comment
+        *describing* the rule stops being read as a violation; the risk of that
+        change is that it strips too much and the gate goes quiet. Feed it code
+        that really does carry a literal and require it to be caught.
+        """
+        sample = (
+            '/* a comment mentioning #4fd1a5 is prose, not a literal */\n'
+            '// so is #0b66ff on a line comment\n'
+            'const bad = { fill: "#123abc" };\n'
+            'const url = "https://example.test/#anchor";\n'
+        )
+        stripped = re.sub(r"/\*.*?\*/", "", sample, flags=re.S)
+        stripped = re.sub(r"(?<![:\w])//[^" + chr(10) + r"]*", "", stripped)
+        found = [m.group(0) for m in self.HEX_LITERAL.finditer(stripped)]
+        self.assertIn(
+            "#123abc", found, "the gate no longer catches a real inline literal"
+        )
+        self.assertNotIn("#4fd1a5", found, "block comment was not stripped")
+        self.assertNotIn("#0b66ff", found, "line comment was not stripped")
 
 
 if __name__ == "__main__":

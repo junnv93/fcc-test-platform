@@ -33,6 +33,7 @@ function ScreenTracker({ children }: { children: ReactNode }): JSX.Element {
 const OverviewRoute = lazy(() => import('@/routes/overview'));
 const ProgrammeOverviewRoute = lazy(() => import('@/routes/overview-programme'));
 const CombinedOverviewRoute = lazy(() => import('@/routes/overview-combined'));
+const SystemDashboardRoute = lazy(() => import('@/routes/system-dashboard'));
 const DiagnosticsRoute = lazy(() => import('@/routes/diagnostics'));
 const ChambersRoute = lazy(() => import('@/routes/chambers'));
 const TestPlansRoute = lazy(() => import('@/routes/test-plans'));
@@ -227,6 +228,14 @@ export const appRoutes: readonly AppRoute[] = [
         element: <CombinedOverviewRoute />,
         errorElement: ROUTE_ERROR_ELEMENT,
         handle: { titleKey: 'routes.home.scope.manager.title' },
+      },
+      // 시스템 대시보드 — «목업». 자리를 먼저 잡아 두고 읽기 계약이 생기는
+      // 대로 칸을 채운다. 내용이 비어 있는 것은 미완성이 아니라 선언이다.
+      {
+        path: 'system',
+        element: <SystemDashboardRoute />,
+        errorElement: ROUTE_ERROR_ELEMENT,
+        handle: { titleKey: 'routes.systemDashboard.title' },
       },
       // 멀티챔버 P6 (2026-06-16): chamber availability + distributed remote
       // measurement (central proxy — start + progress poll).

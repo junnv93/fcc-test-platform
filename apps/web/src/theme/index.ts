@@ -16,8 +16,13 @@
  */
 import { useSyncExternalStore } from 'react';
 
-/** Theme-token SSOT. Adding a theme is an intentional code change here. */
-export const SUPPORTED_THEMES = ['light', 'dark'] as const;
+/** Theme-token SSOT. Adding a theme is an intentional code change here —
+ *  and it is a change in FOUR places that must agree: this list,
+ *  `public/theme-init.js` (pre-paint), the `:root[data-theme=…]` blocks in
+ *  `global.css`, and the seal in `tests/test_fe_phase1_ui_foundation.py`.
+ *  The seal exists because a theme present in one place and absent in another
+ *  is selectable but does nothing — it fails silently. */
+export const SUPPORTED_THEMES = ['light', 'dark', 'nord'] as const;
 
 export type Theme = (typeof SUPPORTED_THEMES)[number];
 
@@ -97,9 +102,15 @@ export function setTheme(theme: Theme): void {
   for (const fn of listeners) fn();
 }
 
-/** Flip between light and dark. */
+/** Advance to the next theme in `SUPPORTED_THEMES`, wrapping at the end.
+ *
+ *  ⚠️ Kept as a cycle rather than a light/dark flip so the control stays one
+ *  button. The name `toggleTheme` is retained because `ThemeToggle` and its
+ *  tests call it; renaming it would be a wider change than this one adds. */
 export function toggleTheme(): void {
-  setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+  const order = SUPPORTED_THEMES;
+  const next = order[(order.indexOf(currentTheme) + 1) % order.length];
+  setTheme(next ?? DEFAULT_THEME);
 }
 
 function subscribe(onChange: () => void): () => void {

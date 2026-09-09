@@ -1657,10 +1657,31 @@ class TestNativeControlFoundation(unittest.TestCase):
         for token, value in expected.items():
             matches = re.findall(rf"{re.escape(token)}:\s*([^;]+);", css)
             self.assertEqual(matches, [value], f"{token} must be a one-source semantic alias")
+        # 🔴 2026-09-09. This used to pin the exact list
+        #   [light, dark, dark]
+        # i.e. it asserted "this product has exactly two themes" while claiming
+        # to check "the control border is not a drifted literal". Adding a third
+        # theme (`nord`) turned it red without anything actually drifting, and
+        # the only way to keep it green would have been not to add themes.
+        #
+        # The invariant that has to hold is narrower and survives more themes:
+        # EVERY declaration goes through a `--p-<theme>-control-border`
+        # primitive — never a raw colour — and each theme channel declares it
+        # at most once. A fourth theme now costs one primitive, not a test edit.
+        borders = re.findall(r"--control-border:\s*([^;]+);", css)
+        self.assertGreaterEqual(
+            len(borders), 3, "light + both dark channels must each map the border"
+        )
+        for value in borders:
+            self.assertRegex(
+                value.strip(),
+                r"^var\(--p-[a-z0-9-]+-control-border\)$",
+                f"control border must consume a per-theme primitive, got {value!r}",
+            )
         self.assertEqual(
-            re.findall(r"--control-border:\s*([^;]+);", css),
-            ["var(--p-light-control-border)", "var(--p-dark-control-border)", "var(--p-dark-control-border)"],
-            "control border must map once for light and through the single dark primitive in both theme channels",
+            borders.count("var(--p-light-control-border)"),
+            1,
+            "the light primitive maps exactly once",
         )
 
     def test_focus_visible_contract_covers_all_interactive_control_families(self) -> None:

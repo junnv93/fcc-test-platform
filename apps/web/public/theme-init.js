@@ -11,6 +11,10 @@
  * `tests/test_frontend_theme_toggle.py` so the pre-paint script and the React
  * store can never drift. Resolution order mirrors `resolveInitialTheme()`:
  * stored choice → OS preference → light default.
+ *
+ * The accepted set below MUST equal `SUPPORTED_THEMES` in the store. A theme
+ * the store knows but this script does not is applied one paint late — the
+ * flash this file exists to prevent.
  */
 (function () {
   var STORAGE_KEY = 'fcc-theme';
@@ -18,7 +22,7 @@
   var theme;
   try {
     var stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored === 'light' || stored === 'dark') {
+    if (stored === 'light' || stored === 'dark' || stored === 'nord') {
       theme = stored;
     }
   } catch (e) {

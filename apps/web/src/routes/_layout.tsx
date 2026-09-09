@@ -18,7 +18,7 @@ import { PROJECT_QUERY_PARAM, ROUTE_PATHS } from '@/shared/route-links';
 import { GLOBAL_SHORTCUTS, type GlobalShortcutId } from '@/shared/shortcuts';
 import { type Hotkey, useHotkeys } from '@/shared/use-hotkeys';
 import { ThemeToggle } from '@/theme/ThemeToggle';
-import { BlockSkeleton, Button, DensityToggle, ShortcutHelp } from '@/ui';
+import { BlockSkeleton, Button, DensityToggle, NavIcon, ShortcutHelp } from '@/ui';
 
 const ROUTES_WITH_OWN_MAIN_LANDMARK = new Set([
   '/',
@@ -110,20 +110,35 @@ export function AppLayout(): JSX.Element {
         {t('routes.layout.skipToContent')}
       </a>
       <header className="app-header" role="banner">
-        {/* Brand mark. An inline SVG, not an icon package: this is the only
-            glyph the shell needs, and a dependency for one mark would put a
-            second source of visual truth beside `global.css`. Three radiating
-            arcs over a source point — the lane measures radiated emission, so
-            the mark says what the platform is rather than decorating it.
+        {/* Brand mark. Inline SVG for the same reason as `NavIcon` — one
+            dependency for one glyph would put a second source of visual truth
+            beside `global.css`.
+
+            🔴 2026-09-09: this used to be three radiating arcs over a point.
+            The drawing was accurate — the lane measures radiated emission —
+            but at 20px it is the Wi-Fi glyph, and a Wi-Fi glyph on a
+            compliance platform says «wireless gadget», not «the system the lab
+            runs on». What this product actually is, is a PLATFORM: layers that
+            other people's work stands on. So: three stacked plates seen in
+            perspective, with the top one carrying a measurement point. The
+            shape survives at 18px, which the arcs did not.
+
             `aria-hidden` because the adjacent text already names the product;
             announcing both would read the name twice. */}
         <span className="app-brand">
           <span className="app-brand__mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
-              <circle cx="12" cy="17.5" r="2" fill="currentColor" stroke="none" />
-              <path d="M8.2 13.8a5.4 5.4 0 0 1 7.6 0" strokeLinecap="round" />
-              <path d="M5.4 10.6a9.4 9.4 0 0 1 13.2 0" strokeLinecap="round" />
-              <path d="M2.6 7.4a13.4 13.4 0 0 1 18.8 0" strokeLinecap="round" />
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            >
+              <path d="M12 3 21 8l-9 5-9-5z" />
+              <path d="M3 12.5 12 17.5l9-5" />
+              <path d="M3 17 12 22l9-5" />
+              <circle cx="12" cy="8" r="1.6" fill="currentColor" stroke="none" />
             </svg>
           </span>
           <span className="app-title">{t('routes.layout.appTitle')}</span>
@@ -169,7 +184,21 @@ export function AppLayout(): JSX.Element {
               <BlockSkeleton lines={6} label={t('common.loadingPage')} testId="page-loading" />
             }
           >
-            <Outlet />
+            {/* ⚠️ `key` 가 이 애니메이션의 «전부»다. 키가 없으면 React 는 같은
+                DOM 노드를 재사용하고, 재사용된 노드에서는 CSS 애니메이션이
+                다시 재생되지 않는다 — 클래스만 붙여 놓고 「왜 안 움직이지」
+                하게 되는 자리다. 키가 바뀌면 노드가 새로 나고, 새 노드는
+                애니메이션을 처음부터 재생한다.
+
+                ⚠️ 키는 `pathname` «만» 이다. `location.key` 나 `search` 까지
+                넣으면 필터 하나 바꿀 때마다 화면 전체가 다시 페이드되는데,
+                그건 부드러운 게 아니라 산만한 것이다. 화면이 바뀔 때만 움직인다.
+
+                Suspense «안»에 있는 이유: 밖에 두면 스켈레톤이 뜰 때 한 번
+                재생되고 정작 내용이 도착할 때는 조용하다. */}
+            <div className="route-swap" key={location.pathname}>
+              <Outlet />
+            </div>
           </Suspense>
         </div>
       ) : (
@@ -188,7 +217,21 @@ export function AppLayout(): JSX.Element {
               <BlockSkeleton lines={6} label={t('common.loadingPage')} testId="page-loading" />
             }
           >
-            <Outlet />
+            {/* ⚠️ `key` 가 이 애니메이션의 «전부»다. 키가 없으면 React 는 같은
+                DOM 노드를 재사용하고, 재사용된 노드에서는 CSS 애니메이션이
+                다시 재생되지 않는다 — 클래스만 붙여 놓고 「왜 안 움직이지」
+                하게 되는 자리다. 키가 바뀌면 노드가 새로 나고, 새 노드는
+                애니메이션을 처음부터 재생한다.
+
+                ⚠️ 키는 `pathname` «만» 이다. `location.key` 나 `search` 까지
+                넣으면 필터 하나 바꿀 때마다 화면 전체가 다시 페이드되는데,
+                그건 부드러운 게 아니라 산만한 것이다. 화면이 바뀔 때만 움직인다.
+
+                Suspense «안»에 있는 이유: 밖에 두면 스켈레톤이 뜰 때 한 번
+                재생되고 정작 내용이 도착할 때는 조용하다. */}
+            <div className="route-swap" key={location.pathname}>
+              <Outlet />
+            </div>
           </Suspense>
         </main>
       )}
@@ -291,7 +334,8 @@ function PrimaryNav({
                     end={item.end}
                     className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
                   >
-                    {t(item.labelKey)}
+                    <NavIcon name={item.icon} />
+                    <span className="nav-link__label">{t(item.labelKey)}</span>
                   </NavLink>
                 </li>
               ))}

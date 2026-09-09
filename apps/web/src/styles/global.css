@@ -26,11 +26,23 @@
      반대로 적혀 있었던 것이다. */
   --p-light-surface-bg: #eef0f6;
   --p-light-surface-bg-alt: #ffffff;
+  /* 패널 «안»에 놓이는 카드의 면. 라이트는 흰색이 천장이라 명도로 한 단 더
+     올라갈 수 없다 — 그래서 여기서는 같은 흰색이고 «그림자»가 단을 만든다.
+     다크는 반대로 명도로 올린다(#181c2a → #1f2436). 한 이름이 테마마다 다른
+     수단을 쓰는 것이 맞다: 뜻은 「한 단 위」이지 「더 밝게」가 아니다. */
+  --p-light-surface-raised: #ffffff;
   --p-light-surface-border: #cfd4e2;
   --p-light-transparent: transparent;
   --p-light-overlay-backdrop: rgba(0, 0, 0, 0.5);
   --p-light-fg-primary: #151827;
   --p-light-fg-secondary: #4d5468;
+  /* 3단. 이 화면의 글자가 «두 색»뿐이라 30px 숫자와 11px 범례 값이 같은 밝기로
+     칠해지고 있었다 — 위계를 크기와 굵기만 지고 명도는 아무 일도 안 했다.
+     tertiary 는 «메타»(시각·조작자·회차·축 눈금) 전용이다. 흰 배경 대비 5.13:1
+     로, 4.5:1 바닥 위에 있으면서 secondary(7.64:1)와는 확실히 갈린다.
+     ⚠️ `--fg-disabled` 와 혼동하지 마라. 그쪽은 «상태»(비활성)라 WCAG 면제를
+     달고 3.22:1 이고, 이쪽은 읽으라고 있는 «계층»이다. */
+  --p-light-fg-tertiary: #656e82;
   /* STATE token, not a hierarchy rung. WCAG 1.4.3 exempts inactive controls
      from the 4.5:1 minimum, which is why this value is allowed to sit at
      3.22:1 — so it may only dress things that are actually inactive. Readable
@@ -96,11 +108,13 @@
   /* ── semantic color aliases ────────────────────────────────────────────── */
   --surface-bg: var(--p-light-surface-bg);
   --surface-bg-alt: var(--p-light-surface-bg-alt);
+  --surface-raised: var(--p-light-surface-raised);
   --surface-border: var(--p-light-surface-border);
   --surface-transparent: var(--p-light-transparent);
   --overlay-backdrop: var(--p-light-overlay-backdrop);
   --fg-primary: var(--p-light-fg-primary);
   --fg-secondary: var(--p-light-fg-secondary);
+  --fg-tertiary: var(--p-light-fg-tertiary);
   --fg-disabled: var(--p-light-fg-disabled);
   /* ═══ PALETTE KNOBS — 콘솔 배색을 여기 «숫자 몇 개»로 돌린다 ═══════════
      색은 임의다. 그래서 값을 리터럴로 흩뿌리지 않고 OKLCH 의 세 축으로
@@ -251,9 +265,16 @@
   --p-layout-max-width: 1440px;
   --p-layout-gutter: 24px;
   --p-layout-workbench-rail-width: 22rem;
+  /* 진행률 링이 서는 열. 링은 내용에 따라 늘어나지 않는 «고정 계기»라 폭이
+     값으로 정해져야 하고, 그 값은 한 군데에만 있어야 한다. */
+  --p-layout-ring-column-min: 190px;
+  --p-layout-ring-column-max: 232px;
   --p-dark-control-border: #7c86a3;
   --p-dark-fg-primary: #eaecf3;
   --p-dark-fg-secondary: #a8b0c4;
+  /* 패널(#181c2a) 대비 5.21:1, 한 단 올라간 카드(#1f2436) 대비 4.76:1.
+     둘 다 4.5:1 위에 있다 — 이 색이 앉는 두 면 모두에서 재고 골랐다. */
+  --p-dark-fg-tertiary: #868fa6;
   --p-dark-fg-disabled: #6a7286;
   --p-dark-accent: #7b8cff;
   --p-dark-accent-fg: #111420;
@@ -283,6 +304,12 @@
      jointly by this stronger ambient colour and the (already lighter)
      --p-dark-surface-border. */
   --p-dark-shadow-color: rgba(0, 0, 0, 0.55);
+
+  /* 페이지 #111420 → 패널 #181c2a → 카드 #1f2436. 한 방향으로 올라간다.
+     ⚠️ 고치기 전에는 카드가 «페이지와 같은 색»이라 패널보다 어두웠다 — 즉
+     올라온 카드가 아니라 파인 구멍으로 읽혔고, 그걸 1px 테두리가 겨우 붙들고
+     있었다. 테두리를 걷어낼 수 있게 된 것은 이 한 줄 덕분이다. */
+  --p-dark-surface-raised: #1f2436;
 
   /* ── component aliases ──────────────────────────────────────────────────
      Components consume these names rather than reaching across the semantic
@@ -340,6 +367,8 @@
   --layout-max-width: var(--p-layout-max-width);
   --layout-gutter: var(--p-layout-gutter);
   --layout-workbench-rail-width: var(--p-layout-workbench-rail-width);
+  --ring-column-min: var(--p-layout-ring-column-min);
+  --ring-column-max: var(--p-layout-ring-column-max);
   --header-height: 56px;
   --app-sidebar-width: 296px;
 
@@ -553,12 +582,14 @@
   :root:not([data-theme='light']) {
     --surface-bg: var(--p-dark-surface-bg);
     --surface-bg-alt: var(--p-dark-surface-bg-alt);
+    --surface-raised: var(--p-dark-surface-raised);
     --surface-border: var(--p-dark-surface-border);
     --surface-transparent: var(--p-dark-transparent);
     --overlay-backdrop: var(--p-dark-overlay-backdrop);
     --control-border: var(--p-dark-control-border);
     --fg-primary: var(--p-dark-fg-primary);
     --fg-secondary: var(--p-dark-fg-secondary);
+    --fg-tertiary: var(--p-dark-fg-tertiary);
     --fg-disabled: var(--p-dark-fg-disabled);
     /* 다크에서는 «명도만» 올린다. 색상·채도는 라이트와 공유하므로 두 테마가
      같은 색으로 남고 밝기만 반대로 간다. */
@@ -602,12 +633,14 @@
 :root[data-theme='dark'] {
   --surface-bg: var(--p-dark-surface-bg);
   --surface-bg-alt: var(--p-dark-surface-bg-alt);
+  --surface-raised: var(--p-dark-surface-raised);
   --surface-border: var(--p-dark-surface-border);
   --surface-transparent: var(--p-dark-transparent);
   --overlay-backdrop: var(--p-dark-overlay-backdrop);
   --control-border: var(--p-dark-control-border);
   --fg-primary: var(--p-dark-fg-primary);
   --fg-secondary: var(--p-dark-fg-secondary);
+  --fg-tertiary: var(--p-dark-fg-tertiary);
   --fg-disabled: var(--p-dark-fg-disabled);
   /* 다크에서는 «명도만» 올린다. 색상·채도는 라이트와 공유하므로 두 테마가
      같은 색으로 남고 밝기만 반대로 간다. */
@@ -829,14 +862,22 @@ a {
   color: var(--control-fg-disabled);
 }
 
+/* 레이아웃만. 색은 아래 한 곳(`.app-shell` 배경 규칙)에서만 칠한다 — 여기서도
+   칠하면 둘 중 뒤엣것이 이기고, 그 사실은 화면을 봐야만 드러난다. */
 .app-shell {
   display: grid;
   grid-template-columns: var(--app-sidebar-width) minmax(0, 1fr);
   grid-template-rows: 1fr;
   min-height: 100vh;
-  background: var(--surface-bg);
+  background-color: var(--surface-bg);
 }
 
+/* ⚠️ 그라데이션은 «색»이 아니라 «깊이»다. 그래서 값을 새로 고르지 않고 이미
+   있는 두 면(카드 면 → 페이지 면)을 위에서 아래로 잇는다. 그러면 테마가 셋이든
+   넷이든 각자의 팔레트 안에서 저절로 맞고, 어떤 테마에서도 「다른 색이 하나 더
+   생기는」 일이 없다 — 라이트/다크/Nord 가 같은 규칙을 쓰고 결과만 다르다.
+   세기는 3~5% 수준이다. 이보다 진하면 그라데이션이 «보이고», 보이는 순간
+   고급스러움이 아니라 장식이 된다. */
 .app-header {
   display: flex;
   flex-direction: column;
@@ -844,7 +885,13 @@ a {
   gap: var(--space-5);
   padding: var(--space-6) var(--space-5);
   border-right: 1px solid var(--surface-border);
-  background: var(--surface-bg-alt);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--accent) 8%, var(--surface-bg-alt)) 0%,
+      var(--surface-bg-alt) 34%,
+      color-mix(in oklab, var(--surface-bg) 80%, var(--surface-bg-alt)) 100%
+    );
   position: sticky;
   top: 0;
   min-height: 100vh;
@@ -2280,10 +2327,15 @@ pre {
   letter-spacing: var(--tracking-tight);
 }
 
+/* ⚠️ 여기 `var(--font-size-2xl)` 이 있었는데 그 토큰은 «정의된 적이 없다».
+   정의되지 않은 var() 는 선언 전체를 무효로 만들고 요소는 상속 크기를 쓴다 —
+   즉 이 제목은 지금까지 크기를 «못 받은 채» 그려지고 있었고, 아무 데서도
+   빨개지지 않았다. 타입 스케일은 여섯 칸으로 봉인돼 있으므로(2xl 을 새로
+   내면 `TestTypeScaleHierarchy` 가 막는다) 제목 칸인 xl 로 고친다. */
 .login-route h1,
 .change-password-route h1 {
   margin: 0;
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-xl);
   line-height: var(--line-height-tight);
 }
 
@@ -5181,12 +5233,27 @@ pre {
    measuring the same surface it always did. Depth here is decoration painted
    under the tokens, never a substitute for one. */
 
+/* 두 겹을 한 규칙에 둔다. 앞서 `.app-shell` 을 두 군데서 칠하다가 뒤엣것이
+   앞엣것을 통째로 덮어, 새로 넣은 세로 그라데이션이 «적용된 줄 알고» 사라진
+   적이 있다(2026-09-09 실측). 배경은 한 자리에서만 칠한다.
+
+   ① 우상단 accent 광 — 시선의 출발점.
+   ② 위에서 아래로 가라앉는 세로 워시 — 화면에 «끝»을 준다. 긴 목록이 허공에
+      뜨지 않는다.
+   둘 다 토큰에서 파생하므로 라이트·다크·Nord 가 같은 규칙으로 각자 맞는다. */
 .app-shell {
-  background-image: radial-gradient(
-    120% 90% at 78% -10%,
-    color-mix(in oklab, var(--accent) 5%, transparent),
-    transparent 62%
-  );
+  background-image:
+    radial-gradient(
+      120% 90% at 78% -10%,
+      color-mix(in oklab, var(--accent) 9%, transparent),
+      transparent 66%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--accent) 6%, transparent) 0%,
+      transparent 42%,
+      color-mix(in oklab, var(--fg-primary) 6%, transparent) 100%
+    );
   background-attachment: fixed;
 }
 
@@ -5194,8 +5261,8 @@ pre {
   padding: var(--space-5);
   background-image: linear-gradient(
     160deg,
-    color-mix(in oklab, var(--accent) 2%, transparent),
-    transparent 46%
+    color-mix(in oklab, var(--accent) 4%, transparent),
+    transparent 50%
   );
 }
 
@@ -5284,26 +5351,24 @@ pre {
   min-width: 0;
 }
 
-.app-brand__mark {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  color: var(--accent-fg);
-  background-image: linear-gradient(
-    150deg,
-    var(--accent),
-    color-mix(in oklab, var(--accent) 55%, var(--status-published))
-  );
-  box-shadow: 0 4px 12px -3px color-mix(in oklab, var(--accent) 45%, transparent);
-}
+/* 🔴 2026-09-09 — 여기 있던 그라데이션 «타일»을 지웠다. 두 가지 이유가 겹친다.
 
-.app-brand__mark svg {
-  width: 15px;
-  height: 15px;
-}
+   ① 뜬금없었다. 그 아래 20개 내비 아이콘이 전부 맨몸인데 마크 하나만 배지처럼
+      떠 있었다. 사이드바에서 채도를 갖는 물건은 «활성 항목» 하나로 족하다.
+
+   ② 애초에 «라이트·다크에서는 그려지지도 않았다». 그라데이션 끝점이
+      `var(--status-published)` 였는데 그 이름은 어디에도 정의돼 있지 않다 —
+      정의된 것은 `--status-published-fg` / `-bg` 다. 정의되지 않은 var() 가
+      섞인 `color-mix()` 는 무효이고, 무효인 값은 선언 «전체»를 버린다. 즉
+      background-image 가 통째로 사라져 `none` 이 됐고, 그 위에 놓인 글리프는
+      `--accent-fg`(라이트에서 흰색)라 흰 배경 위 흰 글자가 됐다.
+      Nord 에서만 보였던 이유는 그 블록이 `--status-published` 를 «우연히»
+      갖고 있었기 때문이다(2026-09-09 실측: markBg 가 light/dark 는 none,
+      nord 만 linear-gradient).
+
+   ⚠️ 이것이 이 저장소가 말하는 「조용한 결함」의 교과서적인 예다. 아무것도
+      빨개지지 않고, 스크린샷에서도 「아이콘이 좀 흐리네」로만 보인다.
+   대체 규칙은 파일 끝의 `.app-brand__mark` 하나뿐이다 — accent 색 글리프. */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Chamber cards — flowdeck-console-ui (monitoring pass)
@@ -5335,8 +5400,8 @@ pre {
   background: var(--surface-bg-alt);
   background-image: linear-gradient(
     160deg,
-    color-mix(in oklab, var(--accent) 2%, transparent),
-    transparent 46%
+    color-mix(in oklab, var(--accent) 4%, transparent),
+    transparent 50%
   );
 }
 
@@ -5691,23 +5756,85 @@ pre {
   }
 }
 
+/* ── 링 (2026-09-09, 레퍼런스 스크린샷에서) ──────────────────────────────
+   두꺼운 스트로크 · 둥근 끝 · 대각 그라데이션 · 끝점의 노브 · 가운데 큰 숫자 ·
+   아래 범례. 장식마다 할 일이 있다: 그라데이션은 긴 호를 «하나의 연속량»으로
+   읽히게 하고(단색 띠는 길이가 눈에 안 들어온다), 노브는 시작과 끝이 같은
+   스트로크인 링에서 「어디가 끝인가」에 답한다.
+   ⚠️ 그라데이션 stop 색은 여기서 준다 — TSX 안의 리터럴 hex 는 봉인돼 있다.
+   ═══════════════════════════════════════════════════════════════════════ */
+/* 살짝 «떠 있게». 패널과 같은 면 위에 그냥 놓으면 링이 배경의 무늬처럼
+   읽히는데, 이 위젯은 이 화면에서 가장 먼저 보라고 만든 것이다. 띄우는 방법은
+   세 가지를 겹친다: ① 패널보다 한 단 밝은 면 ② 아래로 퍼지는 그림자
+   ③ 링 뒤의 옅은 원형 광. 셋 다 «값»이 아니라 «위계»를 말하므로 색은 전부
+   토큰에서 파생한다 — 고정 검정 그림자는 라이트에서 때가 낀 것처럼 보인다. */
 .donut {
   position: relative;
-  width: 132px;
-  height: 132px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-4);
+  /* 같은 이유로 테두리 없음. 그리고 색을 즉석에서 섞지 않고 사다리의
+     세 번째 칸(`--surface-raised`)을 쓴다 — 옆의 대분류 카드와 «같은 높이»에
+     서야 한 줄이 한 줄로 읽힌다. 링 카드만 혼자 밝으면 그게 어제의 문제였다. */
+  border: none;
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow:
+    0 12px 28px -14px var(--shadow-color),
+    0 2px 6px -4px var(--shadow-color);
+}
+
+/* 링 뒤의 광. 레퍼런스의 그 «떠 있는» 느낌이 실제로는 이것이다. 아주 옅게 —
+   진하면 가운데 숫자의 대비를 갉아먹는다. */
+.donut__ring::after {
+  content: '';
+  position: absolute;
+  inset: -14%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--accent) 12%, transparent) 0%,
+    transparent 68%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+.donut__title {
+  margin: 0;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.donut__ring {
+  position: relative;
+  width: 168px;
+  height: 168px;
 }
 
 .donut__svg {
   width: 100%;
   height: 100%;
+  overflow: visible;
 }
 
 .donut__track {
-  stroke: var(--surface-bg);
+  stroke: color-mix(in oklab, var(--fg-primary) 9%, var(--surface-bg));
 }
 
-.donut__value {
-  stroke: var(--accent);
+.donut__stop--from { stop-color: var(--band-mmwave); }
+.donut__stop--to { stop-color: var(--band-unlicensed); }
+
+/* 노브. 카드 색으로 «구멍»을 내고 링 색으로 테두리를 둘러, 링 위에 얹힌
+   손잡이처럼 보이게 한다 — 흰 점 하나는 다크에서만 맞고 라이트에서 사라진다. */
+.donut__knob {
+  fill: var(--surface-bg-alt);
+  stroke: var(--band-unlicensed);
 }
 
 .donut__figure {
@@ -5720,10 +5847,16 @@ pre {
   gap: 2px;
 }
 
+/* ⚠️ 타입 스케일 밖의 값이다. `--font-size-*` 는 «글»의 사다리이고 여섯 칸에
+   봉인돼 있는데(`TestTypeScaleHierarchy`), 이것은 문장이 아니라 계기의 «수치
+   표시»다 — 축 라벨을 10.5px 로 둔 것과 같은 판단이다. 스케일에 칸을 하나 더
+   내는 것은 이 위젯 하나 때문에 모든 화면의 사다리를 바꾸는 일이라 하지 않는다. */
 .donut__value-text {
   color: var(--fg-primary);
-  font-size: var(--font-size-lg);
+  font-size: 30px;
   font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
   line-height: 1;
 }
 
@@ -5731,6 +5864,55 @@ pre {
   color: var(--fg-secondary);
   font-size: var(--font-size-2xs);
   text-align: center;
+}
+
+.donut__legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+}
+
+.donut__legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.donut__legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--band-unlicensed);
+  flex: none;
+}
+
+.donut__legend-item[data-kind='rest'] .donut__legend-dot {
+  background: color-mix(in oklab, var(--fg-primary) 22%, var(--surface-bg));
+}
+
+/* 건수와 시간이 «가로»로 한 줄에 선다. 두 줄로 쌓으면 「측정 완료」라는 한 가지
+   사실이 두 줄로 갈라져, 아래 줄이 다음 항목의 것처럼 읽힌다. 폭은 고정으로
+   잡아 두 행의 숫자가 세로로 맞는다 — 218/232 와 47.6h/109.2h 를 비교하는
+   것이 이 범례의 전부이고, 자리가 흔들리면 그 비교가 안 된다. */
+.donut__legend-value {
+  margin-left: auto;
+  min-width: 4.6em;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.donut__legend-time {
+  min-width: 3.6em;
+  color: var(--fg-secondary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 /* 2 columns, so three areas land 2 + 1 and a fourth completes the square. */
@@ -5849,14 +6031,21 @@ pre {
    Four donuts made the reader compare four rings, which is the one thing rings
    are bad at. One ring answers "how far overall"; the three cards below answer
    "which band is behind", and a bar compares far better than an arc. */
+/* 좌 «상태»(링) · 우 «속도»(추이). 링은 고정폭이고 추이가 남는 폭을 전부
+   가진다 — 링은 커져도 더 말하는 것이 없지만, 추이는 넓어질수록 날짜 축이
+   숨을 쉰다. 위가 아니라 «가운데»로 맞추면 링의 제목과 그래프의 100% 선이
+   서로 다른 높이에서 시작해 두 위젯이 어긋나 보인다. */
 .programme-head {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-5);
+  grid-template-columns: minmax(var(--ring-column-min), var(--ring-column-max)) minmax(0, 1fr);
+  gap: var(--space-6);
+  /* 링은 세로 가운데. 위로 맞추면 캡션 길이만큼 왼쪽 아래가 비어 두 위젯이
+     한 쌍이 아니라 「따로 놓인 것」으로 보인다. */
   align-items: center;
+  margin-bottom: var(--space-5);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1080px) {
   .programme-head {
     grid-template-columns: minmax(0, 1fr);
     justify-items: center;
@@ -6338,11 +6527,16 @@ pre {
    height COMPARE. The number is there for anyone who needs it exact, which is
    not the reason this row exists.
    ═══════════════════════════════════════════════════════════════════════ */
+/* ⚠️ 1px 테두리를 뺐다. 패널이 이미 테두리를 갖고 있어 그 안의 카드가 또
+   테두리를 두르면 «상자 안의 상자»가 되고, 이 패널 하나에 그런 선이 일곱 겹
+   있었다. 구분은 이제 «면의 단»이 진다 — 다크는 명도로(#181c2a → #1f2436),
+   라이트는 흰색이 천장이라 그림자로. 선이 줄면 같은 정보가 덜 갇혀 보인다. */
 .band-card {
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--surface-border);
+  border: none;
   border-radius: var(--radius-md);
-  background: var(--surface-bg);
+  background: var(--surface-raised);
+  box-shadow: var(--elevation-1);
 }
 
 .band-card[data-band='unlicensed'] { --band: var(--band-unlicensed); --band-tint: var(--band-unlicensed-tint); }
@@ -6687,12 +6881,32 @@ pre {
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background var(--motion-fast) var(--motion-easing);
+  /* ⚠️ background 만 보간하고 box-shadow 를 빼 두었던 것이 «딸깍»의 정체다.
+     이 행의 테두리는 box-shadow 로 그려지므로(왼쪽 모드 행과 같은 이유 —
+     outline 은 두께가 보간되지 않는다), 그것을 전이 목록에서 빠뜨리면 배경만
+     서서히 들어오고 테두리는 한 프레임에 튀어나온다. 한 상태 변화가 두 속도로
+     일어나면 눈에는 «끊김»으로 보인다. 시작값을 투명 0 폭으로 선언해 두는 것도
+     같은 이유다 — 없던 그림자에서 시작하면 브라우저가 보간할 대상이 없다. */
+  box-shadow: inset 0 0 0 0 transparent;
+  transition:
+    background var(--motion-base) var(--motion-easing),
+    box-shadow var(--motion-base) var(--motion-easing);
 }
 
 .issue-row__btn:hover,
 .issue-row__btn[data-linked='true'] {
   background: color-mix(in oklab, var(--status-fail) 10%, transparent);
+}
+
+/* 좌측 레일도 같이 산다. 행이 켜질 때 레일만 그대로면 「켜진 것」의 경계가
+   두 군데로 갈라져 보인다. */
+.issue-row::before {
+  transition: background var(--motion-base) var(--motion-easing);
+}
+
+.issue-row:has(.issue-row__btn[data-linked='true'])::before,
+.issue-row:has(.issue-row__btn[aria-pressed='true'])::before {
+  background: color-mix(in oklab, var(--status-fail) 85%, transparent);
 }
 
 /* 고정된 것은 «계속» 켜져 있다는 표시가 필요하다 — hover 와 같은 모양이면
@@ -6766,4 +6980,446 @@ button.gauge:focus-visible {
 
 .issue-row__btn[data-linked='true'] {
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--status-fail) 40%, transparent);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Nord — 세 번째 테마 (2026-09-09)
+
+   Radiated 의 `.nord` 배색을 이 저장소의 토큰 체계로 옮긴 것. 원본은 shadcn
+   이름(`--color-background` / `--color-card` / `--color-primary` …)을 쓰고
+   여기는 primitive → semantic 그래프를 쓰므로, 값이 아니라 «자리»를 매핑했다:
+
+     원본 --color-background  #2e3440  →  --surface-bg      (페이지)
+     원본 --color-card        #3b4252  →  --surface-bg-alt  (카드)
+     원본 --color-border      #4c566a  →  --surface-border
+     원본 --color-foreground  #eceff4  →  --fg-primary
+     원본 --color-muted-fg    #d8dee9  →  --fg-secondary
+     원본 --color-primary     #88c0d0  →  --accent          (Nord frost)
+     원본 --color-destructive #bf616a  →  status-fail 계열  (Nord aurora red)
+
+   ⚠️ 상태색은 원본의 chart-1~5 를 그대로 쓰지 않았다. 저쪽에서 그 다섯은 UI
+   크롬 액센트지 «판정»이 아니고, 여기서 status-pass/fail 은 적합/부적합이라
+   의미가 고정돼 있다. 그래서 Nord 팔레트(aurora)에서 의미가 맞는 색을 골랐다:
+     pass #a3be8c(green) · fail #bf616a(red) · warn #ebcb8b(yellow)
+     running #88c0d0(frost) · claimed #b48ead(purple)
+
+   ⚠️ 뱃지 대비는 `design-token-conformance` 가 재고, 값은 그 결과로 조정했다.
+   Nord 원본 값을 그대로 쓰면 어두운 카드 위 뱃지가 4.5:1 을 못 넘는다.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root[data-theme='nord'] {
+  color-scheme: dark;
+
+  /* ⚠️ control 계열만 primitive 를 «거쳐야» 한다 — `--control-border` 가 날
+     hex 를 물면 `TestNativeControlFoundation` 이 빨개진다. 그 검사가 재는 것은
+     「네이티브 컨트롤의 테두리가 테마마다 제각기 값으로 흩어지지 않는가」이고,
+     그건 이 테마에도 참이어야 하는 명제다. */
+  --p-nord-control-border: #8b98b0;
+
+  --surface-bg: #2e3440;
+  --surface-bg-alt: #3b4252;
+  --surface-raised: #434c5e;  /* nord3 — 사다리의 셋째 칸 */
+  --surface-border: #4c566a;
+  --surface-transparent: transparent;
+  --overlay-backdrop: rgba(46, 52, 64, 0.6);
+
+  --fg-primary: #eceff4;
+  --fg-secondary: #d8dee9;
+  /* Nord 카드(#3b4252) 대비 5.05:1. 원본 팔레트의 nord4 보다 한 단 내렸다 —
+     저쪽 값 그대로면 secondary 와 구별이 안 된다. */
+  --fg-tertiary: #b0b8c8;
+  --fg-disabled: #7b88a1;
+  --control-border: var(--p-nord-control-border);
+  --control-placeholder: #9aa6bd;
+
+  --accent: #88c0d0;
+  --accent-fg: #2e3440;
+
+  --status-pass: #a3be8c;
+  --status-fail: #d3868f;
+  --status-warn: #ebcb8b;
+
+  --status-pass-fg: #a3be8c;
+  --status-pass-bg: rgba(163, 190, 140, 0.18);
+  --status-fail-fg: #d3868f;
+  --status-fail-bg: rgba(191, 97, 106, 0.20);
+  --status-running-fg: #88c0d0;
+  --status-running-bg: rgba(136, 192, 208, 0.18);
+  --status-stale-fg: #ebcb8b;
+  --status-stale-bg: rgba(235, 203, 139, 0.18);
+  --status-missing-fg: #aeb8cc;
+  --status-missing-bg: rgba(174, 184, 204, 0.18);
+  --status-claimed-fg: #c3a0bd;
+  --status-claimed-bg: rgba(180, 142, 173, 0.20);
+  --status-duplicate-fg: #e0a17a;
+  --status-duplicate-bg: rgba(208, 135, 112, 0.20);
+  --status-draft-fg: #9db4d0;
+  --status-draft-bg: rgba(129, 161, 193, 0.20);
+  --status-published-fg: #8fbcbb;
+  --status-published-bg: rgba(143, 188, 187, 0.18);
+
+  --shadow-color: rgba(20, 24, 32, 0.55);
+  --overflow-shadow: rgba(20, 24, 32, 0.4);
+
+  /* 밴드 3분류. Nord frost/aurora 에서 골랐다 — hue 만 바꾸면 나머지 노브가
+     따라오므로 여기 세 줄이 이 테마의 밴드 배색 전부다. */
+  --band-hue-unlicensed: 225;   /* frost blue  #81a1c1 계열 */
+  --band-hue-licensed: 190;     /* frost cyan  #88c0d0 계열 */
+  --band-hue-mmwave: 330;       /* aurora purple #b48ead 계열 */
+  --band-chroma: 0.09;
+  --band-lightness: 0.74;
+  --band-tint-lightness: 0.86;
+  --band-tint-chroma: 0.08;
+
+  --gauge-track-mix: 12%;
+  --ring-track-mix: 12%;
+}
+
+/* ── stacked trend ────────────────────────────────────────────────────────
+   The top edge is overall progress; each band's visible thickness is its own
+   contribution. Areas are painted top-band-first so the lower ones overlay.
+   ═══════════════════════════════════════════════════════════════════════ */
+.trend-wrap {
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--surface-border);
+}
+
+.trend {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.trend__svg {
+  width: 100%;
+  height: 200px;
+}
+
+.trend__grid {
+  stroke: color-mix(in oklab, var(--fg-primary) 8%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+/* The declared gap, same dashed vocabulary the rest of the console uses. */
+.trend__caption {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-2);
+  border-left: 2px dashed var(--surface-border);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  line-height: 1.5;
+}
+
+/* ── trend: lines + dots ──────────────────────────────────────────────────
+   Areas became lines. A filled stack invites comparing thickness, which the eye
+   does badly; lines on one axis compare directly. Dots mark the days that carry
+   a measurement — the segment between them is interpolation.
+
+   ⚠️ 총계 «점선»은 내렸다. 선들이 쌓이도록 바뀌면서 맨 위 선이 그 자체로
+   총계가 됐고, 그 위에 점선을 하나 더 겹치면 같은 값을 두 번 그리게 된다.
+   ═══════════════════════════════════════════════════════════════════════ */
+.trend__line {
+  fill: none;
+  stroke: var(--band, var(--accent));
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.trend__dot {
+  fill: var(--surface-bg-alt);
+  stroke: var(--band, var(--accent));
+  stroke-width: 1.5;
+}
+
+.trend__series[data-band='unlicensed'] { --band: var(--band-unlicensed); }
+.trend__series[data-band='licensed'] { --band: var(--band-licensed); }
+.trend__series[data-band='mmwave'] { --band: var(--band-mmwave); }
+
+/* ── 추이: 축이 있어야 «추이»로 읽힌다 ──────────────────────────────────
+   축 없는 꺾은선은 그림이지 그래프가 아니다. y 는 0·25·50·75·100 을 적어
+   높이를 숫자로 읽게 하고, x 는 점마다 눈금을 세워 날짜를 세로에 가깝게
+   눕힌다 — 가로로 적으면 14개가 서로 밟는다.
+   ═══════════════════════════════════════════════════════════════════════ */
+/* 폭을 «재는» 칸. svg 자신을 재면 svg 가 자기 폭을 바꾸는 순간 관측이 자기를
+   물어(피드백 루프) 값이 진동한다. 블록 하나를 사이에 둔다. */
+.trend__plot {
+  width: 100%;
+  min-width: 0;
+}
+
+/* 높이는 고정. 폭은 컴포넌트가 계산한 값 그대로 쓰므로 스케일이 1 이고,
+   창을 줄이면 x 간격만 좁아진다 — 글자는 끝까지 같은 크기다. */
+.trend__svg {
+  display: block;
+  max-width: 100%;
+  height: 268px;
+  overflow: visible;
+}
+
+.trend__axis-line {
+  stroke: color-mix(in oklab, var(--fg-primary) 22%, transparent);
+  stroke-width: 1;
+}
+
+.trend__tick {
+  stroke: color-mix(in oklab, var(--fg-primary) 22%, transparent);
+  stroke-width: 1;
+}
+
+.trend__ylabel,
+.trend__xlabel {
+  fill: var(--fg-secondary);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 100% 는 눈금이 아니라 «목적지»다. 다른 격자와 같은 회색으로 두면 그냥
+   네 번째 줄이 되고, 「얼마나 남았나」가 안 보인다. */
+.trend__ceiling {
+  stroke: color-mix(in oklab, var(--accent) 55%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.trend__ceiling-label {
+  fill: color-mix(in oklab, var(--accent) 80%, var(--fg-secondary));
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.02em;
+}
+
+/* 선과 선 사이. 「이것들이 더해진다」를 말하는 것이 전부라 아주 옅다 —
+   진하면 두께를 재려 들고, 두께 비교는 눈이 가장 못 하는 일이다. */
+.trend__ribbon {
+  fill: var(--band, var(--accent));
+  /* 0.1 은 «없는 것»과 구별되지 않았다(실측). 쌓임이 보이는 최소치까지 올리되,
+     선보다 진해지지는 않게 둔다 — 읽는 것은 여전히 선이다. */
+  opacity: 0.18;
+  stroke: none;
+}
+
+.trend__ribbon[data-band='unlicensed'] { fill: var(--band-unlicensed); }
+.trend__ribbon[data-band='licensed'] { fill: var(--band-licensed); }
+.trend__ribbon[data-band='mmwave'] { fill: var(--band-mmwave); }
+
+/* 맨 위 선이 곧 «전체»다. 굵기로 그 사실을 말한다 — 범례를 보러 가지 않아도
+   어느 선이 프로그램 전체인지 한눈에 정해진다. */
+.trend__series[data-top='true'] .trend__line {
+  stroke-width: 2.6;
+}
+
+.trend__series[data-top='true'] .trend__dot {
+  r: 3.2;
+}
+
+.trend__end {
+  fill: var(--band, var(--fg-secondary));
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend__end[data-band='unlicensed'] { fill: var(--band-unlicensed); }
+.trend__end[data-band='licensed'] { fill: var(--band-licensed); }
+.trend__end[data-band='mmwave'] { fill: var(--band-mmwave); }
+
+.trend__end[data-top='true'] {
+  fill: var(--fg-primary);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ── 3단 텍스트: 메타 ──────────────────────────────────────────────────────
+   여기 있는 것들은 전부 「무엇」이 아니라 「언제·누가·얼마나」다. 값이 아니라
+   값에 붙은 꼬리표라, 읽히긴 해야 하지만 먼저 읽힐 필요는 없다.
+   ⚠️ `--fg-disabled` 를 쓰면 안 된다 — 그건 비활성 «상태»의 색이고 WCAG 면제를
+   달고 3.22:1 까지 내려간다. 이건 읽으라고 있는 계층이라 5:1 대에 둔다.
+   ═══════════════════════════════════════════════════════════════════════ */
+.issue-row__meta,
+.band-card__caption,
+.donut__caption,
+.donut__legend-time,
+.family-block__meta,
+.mode-list__meta {
+  color: var(--fg-tertiary);
+}
+
+/* 축 라벨도 메타다 — 값은 선이 말하고, 눈금은 그 선을 읽는 «자» 다. */
+.trend__ylabel,
+.trend__xlabel {
+  fill: var(--fg-tertiary);
+}
+
+/* ── 브랜드 마크 ──────────────────────────────────────────────────────────
+   ⚠️ 배경 타일 없음. 한 번 그라데이션 판 위에 올려 봤는데, 아래 20개 아이콘이
+   전부 맨몸이라 저 하나만 배지처럼 떠서 뜬금없었다. 사이드바에서 색을 갖는
+   물건은 «활성 항목» 하나로 족하다. 마크는 accent 색 글리프 그 자체이고,
+   테마를 바꾸면 accent 를 따라간다 — 규칙이 하나뿐이라 어느 테마에서도 맞는다.
+   ═══════════════════════════════════════════════════════════════════════ */
+.app-brand__mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  color: var(--accent);
+}
+
+.app-brand__mark svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ── 내비 아이콘 ──────────────────────────────────────────────────────────
+   아이콘은 라벨의 «앞»이지 라벨과 «나란히»가 아니다. flex 로 붙이고 아이콘에
+   고정 폭을 줘서, 라벨 길이가 달라도 글자 시작점이 한 줄로 선다.
+   ⚠️ 색은 물려받는다(currentColor). 그래야 hover·active 규칙을 두 벌 쓰지 않고,
+   활성 항목에서 아이콘만 뒤처지는 일이 없다. */
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.nav-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  /* 비활성일 때 아이콘은 글자보다 한 단 더 조용하다 — 20개가 같은 세기로 서면
+     그건 목록이 아니라 벽이다. 활성/hover 에서 1 로 돌아온다. */
+  opacity: 0.62;
+  transition: opacity var(--motion-fast) var(--motion-easing);
+}
+
+.nav-link:hover .nav-icon,
+.nav-link.active .nav-icon {
+  opacity: 1;
+}
+
+.nav-link__label {
+  min-width: 0;
+}
+
+/* 활성 항목. 평면 배경 대신 왼쪽에서 오른쪽으로 «빠지는» 그라데이션이라
+   시선이 라벨 쪽으로 흐르고, 오른쪽 끝이 배경에 녹아 상자처럼 닫히지 않는다. */
+.nav-link.active {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--accent) 20%, transparent) 0%,
+    color-mix(in oklab, var(--accent) 7%, transparent) 60%,
+    transparent 100%
+  );
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* ── 화면 전환 ────────────────────────────────────────────────────────────
+   좌측 탭을 누르면 내용이 «딸깍» 갈렸다. 새 화면이 이전 화면과 정확히 같은
+   순간에 나타나므로 눈은 그것을 「이동」이 아니라 「깜빡임」으로 읽고, 그러면
+   방금 뭐가 바뀌었는지 다시 찾아야 한다. 아주 짧게 올라오며 들어오면 눈이
+   그 방향을 따라가고, 같은 정보가 「도착한 것」으로 읽힌다.
+
+   ⚠️ 6px 이고 240ms 다. 더 크거나 더 길면 «기다림»이 되고, 하루에 수백 번
+   누르는 사람에게 기다림은 고급스러움이 아니라 방해다.
+
+   ⚠️ `opacity` 와 `transform` 만 움직인다. 이 둘은 레이아웃을 다시 계산하지
+   않아서 긴 표가 들어 있어도 프레임을 떨어뜨리지 않는다. height 나 margin 을
+   움직였다면 바로 그 표에서 끊겼을 것이다.
+
+   ⚠️ 시간은 토큰이다. `prefers-reduced-motion` 에서 모션 토큰이 0ms 로
+   바뀌므로(§motion) 여기 따로 미디어 쿼리를 쓰지 않아도 정지한다 — 규칙이
+   한 군데 있고 화면들이 그것을 따른다. */
+.route-swap {
+  animation: route-swap var(--motion-emphasis) var(--motion-easing) both;
+}
+
+@keyframes route-swap {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ── 목업 화면 ────────────────────────────────────────────────────────────
+   ⚠️ 목업은 «목업처럼» 보여야 한다. 실제 화면과 같은 마감으로 그리면 누군가
+   그 앞에서 판단을 내리고, 그 판단의 근거는 아무것도 아니다. 그래서 칸은
+   점선이고, 면은 비어 있고, 배너가 맨 위에서 그 사실을 말한다 — 예쁘게 만들지
+   않는 것이 여기서는 «완성»이다. */
+.mockup-banner {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--status-warn);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--status-warn) 10%, transparent);
+  color: var(--fg-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+}
+
+.mockup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+.mockup-slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 132px;
+  padding: var(--space-4);
+  /* 점선 — 「여기 뭔가 올 자리」의 보편적 어휘다. 실선으로 두면 다 만든 카드가
+     비어 있는 것처럼 읽힌다. */
+  border: 1px dashed var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--fg-primary) 1.5%, transparent);
+}
+
+.mockup-slot__title {
+  margin: 0;
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mockup-slot__body {
+  margin: 0;
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  line-height: 1.6;
+}
+
+.mockup-slot__tag {
+  margin-top: auto;
+  align-self: flex-start;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--fg-primary) 8%, transparent);
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+}
+
+/* ── 추이: 이전 값을 들고 있는 동안 ──────────────────────────────────────
+   모델을 바꾸면 계획·카드·링은 캐시라 즉시 바뀌는데 커버리지만 왕복이 필요하다.
+   그동안 그래프를 «비우면» 「이 모델은 이력이 없다」로 읽히고, 그대로 «두면»
+   이전 값이 새 값인 척한다. 그래서 이전 그래프를 유지하되 눈에 띄지 않게
+   내려놓고, 새 값이 오면 올라온다.
+
+   ⚠️ 나가는 것과 들어오는 것의 속도를 다르게 준다. 흐려질 때는 빠르게(120ms) —
+   기다림의 시작은 즉시 알아야 한다. 돌아올 때는 조금 느리게(180ms) — 그쪽이
+   「도착」으로 읽힌다. 같은 속도로 하면 그냥 깜빡임이다.
+
+   ⚠️ `visibility`/`display` 가 아니라 `opacity` 다. 사라지면 그 자리가 접히고,
+   접혔다 펴지는 것은 흐려지는 것보다 훨씬 크게 눈에 띈다. 높이는 그대로 있다. */
+.trend {
+  transition: opacity var(--motion-base) var(--motion-easing);
+}
+
+.trend[data-stale='true'] {
+  opacity: 0.28;
+  transition-duration: var(--motion-fast);
+  /* 값이 확정되지 않은 동안에는 아무것도 누를 수 없다. 지금은 누를 것이 없지만,
+     선을 클릭할 수 있게 되는 날 이 한 줄이 없으면 이전 모델의 점을 누르게 된다. */
+  pointer-events: none;
 }
