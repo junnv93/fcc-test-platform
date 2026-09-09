@@ -36,6 +36,7 @@ const CombinedOverviewRoute = lazy(() => import('@/routes/overview-combined'));
 const SystemDashboardRoute = lazy(() => import('@/routes/system-dashboard'));
 const TestItemsRoute = lazy(() => import('@/routes/test-items'));
 const DataReviewRoute = lazy(() => import('@/routes/data-review'));
+const CorrectionFactorsRoute = lazy(() => import('@/routes/correction-factors'));
 const DiagnosticsRoute = lazy(() => import('@/routes/diagnostics'));
 const ChambersRoute = lazy(() => import('@/routes/chambers'));
 const TestPlansRoute = lazy(() => import('@/routes/test-plans'));
@@ -255,6 +256,14 @@ export const appRoutes: readonly AppRoute[] = [
         element: <DataReviewRoute />,
         errorElement: ROUTE_ERROR_ELEMENT,
         handle: { titleKey: 'routes.dataReview.title' },
+      },
+      // 보정값 — «목업». 원본은 기준정보가 소유하고, 이 화면은 그중 correction
+      // 갈래를 사람이 부르는 어휘로 보여 주는 자리다.
+      {
+        path: 'correction-factors',
+        element: <CorrectionFactorsRoute />,
+        errorElement: ROUTE_ERROR_ELEMENT,
+        handle: { titleKey: 'routes.correctionFactors.title' },
       },
       // 멀티챔버 P6 (2026-06-16): chamber availability + distributed remote
       // measurement (central proxy — start + progress poll).

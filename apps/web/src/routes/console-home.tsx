@@ -838,6 +838,28 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
    *  다음에 바꿀 때도 한 군데다. */
   const percent = (ratio: number): string => `${Math.round(ratio * 100)}\u00a0%`;
 
+  /** 이 숫자가 «어느 계획 판»에 대한 것인가.
+   *
+   *  계획은 개정될 때 새 `plan_id` 로 다시 발행되고 옛 판은 테이블에 남는다.
+   *  진행률·항목 읽기 둘 다 최신 판만 보므로 화면의 모든 숫자가 «한 판»에 대한
+   *  것인데, 그 판이 무엇인지는 어디에도 적혀 있지 않았다. 그래서 진행률이
+   *  하룻밤에 떨어졌을 때 「일이 되돌려졌나」와 「계획이 늘었나」가 구별되지 않는다.
+   *
+   *  ⚠️ 여기서 말하는 것은 «어느 판인가»까지다. 「지난 판 대비 몇 건 추가·삭제」는
+   *  이전 판을 봐야 하는데 이 읽기는 최신 판만 준다(그것이 옳다 — 두 판이 섞이면
+   *  조건이 겹쳐 나온다). 판 이력을 주는 읽기가 생기면 그때 이 줄에 붙는다.
+   *
+   *  ⚠️ 그때 «추가와 삭제를 합치지 않는다». 순증 +1 로 접으면 삭제가 사라지는데,
+   *  지워진 조건에 이미 측정이 있었다면 그 시간이 진행률에서 빠진다 — 늘어난 것은
+   *  할 일이 는 것이고, 줄어든 것은 「한 것이 없던 일이 된」 것이다. */
+  const planEdition = useMemo(() => {
+    const first = (planConditions.data ?? [])[0];
+    if (first === undefined) return null;
+    const id = first.plan_id ?? '';
+    if (id === '') return null;
+    return { id, publishedAt: (first.plan_published_at ?? '').slice(0, 10) };
+  }, [planConditions.data]);
+
 
   /** 분류 라벨 → 색 슬롯.
    *
@@ -1285,6 +1307,18 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
               <h2 className="console-panel__title" id="console-programme-heading">
                 {t('routes.home.programmeHeading')}
               </h2>
+              {/* 계획 판. 이 패널의 «모든» 숫자가 이 판에 대한 것이라는 사실을
+                  숫자들보다 «먼저» 적는다. */}
+              {planEdition !== null && (
+                <span className="plan-edition" data-testid="plan-edition">
+                  {planEdition.publishedAt === ''
+                    ? t('routes.home.planEdition', { id: planEdition.id })
+                    : t('routes.home.planEditionOn', {
+                        id: planEdition.id,
+                        at: planEdition.publishedAt,
+                      })}
+                </span>
+              )}
               {/* 모델 토글. 「진행 중 3건」이라는 «숫자»는 이 화면에서 아무것도
                   하지 않는 사실이었다 — 그 자리에 «고를 수 있는 것»을 둔다. */}
               <div className="panel-actions">

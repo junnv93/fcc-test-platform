@@ -260,7 +260,8 @@
         "overviewProgramme": "Test progress",
         "overviewCombined": "Everything",
         "systemDashboard": "System dashboard",
-        "dataReview": "Data review"
+        "dataReview": "Data review",
+        "correctionFactors": "Correction factors"
       },
       "projectNav": {
         "title": "Current project",
@@ -1869,7 +1870,9 @@
         "recentIssues": "Most recent"
       },
       "markTitle": "Assigned to {who} · {issues} nonconforming",
-      "mine": "{who} (you)"
+      "mine": "{who} (you)",
+      "planEdition": "Plan {id}",
+      "planEditionOn": "Plan {id} · published {at}"
     },
     "testReports": {
       "title": "Test Report Register",
@@ -2219,6 +2222,40 @@
         "sign": {
           "title": "Review sign-off",
           "body": "Who looked at what, and when. Review is a step, not a feeling; if it leaves no trace it did not happen."
+        }
+      }
+    },
+    "correctionFactors": {
+      "eyebrow": "FACILITY",
+      "title": "Correction factors",
+      "lede": "What was added to or subtracted from a raw reading before it became a result.",
+      "mockupNote": "⚠ This screen is a MOCKUP, and it is not a new store. Correction values already exist as one family of reference data; the origin is owned by",
+      "originLink": "Reference data →",
+      "notWired": "not wired to reference data yet",
+      "slots": {
+        "cable": {
+          "title": "Cable loss",
+          "body": "Loss per path, per frequency. Bolted to the shield room, not to the sample — so it is scoped to the room."
+        },
+        "antenna": {
+          "title": "Antenna gain",
+          "body": "Gain per antenna, per frequency. Follows the setup, and a wrong one shifts every radiated result by the same amount."
+        },
+        "switch": {
+          "title": "Switch path",
+          "body": "Which port maps to which path, and what each costs. A remapped switch silently changes every measurement that used it."
+        },
+        "analyzer": {
+          "title": "Analyzer settings",
+          "body": "RBW / VBW / detector / sweep. Not a correction, but it decides what the number means."
+        },
+        "validity": {
+          "title": "Valid from / until",
+          "body": "A correction has a life. A measurement taken outside its window is a measurement with no correction."
+        },
+        "trace": {
+          "title": "Which result used which",
+          "body": "Given a result, which revision of which factor produced it. Without this the number cannot be reproduced."
         }
       }
     }

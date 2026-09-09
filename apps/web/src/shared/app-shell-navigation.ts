@@ -71,6 +71,13 @@ export const APP_SHELL_NAV_GROUPS: readonly AppShellNavGroup[] = [
     labelKey: 'routes.layout.navGroups.facility',
     items: [
       { to: ROUTE_PATHS.chambers, labelKey: 'routes.layout.nav.chambers', end: false, icon: 'sliders' },
+      // 🔴 「결과」에서 옮겨 왔다. 장비 목록은 «결과»가 아니라 «설비»다 —
+      // 성적서에 실릴 장비를 고르는 일이라 결과 옆에 있었지만, 그 목록을
+      // 관리하는 일 자체는 시험이 끝난 뒤가 아니라 상시다.
+      { to: ROUTE_PATHS.equipmentLists, labelKey: 'routes.layout.nav.equipmentLists', end: false, icon: 'instrument' },
+      // 보정값(FACTOR). ⚠️ 새 저장소가 아니라 「기준정보」의 한 갈래
+      // (`reference_revisions.family = 'correction'`)를 그 어휘로 보는 자리다.
+      { to: ROUTE_PATHS.correctionFactors, labelKey: 'routes.layout.nav.correctionFactors', end: false, icon: 'pulse' },
     ],
   },
   {
@@ -92,12 +99,6 @@ export const APP_SHELL_NAV_GROUPS: readonly AppShellNavGroup[] = [
       },
       { to: ROUTE_PATHS.reports, labelKey: 'routes.layout.nav.reports', end: false, icon: 'file' },
       { to: ROUTE_PATHS.testReports, labelKey: 'routes.layout.nav.testReports', end: false, icon: 'books' },
-      {
-        to: ROUTE_PATHS.equipmentLists,
-        labelKey: 'routes.layout.nav.equipmentLists',
-        end: false,
-        icon: 'instrument',
-      },
     ],
   },
   {

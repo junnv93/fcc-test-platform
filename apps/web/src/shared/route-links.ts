@@ -33,6 +33,7 @@ export const ROUTE_PATHS = {
   systemDashboard: '/system',
   testItems: '/test-items',
   dataReview: '/data-review',
+  correctionFactors: '/correction-factors',
   myProjects: '/my-projects',
   fields: '/fields',
   projects: '/projects',

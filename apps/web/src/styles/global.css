@@ -8075,3 +8075,15 @@ button.gauge:focus-visible {
 .mode-list {
   overflow: visible;
 }
+
+/* 계획 판 표시. 이 패널의 «모든» 숫자가 이 판에 대한 것이라는 사실을 숫자들보다
+   먼저 적는다. 조용한 3단 글자 — 늘 있는 사실이지 소식이 아니다. 판이 바뀐
+   «사건»은 나중에 붙을 「N건 추가 · N건 삭제」가 말한다. */
+.plan-edition {
+  margin-left: auto;
+  margin-right: var(--space-3);
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

@@ -251,31 +251,69 @@ ACTIVE_CLAIMS_QUERY_SQL_PAGED_BY_TECH = _select_by_project(
 )
 
 
-# 계획 조건 여섯 형태. ⚠️ 기술 패싯이 `technology` 가 아니라
-# `coverage_technology` 다 — 계획 테이블의 칸 이름이 그것이고, 없는 칸으로
-# 필터하면 SELECT 가 통째로 죽는다.
-_PLAN_TECH_FILTER: tuple[str, ...] = ('coverage_technology',)
-PLAN_CONDITIONS_QUERY_SQL_ALL = _select_by_project(
-    PLAN_CONDITIONS_VIEW, PLAN_CONDITION_COLUMNS, PLAN_CONDITION_KEYSET, limited=False,
+# 계획 조건 여섯 형태.
+#
+# ⚠️ 기술 패싯이 `technology` 가 아니라 `coverage_technology` 다 — 계획 테이블의
+# 칸 이름이 그것이고, 없는 칸으로 필터하면 SELECT 가 통째로 죽는다.
+#
+# 🔴 «최신 발행판만» 돌려준다. 계획은 개정될 때 새 `plan_id` 로 다시 발행되고
+# 옛 판의 행은 테이블에 그대로 남는다 — 그것이 이 저장소의 이력 방식이다.
+# 판을 거르지 않으면 개정된 프로젝트에서 조건이 «판의 수만큼» 겹쳐 나오고,
+# 진행률 읽기(`central_progress_read_adapter`)는 이미 최신 판만 보므로 한 화면에
+# 분모가 둘이 된다. 그것은 잘못된 숫자가 «그럴듯하게» 보이는 상태다.
+# 최신 판을 고르는 규칙은 진행률 쪽과 «같은 것»을 쓴다 — 두 읽기가 다른 규칙으로
+# 최신을 고르면 어느 날 서로 다른 판을 가리킨다.
+_LATEST_PLAN_JOIN = (
+    ' JOIN ( '
+    '  SELECT "project_id", "provider_id", "plan_id" FROM ( '
+    '    SELECT "project_id", "provider_id", "plan_id", '
+    '      ROW_NUMBER() OVER ( '
+    '        PARTITION BY "project_id", "provider_id" '
+    '        ORDER BY ("plan_published_at" IS NULL) ASC, '
+    '          "plan_published_at" DESC, "plan_id" DESC '
+    '      ) AS rn '
+    '    FROM ( '
+    '      SELECT DISTINCT "project_id", "provider_id", "plan_id", "plan_published_at" '
+    f'      FROM "{PLAN_CONDITIONS_VIEW}" '
+    '    ) plans '
+    '  ) ranked WHERE rn = 1 '
+    ' ) lp ON base."project_id" = lp."project_id" '
+    '  AND base."provider_id" = lp."provider_id" '
+    '  AND base."plan_id" = lp."plan_id" '
 )
-PLAN_CONDITIONS_QUERY_SQL = _select_by_project(
-    PLAN_CONDITIONS_VIEW, PLAN_CONDITION_COLUMNS, PLAN_CONDITION_KEYSET,
-)
-PLAN_CONDITIONS_QUERY_SQL_PAGED = _select_by_project(
-    PLAN_CONDITIONS_VIEW, PLAN_CONDITION_COLUMNS, PLAN_CONDITION_KEYSET, keyset=True,
-)
-PLAN_CONDITIONS_QUERY_SQL_ALL_BY_TECH = _select_by_project(
-    PLAN_CONDITIONS_VIEW, PLAN_CONDITION_COLUMNS, PLAN_CONDITION_KEYSET,
-    extra_filters=_PLAN_TECH_FILTER, limited=False,
-)
-PLAN_CONDITIONS_QUERY_SQL_BY_TECH = _select_by_project(
-    PLAN_CONDITIONS_VIEW, PLAN_CONDITION_COLUMNS, PLAN_CONDITION_KEYSET,
-    extra_filters=_PLAN_TECH_FILTER,
-)
-PLAN_CONDITIONS_QUERY_SQL_PAGED_BY_TECH = _select_by_project(
-    PLAN_CONDITIONS_VIEW, PLAN_CONDITION_COLUMNS, PLAN_CONDITION_KEYSET,
-    extra_filters=_PLAN_TECH_FILTER, keyset=True,
-)
+
+
+def _select_latest_plan(*, keyset: bool = False, limited: bool = True,
+                        by_tech: bool = False) -> str:
+    """`_select_by_project` 와 같은 모양이되 최신 발행판으로 좁힌 SELECT.
+
+    파라미터 순서는 다른 읽기와 «똑같이» 유지한다 —
+    ``(project_id, [technology], [*cursor], [limit])``. 최신 판 서브쿼리는 바인딩
+    파라미터를 쓰지 않으므로(테이블 전체에서 파티션) 그 순서에 끼어들지 않는다.
+    """
+    cols = ', '.join(f'base."{c}"' for c in PLAN_CONDITION_COLUMNS)
+    order = ', '.join(f'base."{c}"' for c in PLAN_CONDITION_KEYSET)
+    where = 'base."project_id" = %s'
+    if by_tech:
+        where += ' AND base."coverage_technology" = %s'
+    if keyset:
+        keys = ', '.join(f'base."{c}"' for c in PLAN_CONDITION_KEYSET)
+        holes = ', '.join(['%s'] * len(PLAN_CONDITION_KEYSET))
+        where += f' AND ({keys}) > ({holes})'
+    limit = ' LIMIT %s' if limited else ''
+    return (
+        f'SELECT {cols} FROM "{PLAN_CONDITIONS_VIEW}" base'
+        f'{_LATEST_PLAN_JOIN}'
+        f'WHERE {where} ORDER BY {order}{limit}'
+    )
+
+
+PLAN_CONDITIONS_QUERY_SQL_ALL = _select_latest_plan(limited=False)
+PLAN_CONDITIONS_QUERY_SQL = _select_latest_plan()
+PLAN_CONDITIONS_QUERY_SQL_PAGED = _select_latest_plan(keyset=True)
+PLAN_CONDITIONS_QUERY_SQL_ALL_BY_TECH = _select_latest_plan(limited=False, by_tech=True)
+PLAN_CONDITIONS_QUERY_SQL_BY_TECH = _select_latest_plan(by_tech=True)
+PLAN_CONDITIONS_QUERY_SQL_PAGED_BY_TECH = _select_latest_plan(keyset=True, by_tech=True)
 
 
 # FE-SYNC sync-status (2026-05-27) — central-data freshness for one project.
