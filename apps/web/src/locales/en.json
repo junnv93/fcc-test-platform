@@ -225,7 +225,7 @@
   },
   "routes": {
     "layout": {
-      "appTitle": "FCC Test Platform",
+      "appTitle": "Zenith",
       "documentTitle": "{screen} · {app}",
       "routeAnnouncement": "Navigated to {screen}",
       "navMenuToggle": "Menu",
@@ -293,7 +293,8 @@
         "english": "English",
         "korean": "한국어"
       },
-      "skipToContent": "Skip to content"
+      "skipToContent": "Skip to content",
+      "appKind": "Test Platform"
     },
     "notFound": {
       "title": "Page not found",

@@ -461,6 +461,23 @@
   --font-weight-semibold: 600;
   --tracking-tight: -0.01em; /* titles ≥ 20px */
   --tracking-wide: 0.04em; /* uppercase micro labels */
+  /* 워드마크 전용.
+     🔴 값이 네 번 움직였고, 지금은 «처음 자리 근처로 되돌아왔다»:
+     0.2em → -0.02 → -0.035 → 0.16 → 0.12em.
+
+     조이는 쪽(음수)은 지금 SaaS 워드마크의 관용이고 그 자체로 틀리지 않았다.
+     다만 이 이름이 놓이는 자리가 다르다 — 여기는 계측 장비를 부리는 콘솔이고,
+     그 세계의 명판은 «벌어진 대문자»다. 그리고 실물 이유가 하나 더 있다:
+     대문자 여섯 글자는 자간이 좁으면 글자들이 서로 기대어 한 덩어리 «블록»이
+     되는데, 벌리면 낱글자가 각각 서서 이름이 «놓여 있는» 것처럼 보인다.
+     사이드바 머리처럼 주위가 빈 자리에서는 후자가 더 안정적이다.
+
+     ⚠️ 0.2em 이 아니다. 첫 판의 0.2em 은 DM Mono 기준이었고 — 모노는 글자마다
+     폭이 같아 자간을 더 벌려도 리듬이 흐트러지지 않는다. 그로테스크는 글자 폭이
+     제각각이라 같은 값을 주면 넓은 글자(N·H) 사이가 과하게 뜬다. 20px 에서
+     0.16em 은 3.2px, 0.12em 은 2.4px — 글자 하나가 아니라 «글자 사이»가 눈에
+     띄기 시작하는 경계가 그 사이에 있다. */
+  --tracking-mark: 0.12em;
 
   /* ── W2 §M3 — radius scale (PRD cap: 8px) ────────────────────────────────
      Assignment rule, applied uniformly (the pre-W2 8px/6px split was
@@ -885,7 +902,38 @@ a {
   gap: var(--space-5);
   padding: var(--space-6) var(--space-5);
   border-right: 1px solid var(--surface-border);
+  /* ── 별빛. «움직이지 않는다» ────────────────────────────────────────
+     아래 세로 그라데이션 «위»에 얹힌 넓은 빛웅덩이 셋이다. 왼쪽 위에서 오른쪽
+     아래로 비껴 흐르므로, 세로 한 방향뿐이던 면에 대각선이 하나 생긴다 —
+     「빛이 지나간 자리」로 읽히는 최소 조건이 그것이다.
+
+     ⚠️ 애니메이션이 아니다. 상시 반짝이는 면은 그 위에 얹힌 20개 내비 항목의
+     읽기를 방해하고, 사이드바는 «오래 보는» 면이 아니라 «자주 스치는» 면이라
+     움직임의 값이 특히 나쁘다.
+
+     ⚠️ 색을 새로 고르지 않았다. 셋 다 `--accent` 를 투명 쪽으로 섞은 것이라
+     테마를 바꾸면 저절로 따라간다 — 아래 세로 그라데이션과 같은 규칙이다.
+     세기는 6~11%. 이보다 진하면 웅덩이의 «가장자리»가 보이기 시작하고, 보이는
+     순간 그것은 빛이 아니라 얼룩이다.
+
+     ⚠️ 순서가 의미를 갖는다. 배경 레이어는 «먼저 적은 것이 위»라, 바탕인 세로
+     그라데이션이 반드시 마지막에 온다. */
   background:
+    radial-gradient(
+      120% 52% at 14% 2%,
+      color-mix(in oklab, var(--accent) 11%, transparent) 0%,
+      transparent 64%
+    ),
+    radial-gradient(
+      86% 38% at 98% 30%,
+      color-mix(in oklab, var(--accent) 8%, transparent) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      140% 46% at 26% 88%,
+      color-mix(in oklab, var(--accent) 6%, transparent) 0%,
+      transparent 68%
+    ),
     linear-gradient(
       180deg,
       color-mix(in oklab, var(--accent) 8%, var(--surface-bg-alt)) 0%,
@@ -899,10 +947,62 @@ a {
   overflow-y: auto;
 }
 
+/* ── 워드마크 ────────────────────────────────────────────────────────────
+   🔴 2026-09-09 — 「FCC Test Platform」에서 「ZENITH Test Platform」으로.
+   FCC 는 규격 하나의 이름인데 이 플랫폼은 전 규격을 받는 것이 목적이라, 이름이
+   범위를 좁히고 있었다.
+
+   ⚠️ 새 폰트를 «들이지 않았다». 서체를 하나 더 얹으면 번들이 늘고 `web-font-
+   loading` 검사와 `bundle-budget.json` 을 다시 재야 한다 — 라벨 하나 때문에
+   치를 값이 아니다. 대신 이미 실려 있는 두 서체의 «대비»를 쓴다:
+   이름은 DM Mono(계측기 명판의 어휘), 종류는 본문 sans. 한 화면에서 모노가
+   쓰이는 다른 자리는 전부 «숫자»라, 여기서 모노가 등장하면 그 자체로 특별하다.
+
+   ⚠️ 자간은 토큰이다(`--tracking-mark`). 리터럴로 적으면 `TestTrackingVocabulary`
+   가 잡는다 — 그 검사가 맞다. 이 값은 다음에 또 쓰인다. */
 .app-title {
-  font-weight: var(--font-weight-semibold);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* 🔴 모노를 버렸다. DM Mono + 넓은 자간은 계기 명판의 서체이고, 이 도구가
+   계기가 아니라 «판»이라는 것이 오늘 내내 지킨 구분인데 이름이 그것을 배신했다.
+   본문과 같은 그로테스크를 쓰되 크기·무게·자간으로만 갈라 세운다 — 서체를 하나
+   더 들이지 않고 위계를 만드는 방법이고, 지금 워드마크의 관용이기도 하다.
+
+   🔴 대문자를 «한 번 풀었다가 되돌렸다». 풀었을 때의 근거는 전각 대문자가
+   기관·규격의 어휘라는 것이었고(FCC · ISO · KCC 가 이 화면에 그렇게 등장한다),
+   그 관찰은 지금도 맞다. 그런데 그것은 이름이 «좁게» 조여 있을 때의 얘기다 —
+   자간이 벌어지면 같은 대문자가 규격 약어가 아니라 명판으로 읽힌다. 약어는
+   붙어 있고 명판은 벌어져 있다. 즉 케이스와 자간은 «함께» 결정되는 한 쌍이고,
+   따로 고르면 둘 다 어긋난다.
+
+   ⚠️ 라벨(`appTitle`)은 「Zenith」로 둔다. 대문자화는 여기 한 곳에서만
+   결정된다 — 라벨까지 대문자로 박아 두면 되돌릴 때 고칠 자리가 둘이 되고,
+   그런 자리는 언젠가 한쪽만 고쳐진다.
+
+   ⚠️ `margin-right` 의 음수는 장식이 아니다. `letter-spacing` 은 «마지막
+   글자 뒤에도» 공백을 붙이므로, 벌릴수록 이름이 실제보다 왼쪽으로 치우쳐
+   보인다. 그 폭만큼 되돌려야 아래 「Test Platform」과 왼쪽 끝이 맞는다. */
+.app-title__mark {
   font-size: var(--font-size-lg);
-  letter-spacing: var(--tracking-tight);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-mark);
+  line-height: 1.05;
+  color: var(--fg-primary);
+  text-transform: uppercase;
+  margin-right: calc(-1 * var(--tracking-mark));
+}
+
+/* 종류는 «조용히» 따라온다. 대문자를 풀었다 — 이름이 대문자인데 종류까지
+   대문자면 두 줄이 같은 목소리로 외치고, 그러면 이름이 이름으로 안 들린다. */
+.app-title__kind {
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.1;
 }
 
 /* Task-flow nav grouping (roadmap Phase 0). The nav renders one
@@ -5368,11 +5468,34 @@ pre {
    The gradient is the ONE place a second colour is mixed into the accent. It is
    what makes the mark read as an object rather than a monochrome glyph, and it
    is confined here so the rest of the shell keeps a single accent. */
+/* 🔴 2026-09-09 (3차) — 이 줄이 «휑했다». 26px 글리프와 6글자 이름이 사이드바
+   폭 안에서 왼쪽에 붙어 있고 오른쪽은 그냥 빈 면이라, 머리글이 아니라 «떠 있는
+   무엇»으로 보였다. 원인은 여백의 양이 아니라 «경계가 없다»는 것이다 — 어디까지가
+   머리글이고 어디부터가 내비인지 아무것도 말하지 않았다.
+
+   그래서 판을 하나 깐다. 사다리의 세 번째 칸(`--surface-raised`)에 아주 얕은
+   그림자 — 이 저장소가 이미 도넛 카드에서 쓰는 「떠 있음」의 어휘 그대로다.
+   값을 새로 고르지 않는다.
+
+   ⚠️ 배경을 «반투명»으로 둔다(72%). 바로 뒤 사이드바에 별빛 그라데이션이
+   깔려 있는데 불투명 판을 얹으면 그 자리만 빛이 잘려 사각형이 도려내진 것처럼
+   보인다. 통과시키면 판이 빛«위에» 뜬 것으로 읽힌다 — 이것이 「살짝 플로팅」과
+   「배지」를 가르는 지점이다.
+
+   ⚠️ 아이콘 «뒤»의 타일이 아니다. 그건 앞서 한 번 했다가 걷어냈다 — 아래 20개
+   내비 아이콘이 전부 맨몸인데 마크 하나만 배지가 되면 뜬금없다. 판은 글리프와
+   이름을 «함께» 감싼다. 즉 강조되는 것은 아이콘이 아니라 머리글 블록이다. */
 .app-brand {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   min-width: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--surface-raised) 72%, transparent);
+  box-shadow:
+    0 10px 24px -18px var(--shadow-color),
+    0 1px 3px -2px var(--shadow-color);
 }
 
 /* 🔴 2026-09-09 — 여기 있던 그라데이션 «타일»을 지웠다. 두 가지 이유가 겹친다.

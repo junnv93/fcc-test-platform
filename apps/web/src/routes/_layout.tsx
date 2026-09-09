@@ -114,14 +114,31 @@ export function AppLayout(): JSX.Element {
             dependency for one glyph would put a second source of visual truth
             beside `global.css`.
 
-            🔴 2026-09-09: this used to be three radiating arcs over a point.
-            The drawing was accurate — the lane measures radiated emission —
-            but at 20px it is the Wi-Fi glyph, and a Wi-Fi glyph on a
-            compliance platform says «wireless gadget», not «the system the lab
-            runs on». What this product actually is, is a PLATFORM: layers that
-            other people's work stands on. So: three stacked plates seen in
-            perspective, with the top one carrying a measurement point. The
-            shape survives at 18px, which the arcs did not.
+            🔴 2026-09-09 (2차): 이름이 ZENITH 로 바뀌면서 글리프도 따라간다.
+            직전 판은 「쌓인 판(plate) 세 장」이었다 — 「플랫폼」이라는 말을
+            그대로 그린 것이라 이름과 그림이 같은 말을 두 번 했고, 이제는
+            이름이 다른 말을 한다.
+
+            🔴 그 다음 판은 «천구의 돔»이었는데, 그것도 버렸다. 돔은 하늘의
+            «모양»이지 하늘에서 보는 «것»이 아니다 — 그리고 20px 로 줄이면
+            돔은 그냥 반원, 즉 아무 말도 하지 않는 도형이 된다.
+
+            그래서 지금 판은 «대각으로 지나가는 유성»이다. 별 하나와 그 뒤로
+            남는 자취 둘, 전부 45° 대각선 위에 놓인다.
+
+            ⚠️ 대각선이 실제로 일을 한다. 이 셸에서 45° 로 놓인 것은 여기뿐이라 —
+            내비·카드·표는 전부 수직·수평이다 — 마크가 «주변과 다른 축»을 갖는다.
+            로고가 아이콘 무리에서 튀어나오는 가장 싼 방법이고, 색이나 크기를
+            더 쓰지 않는다.
+
+            ⚠️ 자취는 별에 «닿지 않는다». 붙이면 획이 하나로 이어져 사선 막대가
+            되고, 떨어뜨리면 눈이 그 사이를 «속도»로 채운다.
+
+            ⚠️ 별은 4각이다. 5각 별은 즐겨찾기·평점의 어휘라 이 화면에서 이미
+            다른 뜻을 갖고, 6각 이상은 20px 에서 뭉갠다. 그리고 4각 별의 오목한
+            변은 «빛나는 점»으로 읽히지 «도형»으로 읽히지 않는다.
+
+            ⚠️ 원소 3개다. 직전 판보다 하나 줄었고, 그만큼 작은 크기에서 버틴다.
 
             `aria-hidden` because the adjacent text already names the product;
             announcing both would read the name twice. */}
@@ -135,13 +152,23 @@ export function AppLayout(): JSX.Element {
               strokeLinejoin="round"
               strokeLinecap="round"
             >
-              <path d="M12 3 21 8l-9 5-9-5z" />
-              <path d="M3 12.5 12 17.5l9-5" />
-              <path d="M3 17 12 22l9-5" />
-              <circle cx="12" cy="8" r="1.6" fill="currentColor" stroke="none" />
+              <path
+                d="M16.4 2.5c.46 3.36 1.43 4.33 4.79 4.79-3.36.46-4.33 1.43-4.79 4.79-.46-3.36-1.43-4.33-4.79-4.79 3.36-.46 4.33-1.43 4.79-4.79Z"
+                fill="currentColor"
+                stroke="none"
+              />
+              <path d="M12.5 11 4.6 18.9" />
+              <path d="M9.3 7.9 6.2 11" />
             </svg>
           </span>
-          <span className="app-title">{t('routes.layout.appTitle')}</span>
+          {/* 워드마크와 «종류»는 다른 것이다 — 앞은 이름이고 뒤는 이것이
+              무엇인지다. 한 문자열로 두면 둘에 같은 서체·같은 무게가 걸려
+              「ZENITH Test Platform」 전체가 하나의 긴 이름으로 읽힌다.
+              쪼개 두면 이름은 이름대로 서고, 종류는 조용히 따라온다. */}
+          <span className="app-title">
+            <b className="app-title__mark">{t('routes.layout.appTitle')}</b>
+            <span className="app-title__kind">{t('routes.layout.appKind')}</span>
+          </span>
         </span>
         <PrimaryNav sessionApiEnabled={sessionApiEnabled} currentProjectId={currentProjectId} />
         <div className="app-header__controls">
