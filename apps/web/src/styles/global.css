@@ -5336,8 +5336,20 @@ pre {
      이 재정의가 없으면 `grid-column: 2` 가 없는 열을 가리켜 암시적 열이
      하나 더 생기고, 화면이 옆으로 스크롤된다. */
   .console-grid__wide,
-  .console-grid__narrow {
+  .console-grid__narrow,
+  .console-grid__third,
+  .console-grid__under {
     grid-column: 1;
+  }
+
+  /* 한 열이면 행 배치도 «자동»으로 돌려놓는다 — 남겨 두면 두 패널이 같은
+     행을 두고 겹친다. */
+  .console-grid[data-scope='manager'] .console-grid__wide,
+  .console-grid[data-scope='manager'] .console-grid__under,
+  .console-grid[data-scope='manager'] .console-grid__narrow,
+  .console-grid[data-scope='manager'] .console-grid__third {
+    grid-column: 1;
+    grid-row: auto;
   }
 }
 
@@ -5541,6 +5553,10 @@ pre {
 .chamber-card {
   display: flex;
   flex-direction: column;
+  /* ⚠️ 격자 칸을 «다 쓴다». 이것이 없으면 카드마다 내용 줄 수가 달라 높이가
+     제각각이 되고(실측: 182 / 182 / 182 / 182 / 170 — 오프라인 카드만 진행률
+     설명 줄이 없다), 그러면 아래 각주가 카드마다 다른 높이에 놓인다. */
+  height: 100%;
   overflow: hidden;
   border: 1px solid var(--surface-border);
   border-radius: var(--c-card-radius);
@@ -5570,14 +5586,25 @@ pre {
 
 /* A single travelling highlight, only while a measurement is in flight. It is
    the one moving thing on the screen on purpose — motion that is always on
-   stops meaning anything, and this one means "work is happening here". */
+   stops meaning anything, and this one means "work is happening here".
+
+   🔴 2026-09-09 — 크레스트가 `--accent-fg` 였다. 그 토큰은 «accent 위에 얹는
+   글자색»이라 accent 의 밝기를 «반대로» 따라간다: 라이트에서는 흰색이라 빛으로
+   보였지만, 다크에서는 남색이라 파란 레일 위를 «어두운 얼룩»이 지나갔다.
+   즉 같은 규칙이 테마마다 반대 뜻이 됐고, 아무것도 빨개지지 않았다.
+
+   ⚠️ 흰색을 리터럴로 박는다. 여기서 필요한 것은 「테마의 전경색」이 아니라
+   「빛」이고, 빛은 어느 테마에서도 밝은 쪽이다. 토큰을 쓰는 것이 늘 옳은 것은
+   아니다 — 뜻이 테마를 «따라가면 안 되는» 자리가 그렇다.
+   ⚠️ 그리고 이 획은 accent 레일 위에서만 나타난다(측정 중일 때만 렌더된다).
+   초록 레일 위로 흰 빛이 지나갈 일은 없다. */
 .chamber-card__sweep {
   position: absolute;
   inset: 0;
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in srgb, var(--accent-fg) 70%, transparent),
+    rgb(255 255 255 / 0.72),
     transparent
   );
   transform: translateX(-100%);
@@ -5601,6 +5628,7 @@ pre {
 
 .chamber-card__body {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-4);
@@ -5636,8 +5664,21 @@ pre {
   white-space: nowrap;
 }
 
+/* ── 카드 안의 글자 층 ────────────────────────────────────────────────────
+   🔴 2026-09-09 — 이 카드는 크기를 «둘»만 썼다(14 / 11). 그 사이가 비어 있어서
+   14 는 제목, 11 은 «나머지 전부»가 됐고, 그러다 보니 카드에서 사람이 실제로
+   읽는 숫자(진행률 %)가 주소·하트비트와 같은 크기로 눌려 있었다.
+   그리고 색이 넷이었다(primary / secondary / accent / warn) — 그중 accent 는
+   레일이 이미 하는 말을 글자로 한 번 더 한 것이다.
+
+   같은 화면의 형제들(`.load-row` · `.activity-row`)이 쓰는 3단으로 맞춘다:
+     14 semibold primary   이름   — 이 카드가 무엇인가
+     12 medium   primary   숫자   — 그 카드에서 읽는 값
+     11 normal   tertiary  부속   — 식별자 · 주소 · 시각
+   ⚠️ 숫자에는 tabular-nums 를 준다. 카드가 격자로 서면 % 는 «세로로» 비교되고,
+   비례폭 숫자는 그 열을 흔든다. 형제 목록들이 이미 그렇게 한다. */
 .chamber-card__id {
-  color: var(--fg-secondary);
+  color: var(--fg-tertiary);
   font-size: var(--font-size-2xs);
 }
 
@@ -5670,33 +5711,50 @@ pre {
   opacity: 0.4;
 }
 
+/* ⚠️ accent 를 걷었다. 이 카드에서 「돌고 있다」는 말은 레일과 LED 가 이미
+   두 번 하고 있고, 숫자까지 accent 면 세 번이 된다 — 그러면 정작 «값»이 아니라
+   «상태»로 읽힌다. 숫자는 숫자 색으로 두고, 대신 한 칸 키운다. */
 .chamber-card__pct {
   flex: none;
-  color: var(--accent);
-  font-size: var(--font-size-2xs);
-  font-weight: var(--font-weight-semibold);
+  color: var(--fg-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 「누가」는 2단(12px/primary)이다 — 카드에서 이름 다음으로 읽히는 값이고,
+   진행률 설명(11px/3단)보다 한 칸 위다. 관리자가 여기서 찾는 것이 이것이다. */
+.chamber-card__user {
+  color: var(--fg-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
 }
 
 .chamber-card__detail,
 .chamber-card__note {
-  color: var(--fg-secondary);
+  color: var(--fg-tertiary);
   font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
 }
 
 .chamber-card__note {
   color: var(--status-warn);
 }
 
+/* 각주는 «바닥»에 붙는다 — 위 내용이 몇 줄이든 카드 다섯 장의 「몇 분 전」이
+   한 줄에 선다. */
 .chamber-card__foot {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
-  margin: var(--space-2) 0 0;
+  margin: auto 0 0;
   padding-top: var(--space-2);
   border-top: 1px solid var(--surface-border);
-  color: var(--fg-secondary);
+  color: var(--fg-tertiary);
   font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
 }
 
 .chamber-card__foot dd {
@@ -6592,6 +6650,12 @@ pre {
   font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
+  /* ⚠️ 굵기는 «전환하지 않는다». font-weight 를 애니메이트하면 글자 폭이 매
+     프레임 달라져 알약 안에서 라벨이 흔들리고, 그것이 「딸깍」보다 나쁘다.
+     색과 배경만 시간을 갖는다. */
+  transition:
+    background-color var(--motion-fast) var(--motion-easing),
+    color var(--motion-fast) var(--motion-easing);
 }
 
 /* ⚠️ `--accent-fg` 를 쓰면 안 된다. 다크에서 그 토큰은 「강조색 위에 얹는 어두운
@@ -6930,9 +6994,239 @@ pre {
 
 /* PM 화면은 진행률이 세 열을 품으므로 넓은 쪽에 더 준다. 기본 1.9:1 로는
    모드 이름("802.11n HT20")이 열 안에서 줄임표가 된다. */
-.console-grid[data-scope='pm'],
-.console-grid[data-scope='manager'] {
+.console-grid[data-scope='pm'] {
   grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr);
+}
+
+/* ── 전체 총괄 ────────────────────────────────────────────────────────────
+   🔴 2026-09-09 — 총괄에서 3fr:1fr 을 «되돌린다». 그 비율의 근거는 「진행률이
+   세 열을 품는다」였는데, 총괄에서는 그 세 열을 내렸다. 근거가 사라진 값이
+   남으면 링과 추이 하나가 화면의 3/4 를 먹고 이슈 트래커가 240px 로 눌린다 —
+   대조하라고 만든 화면에서 대조의 한쪽이 좁아지는 셈이다. 기본 1.9:1 로 돌아간다.
+
+   ⚠️ 그리고 이 화면에서만 `align-items` 를 stretch 로 바꾼다.
+   기본값은 `start` 이고 그것이 맞다 — 패널이 여럿일 때 짧은 패널을 억지로 늘이면
+   빈 면이 생기고, 빈 면은 「데이터가 없다」로 읽힌다. 그런데 총괄에는 이제
+   패널이 «둘»뿐이고, 둘은 나란히 놓고 «대조하라»고 세운 짝이다. 높이가 어긋나면
+   눈이 짧은 쪽 아래의 빈자리를 먼저 읽는다.
+
+   ⚠️ 즉 이것은 미관이 아니라 이 화면의 «목적»에서 나온 규칙이다. 다른 두 화면에
+   같은 것을 주면 안 된다 — 거기서는 패널이 여럿이라 stretch 가 정확히 위의
+   문제를 만든다. */
+.console-grid[data-scope='manager'] {
+  align-items: stretch;
+  /* 🔴 세 칸이다. 오른쪽 칸을 둘로 갈라 「이슈」와 「활동」을 나란히 세운다 —
+     둘 다 「무슨 일이 일어나는가」이고, 위아래로 놓으면 하나를 볼 때 다른
+     하나가 시야 밖으로 나간다. 총괄의 일이 «대조»인 이상 둘은 옆에 있어야 한다.
+     ⚠️ 그러면 각 칸이 좁아지므로 행에서 「담당 · 시각」을 내리고 호버로 옮긴다
+     (아래 `.row-peek`). 좁은 칸에 다 넣으면 줄임표만 남는다. */
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.75fr) minmax(0, 0.75fr);
+}
+
+.console-grid__third {
+  grid-column: 3;
+}
+
+.console-grid__under {
+  grid-column: 1;
+}
+
+/* 🔴 총괄의 최종 배치 (2026-09-09).
+
+     1줄  진행률          전폭
+     2줄  사람별 점유 │ 활동 흐름 │ 이슈 트래커
+     3줄  설비 현황       전폭
+
+   ⚠️ 진행률이 «메인»이다. 이 화면의 첫 질문은 여전히 「얼마나 왔나」이고, 그
+   답이 화면 폭 전체를 쓴다 — 링과 추이는 폭이 곧 해상도라(추이의 날짜 축이
+   좁으면 점이 뭉친다) 여기서 넓힌 폭이 그대로 읽기로 바뀐다.
+
+   ⚠️ 둘째 줄은 「왜 그런가」의 세 답이다: 누가 들고 있나 · 지금 뭐가 도나 ·
+   뭐가 막혔나. 셋이 한 줄에 서야 그 셋을 «서로» 견줄 수 있고, 그것이 총괄이
+   하는 유일한 일이다.
+
+   ⚠️ 셋의 높이는 stretch 로 같다. 어긋나면 눈이 짧은 쪽 아래의 빈자리를 먼저
+   읽는다. 그리고 한 번 오른쪽 둘을 두 줄로 늘려 봤는데(span 2), 왼쪽과 오른쪽이
+   서로 다른 «리듬»으로 잘려 한 화면이 아니라 두 화면처럼 보였다. 목록의 잘림은
+   배치가 아니라 「…외 N건」이 말한다. */
+.console-grid[data-scope='manager'] .console-grid__wide {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+/* 점유 지도는 왼쪽 넓은 칸. 면적으로 말하는 그림이라 폭이 곧 해상도다 —
+   좁으면 작은 칸이 이름을 못 갖는다. */
+.console-grid[data-scope='manager'] .console-grid__under {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+/* ── 모델을 바꾸는 «동안» ────────────────────────────────────────────────
+   🔴 세 화면 모두에서 모델 칩을 누르면 화면이 «딸깍» 했다. 데이터가 없어서가
+   아니다 — `keepPreviousData` 덕에 이전 모델 값이 그대로 서 있다가, 새 응답이
+   도착하는 순간 링·추이·표가 «한 프레임에» 갈아 끼워졌다. 즉 중간 상태가 없어서
+   보는 사람은 「바뀌었다」가 아니라 「튀었다」로 읽는다.
+
+   그래서 그 사이에 «시간»을 준다: 받아오는 동안 살짝 물러났다가(0.55) 도착하면
+   돌아온다. 값을 가리지 않을 만큼만 흐리다 — 이것은 로딩 가림막이 아니라
+   「지금 그 숫자가 갱신되는 중」이라는 신호다.
+
+   ⚠️ 높이는 건드리지 않는다. 스켈레톤으로 바꾸면 패널이 접혔다 펴지면서 아래
+   패널들이 통째로 움직이고, 그게 원래 문제보다 크다. */
+.console-panel[data-busy='true'] .programme-head,
+.console-panel[data-busy='true'] .band-cards,
+.console-panel[data-busy='true'] .band-columns,
+.console-panel[data-busy='true'] .issue-list,
+.console-panel[data-busy='true'] .activity-list,
+.console-panel[data-busy='true'] .share-split,
+.console-panel[data-busy='true'] .share-map {
+  opacity: 0.55;
+}
+
+.programme-head,
+.band-cards,
+.band-columns,
+.issue-list,
+.activity-list,
+.share-split,
+.share-map {
+  transition: opacity var(--motion-base) var(--motion-easing);
+}
+
+/* ── 비중 지도가 «흐른다» ────────────────────────────────────────────────
+   칸은 절대 배치라 값이 바뀌면 새 좌표로 «순간이동»한다. 트리맵은 같은 사람이
+   자리를 옮기는 그림이라, 순간이동하면 어느 칸이 어느 칸이었는지 추적이 끊긴다.
+   기하를 전환하면 눈이 그 이동을 따라가고 「저 사람 몫이 커졌다」가 읽힌다.
+   ⚠️ `--motion-emphasis` 를 쓴다. 이 움직임은 상태 변화가 아니라 «값의 변화»라
+   토글 색보다 길어야 눈이 따라잡는다. */
+.share-map__cell {
+  transition:
+    left var(--motion-emphasis) var(--motion-easing),
+    top var(--motion-emphasis) var(--motion-easing),
+    width var(--motion-emphasis) var(--motion-easing),
+    height var(--motion-emphasis) var(--motion-easing),
+    background-color var(--motion-emphasis) var(--motion-easing);
+}
+
+/* 총괄에서 진행률이 전폭(1256px)이 되면서 링 쪽 칸을 1.5 배로 넓힌다 —
+   190/232 → 285/348.
+
+   ⚠️ 토큰 «값»을 바꾸지 않고 이 화면에서만 곱한다. `--ring-column-*` 은
+   시험진행률 화면도 쓰는데 그쪽 패널은 927px 라, 링을 넓히면 그만큼 추이가
+   좁아지고 날짜 축의 점이 뭉친다. 총괄은 폭이 남아서 넓히는 것이지 링이
+   더 중요해져서가 아니다. */
+.console-grid[data-scope='manager'] .programme-head {
+  grid-template-columns:
+    minmax(calc(var(--ring-column-min) * 1.5), calc(var(--ring-column-max) * 1.5))
+    minmax(0, 1fr);
+}
+
+/* ⚠️ 이름과 자리가 «어긋나 보인다». `__narrow` 가 3번 칸, `__third` 가 2번 칸이다.
+   그 이유: `__narrow` 는 이슈 트래커이고 그 클래스는 세 화면이 공유한다 — 다른
+   두 화면에서는 오른쪽 칸(2번)이 맞다. 총괄에서만 활동 흐름을 진행률 옆에 붙이고
+   이슈를 바깥으로 민다. 활동은 「지금 벌어지는 일」이라 진행률과 붙어야 대조가
+   되고, 이슈는 「따로 처리할 목록」이라 가장자리가 제 자리다.
+   ⚠️ 클래스 이름을 바꾸지 않은 것은 «이름이 화면마다 다른 뜻이 되면 안 되기»
+   때문이 아니라 그 반대다 — 이름은 다른 두 화면에서 여전히 맞고, 총괄만
+   예외라는 사실이 이 블록 하나에 모여 있는 편이 낫다. */
+.console-grid[data-scope='manager'] .console-grid__narrow {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.console-grid[data-scope='manager'] .console-grid__third {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+/* ⚠️ 좁아진 칸에서 «담당»만 내리고 «시각»은 남긴다. 둘 중 하나를 버려야 한다면
+   시각이 남아야 한다 — 이 두 목록은 시간순 정렬이라 시각이 «정렬 키»이고,
+   정렬 키가 안 보이는 목록은 왜 그 순서인지 알 수 없다. 담당은 호버가 말한다. */
+.console-grid[data-scope='manager'] .issue-row__who,
+.console-grid[data-scope='manager'] .activity-row__who {
+  display: none;
+}
+
+/* ── 행 호버 세부 ────────────────────────────────────────────────────────
+   `.today-peek` 와 같은 어휘다(값을 새로 고르지 않았다). 다른 점은 하나 —
+   이쪽은 목록 «행»에 붙으므로 행 위로 겹쳐 뜬다. 아래로 밀면 목록이 열리고
+   닫히면서 다음 행의 위치가 바뀌고, 그러면 읽던 자리를 잃는다. */
+.row-peek {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  padding: var(--space-3);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-bg-alt);
+  box-shadow: var(--elevation-2);
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition:
+    opacity var(--motion-fast) var(--motion-easing),
+    transform var(--motion-fast) var(--motion-easing);
+}
+
+.issue-row:hover .row-peek,
+.issue-row:focus-within .row-peek,
+.activity-row:hover .row-peek,
+.activity-row:focus-within .row-peek {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 마지막 몇 행은 아래로 열 자리가 없다 — 위로 연다. */
+.issue-row:nth-last-child(-n + 3) .row-peek,
+.activity-row:nth-last-child(-n + 3) .row-peek {
+  top: auto;
+  bottom: 100%;
+  transform: translateY(4px);
+}
+
+.issue-row:nth-last-child(-n + 3):hover .row-peek,
+.activity-row:nth-last-child(-n + 3):focus-within .row-peek {
+  transform: translateY(0);
+}
+
+.row-peek__head {
+  margin: 0 0 var(--space-2);
+  color: var(--fg-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.row-peek__list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row-peek__list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--font-size-2xs);
+}
+
+.row-peek__list span {
+  color: var(--fg-tertiary);
+}
+
+.row-peek__list b {
+  color: var(--fg-secondary);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-normal);
+}
+
+/* 팝업의 «앵커». 행이 static 이면 팝업이 패널 기준으로 뜬다. */
+.activity-row {
+  position: relative;
 }
 
 /* ⚠️ 간격이 «행보다 크면» 목록이 아니라 카드 여러 장으로 읽힌다. 두 줄이던
@@ -8205,6 +8499,259 @@ button.gauge:focus-visible {
 .plan-edition {
   margin-left: auto;
   margin-right: var(--space-3);
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ══ 총괄 전용 두 목록 ══════════════════════════════════════════════════
+   ⚠️ 이슈 목록(`.issue-list`)과 «같은 리듬»을 쓴다 — 간격 2px, 한 줄, 행을
+   가르는 일은 hover 배경이 한다. 세 목록이 한 화면에 서므로 리듬이 다르면
+   같은 종류의 것으로 안 읽힌다. 값을 새로 고르지 않았다.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.load-list,
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 사람 한 줄: 사번 · 시간 · 건수 · (정체).
+   ⚠️ 시간이 «고정폭 열»을 차지한다. 목록의 값은 세로로 비교하는 것이라,
+   숫자 자리가 흔들리면 15줄에서 눈이 매번 자리를 다시 찾는다. */
+.load-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4.5rem auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.load-row:hover {
+  background: var(--surface-bg-alt);
+}
+
+.load-row__who {
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 이 줄에서 «주»가 되는 숫자. 진행률이 시간 베이스이므로 부하도 시간이다. */
+.load-row__hours {
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-medium);
+  text-align: right;
+}
+
+/* 건수는 «보조»다 — 100건 중 80건을 했어도 남은 20건이 더 오래 걸린다. */
+.load-row__held {
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ⚠️ 정체는 배지 하나로 «조용히» 말한다. 행 전체를 물들이면 15줄 중 3줄이
+   빨개져서 목록이 경고판이 되고, 정작 비교해야 하는 시간 숫자가 안 보인다. */
+.load-row__stalled {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--status-fail) 16%, transparent);
+  color: var(--status-fail);
+  font-size: var(--font-size-2xs);
+  white-space: nowrap;
+}
+
+.load-row[data-mine='true'] .load-row__who {
+  color: var(--accent);
+}
+
+/* 활동 한 줄: 점 · 모드 · 누가·언제. */
+/* ⚠️ 세로 패딩이 이슈 행과 «같은 값»이다(3px). 두 목록이 같은 열에 세로로
+   이어 서므로 행 높이가 다르면 두 개의 다른 물건으로 읽힌다 — 실제로는 둘 다
+   「무슨 일이 일어나는가」의 목록이고, 그것이 이 열의 정체다.
+   그리고 압축은 길이가 아니라 «밀도»의 문제다: 같은 높이에 두 배가 들어가면
+   총괄이 스크롤 없이 보는 사건의 수가 두 배가 된다. */
+.activity-row {
+  display: grid;
+  grid-template-columns: 6px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.activity-row:hover {
+  background: var(--surface-bg-alt);
+}
+
+/* ⚠️ 「측정 중」은 «차 있는» 점, 「완료」는 «빈» 점이다. 색만으로 가르지 않는
+   이유는 이슈 목록의 ✕ 와 같다 — 색각 이상에서 구분이 사라진다. 모양이 먼저
+   말하고 색이 거든다. */
+.activity-row__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.activity-row[data-kind='running'] .activity-row__dot {
+  background: var(--accent);
+}
+
+.activity-row[data-kind='done'] .activity-row__dot {
+  border: 1.5px solid color-mix(in oklab, var(--fg-tertiary) 80%, transparent);
+}
+
+.activity-row__mode {
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-row__meta {
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 잘림 표시. «행처럼» 보이되 사건은 아니므로 점이 없고 색이 한 단 더 조용하다. */
+.activity-row--more {
+  display: block;
+  padding: 3px var(--space-2);
+  color: var(--fg-tertiary);
+  font-size: var(--font-size-2xs);
+}
+
+/* ══ 비중 지도 (ShareTreemap) ═══════════════════════════════════════════
+   ⚠️ 칸 사이를 «gap 이 아니라 테두리»로 가른다. 절대 배치라 gap 이 없고,
+   margin 을 주면 면적이 실제 비중과 달라진다 — 이 그림에서 면적은 값이므로
+   1px 라도 값을 왜곡하면 안 된다. 테두리는 칸 «안쪽»으로 그린다.
+   ═══════════════════════════════════════════════════════════════════════ */
+.share-map {
+  position: relative;
+  width: 100%;
+  /* 비율로 잡되 «천장»을 둔다. 전폭(1256px)에서 16/7 이면 높이가 549px 라
+     이 한 그림이 화면의 절반을 먹는다 — 비중을 보는 데 그만한 면적이 필요하지
+     않다. 폭이 좁을 때는 비율이 높이를 지키고, 넓어지면 천장이 잡는다. */
+  aspect-ratio: 16 / 5;
+  min-height: 160px;
+  max-height: 300px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.share-map__cell {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-2);
+  box-sizing: border-box;
+  border: 1px solid var(--surface-bg);
+  border-radius: var(--radius-sm);
+  /* 🔴 사번마다 다른 색조(`--cell-hue`, TSX 의 `hueOf`). 색조만 바꾸고 채도·명도는
+     고정한 뒤 «면 색에 섞는다» — 그래야 세 테마 어디서도 배경과의 거리가
+     유지된다. 리터럴 팔레트를 박으면 라이트에서 흐려지거나 다크에서 튄다.
+     ⚠️ 색조가 없으면(`--cell-hue` 미지정) accent 계열로 떨어진다. */
+  background: color-mix(
+    in oklab,
+    hsl(var(--cell-hue, 232) 62% 58%) 30%,
+    var(--surface-bg-alt)
+  );
+  overflow: hidden;
+}
+
+/* 정체가 있는 사람.
+   ⚠️ 색조를 «빼앗지 않는다». 사번색은 「누구」이고 정체는 「어떤 상태」라 두
+   사실이 서로를 지우면 안 된다 — 빨갛게 덮어 버리면 그 칸이 누구 것인지가
+   사라진다. 그래서 사람 색은 그대로 두고 안쪽에 경고 테를 두른다.
+   ⚠️ 색으로만 말하지 않는다: `title` 에 정체 건수가 실린다. */
+.share-map__cell[data-tone='stalled'] {
+  box-shadow: inset 0 0 0 2px var(--status-fail);
+}
+
+/* 🔴 「아직 아무도 안 잡은 일」. 이 칸이 없으면 지도는 늘 「일이 고르게
+   나뉘어 있다」고 말한다 — 분모가 사람의 합이 되어 버리기 때문이다.
+   빗금이 아니라 «비어 보이는 면»으로 둔다: 이것은 문제가 아니라 여백이다. */
+.share-map__cell[data-tone='unassigned'] {
+  background: color-mix(in oklab, var(--fg-tertiary) 14%, var(--surface-bg-alt));
+  border-style: dashed;
+  border-color: color-mix(in oklab, var(--fg-tertiary) 40%, transparent);
+}
+
+.share-map__cell[data-mine='true'] {
+  outline: 1px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.share-map__label {
+  color: var(--fg-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-map__detail {
+  color: var(--fg-secondary);
+  font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+/* ── 배정률 한 줄 ────────────────────────────────────────────────────────
+   🔴 처음엔 「미배정」을 지도의 한 «칸»으로 넣었다. 분모가 정직해지는 대신
+   실제로는 그 칸이 90% 를 먹고 사람 셋이 왼쪽 10% 에 눌려, 이름조차 들어가지
+   않았다 — 즉 지도가 답하려던 질문(「누가 제일 많나」)에 못 답하게 됐다.
+
+   그래서 «두 질문을 두 그림으로» 가른다:
+     이 줄   남은 일 중 얼마나 배정됐나   (배정 ↔ 미배정)
+     아래 지도  배정된 일이 누구에게 어떻게 나뉘었나
+   지도의 분모는 이제 «배정된 일»이고, 그 사실이 이 줄에 적혀 있으므로
+   지도가 「일이 고르게 나뉘어 있다」고 거짓말하지 않는다. */
+.share-split {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.share-split__bar {
+  position: relative;
+  flex: 1 1 auto;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--fg-tertiary) 18%, transparent);
+  overflow: hidden;
+}
+
+.share-split__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+.share-split__text {
+  flex: none;
   color: var(--fg-tertiary);
   font-size: var(--font-size-2xs);
   font-variant-numeric: tabular-nums;

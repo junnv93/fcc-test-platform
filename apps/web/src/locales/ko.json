@@ -1343,7 +1343,7 @@
       "bootstrapValidationRequired": "챔버 ID, 이름, 주소를 모두 입력하세요.",
       "bootstrapValidationUrl": "완전한 HTTP 또는 HTTPS 챔버 주소를 입력하세요.",
       "status": {
-        "idle": "대기",
+        "idle": "사용 가능",
         "in_use": "측정 중",
         "offline": "오프라인"
       },
@@ -1873,7 +1873,33 @@
       "markTitle": "{who} 배정 · 부적합 {issues}건",
       "mine": "{who} (나)",
       "planEdition": "계획 {id}",
-      "planEditionOn": "계획 {id} · {at} 발행"
+      "planEditionOn": "계획 {id} · {at} 발행",
+      "loadHeading": "사람별 부하",
+      "loadMeta": "{count}명 배정",
+      "loadEmptyTitle": "배정된 작업이 없습니다",
+      "loadEmptyBody": "지금 잡혀 있는 조건이 없습니다. 배정이 들어오면 사번별로 여기에 쌓입니다.",
+      "loadHeld": "{count}건",
+      "loadStalled": "{count}건 정체",
+      "loadStalledHint": "배정된 지 24시간이 지났는데 아직 측정이 하나도 붙지 않았습니다. 예상이 아니라 관측입니다.",
+      "activityHeading": "활동 흐름",
+      "activityMeta": "{count}건",
+      "activityEmptyTitle": "최근 활동이 없습니다",
+      "activityEmptyBody": "지금 도는 측정도, 방금 끝난 측정도 없습니다.",
+      "activity": {
+        "running": "측정 중",
+        "done": "완료"
+      },
+      "activityMore": "…외 {count}건",
+      "peekVerdict": "판정",
+      "peekCount": "건수",
+      "peekWho": "담당",
+      "peekWhen": "시각",
+      "peekState": "상태",
+      "loadUnassigned": "미배정",
+      "loadAssigned": "배정 {pct}% · {assigned} / 남은 {remaining}",
+      "loadAssignedLabel": "남은 일 중 배정된 비율",
+      "chamberUser": "{who} 사용 중",
+      "chamberUserUnknown": "사용자 미상"
     },
     "testReports": {
       "title": "성적서 대장",

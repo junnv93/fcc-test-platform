@@ -20,6 +20,8 @@ export { Card } from './Card';
 export type { CardProps } from './Card';
 
 // ── console widgets (flowdeck-console-ui) ─────────────────────────────────
+export { ShareTreemap, hueOf } from './ShareTreemap';
+export type { ShareCell, ShareTreemapProps } from './ShareTreemap';
 export { StackedTrend } from './StackedTrend';
 export type { StackedTrendProps, TrendPoint } from './StackedTrend';
 

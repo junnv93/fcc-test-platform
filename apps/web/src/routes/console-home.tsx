@@ -16,26 +16,12 @@ import {
 } from '@/api/platform-client';
 import { queryKeys } from '@/api/query-config';
 import { useT } from '@/i18n';
+import { chamberStatusLabel } from '@/routes/chambers/status';
 import { useCurrentOperator } from '@/shared/current-operator';
 import { ROUTE_PATHS } from '@/shared/route-links';
-import {
-  BlockSkeleton,
-  Card,
-  ChamberCard,
-  DonutProgress,
-  StackedTrend,
-  chamberStatusKind,
-  describeApiError,
-  EmptyState,
-  ErrorState,
-  HealthBars,
-  PageHeader,
-  StatTile,
-  StatusBadge,
-  verdictToStatusKind,
-} from '@/ui';
+import { BlockSkeleton, Card, ChamberCard, DonutProgress, EmptyState, ErrorState, HealthBars, PageHeader, ShareTreemap, hueOf, StackedTrend, StatTile, StatusBadge, chamberStatusKind, describeApiError, verdictToStatusKind } from '@/ui';
 
-import type { HealthRow } from '@/ui';
+import type { HealthRow, ShareCell } from '@/ui';
 import type { CSSProperties } from 'react';
 
 /**
@@ -71,6 +57,15 @@ const FAILING_VERDICTS = new Set(['fail', 'failed', 'nonconforming', 'ng']);
 /** 계획이 «대분류 / 계열» 을 한 칸에 담는 구분자. 정식 컬럼이 생기면 사라진다. */
 const SEP = ' / ';
 
+/** 「잡혀만 있는 것」의 문턱. 배정된 지 이만큼 지났는데 아직 측정이 하나도
+ *  붙지 않았으면 정체로 센다.
+ *
+ *  ⚠️ 24시간인 근거는 «하룻밤»이다 — 그보다 짧으면 정상적인 야간 공백이 전부
+ *  정체로 잡히고, 그러면 이 표식은 늘 켜져 있어서 아무 말도 하지 않게 된다.
+ *  ⚠️ 그리고 이것은 «추정»이 아니라 관측이다. 「늦어질 것이다」가 아니라
+ *  「하루 동안 아무 일도 일어나지 않았다」는 사실만 말한다. */
+const STALL_MS = 24 * 60 * 60 * 1000;
+
 /** 대분류의 «선언된» 순서 — 주파수가 낮은 쪽부터. 정렬·추이 스택·카드가 같은
  *  순서를 써야 같은 밴드가 화면 어디서나 같은 자리에 온다.
  *  ⚠️ 모듈 상수다. 컴포넌트 안에 두면 렌더마다 새 배열이라 useMemo 가 매번 다시 돈다. */
@@ -104,6 +99,49 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
    *  뭐가 남았나」이고 그 답은 아래 표에 있다. 화면의 첫 줄은 보는 사람의
    *  질문에 답해야 한다(현장 패널을 PM 화면에서 뺀 것과 같은 판단). */
   const showsProgrammeSummary = scope === 'pm' || scope === 'manager';
+
+  /* ── 전체 총괄(`manager`)만의 축소 ────────────────────────────────────
+     🔴 2026-09-09 — 총괄 화면을 «두 패널, 같은 높이»로 좁힌다.
+     진행률(링 + 추이)과 이슈 트래커 둘만 남고 나머지는 내린다.
+
+     ⚠️ 왜 총괄에서만인가. 세 화면은 «같은 부품, 다른 질문»이다 —
+       operator  「내가 다음에 뭘 하나」  → 요약 띠 + 계열/모드 목록이 답한다
+       pm        「어디까지 왔나」        → 링·추이·대분류·모드가 전부 답한다
+       manager   「무엇이 어긋났나」      → 진행률 «하나»와 막힌 것 «하나»의 대조
+     총괄이 pm 의 모든 것을 또 갖고 있으면 그것은 총괄이 아니라 pm 의 사본이고,
+     사본은 언젠가 원본과 다른 말을 한다. 총괄이 답할 질문은 «대조»뿐이라
+     대조에 쓰이지 않는 층(대분류 카드 · 계열/모드 열)은 여기서 소음이다.
+
+     ⚠️ 이 셋은 «총괄 전용»이다. 같은 부품을 쓰는 다른 두 화면은 건드리지
+     않는다 — 오늘 이미 한 번 겪었다(이슈 트래커의 하이라이트를 전역으로
+     고쳐서 시험진행률 화면까지 바꿨다). 조건은 반드시 scope 로 쓴다. */
+
+  /** 요약 띠(한 것 · 할 것 · 이슈)는 «실무자»의 것이다. 총괄에서는 아래 두
+   *  패널이 같은 사실을 더 정확히 말하므로 같은 숫자를 두 번 세지 않는다. */
+  const showsToday = scope === 'operator';
+
+  /** 대분류 카드 셋과 계열/모드 열. 「쪼갬」은 pm 과 실무자의 도구다. */
+  const showsBandBreakdown = scope !== 'manager';
+
+  /** 내보내기는 «목업»이고, 총괄에서 뽑을 보고서가 따로 없다. */
+  const showsExport = scope === 'pm';
+
+  /* ── 총괄에 «더해지는» 것 ─────────────────────────────────────────────
+     위에서 뺀 것들이 「pm 의 사본」이라 뺀 것이라면, 여기 더하는 셋은 총괄
+     에서만 «대조»가 되는 것들이다. 축이 서로 다르다:
+
+       설비 현황   어디서   (공간) — 챔버 × 그 챔버가 붙잡고 있는 잔여
+       사람 부하   누가     (인력) — 사번 × 잡은 것 × 잔여 시간
+       활동 흐름   언제     (시간) — 지금 도는 것, 방금 끝난 것
+
+     ⚠️ 셋이 같은 사실을 세 번 말하는 것이 아니다. 챔버는 못 늘리고 사람은
+     옮길 수 있다 — 총괄이 실제로 당길 수 있는 레버가 가운데 하나뿐이라,
+     그 레버 옆에 「못 늘리는 것」과 「지금 벌어지는 일」이 같이 있어야 한다.
+     ⚠️ 예측은 없다. 「이 속도면 언제 끝난다」는 한 번 틀리는 순간 그 옆의
+     참인 숫자들까지 신뢰를 잃는다. 셋 다 관측된 사실만 말한다. */
+  const showsFleet = scope === 'manager' || (showsOperator && SHOWS_FIELD_PANELS);
+  const showsLoad = scope === 'manager';
+  const showsActivity = scope === 'manager';
 
 /** 분 → 시간. 계획은 분 단위로 쌓이지만 사람이 일정을 잡는 단위는 시간이라,
    *  화면에는 시간만 나온다. 한 자리 소수까지 — 「12h」와 「12.5h」의 차이가
@@ -283,6 +321,35 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
     placeholderData: keepPreviousData,
   });
 
+  /** 세션 → 사용자. 챔버가 「누가 쓰고 있나」를 말하려면 이 다리가 필요하다.
+   *
+   *  ⚠️ 새 계약을 만들지 않았다. 챔버 가용성 응답에는 `session_id` 가 있고
+   *  배정 원장(`active_claims`)에는 `session_id` 와 `operator` 가 함께 있다 —
+   *  둘은 이미 같은 키를 들고 있었고, 아무도 그 둘을 이어 보지 않았을 뿐이다.
+   *
+   *  ⚠️ 이 다리는 «끊어질 수 있다». claim 에 session_id 가 없으면(오늘 시드가
+   *  그렇다) 방은 돌고 있는데 주인을 모른다. 그때 화면은 빈칸이 아니라
+   *  「사용자 미상」이라고 말한다 — 빈칸은 「아무도 안 쓴다」로 읽히고, 그러면
+   *  관리자가 쓰이는 방에 사람을 또 보낸다. */
+  const operatorBySession = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const claim of claims.data ?? []) {
+      const session = (claim.session_id ?? '').trim();
+      const who = (claim.operator ?? '').trim();
+      if (session !== '' && who !== '') map.set(session, who);
+    }
+    return map;
+  }, [claims.data]);
+
+  /** 모델 칩을 눌러 «갈아타는 중»인가.
+   *
+   *  ⚠️ `isLoading` 이 아니라 `isFetching` 이다. `keepPreviousData` 를 쓰면 이전
+   *  모델의 값이 그대로 서 있으므로 `isLoading` 은 false 이고, 그래서 지금까지
+   *  이 화면에는 「바뀌는 중」이라는 표시가 «있을 수 없었다» — 값이 도착하는
+   *  프레임에 통째로 갈아 끼워지는 것이 전부였고, 그것이 「딸깍」의 정체다. */
+  const modelIsSwitching =
+    planConditions.isFetching || coverage.isFetching || claims.isFetching;
+
   const byTechnology = useMemo(() => {
     const rows = coverage.data?.items ?? [];
     const acc = new Map<string, { done: number; total: number; failed: number }>();
@@ -398,6 +465,120 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
     rows.sort((a, b) => (b.latest_measured_at ?? '').localeCompare(a.latest_measured_at ?? ''));
     return rows.slice(0, 12);
   }, [coverage.data]);
+
+  /** 조건 → 표준시간(분).
+   *
+   *  ⚠️ 이 지도가 없으면 아래 계산들이 «건수»를 세게 되고, 그러면 같은 화면의
+   *  링(시간)과 다른 숫자가 된다 — 실제로 그랬다(61% vs 56%). 진행률이 시간
+   *  베이스인 이상 부하도 시간 베이스여야 한다: 100건 중 80건을 했어도 남은
+   *  20건이 더 오래 걸리는 경우가 대부분이다. */
+  const minutesByCondition = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const plan of planConditions.data ?? []) {
+      map.set(plan.condition_hash ?? '', plan.planned_minutes ?? 0);
+    }
+    return map;
+  }, [planConditions.data]);
+
+  /** 사람별 부하 — 잡은 것 · 남은 시간 · 정체.
+   *
+   *  총괄이 실제로 당길 수 있는 레버는 「누굴 어디로 보낼까」 하나다. 챔버는
+   *  늘릴 수 없고 계획은 줄일 수 없지만 사람은 옮길 수 있다. 그런데 지금까지
+   *  이 화면에 그 레버가 «없었다» — 진행률은 얼마나 왔는지만 말하고, 누가
+   *  무엇을 얼마나 들고 있는지는 어디에도 없었다.
+   *
+   *  ⚠️ 새 계약을 만들지 않았다. `active_claims` 는 이미 읽고 있고 `operator`
+   *  필드가 있다. 남은 시간은 위 표준시간 지도로 곱한다.
+   *  ⚠️ 이미 측정된 조건은 잔여에서 뺀다 — claim 이 남아 있어도 일은 끝났다.
+   *  ⚠️ 사번이 비어 있는 claim 을 «버리지 않는다». 버리면 총합이 조용히 줄어
+   *  화면이 실제보다 한가해 보인다. 「—」로 모아서 보이게 둔다. */
+  const operatorLoad = useMemo(() => {
+    const measured = new Set(
+      (coverage.data?.items ?? []).map((row) => row.condition_hash ?? ''),
+    );
+    const now = Date.now();
+    const rows = new Map<string, { who: string; held: number; minutes: number; stalled: number }>();
+    for (const claim of claims.data ?? []) {
+      const who = (claim.operator ?? '').trim();
+      const key = who === '' ? '—' : who;
+      const entry = rows.get(key) ?? { who: key, held: 0, minutes: 0, stalled: 0 };
+      entry.held += 1;
+      if (!measured.has(claim.condition_hash ?? '')) {
+        entry.minutes += minutesByCondition.get(claim.condition_hash ?? '') ?? 0;
+        const at = Date.parse(claim.occurred_at ?? '');
+        if (Number.isFinite(at) && now - at > STALL_MS) entry.stalled += 1;
+      }
+      rows.set(key, entry);
+    }
+    return [...rows.values()].sort((a, b) => b.minutes - a.minutes || b.held - a.held);
+  }, [claims.data, coverage.data, minutesByCondition]);
+
+  /** 활동 흐름 — «시간 축». 지금 도는 것이 먼저, 그 아래로 방금 끝난 것.
+   *
+   *  ⚠️ 설비 현황과 겹치지 않는다. 챔버 카드는 「어디서 무엇을」(공간)을 말하고
+   *  이 목록은 「언제 무엇이」(시간)를 말한다. 그리고 «완료»는 이 화면에서
+   *  여기서만 시간 순으로 보인다 — 링도 추이도 「얼마나」만 말하지 「방금」은
+   *  말하지 않는다.
+   *
+   *  ⚠️ 「측정 중」은 배정됐고 아직 측정 결과가 없는 claim 이다. 챔버의
+   *  `is_running` 과 다른 사실이라 섞지 않는다 — 챔버가 돌고 있어도 그것이
+   *  누구의 어느 조건인지는 claim 이 말한다.
+   *
+   *  ┌─ 🔴 실시간이 되면 «이 목록이 먼저 깨진다» ──────────────────────────┐
+   *  │ 이 레인에는 이미 라이브 채널이 있다(`api/chamber-progress-stream.ts` ·│
+   *  │ `api/session-events.ts`). 그러므로 이 목록이 폴링에서 스트림으로     │
+   *  │ 바뀌는 것은 «언제»의 문제이지 «가능한가»의 문제가 아니다.            │
+   *  │                                                                     │
+   *  │ 그때 생기는 문제는 데이터가 아니라 «읽는 중의 재정렬»이다:           │
+   *  │  ① 새 사건이 맨 위에 꽂히면 읽던 행이 아래로 밀린다. 지금은 호버로   │
+   *  │     세부를 여는 구조라, 목록이 움직이면 «열어 둔 팝업이 다른 행의    │
+   *  │     것»이 된다 — 화면이 거짓을 말하는 상태다.                        │
+   *  │  ② 「…외 N건」의 N 이 쉬지 않고 바뀌면 그 줄은 정보가 아니라 소음이  │
+   *  │     된다.                                                            │
+   *  │                                                                     │
+   *  │ 그래서 실시간으로 갈 때 필요한 것은 스트림이 아니라 «멈춤»이다 —     │
+   *  │ 새 사건은 「N건 새로 들어옴」 배지로 쌓아 두고, 사람이 누를 때 목록을│
+   *  │ 갈아 끼운다. 마우스가 목록 위에 있는 동안은 자동 갱신하지 않는다.    │
+   *  │ ⚠️ 이슈 트래커도 같다. 그쪽은 세 화면이 공유하므로 더 조심해야 한다. │
+   *  └─────────────────────────────────────────────────────────────────────┘ */
+  const activity = useMemo(() => {
+    const rows = coverage.data?.items ?? [];
+    const measured = new Set(rows.map((row) => row.condition_hash ?? ''));
+    const runningAll = (claims.data ?? [])
+      .filter((claim) => !measured.has(claim.condition_hash ?? ''))
+      .sort((a, b) => (b.occurred_at ?? '').localeCompare(a.occurred_at ?? ''));
+    const running = runningAll
+      .slice(0, 6)
+      .map((claim) => ({
+        id: `run-${claim.claim_id}`,
+        kind: 'running' as const,
+        mode: claim.technology ?? '—',
+        who: claim.operator ?? '—',
+        at: claim.occurred_at ?? '',
+      }));
+    const doneAll = [...rows]
+      .filter((row) => (row.latest_measured_at ?? '') !== '')
+      .sort((a, b) => (b.latest_measured_at ?? '').localeCompare(a.latest_measured_at ?? ''));
+    const done = doneAll
+      .slice(0, 8)
+      .map((row) => ({
+        id: `done-${row.condition_hash ?? ''}`,
+        kind: 'done' as const,
+        mode: row.technology ?? '—',
+        who: row.latest_operator ?? '—',
+        at: row.latest_measured_at ?? '',
+      }));
+    /* ⚠️ 잘린 사실을 «말한다». 목록은 14줄에서 멈추는데, 지금까지 이 저장소의
+       다른 목록들은 그 사실을 화면에 적지 않았다 — 15번째 사건은 아무 흔적 없이
+       사라지고, 보는 사람은 그것이 없는 것인지 안 보이는 것인지 알 수 없다.
+       「없다」와 「내가 못 봤다」는 출력이 같아지면 안 된다. */
+    const shownRunning = Math.min(runningAll.length, 6);
+    const shownDone = Math.min(doneAll.length, 8);
+    return {
+      rows: [...running, ...done],
+      hidden: runningAll.length - shownRunning + (doneAll.length - shownDone),
+    };
+  }, [claims.data, coverage.data]);
 
   /** 모드별로 묶은 이슈. 「802.11n HT20」이 두 줄, 「802.11b」가 두 줄 나오면
    *  목록이 길어지기만 하고 「무엇이 문제인가」는 오히려 흐려진다. 사람이 보는
@@ -704,6 +885,37 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
     [categories],
   );
 
+  /** 부하를 «면적»으로. 목록이 답하지 못하던 질문에 답한다 — 「이 사람이 전체
+   *  중 얼마나」. 목록은 5.6h / 4.7h / 2.2h 를 «읽어서 비교»하게 하지만, 지도는
+   *  그 비교를 눈이 대신한다.
+   *
+   *  🔴 «미배정»을 칸으로 넣는다. 사람들 합만으로 100% 를 만들면 「아직 아무도
+   *  잡지 않은 일」이 그림에서 사라지고, 그러면 지도는 늘 「일이 고르게 나뉘어
+   *  있다」고 말하게 된다 — 실제로는 절반이 미배정일 수 있는데도. 분모는 사람의
+   *  합이 아니라 «남은 일 전체»다.
+   *
+   *  ⚠️ 남은 일 = 계획 시간 − 소진 시간. 이것도 시간 베이스다(§ratioOf). */
+  const loadShare = useMemo(() => {
+    const assigned = operatorLoad.reduce((acc, row) => acc + row.minutes, 0);
+    const remaining = Math.max(0, plannedMinutesTotal - spentTotal);
+    const cells: ShareCell[] = operatorLoad.map((row) => ({
+      id: row.who,
+      label: row.who,
+      value: row.minutes,
+      detail: hours(row.minutes),
+      tone: row.stalled > 0 ? ('stalled' as const) : ('normal' as const),
+      mine: row.who === me,
+      hue: hueOf(row.who),
+      title: `${row.who} · ${hours(row.minutes)} · ${row.held}`,
+    }));
+    return {
+      cells,
+      assigned,
+      remaining,
+      ratio: remaining === 0 ? 0 : Math.min(1, assigned / remaining),
+    };
+  }, [operatorLoad, plannedMinutesTotal, spentTotal, me]);
+
   /** 전체 진행률 — «시간». 대분류 카드와 같은 축이라 링과 카드가 어긋나지 않는다. */
   const programmeOverall = useMemo(() => {
     const planned = categories.reduce((n, c) => n + c.planned, 0);
@@ -746,12 +958,9 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
       }
     });
 
-    /* 조건 → 표준시간. 이것이 없으면 이 그래프는 «건수»를 세게 되고, 그러면
-       같은 화면의 링(시간)과 다른 숫자가 된다 — 실제로 그랬다(61% vs 56%). */
-    const minutesOf = new Map<string, number>();
-    for (const plan of planConditions.data ?? []) {
-      minutesOf.set(plan.condition_hash ?? '', plan.planned_minutes ?? 0);
-    }
+    /* 조건 → 표준시간. ⚠️ 여기서 «다시 만들지» 않는다 — 부하 계산과 같은
+       지도를 써야 한 화면의 두 숫자가 같은 표준시간을 근거로 삼는다. */
+    const minutesOf = minutesByCondition;
 
     const perDay = new Map<string, Map<string, number>>();
     for (const row of rows) {
@@ -797,7 +1006,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
     return { bands, days, points };
   }, [
     coverage.data,
-    planConditions.data,
+    minutesByCondition,
     progressQueries,
     activeProjects,
     activeModelId,
@@ -916,7 +1125,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
 
             ⚠️ 시간이 앞, 건수가 뒤 — 이 콘솔의 진행률은 시간이다(§ratioOf).
             ⚠️ PM 화면에는 없다. 그쪽의 첫 줄은 링과 추이가 답한다. */}
-        {showsOperator && programmeOverall !== null && (
+        {showsToday && programmeOverall !== null && (
           <div className="today-strip console-grid__full" data-testid="console-today">
             {/* 「한 것」 칸만 «들여다볼» 수 있다. 숫자는 얼마나 했는지를 말하고,
                 올려 보면 «무엇을» 했는지 넷이 나온다 — 아침에 화면을 열었을 때
@@ -1302,6 +1511,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
             as="section"
             className="console-panel console-grid__wide"
             aria-labelledby="console-programme-heading"
+            data-busy={modelIsSwitching ? 'true' : undefined}
           >
             <div className="console-panel__head">
               <h2 className="console-panel__title" id="console-programme-heading">
@@ -1339,7 +1549,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                     보고서를 뽑을 일이 없고, 그 자리는 모델 토글 옆이라 누르려던
                     것을 잘못 누르기 좋다. PM·관리자 화면에는 그대로 있다 —
                     「시험 진행률은 건드리지 않는다」(2026-09-09). */}
-                {showsProgrammeSummary && (
+                {showsExport && (
                 <button
                   type="button"
                   className="export-btn"
@@ -1356,7 +1566,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
               </div>
             </div>
 
-            {showsProgrammeSummary && exportOpen && (
+            {showsExport && exportOpen && (
               <aside className="export-note" data-testid="export-note">
                 <p className="export-note__lede">{t('routes.home.exportMockup')}</p>
                 <ul className="export-note__list">
@@ -1427,6 +1637,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
               </div>
               </>
               )}
+              {showsBandBreakdown && (
               <div className="band-cards" data-testid="programme-categories">
                   {categories.map((category) => (
                     <section
@@ -1455,6 +1666,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                     </section>
                   ))}
               </div>
+              )}
               </>
             )}
 
@@ -1463,7 +1675,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                 멈춘 자리 바로 아래에 그 분류의 속이 있다. 계열이 열 안에서
                 세로로 쌓이면 「U-NII 가 어디까지」와 「그 안의 U-NII-3 은」이
                 한 시선에 같이 들어온다 — 층을 옆으로 펼치면 그 관계가 끊긴다. */}
-            {categories.length > 0 && (
+            {showsBandBreakdown && categories.length > 0 && (
               <div className="band-columns" data-testid="programme-columns">
                 {categories.map((category) => (
                   <section
@@ -1592,6 +1804,7 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
             as="section"
             className="console-panel console-grid__narrow"
             aria-labelledby="console-issues-heading"
+            data-busy={modelIsSwitching ? 'true' : undefined}
           >
             <div className="console-panel__head">
               <h2 className="console-panel__title" id="console-issues-heading">
@@ -1657,14 +1870,61 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                         {row.count > 1 && (
                           <span className="issue-row__count">{row.count}</span>
                         )}
-                        <span className="issue-row__meta">
-                          {stampOf(row.latestAt)} ·{' '}
+                        {/* 🔴 순서를 뒤집었다. 이 목록은 「시각 · 담당」이었고
+                            활동 흐름은 「담당 · 시각」이라, 두 목록이 나란히 서면
+                            눈이 오른쪽 끝에서 서로 다른 것을 만난다. 시각을 «맨
+                            오른쪽»으로 통일한다 — 둘 다 시간순 정렬이라 그 값이
+                            세로로 비교되는 열이고, tabular-nums 가 그 열을 세운다.
+                            ⚠️ 이 변경은 세 화면 전부에 걸린다. 같은 부품이 화면
+                            마다 다르게 읽히면 안 되므로 그것이 옳다. */}
+                        {/* ⚠️ 한 문자열이 아니라 «두 조각»이다. 총괄에서 이
+                            칸이 좁아지면 담당만 내리고 시각은 남겨야 하는데,
+                            한 문자열이면 CSS 가 그 안을 자를 수 없다. 조각을
+                            나눠 두면 「무엇을 먼저 버리나」가 스타일의 결정이
+                            되고, 화면마다 다른 판단을 줄 수 있다. */}
+                        <span className="issue-row__meta issue-row__who">
                           {t('routes.home.issueWho', {
                             attempt: String(row.attempt),
                             operator: row.operator,
                           })}
                         </span>
+                        <span className="issue-row__meta issue-row__when">
+                          {stampOf(row.latestAt)}
+                        </span>
                       </button>
+                      {/* 반 칸으로 줄면 행에서 「담당 · 시각」이 사라진다(CSS).
+                          사라진 것을 «되찾는» 자리다 — 목록은 「무엇이 몇 건」까지만
+                          말하고, 올려 보면 그 모드의 최근 것이 나온다.
+                          ⚠️ 총괄에서만 렌더한다. 다른 두 화면은 패널이 넓어 행이
+                          이미 전부 말하고, 거기 팝업을 더하면 읽던 것을 가린다. */}
+                      {showsActivity && (
+                        <div className="row-peek" role="note">
+                          <p className="row-peek__head">{row.mode}</p>
+                          <ul className="row-peek__list">
+                            <li>
+                              <span>{t('routes.home.peekVerdict')}</span>
+                              <b>{row.verdict || '—'}</b>
+                            </li>
+                            <li>
+                              <span>{t('routes.home.peekCount')}</span>
+                              <b>{t('routes.home.issuesMeta', { count: String(row.count) })}</b>
+                            </li>
+                            <li>
+                              <span>{t('routes.home.peekWho')}</span>
+                              <b>
+                                {t('routes.home.issueWho', {
+                                  attempt: String(row.attempt),
+                                  operator: row.operator,
+                                })}
+                              </b>
+                            </li>
+                            <li>
+                              <span>{t('routes.home.peekWhen')}</span>
+                              <b>{stampOf(row.latestAt)}</b>
+                            </li>
+                          </ul>
+                        </div>
+                      )}
                     </li>
                   );
                 })}
@@ -1673,11 +1933,170 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
           </Card>
         )}
 
+        {/* ── 활동 흐름 ───────────────────────────────────────────────────
+            이슈 트래커와 «같은 열»에 선다. 오른쪽 열은 이 화면에서 「무슨 일이
+            일어나는가」를 맡고, 왼쪽 열은 「얼마나 · 누가」를 맡는다.
+
+            ⚠️ 챔버 카드와 겹치지 않는다 — 카드는 「어디서 무엇을」(공간),
+            이 목록은 「언제 무엇이」(시간)다. 그리고 «완료»는 이 화면에서 여기
+            에서만 시간 순으로 보인다: 링도 추이도 「얼마나」만 말하지 「방금」은
+            말하지 않는다. */}
+        {showsActivity && (
+          <Card
+            as="section"
+            className="console-panel console-grid__third"
+            aria-labelledby="console-activity-heading"
+            data-busy={modelIsSwitching ? 'true' : undefined}
+          >
+            <div className="console-panel__head">
+              <h2 className="console-panel__title" id="console-activity-heading">
+                {t('routes.home.activityHeading')}
+              </h2>
+              <span className="console-panel__meta">
+                {t('routes.home.activityMeta', {
+                  count: String(activity.rows.length + activity.hidden),
+                })}
+              </span>
+            </div>
+            {activity.rows.length === 0 ? (
+              <EmptyState
+                testId="console-activity-empty"
+                title={t('routes.home.activityEmptyTitle')}
+                description={t('routes.home.activityEmptyBody')}
+              />
+            ) : (
+              <ul className="activity-list" data-testid="console-activity">
+                {activity.rows.map((row) => (
+                  <li className="activity-row" key={row.id} data-kind={row.kind}>
+                    {/* ⚠️ 점 하나로 상태를 말하되 «글자»를 버리지 않는다. 색과
+                        모양만으로 말하면 색각 이상에서 구분이 사라진다 —
+                        이슈 목록의 ✕ 와 같은 규칙이다. */}
+                    <span
+                      className="activity-row__dot"
+                      role="img"
+                      aria-label={t(`routes.home.activity.${row.kind}`)}
+                    />
+                    <span className="activity-row__mode">{row.mode}</span>
+                    <span className="activity-row__meta activity-row__who">{row.who}</span>
+                    <span className="activity-row__meta activity-row__when">
+                      {stampOf(row.at)}
+                    </span>
+                    <div className="row-peek" role="note">
+                      <p className="row-peek__head">{row.mode}</p>
+                      <ul className="row-peek__list">
+                        <li>
+                          <span>{t('routes.home.peekState')}</span>
+                          <b>{t(`routes.home.activity.${row.kind}`)}</b>
+                        </li>
+                        <li>
+                          <span>{t('routes.home.peekWho')}</span>
+                          <b>{row.who}</b>
+                        </li>
+                        <li>
+                          <span>{t('routes.home.peekWhen')}</span>
+                          <b>{stampOf(row.at)}</b>
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                ))}
+                {/* 잘린 만큼을 «세어서» 적는다. 「더 있다」가 아니라 「몇 건 더」다 —
+                    3건과 300건은 다음 행동이 다르다. */}
+                {activity.hidden > 0 && (
+                  <li className="activity-row activity-row--more" data-testid="activity-more">
+                    {t('routes.home.activityMore', { count: String(activity.hidden) })}
+                  </li>
+                )}
+              </ul>
+            )}
+          </Card>
+        )}
+
+
+        {/* ── 사람별 부하 ─────────────────────────────────────────────────
+            챔버 옆에 사람이 서는 이유: 총괄이 실제로 움직일 수 있는 것이 사람
+            하나다. 설비는 「못 늘리는 것」이고 이 목록은 「옮길 수 있는 것」이라,
+            둘이 같은 문단에 있어야 「어느 칸이 비었나」와 「누가 손이 비나」가
+            한 시선에 들어온다.
+
+            ⚠️ 시간이 앞, 건수가 뒤 — 이 콘솔의 진행률은 시간이다(§ratioOf).
+            정렬도 시간 순이다. 「5건 들었지만 2h」와 「2건 들었지만 30h」 중
+            총괄이 손대야 하는 것은 뒤쪽이고, 건수로 정렬하면 그것이 아래로 간다. */}
+        {showsLoad && (
+          <Card
+            as="section"
+            className="console-panel console-grid__under"
+            aria-labelledby="console-load-heading"
+            data-busy={modelIsSwitching ? 'true' : undefined}
+          >
+            <div className="console-panel__head">
+              <h2 className="console-panel__title" id="console-load-heading">
+                {t('routes.home.loadHeading')}
+              </h2>
+              <span className="console-panel__meta">
+                {t('routes.home.loadMeta', { count: String(operatorLoad.length) })}
+              </span>
+            </div>
+            {/* ⚠️ 목록이 아니라 «지도»다. 15인이 되면 목록은 15줄이고, 15줄은
+                「누가 제일 많나」를 «읽어서» 알아내야 한다. 면적은 그 비교를 눈이
+                대신한다 — 이 화면이 요구하는 것은 정확한 숫자가 아니라 한 번에
+                보이는 «비중»이다. 정확한 값은 칸에 올리면 나온다. */}
+            {loadShare.cells.length === 0 ? (
+              <EmptyState
+                testId="console-load-empty"
+                title={t('routes.home.loadEmptyTitle')}
+                description={t('routes.home.loadEmptyBody')}
+              />
+            ) : (
+              <>
+                {/* 🔴 지도의 분모는 «배정된 일»이다. 그 사실을 지도보다 «먼저»
+                    적는다 — 이 줄이 없으면 아래 그림은 남은 일이 전부 나뉘어
+                    있는 것처럼 보인다. 실측으로 미배정이 90% 였다. */}
+                <div className="share-split">
+                  <div
+                    className="share-split__bar"
+                    role="meter"
+                    aria-valuemin={0}
+                    aria-valuemax={1}
+                    aria-valuenow={loadShare.ratio}
+                    aria-label={t('routes.home.loadAssignedLabel')}
+                  >
+                    <span
+                      className="share-split__fill"
+                      style={{ width: `${loadShare.ratio * 100}%` }}
+                    />
+                  </div>
+                  <span className="share-split__text">
+                    {t('routes.home.loadAssigned', {
+                      pct: String(Math.round(loadShare.ratio * 100)),
+                      assigned: hours(loadShare.assigned),
+                      remaining: hours(loadShare.remaining),
+                    })}
+                  </span>
+                </div>
+                <ShareTreemap cells={loadShare.cells} testId="console-load" />
+              </>
+            )}
+          </Card>
+        )}
+
+        {/* 사람 부하는 이제 «전폭»이다. 위 두 목록이 오른쪽 두 칸을 나눠 쓰므로
+            부하가 왼쪽 열에만 서면 그 오른쪽이 통째로 빈다. 그리고 15인 명단은
+            폭이 넓을수록 낫다 — 아래 CSS 가 여러 단으로 흘린다. */
+        }
+        {/* 🔴 순서: 사람 → 활동 → 설비.
+            처음엔 설비를 먼저 놓았는데(공간 → 인력 → 시간), 총괄이 실제로 묻는
+            순서가 그것이 아니다. 관리자가 화면을 열고 먼저 보는 것은 「누가
+            고생하고 있나」와 「지금 뭐가 도나」이고, 설비는 그 둘을 설명하는
+            «배경»이다. 그리고 설비는 이 화면에서 유일하게 «움직일 수 없는»
+            것이라 — 챔버는 늘릴 수 없다 — 행동으로 이어지지 않는 정보다.
+            행동으로 이어지는 것이 위, 배경이 아래. */
+        }
         {/* ── the fleet, as blocks — 현장 범위에서만 ─────────────────────
             A PM does not act on "which bay is free"; showing it spends the
             screen's most valuable band on something their decisions never
             read. Scope is what makes three homes three homes. */}
-        {showsOperator && SHOWS_FIELD_PANELS && (
+        {showsFleet && (
         <>
         {/* ── the fleet, as blocks ────────────────────────────────────────
             A chamber is a room, not a row (see `ChamberCard`). The grid keeps
@@ -1709,6 +2128,17 @@ export function ConsoleHome({ scope }: ConsoleHomeProps): JSX.Element {
                   name={chamber.name}
                   chamberId={chamber.chamber_id}
                   status={chamberStatusKind(chamber.status)}
+                  statusLabel={chamberStatusLabel(t, chamber.status)}
+                  {...(chamber.status === 'in_use'
+                    ? {
+                        operatorLabel: (() => {
+                          const who = operatorBySession.get((chamber.session_id ?? '').trim());
+                          return who === undefined
+                            ? t('routes.home.chamberUserUnknown')
+                            : t('routes.home.chamberUser', { who });
+                        })(),
+                      }
+                    : {})}
                   running={chamber.progress?.is_running === true}
                   ratio={chamber.progress?.ratio ?? null}
                   {...(chamber.progress != null

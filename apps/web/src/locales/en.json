@@ -1343,7 +1343,7 @@
       "bootstrapValidationRequired": "Chamber ID, name, and address are required.",
       "bootstrapValidationUrl": "Enter a complete HTTP or HTTPS chamber address.",
       "status": {
-        "idle": "Idle",
+        "idle": "Available",
         "in_use": "In Use",
         "offline": "Offline"
       },
@@ -1873,7 +1873,33 @@
       "markTitle": "Assigned to {who} · {issues} nonconforming",
       "mine": "{who} (you)",
       "planEdition": "Plan {id}",
-      "planEditionOn": "Plan {id} · published {at}"
+      "planEditionOn": "Plan {id} · published {at}",
+      "loadHeading": "Load by operator",
+      "loadMeta": "{count} assigned",
+      "loadEmptyTitle": "Nothing assigned",
+      "loadEmptyBody": "No condition is claimed right now. Assignments stack up here by employee number.",
+      "loadHeld": "{count} held",
+      "loadStalled": "{count} stalled",
+      "loadStalledHint": "Claimed over 24 hours ago with no measurement against it yet. An observation, not a forecast.",
+      "activityHeading": "Activity",
+      "activityMeta": "{count} entries",
+      "activityEmptyTitle": "Nothing recent",
+      "activityEmptyBody": "No measurement is running and none has just finished.",
+      "activity": {
+        "running": "Running",
+        "done": "Done"
+      },
+      "activityMore": "…and {count} more",
+      "peekVerdict": "Verdict",
+      "peekCount": "Cases",
+      "peekWho": "Operator",
+      "peekWhen": "Time",
+      "peekState": "State",
+      "loadUnassigned": "Unassigned",
+      "loadAssigned": "{pct}% assigned · {assigned} of {remaining} left",
+      "loadAssignedLabel": "Share of remaining work assigned",
+      "chamberUser": "In use by {who}",
+      "chamberUserUnknown": "Operator unknown"
     },
     "testReports": {
       "title": "Test Report Register",
