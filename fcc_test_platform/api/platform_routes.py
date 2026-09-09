@@ -732,6 +732,15 @@ class PlatformApiAdapter:
             project_id, technology=technology, limit=limit, cursor=cursor,
         )
 
+    def list_project_plan_conditions(
+        self, project_id: str, *, limit: Optional[int] = None, cursor: Optional[str] = None,
+        technology: Optional[str] = None,
+    ) -> dict:
+        self.authorize('list_project_plan_conditions', project_id=project_id)
+        return self._read_service.project_plan_conditions(
+            project_id, technology=technology, limit=limit, cursor=cursor,
+        )
+
     def list_project_claims(
         self, project_id: str, *, limit: Optional[int] = None, cursor: Optional[str] = None,
         technology: Optional[str] = None,
@@ -2706,6 +2715,15 @@ def create_platform_router(
         )
         return {'permissions': sorted(permissions)}
 
+    def list_project_plan_conditions(
+        project_id: str, request: Request, response: Response,
+        limit: Optional[int] = None, cursor: str = '', technology: str = '',
+    ) -> list:
+        page = request_adapter(request).list_project_plan_conditions(
+            project_id, limit=limit, cursor=cursor or None, technology=technology or None,
+        )
+        return _emit_page(response, page)
+
     def list_project_claims(
         project_id: str, request: Request, response: Response,
         limit: Optional[int] = None, cursor: str = '', technology: str = '',
@@ -3299,6 +3317,7 @@ def create_platform_router(
         'update_project': update_project,
         'get_project_coverage': get_project_coverage,
         'list_project_claims': list_project_claims,
+        'list_project_plan_conditions': list_project_plan_conditions,
         'get_project_sync_status': get_project_sync_status,
         'get_project_progress': get_project_progress,
         'list_project_report_sessions': list_project_report_sessions,

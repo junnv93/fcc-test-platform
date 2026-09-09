@@ -66,6 +66,40 @@ class CentralReadPort(Protocol):
         """
         ...
 
+    def read_plan_conditions(
+        self,
+        project_id: str,
+        *,
+        technology: Optional[str] = None,
+        limit: Optional[int] = None,
+        after: Optional[Sequence[str]] = None,
+    ) -> list[dict]:
+        """Return ``published_plan_expectation`` rows for one central project uuid.
+
+        One row per planned condition — the DENOMINATOR of progress, listed
+        rather than counted. Empty list when the project has no published plan
+        (a real, non-error empty).
+
+        Why this exists beside ``read_project_coverage`` (2026-09-09): coverage
+        answers "what has been measured" and the progress read answers "how many
+        were planned", grouped by ``progress_area``. Neither can name a condition
+        that has NOT been measured, because one only holds measured rows and the
+        other collapses the plan into counts. An operator asking "what is left in
+        this family" therefore got a number and no names. The plan table already
+        holds one row per condition; this read stops hiding them.
+
+        ⚠️ It carries ``raw_test_type`` — the test item (POWER / PSD / OBW / CBE
+        / CSE / RBE / RSE / Below 1G / ACLine). That is the layer between a mode
+        and a condition, and it is what a person schedules by. The finer axes
+        that would fully identify one condition (channel, bandwidth, antenna)
+        are NOT here: they live on the kernel's ``TestPlanRow`` and stop at plan
+        publication, so this read cannot invent them. It returns what the central
+        database actually holds and no more.
+
+        Read-only. ``condition_hash`` is the join key back to coverage and
+        claims; it is propagated verbatim and never recomputed here.
+        """
+
     def read_active_claims(
         self,
         project_id: str,

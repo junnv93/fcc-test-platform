@@ -1961,6 +1961,55 @@
         },
         "type": "array"
       },
+      "PlanConditionEnvelope": {
+        "additionalProperties": false,
+        "properties": {
+          "condition_hash": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "plan_published_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "planned_minutes": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "progress_area": {
+            "type": "string"
+          },
+          "progress_bucket_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "technology": {
+            "type": "string"
+          },
+          "test_item": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "condition_hash"
+        ],
+        "type": "object"
+      },
+      "PlanConditionList": {
+        "items": {
+          "$ref": "#/components/schemas/PlanConditionEnvelope"
+        },
+        "type": "array"
+      },
       "ProblemDetails": {
         "additionalProperties": true,
         "description": "RFC 9457 Problem Details for HTTP APIs (application/problem+json error body).",
@@ -8664,6 +8713,105 @@
           "platform"
         ],
         "x-fcc-permission": "platform:admin"
+      }
+    },
+    "/platform/projects/{project_id}/plan-conditions": {
+      "get": {
+        "operationId": "list_project_plan_conditions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "technology",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanConditionList"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "X-Next-Cursor": {
+                "description": "Opaque keyset cursor for the next page. Absent on the last page or an unbounded (no-limit) read. Pass it back as ?cursor= to continue.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Invalid project_id (not a valid uuid) or malformed cursor."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "AuthZ denied (missing required permission)."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Central backend unavailable (CentralReadError / ClaimWriteError)."
+          }
+        },
+        "summary": "list project plan conditions",
+        "tags": [
+          "platform"
+        ],
+        "x-fcc-permission": "platform:read"
       }
     },
     "/platform/projects/{project_id}/progress": {

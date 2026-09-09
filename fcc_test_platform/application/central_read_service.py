@@ -26,6 +26,8 @@ from fcc_test_platform.application.central_read_adapter import (
     ACTIVE_CLAIM_KEYSET_DOMAINS,
     COVERAGE_KEYSET,
     COVERAGE_KEYSET_DOMAINS,
+    PLAN_CONDITION_KEYSET,
+    PLAN_CONDITION_KEYSET_DOMAINS,
 )
 from fcc_test_kernel.application.central_contract.envelope_helpers import (
     int_or_zero,
@@ -86,6 +88,38 @@ class CentralReadService:
             self._read.read_project_coverage, normalized, _facet(technology),
             limit, cursor, COVERAGE_KEYSET, COVERAGE_KEYSET_DOMAINS,
             _coverage_envelope,
+        )
+
+    def project_plan_conditions(
+        self, project_id: str, *, technology: Optional[str] = None,
+        limit: Optional[int] = None, cursor: Optional[str] = None,
+    ) -> dict:
+        """Planned-condition page for one central project uuid (2026-09-09).
+
+        Returns ``{'items': [PlanConditionEnvelope, ...], 'next_cursor': str |
+        None}`` with the same opt-in pagination + ``technology`` facet contract
+        as :meth:`project_coverage`.
+
+        This is the DENOMINATOR, listed rather than counted. ``project_progress``
+        already reports how many conditions a mode plans, but it groups them, so
+        a condition that has not been measured has no name anywhere in the read
+        surface: coverage only holds measured rows. An operator asking "what is
+        left in this family" could be told a number and nothing else. Every row
+        this returns already existed in ``published_plan_expectation``; the read
+        stops hiding them.
+
+        ⚠️ ``raw_test_type`` is the test item (POWER / PSD / OBW / CBE / CSE /
+        RBE / RSE / …) — the layer between a mode and one condition, and the unit
+        a person actually schedules by. The finer axes (channel, bandwidth,
+        antenna, modulation) are NOT here because the central table does not
+        carry them; they stop at plan publication. This read returns what the
+        database holds and does not synthesise the rest.
+        """
+        normalized = _validate_project_uuid(project_id)
+        return self._read_page(
+            self._read.read_plan_conditions, normalized, _facet(technology),
+            limit, cursor, PLAN_CONDITION_KEYSET, PLAN_CONDITION_KEYSET_DOMAINS,
+            _plan_condition_envelope,
         )
 
     def project_claims(
@@ -276,6 +310,26 @@ def _positive_int(value: object) -> Optional[int]:
 def _validate_project_uuid(project_id: str) -> str:
     # Thin delegate to the shared boundary validator (envelope_helpers SSOT).
     return require_uuid(project_id, 'project_id')
+
+
+def _plan_condition_envelope(row: dict) -> dict:
+    """⚠️ `coverage_technology` 를 `technology` 로 내보낸다.
+
+    두 읽기(계획·커버리지)를 `condition_hash` 로 조인하는 쪽이 같은 축을 두 이름
+    으로 배우지 않게 한다. 저장소의 칸 이름과 계약의 칸 이름이 다른 것은 여기서
+    «의도»이고, 그 대응은 이 함수 한 줄이 전부다.
+    """
+    return {
+        'project_id': text(row.get('project_id')),
+        'condition_hash': text(row.get('condition_hash')),
+        'technology': text(row.get('coverage_technology')),
+        'test_item': text(row.get('raw_test_type')),
+        'progress_bucket_id': text(row.get('progress_bucket_id')),
+        'progress_area': text(row.get('progress_area')),
+        'planned_minutes': optional_int(row.get('planned_minutes_snapshot')),
+        'plan_id': text(row.get('plan_id')),
+        'plan_published_at': text(row.get('plan_published_at')),
+    }
 
 
 def _coverage_envelope(row: dict) -> dict:

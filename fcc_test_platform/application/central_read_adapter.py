@@ -52,6 +52,16 @@ __all__ = [
     'COVERAGE_QUERY_SQL_PAGED',
     'COVERAGE_QUERY_SQL_PAGED_BY_TECH',
     'COVERAGE_VIEW',
+    'PLAN_CONDITIONS_QUERY_SQL',
+    'PLAN_CONDITIONS_QUERY_SQL_ALL',
+    'PLAN_CONDITIONS_QUERY_SQL_ALL_BY_TECH',
+    'PLAN_CONDITIONS_QUERY_SQL_BY_TECH',
+    'PLAN_CONDITIONS_QUERY_SQL_PAGED',
+    'PLAN_CONDITIONS_QUERY_SQL_PAGED_BY_TECH',
+    'PLAN_CONDITIONS_VIEW',
+    'PLAN_CONDITION_COLUMNS',
+    'PLAN_CONDITION_KEYSET',
+    'PLAN_CONDITION_KEYSET_DOMAINS',
     'SYNC_STATUS_COLUMNS',
     'SYNC_STATUS_QUERY_SQL',
     'REPORT_SESSION_COLUMNS',
@@ -62,6 +72,9 @@ __all__ = [
 
 COVERAGE_VIEW = 'coverage_by_condition_hash'
 ACTIVE_CLAIMS_VIEW = 'active_claims'
+# ⚠️ 뷰가 아니라 «테이블»이다. 다른 둘과 달리 집계가 없다 — 계획은 발행 시점에
+# 이미 조건 단위이고, 그것을 그대로 내보내는 것이 이 읽기의 전부다.
+PLAN_CONDITIONS_VIEW = 'published_plan_expectation'
 
 # Output columns of each central view (= SELECT aliases in
 # docs/platform/central_db_schema.v1.json). Order defines the row→dict mapping.
@@ -81,6 +94,20 @@ COVERAGE_COLUMNS: tuple[str, ...] = (
     'distinct_session_count',
     'distinct_operator_count',
 )
+# 계획 행. `coverage_technology` 는 커버리지의 `technology` 와 같은 축이라
+# 이름을 그쪽에 맞춰 노출한다 — 두 읽기를 조인하는 쪽이 축 이름을 두 번 배우지
+# 않게. `raw_test_type` 이 시험항목(POWER/PSD/OBW…)이고, 이 읽기의 «이유»다.
+PLAN_CONDITION_COLUMNS: tuple[str, ...] = (
+    'project_id',
+    'condition_hash',
+    'coverage_technology',
+    'raw_test_type',
+    'progress_bucket_id',
+    'progress_area',
+    'planned_minutes_snapshot',
+    'plan_id',
+    'plan_published_at',
+)
 ACTIVE_CLAIM_COLUMNS: tuple[str, ...] = (
     'project_id',
     'claim_id',
@@ -99,6 +126,19 @@ ACTIVE_CLAIM_COLUMNS: tuple[str, ...] = (
 # ties stay deterministic. These define the cursor arity + which envelope fields
 # the service encodes into next_cursor.
 COVERAGE_KEYSET: tuple[str, ...] = ('technology', 'condition_hash')
+# 계획은 `(project_id, provider_id, plan_id, condition_hash)` 가 유니크하다.
+# 커서는 그중 프로젝트를 뺀 뒤 «정렬이 뜻을 갖는» 순서로 잡는다 — 모드 안에서
+# 항목이 이어지도록 (progress_area, raw_test_type, condition_hash).
+# condition_hash 를 마지막에 두는 이유: 같은 (모드, 항목)에 조건이 여럿 생겨도
+# (축이 중앙까지 오면 그렇게 된다) 순서가 여전히 전순서로 남는다.
+# ⚠️ 커서 칼럼 이름은 «SQL 과 envelope 양쪽에» 존재해야 한다.
+# `_read_page` 가 다음 커서를 마지막 «envelope» 에서 뽑기 때문이다
+# (`items[-1][column]`). 처음엔 여기에 `raw_test_type` 을 넣었는데 envelope 은
+# 그것을 `test_item` 으로 내보내므로 첫 페이지 응답이 KeyError → 500 이 됐다
+# (실측 2026-09-09). 이름을 바꿔 내보내는 칸은 커서에 쓰지 않는다.
+# `(progress_area, condition_hash)` 로 충분하다 — condition_hash 가
+# (project, provider, plan) 안에서 유니크라 이미 전순서다.
+PLAN_CONDITION_KEYSET: tuple[str, ...] = ('progress_area', 'condition_hash')
 ACTIVE_CLAIM_KEYSET: tuple[str, ...] = ('occurred_at', 'claim_id')
 
 # Value domain of each keyset column (부채 청산 M3, 2026-07-30). A cursor is a
@@ -113,6 +153,10 @@ ACTIVE_CLAIM_KEYSET: tuple[str, ...] = ('occurred_at', 'claim_id')
 COVERAGE_KEYSET_DOMAINS: tuple[CursorValueDomain, ...] = (
     CursorValueDomain.TEXT,       # measurement_attempts.technology      text
     CursorValueDomain.TEXT,       # measurement_attempts.condition_hash  text
+)
+PLAN_CONDITION_KEYSET_DOMAINS: tuple[CursorValueDomain, ...] = (
+    CursorValueDomain.TEXT,   # published_plan_expectation.progress_area   text
+    CursorValueDomain.TEXT,   # published_plan_expectation.condition_hash  text
 )
 ACTIVE_CLAIM_KEYSET_DOMAINS: tuple[CursorValueDomain, ...] = (
     CursorValueDomain.TIMESTAMP,  # claim_events.occurred_at  timestamp
@@ -207,6 +251,33 @@ ACTIVE_CLAIMS_QUERY_SQL_PAGED_BY_TECH = _select_by_project(
 )
 
 
+# 계획 조건 여섯 형태. ⚠️ 기술 패싯이 `technology` 가 아니라
+# `coverage_technology` 다 — 계획 테이블의 칸 이름이 그것이고, 없는 칸으로
+# 필터하면 SELECT 가 통째로 죽는다.
+_PLAN_TECH_FILTER: tuple[str, ...] = ('coverage_technology',)
+PLAN_CONDITIONS_QUERY_SQL_ALL = _select_by_project(
+    PLAN_CONDITIONS_VIEW, PLAN_CONDITION_COLUMNS, PLAN_CONDITION_KEYSET, limited=False,
+)
+PLAN_CONDITIONS_QUERY_SQL = _select_by_project(
+    PLAN_CONDITIONS_VIEW, PLAN_CONDITION_COLUMNS, PLAN_CONDITION_KEYSET,
+)
+PLAN_CONDITIONS_QUERY_SQL_PAGED = _select_by_project(
+    PLAN_CONDITIONS_VIEW, PLAN_CONDITION_COLUMNS, PLAN_CONDITION_KEYSET, keyset=True,
+)
+PLAN_CONDITIONS_QUERY_SQL_ALL_BY_TECH = _select_by_project(
+    PLAN_CONDITIONS_VIEW, PLAN_CONDITION_COLUMNS, PLAN_CONDITION_KEYSET,
+    extra_filters=_PLAN_TECH_FILTER, limited=False,
+)
+PLAN_CONDITIONS_QUERY_SQL_BY_TECH = _select_by_project(
+    PLAN_CONDITIONS_VIEW, PLAN_CONDITION_COLUMNS, PLAN_CONDITION_KEYSET,
+    extra_filters=_PLAN_TECH_FILTER,
+)
+PLAN_CONDITIONS_QUERY_SQL_PAGED_BY_TECH = _select_by_project(
+    PLAN_CONDITIONS_VIEW, PLAN_CONDITION_COLUMNS, PLAN_CONDITION_KEYSET,
+    extra_filters=_PLAN_TECH_FILTER, keyset=True,
+)
+
+
 # FE-SYNC sync-status (2026-05-27) — central-data freshness for one project.
 # Scalar subqueries (no FROM) over the two views: newest central measurement
 # timestamp + measured-condition count + active-claim count. SELECT-only; runs on
@@ -287,6 +358,11 @@ _COVERAGE_VARIANTS = _ReadVariants(
     COVERAGE_QUERY_SQL_ALL_BY_TECH, COVERAGE_QUERY_SQL_BY_TECH,
     COVERAGE_QUERY_SQL_PAGED_BY_TECH,
 )
+_PLAN_CONDITIONS_VARIANTS = _ReadVariants(
+    PLAN_CONDITIONS_QUERY_SQL_ALL, PLAN_CONDITIONS_QUERY_SQL,
+    PLAN_CONDITIONS_QUERY_SQL_PAGED, PLAN_CONDITIONS_QUERY_SQL_ALL_BY_TECH,
+    PLAN_CONDITIONS_QUERY_SQL_BY_TECH, PLAN_CONDITIONS_QUERY_SQL_PAGED_BY_TECH,
+)
 _ACTIVE_CLAIMS_VARIANTS = _ReadVariants(
     ACTIVE_CLAIMS_QUERY_SQL_ALL, ACTIVE_CLAIMS_QUERY_SQL, ACTIVE_CLAIMS_QUERY_SQL_PAGED,
     ACTIVE_CLAIMS_QUERY_SQL_ALL_BY_TECH, ACTIVE_CLAIMS_QUERY_SQL_BY_TECH,
@@ -336,6 +412,15 @@ class PostgresCentralReadAdapter:
     ) -> list[dict]:
         sql, params = _plan_read(_COVERAGE_VARIANTS, project_id, technology, limit, after)
         return self._query(sql, COVERAGE_COLUMNS, params)
+
+    def read_plan_conditions(
+        self, project_id: str, *, technology: Optional[str] = None,
+        limit: Optional[int] = None, after: Optional[Sequence[str]] = None,
+    ) -> list[dict]:
+        sql, params = _plan_read(
+            _PLAN_CONDITIONS_VARIANTS, project_id, technology, limit, after,
+        )
+        return self._query(sql, PLAN_CONDITION_COLUMNS, params)
 
     def read_active_claims(
         self, project_id: str, *, technology: Optional[str] = None,
